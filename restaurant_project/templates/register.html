@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>회원가입</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="form-container">
+    <h2>회원가입</h2>
+    <form method="POST">
+      <input name="username" placeholder="아이디" required>
+      <input name="password" type="password" placeholder="비밀번호" required>
+      <select name="role" id="role" required onchange="showManagerSelect()">
+        <option value="manager">매장관리자</option>
+        <option value="employee">직원</option>
+      </select>
+      <div id="parent-select" style="display:none; margin-top:10px;">
+        <label>상위 관리자 선택:</label>
+        <select name="parent_id">
+          <!-- 매장관리자 가입 시: admin(최고관리자) 목록, 직원 가입 시: manager(매장관리자) 목록 -->
+          {% if parent_admins %}
+            {% for admin in parent_admins %}
+              <option value="{{ admin.id }}">{{ admin.username }}</option>
+            {% endfor %}
+          {% elif parent_managers %}
+            {% for manager in parent_managers %}
+              <option value="{{ manager.id }}">{{ manager.username }}</option>
+            {% endfor %}
+          {% endif %}
+        </select>
+      </div>
+      <button type="submit">가입</button>
+    </form>
+    <p><a href="{{ url_for('auth.login') }}">로그인</a>으로 돌아가기</p>
+  </div>
+  <script>
+  function showManagerSelect() {
+    var role = document.getElementById('role').value;
+    var parentDiv = document.getElementById('parent-select');
+    if (role === 'manager' || role === 'employee') {
+      parentDiv.style.display = 'block';
+    } else {
+      parentDiv.style.display = 'none';
+    }
+  }
+  window.onload = showManagerSelect;
+  </script>
+</body>
+</html> 

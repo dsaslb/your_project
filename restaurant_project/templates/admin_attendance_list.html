@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>전체 직원 출근/퇴근 기록</h2>
+<table border="1">
+    <tr>
+        <th>직원</th><th>출근</th><th>퇴근</th><th>근무시간(분)</th>
+    </tr>
+    {% for att in attendances %}
+    <tr>
+        <td>{{ users[att.user_id] }}</td>
+        <td>{{ att.clock_in }}</td>
+        <td>{{ att.clock_out if att.clock_out else "미입력" }}</td>
+        <td>
+            {% if att.clock_out %}
+                {{ ((att.clock_out - att.clock_in).total_seconds() // 60) | int }}
+            {% else %}
+                -
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+<br>
+<h3>직원별 근무시간 합계</h3>
+<table border="1">
+    <tr><th>직원</th><th>누적 근무시간(분)</th><th>근무일수</th></tr>
+    {% for user_id, stat in stats.items() %}
+    <tr>
+        <td>{{ users[user_id] }}</td>
+        <td>{{ stat.total_minutes }}</td>
+        <td>{{ stat.count }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %} 
