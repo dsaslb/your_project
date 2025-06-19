@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h3>출근 기록 관리</h3>
+        
+        <!-- 출근 기록 추가 폼 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>출근 기록 추가</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">직원</label>
+                            <select name="user_id" class="form-select" required>
+                                <option value="">선택하세요</option>
+                                {% for id, name in users.items() %}
+                                    <option value="{{ id }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">출근시간</label>
+                            <input type="datetime-local" name="clock_in" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">퇴근시간</label>
+                            <input type="datetime-local" name="clock_out" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary d-block">추가</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 출근 기록 목록 -->
+        <div class="card">
+            <div class="card-header">
+                <h5>전체 출근 기록</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>직원</th>
+                            <th>날짜</th>
+                            <th>출근시간</th>
+                            <th>퇴근시간</th>
+                            <th>근무시간</th>
+                            <th>근태상태</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        <tr>
+                            <td>{{ users[record.user_id] }}</td>
+                            <td>{{ record.clock_in.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ record.clock_in.strftime('%H:%M') }}</td>
+                            <td>
+                                {% if record.clock_out %}
+                                    {{ record.clock_out.strftime('%H:%M') }}
+                                {% else %}
+                                    <span class="text-muted">미입력</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ record.work_minutes }}분</td>
+                            <td>
+                                <span class="badge {% if record.status == '정상' %}bg-success{% elif record.status == '지각' %}bg-warning{% elif record.status == '조퇴' %}bg-info{% else %}bg-secondary{% endif %}">
+                                    {{ record.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('attendance.edit_attendance', att_id=record.id) }}" class="btn btn-sm btn-outline-primary">수정</a>
+                                <form method="post" action="{{ url_for('attendance.delete_attendance', att_id=record.id) }}" style="display:inline;" onsubmit="return confirm('정말 삭제하시겠습니까?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                {% if not records %}
+                    <p class="text-muted">출근 기록이 없습니다.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

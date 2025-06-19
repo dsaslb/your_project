@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}내 출퇴근 기록{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-clock"></i> 내 출퇴근 기록</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('clockin') }}" class="mb-3">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-sign-in-alt"></i> 출근하기
+                    </button>
+                </form>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>출근 시간</th>
+                                <th>퇴근 시간</th>
+                                <th>근무 시간(분)</th>
+                                <th>상태</th>
+                                <th>퇴근</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for r in records %}
+                            <tr>
+                                <td>{{ r.clock_in.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>
+                                    {% if r.clock_out %}
+                                        {{ r.clock_out.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    {% else %}
+                                        <span class="text-muted">미입력</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ r.work_minutes }}</td>
+                                <td>
+                                    {% if r.status == "정상" %}
+                                        <span class="badge bg-success">{{ r.status }}</span>
+                                    {% elif r.status == "지각" %}
+                                        <span class="badge bg-warning">{{ r.status }}</span>
+                                    {% elif r.status == "조퇴" %}
+                                        <span class="badge bg-info">{{ r.status }}</span>
+                                    {% elif r.status == "결근" %}
+                                        <span class="badge bg-danger">{{ r.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ r.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if not r.clock_out %}
+                                    <form method="post" action="{{ url_for('clock_out', att_id=r.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-warning btn-sm">
+                                            <i class="fas fa-sign-out-alt"></i> 퇴근
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                        <span class="text-muted">완료</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

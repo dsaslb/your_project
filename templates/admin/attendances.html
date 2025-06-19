@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}출근 관리 - 레스토랑 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">출근 관리</h1>
+</div>
+
+<!-- 검색 필터 -->
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-search"></i> 검색 및 필터
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="user_id" class="form-label">직원 선택</label>
+                <select class="form-select" id="user_id" name="user_id">
+                    <option value="">전체 직원</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" {{ 'selected' if selected_user_id == user.id else '' }}>
+                        {{ user.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">시작 날짜</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date or '' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">종료 날짜</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date or '' }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> 검색
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 통계 -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ attendances|length }}</h4>
+                        <p class="card-text">총 출근 기록</p>
+                    </div>
+                    <div>
+                        <i class="fas fa-calendar fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ "%.1f"|format(total_work_hours) }}</h4>
+                        <p class="card-text">총 근무 시간</p>
+                    </div>
+                    <div>
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ "%.1f"|format(total_work_hours / attendances|length if attendances|length > 0 else 0) }}</h4>
+                        <p class="card-text">평균 근무 시간</p>
+                    </div>
+                    <div>
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 출근 기록 테이블 -->
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list"></i> 출근 기록
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>날짜</th>
+                        <th>직원명</th>
+                        <th>출근 시간</th>
+                        <th>퇴근 시간</th>
+                        <th>근무 시간</th>
+                        <th>상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attendance, user in attendances %}
+                    <tr>
+                        <td>{{ attendance.clock_in.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ attendance.clock_in.strftime('%H:%M') }}</td>
+                        <td>
+                            {% if attendance.clock_out %}
+                                {{ attendance.clock_out.strftime('%H:%M') }}
+                            {% else %}
+                                <span class="text-muted">미완료</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if attendance.work_hours %}
+                                {{ "%.1f"|format(attendance.work_hours) }}시간
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="attendance-status status-{{ 'normal' if attendance.attendance_status == '정상' else 'late' if '지각' in attendance.attendance_status else 'early' if '조퇴' in attendance.attendance_status else 'pending' }}">
+                                {{ attendance.attendance_status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">출근 기록이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 엑셀 다운로드 -->
+<div class="mt-3">
+    <a href="{{ url_for('admin_attendance', user_id=selected_user_id, start_date=start_date, end_date=end_date, format='excel') }}" class="btn btn-success">
+        <i class="fas fa-download"></i> 엑셀 다운로드
+    </a>
+</div>
+{% endblock %} 

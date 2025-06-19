@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}직원 만족도/건강 통계{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h4><i class="fas fa-chart-bar"></i> 직원 만족도/건강 통계</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">응답수</h5>
+                                <p class="card-text fs-1">{{ count }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">평균 만족도</h5>
+                                <p class="card-text fs-1">{{ "%.1f"|format(avg_s) }}</p>
+                                <small class="text-muted">5점 만점</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">평균 건강상태</h5>
+                                <p class="card-text fs-1">{{ "%.1f"|format(avg_h) }}</p>
+                                <small class="text-muted">5점 만점</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>만족도 분석</h5>
+                    {% if avg_s >= 4.0 %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-thumbs-up"></i> 매우 만족스러운 근무 환경입니다!
+                        </div>
+                    {% elif avg_s >= 3.0 %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-balance-scale"></i> 보통 수준의 만족도입니다. 개선 여지가 있습니다.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> 만족도가 낮습니다. 즉시 개선이 필요합니다.
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mt-4">
+                    <h5>건강상태 분석</h5>
+                    {% if avg_h >= 4.0 %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-heart"></i> 직원들의 건강상태가 양호합니다!
+                        </div>
+                    {% elif avg_h >= 3.0 %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-user-md"></i> 건강관리에 주의가 필요합니다.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-ambulance"></i> 건강상태가 우려됩니다. 즉시 대책이 필요합니다.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

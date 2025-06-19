@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}근무 만족도/건강 설문{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4><i class="fas fa-clipboard-list"></i> 근무 만족도/건강 설문</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label">만족도 (1=최악~5=최고)</label>
+                        <input type="range" class="form-range" name="satisfaction" min="1" max="5" value="3" id="satisfaction">
+                        <div class="text-center">
+                            <span id="satisfactionValue">3</span>점
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">건강상태 (1=최악~5=최고)</label>
+                        <input type="range" class="form-range" name="health" min="1" max="5" value="3" id="health">
+                        <div class="text-center">
+                            <span id="healthValue">3</span>점
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">자유 의견 (익명)</label>
+                        <textarea name="comment" class="form-control" rows="4" placeholder="근무 환경, 개선사항, 건의사항 등을 자유롭게 작성해주세요."></textarea>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> 제출하기
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('satisfaction').addEventListener('input', function() {
+    document.getElementById('satisfactionValue').textContent = this.value;
+});
+
+document.getElementById('health').addEventListener('input', function() {
+    document.getElementById('healthValue').textContent = this.value;
+});
+</script>
+{% endblock %} 

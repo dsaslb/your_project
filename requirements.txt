@@ -1,3 +1,4 @@
-flask
-flask_sqlalchemy
-flask_login 
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+# 필요시 추가: Flask-Login, pandas 등 

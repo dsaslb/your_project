@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h3>액션 로그 관리</h3>
+        
+        <!-- 필터 -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <form method="get" class="row g-3">
+                    <div class="col-auto">
+                        <select name="action" class="form-select">
+                            <option value="">전체 액션</option>
+                            <option value="clockin" {% if request.args.get('action') == 'clockin' %}selected{% endif %}>출근</option>
+                            <option value="clockout" {% if request.args.get('action') == 'clockout' %}selected{% endif %}>퇴근</option>
+                            <option value="approve" {% if request.args.get('action') == 'approve' %}selected{% endif %}>승인</option>
+                            <option value="reject" {% if request.args.get('action') == 'reject' %}selected{% endif %}>거절</option>
+                            <option value="delete_attendance" {% if request.args.get('action') == 'delete_attendance' %}selected{% endif %}>출근 기록 삭제</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-secondary">필터</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 로그 목록 -->
+        <div class="card">
+            <div class="card-header">
+                <h5>액션 로그 목록 (총 {{ logs.total }}개)</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>사용자</th>
+                            <th>액션</th>
+                            <th>메시지</th>
+                            <th>일시</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs.items %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-primary">{{ users.get(log.user_id, '탈퇴') }}</span>
+                            </td>
+                            <td>
+                                <span class="badge {% if log.action == 'clockin' %}bg-success{% elif log.action == 'clockout' %}bg-warning{% elif log.action == 'approve' %}bg-info{% elif log.action == 'reject' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {{ log.action }}
+                                </span>
+                            </td>
+                            <td>{{ log.message }}</td>
+                            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <!-- 페이지네이션 -->
+                {% if logs.pages > 1 %}
+                <nav aria-label="로그 페이지">
+                    <ul class="pagination justify-content-center">
+                        {% if logs.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.action_logs', page=logs.prev_num) }}">이전</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in logs.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != logs.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.action_logs', page=page_num) }}">{{ page_num }}</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if logs.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.action_logs', page=logs.next_num) }}">다음</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% if not logs.items %}
+                    <p class="text-muted">액션 로그가 없습니다.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

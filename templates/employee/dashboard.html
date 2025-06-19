@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - 레스토랑 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">대시보드</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <form method="POST" action="{{ url_for('clock_in') }}" class="d-inline">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-sign-in-alt"></i> 출근
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('clock_out') }}" class="d-inline ms-2">
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-sign-out-alt"></i> 퇴근
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 오늘의 출근 상태 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-calendar-day"></i> 오늘의 출근 상태
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if today_attendance %}
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-1"><strong>출근 시간:</strong></p>
+                            <p class="text-success">{{ today_attendance.clock_in.strftime('%H:%M') }}</p>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1"><strong>퇴근 시간:</strong></p>
+                            {% if today_attendance.clock_out %}
+                                <p class="text-warning">{{ today_attendance.clock_out.strftime('%H:%M') }}</p>
+                            {% else %}
+                                <p class="text-muted">미완료</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if today_attendance.clock_out %}
+                        <div class="mt-3">
+                            <p class="mb-1"><strong>근무 시간:</strong></p>
+                            <p class="text-primary">{{ "%.1f"|format(today_attendance.work_hours) }}시간</p>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <span class="attendance-status status-{{ 'normal' if today_attendance.attendance_status == '정상' else 'late' }}">
+                            {{ today_attendance.attendance_status }}
+                        </span>
+                    </div>
+                {% else %}
+                    <p class="text-muted">오늘 출근 기록이 없습니다.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 이번 주 통계 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar"></i> 이번 주 통계
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <p class="mb-1"><strong>총 근무 시간:</strong></p>
+                        <p class="text-primary">{{ "%.1f"|format(total_work_hours) }}시간</p>
+                    </div>
+                    <div class="col-6">
+                        <p class="mb-1"><strong>평균 근무 시간:</strong></p>
+                        <p class="text-info">{{ "%.1f"|format(total_work_hours / 5 if total_work_hours > 0 else 0) }}시간/일</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 최근 출근 기록 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history"></i> 최근 출근 기록
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>날짜</th>
+                                <th>출근 시간</th>
+                                <th>퇴근 시간</th>
+                                <th>근무 시간</th>
+                                <th>상태</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendance in current_user.attendances.order_by(Attendance.clock_in.desc()).limit(10).all() %}
+                            <tr>
+                                <td>{{ attendance.clock_in.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ attendance.clock_in.strftime('%H:%M') }}</td>
+                                <td>
+                                    {% if attendance.clock_out %}
+                                        {{ attendance.clock_out.strftime('%H:%M') }}
+                                    {% else %}
+                                        <span class="text-muted">미완료</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if attendance.work_hours %}
+                                        {{ "%.1f"|format(attendance.work_hours) }}시간
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="attendance-status status-{{ 'normal' if attendance.attendance_status == '정상' else 'late' }}">
+                                        {{ attendance.attendance_status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">출근 기록이 없습니다.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}출퇴근 관리{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5><i class="fas fa-clock"></i> 출퇴근 관리</h5>
+            </div>
+            <div class="card-body">
+                <!-- 필터 폼 -->
+                <form method="GET" class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <label for="user_id" class="form-label">사용자</label>
+                        <select class="form-select" id="user_id" name="user_id">
+                            <option value="">전체</option>
+                            {% for user in users.values() %}
+                                <option value="{{ user.id }}" {% if request.args.get('user_id')|int == user.id %}selected{% endif %}>
+                                    {{ user.username }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="date_from" class="form-label">시작일</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from" 
+                               value="{{ request.args.get('date_from', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="date_to" class="form-label">종료일</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to" 
+                               value="{{ request.args.get('date_to', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> 검색
+                            </button>
+                            <a href="{{ url_for('admin_attendance') }}" class="btn btn-secondary">
+                                <i class="fas fa-undo"></i> 초기화
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <a href="{{ url_for('admin_attendance_download', user_id=request.args.get('user_id'), date_from=request.args.get('date_from'), date_to=request.args.get('date_to')) }}" class="btn btn-outline-secondary btn-sm float-end">
+                    CSV 다운로드
+                </a>
+
+                <!-- 결과 테이블 -->
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>사용자</th>
+                                <th>출근 시간</th>
+                                <th>퇴근 시간</th>
+                                <th>근무 시간(분)</th>
+                                <th>상태</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for record in records %}
+                            <tr>
+                                <td>{{ users[record.user_id] if record.user_id in users else "알 수 없음" }}</td>
+                                <td>{{ record.clock_in.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>
+                                    {% if record.clock_out %}
+                                        {{ record.clock_out.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    {% else %}
+                                        <span class="text-muted">미입력</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ record.work_minutes }}</td>
+                                <td>
+                                    {% if record.status == "정상" %}
+                                        <span class="badge bg-success">{{ record.status }}</span>
+                                    {% elif record.status == "지각" %}
+                                        <span class="badge bg-warning">{{ record.status }}</span>
+                                    {% elif record.status == "조퇴" %}
+                                        <span class="badge bg-info">{{ record.status }}</span>
+                                    {% elif record.status == "결근" %}
+                                        <span class="badge bg-danger">{{ record.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ record.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

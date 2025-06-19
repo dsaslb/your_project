@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}회원가입 - 레스토랑 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-header text-center">
+                <h4 class="mb-0">회원가입</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">사용자명</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">이메일 (선택)</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">비밀번호</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">역할</label>
+                        <select class="form-select" id="role" name="role">
+                            <option value="employee">직원</option>
+                            <option value="manager">매니저</option>
+                        </select>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">회원가입</button>
+                    </div>
+                </form>
+                
+                <hr>
+                <div class="text-center">
+                    <p class="mb-0">이미 계정이 있으신가요?</p>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-secondary btn-sm">로그인</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

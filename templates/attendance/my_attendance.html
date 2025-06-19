@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h3>내 출근 기록</h3>
+        
+        <!-- 출근/퇴근 버튼 -->
+        <div class="mb-4">
+            <form method="post" action="{{ url_for('attendance.clock_in') }}" style="display:inline;">
+                <button type="submit" class="btn btn-success">출근하기</button>
+            </form>
+        </div>
+        
+        <!-- 출근 기록 테이블 -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>날짜</th>
+                    <th>출근시간</th>
+                    <th>퇴근시간</th>
+                    <th>근무시간</th>
+                    <th>근태상태</th>
+                    <th>퇴근</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ record.clock_in.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ record.clock_in.strftime('%H:%M') }}</td>
+                    <td>
+                        {% if record.clock_out %}
+                            {{ record.clock_out.strftime('%H:%M') }}
+                        {% else %}
+                            <span class="text-muted">미입력</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ record.work_minutes }}분</td>
+                    <td>
+                        <span class="badge {% if record.status == '정상' %}bg-success{% elif record.status == '지각' %}bg-warning{% elif record.status == '조퇴' %}bg-info{% else %}bg-secondary{% endif %}">
+                            {{ record.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if not record.clock_out %}
+                            <form method="post" action="{{ url_for('attendance.clock_out', att_id=record.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-warning btn-sm">퇴근</button>
+                            </form>
+                        {% else %}
+                            <span class="text-muted">완료</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if not records %}
+            <p class="text-muted">출근 기록이 없습니다.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

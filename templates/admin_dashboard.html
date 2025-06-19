@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}관리자 대시보드{% endblock %}
+
+{% block content %}
+<h3>관리자 대시보드</h3>
+
+<!-- 기간 필터 -->
+<form class="row g-3 mb-3">
+  <div class="col-auto">
+    <input type="date" class="form-control" name="from" value="{{ request.args.get('from','') }}">
+  </div>
+  <div class="col-auto">
+    <input type="date" class="form-control" name="to" value="{{ request.args.get('to','') }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-secondary">기간검색</button>
+  </div>
+</form>
+
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card text-bg-light mb-3">
+      <div class="card-body">
+        <h5 class="card-title">직원수</h5>
+        <p class="card-text fs-2">{{ num_users }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-bg-light mb-3">
+      <div class="card-body">
+        <h5 class="card-title">누적 출근기록</h5>
+        <p class="card-text fs-2">{{ num_attendance }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    {% if warn_users %}
+      <div class="alert alert-warning">
+        <b>경고!</b> {{ warn_users|join(', ') }} : 이번 달 지각 2회 이상/결근 발생
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 지점별 비교 -->
+<h5>지점별 근무시간/지각/결근 비교</h5>
+<table class="table">
+  <thead><tr><th>지점</th><th>직원수</th><th>총 근무(분)</th><th>지각</th><th>결근</th></tr></thead>
+  <tbody>
+    {% for r in result %}
+    <tr>
+      <td>{{ r.branch }}</td>
+      <td>{{ r.user_count }}</td>
+      <td>{{ r.total_work }}</td>
+      <td>{{ r.total_late }}</td>
+      <td>{{ r.total_absent }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<canvas id="branchChart"></canvas>
+
+<div class="row">
+  <div class="col-md-6">
+    <h5>월별 직원 근무시간 합계</h5>
+    <canvas id="barChart"></canvas>
+  </div>
+  <div class="col-md-6">
+    <h5>일자별 근무시간(분) 트렌드</h5>
+    <canvas id="lineChart"></canvas>
+  </div>
+</div>
+<div class="row mt-4">
+  <div class="col-md-6">
+    <h5>근무시간 분포</h5>
+    <canvas id="pieChart"></canvas>
+  </div>
+  <div class="col-md-6">
+    <h5>이번달 지각 랭킹</h5>
+    <ol>
+      {% for r in top_late %}
+      <li>{{ r.user }} ({{ r.late_count }}회)</li>
+      {% endfor %}
+    </ol>
+    <h5>이번달 결근 랭킹</h5>
+    <ol>
+      {% for r in top_absent %}
+      <li>{{ r.user }} ({{ r.absent_count }}회)</li>
+      {% endfor %}
+    </ol>
+  </div>
+</div>
+
+<h5 class="mt-4">최근 출퇴근 이력(10건)</h5>
+<table class="table table-bordered">
+  <thead>
+    <tr><th>직원</th><th>출근</th><th>퇴근</th><th>근무(분)</th><th>상태</th></tr>
+  </thead>
+  <tbody>
+    {% for r in recent %}
+    <tr>
+      <td>{{ r.user }}</td>
+      <td>{{ r.clock_in }}</td>
+      <td>{{ r.clock_out if r.clock_out else '미입력' }}</td>
+      <td>{{ r.work_minutes }}</td>
+      <td>{{ r.status }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 지점별 차트
+new Chart(document.getElementById('branchChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ branch_names|tojson }},
+    datasets: [{
+      label: '지점별 근무시간(분)',
+      data: {{ result|map(attribute='total_work')|list|tojson }},
+      backgroundColor: 'rgba(54, 162, 235, 0.5)'
+    }]
+  }
+});
+
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ chart_labels|tojson }},
+    datasets: [{ label: '근무시간(분)', data: {{ chart_data|tojson }}, borderWidth: 1 }]
+  }, options: {scales: { y: { beginAtZero: true } } }
+});
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: {{ trend_dates|tojson }},
+    datasets: [{ label: '근무시간(분)', data: {{ trend_data|tojson }}, borderWidth: 1, tension: 0.4 }]
+  }
+});
+new Chart(document.getElementById('pieChart'), {
+  type: 'pie',
+  data: {
+    labels: {{ dist_labels|tojson }},
+    datasets: [{ data: {{ dist_data|tojson }} }]
+  }
+});
+</script>
+{% endblock %} 
