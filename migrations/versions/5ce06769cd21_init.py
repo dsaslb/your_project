@@ -1,8 +1,8 @@
-"""Initial migration
+"""init
 
-Revision ID: e5fd7e13cab3
+Revision ID: 5ce06769cd21
 Revises: 
-Create Date: 2025-06-19 15:45:31.550624
+Create Date: 2025-06-19 20:41:16.647456
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e5fd7e13cab3'
+revision = '5ce06769cd21'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -35,13 +35,15 @@ def upgrade():
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=80), nullable=False),
-    sa.Column('password_hash', sa.String(length=255), nullable=False),
-    sa.Column('role', sa.String(length=20), nullable=False),
-    sa.Column('status', sa.String(length=20), nullable=False),
+    sa.Column('password', sa.String(length=128), nullable=False),
+    sa.Column('status', sa.String(length=20), nullable=True),
+    sa.Column('role', sa.String(length=20), nullable=True),
     sa.Column('branch_id', sa.Integer(), nullable=True),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('name', sa.String(length=50), nullable=True),
+    sa.Column('phone', sa.String(length=20), nullable=True),
     sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('username')
@@ -49,20 +51,19 @@ def upgrade():
     op.create_table('approve_logs',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
-    sa.Column('approver_id', sa.Integer(), nullable=True),
     sa.Column('action', sa.String(length=32), nullable=True),
     sa.Column('timestamp', sa.DateTime(), nullable=True),
+    sa.Column('admin_id', sa.Integer(), nullable=True),
     sa.Column('reason', sa.String(length=256), nullable=True),
-    sa.ForeignKeyConstraint(['approver_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['admin_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('attendances',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
-    sa.Column('clock_in', sa.DateTime(), nullable=False),
+    sa.Column('clock_in', sa.DateTime(), nullable=True),
     sa.Column('clock_out', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )

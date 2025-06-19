@@ -1,238 +1,198 @@
-# 🍽️ 레스토랑 직원 관리 시스템
+# 🏪 레스토랑 관리 시스템
 
-Flask 기반의 직원 출근 및 스케줄 관리 시스템입니다.
+Flask 기반의 레스토랑 직원 관리 및 출퇴근 시스템입니다.
 
-## 🚀 주요 기능
+## ✨ 주요 기능
 
-- **🔐 보안**: 비밀번호 해싱, 역할 기반 접근 제어(RBAC)
-- **👥 사용자 관리**: 관리자/매니저/직원 역할 구분, 승인 시스템
-- **⏰ 출근 관리**: 출근/퇴근 기록, 근태 판정(지각/조퇴/정상)
-- **📊 통계**: 일별/주별/월별 출근 통계, 사용자별 근무 시간
-- **📝 로깅**: 모든 사용자 액션 로그 기록
-- **🔄 소프트 삭제**: 데이터 안전한 삭제 처리
+### 👥 사용자 관리
+- **회원가입/로그인**: 직원 계정 생성 및 관리
+- **권한 관리**: 관리자/직원 역할 분리
+- **승인 시스템**: 관리자 승인 후 계정 활성화
+- **프로필 관리**: 개인정보 수정 및 비밀번호 변경
 
-## 🛠️ 설치 및 실행
+### ⏰ 출퇴근 관리
+- **출퇴근 기록**: 실시간 출퇴근 처리
+- **개인 출퇴근 내역**: 본인 근무 기록 조회
+- **상태 관리**: 정상/지각/조퇴/결근 자동 판정
+
+### 📊 관리자 기능
+- **전체 출퇴근 내역**: 직원별/날짜별 필터링 조회
+- **월별 통계**: 근무시간 집계 및 급여 계산
+- **CSV 다운로드**: 출퇴근 내역 및 통계 데이터 내보내기
+- **실시간 대시보드**: 지점별/직원별 통계 및 차트
+- **승인 관리**: 신규 직원 승인/거절 처리
+
+### 💰 급여 관리
+- **월별 급여 계산**: 근무시간 기반 급여 산정
+- **시급 설정**: 사용자별 급여 정책 적용
+- **초과근무 수당**: 8시간 초과 근무 시 1.5배 수당
+- **급여 보고서**: CSV 형태로 급여 명세서 생성
+
+## 🚀 설치 및 실행
 
 ### 1. 환경 설정
-
 ```bash
-# 가상환경 생성
+# 가상환경 생성 및 활성화
 python -m venv venv
-
-# 가상환경 활성화 (Windows)
-venv\Scripts\activate
-
-# 가상환경 활성화 (macOS/Linux)
-source venv/bin/activate
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # macOS/Linux
 
 # 패키지 설치
 pip install -r requirements.txt
 ```
 
-### 2. 환경변수 설정
-
-`.env` 파일을 생성하고 다음 내용을 추가하세요:
-
-```env
-SECRET_KEY=your-secret-key-here
-SQLALCHEMY_DATABASE_URI=sqlite:///restaurant.db
+### 2. 데이터베이스 설정
+```bash
+# 환경변수 설정 (.env 파일 생성)
+FLASK_APP=app.py
 FLASK_ENV=development
+SECRET_KEY=your-secret-key-here
+DATABASE_URL=sqlite:///instance/restaurant_dev.sqlite3
+
+# 데이터베이스 초기화
+flask db init
+flask db migrate -m "Initial migration"
+flask db upgrade
 ```
 
-### 3. 데이터베이스 초기화
-
+### 3. 관리자 계정 생성
 ```bash
-# Flask 앱 실행
-python app.py
+# 관리자 계정 생성
+python create_admin.py
 
-# 새 터미널에서 샘플 데이터 생성
-python -c "from utils.sample_data import create_sample_data; from app import create_app; app = create_app(); app.app_context().push(); create_sample_data()"
+# 또는 CLI 명령어 사용
+flask create-admin
 ```
 
-### 4. 서버 실행
-
+### 4. 애플리케이션 실행
 ```bash
 python app.py
+# 또는
+flask run
 ```
-
-브라우저에서 `http://localhost:5000`으로 접속하세요.
-
-## 👤 기본 계정
-
-| 역할 | 사용자명 | 비밀번호 | 설명 |
-|------|----------|----------|------|
-| 관리자 | admin01 | adminpass | 전체 시스템 관리 |
-| 매니저 | manager01 | managerpass | 직원 관리 |
-| 직원 | employee01 | employeepass | 출근 기록 |
-| 직원 | employee02 | employeepass | 출근 기록 |
-| 직원 | employee03 | employeepass | 출근 기록 |
-| 직원 | employee04 | employeepass | 출근 기록 |
-| 직원 | employee05 | employeepass | 출근 기록 |
-| 승인대기 | newemployee | newpass | 관리자 승인 필요 |
 
 ## 📁 프로젝트 구조
 
 ```
 restaurant_project/
-├── app.py                 # Flask 앱 메인 파일
-├── config.py              # 환경 설정
-├── requirements.txt       # Python 패키지 목록
-├── .env                   # 환경변수 (생성 필요)
-├── models/                # 데이터 모델
-│   ├── __init__.py
-│   ├── user.py           # 사용자 모델
-│   ├── attendance.py     # 출근 기록 모델
-│   └── action_log.py     # 액션 로그 모델
-├── routes/                # 라우트 (Blueprint)
-│   ├── __init__.py
-│   ├── auth.py           # 인증 관련
-│   ├── admin.py          # 관리자 기능
-│   └── employee.py       # 직원 기능
-├── templates/             # HTML 템플릿
-│   ├── base.html         # 기본 템플릿
-│   ├── auth/             # 인증 페이지
-│   ├── admin/            # 관리자 페이지
-│   └── employee/         # 직원 페이지
-├── static/                # 정적 파일
-│   └── style.css         # CSS 스타일
-└── utils/                 # 유틸리티
-    ├── decorators.py     # 데코레이터
-    ├── logger.py         # 로깅 유틸리티
-    └── sample_data.py    # 샘플 데이터 생성
+├── app.py                 # 메인 애플리케이션
+├── models.py             # 데이터베이스 모델
+├── config.py             # 설정 파일
+├── extensions.py         # Flask 확장
+├── requirements.txt      # 패키지 의존성
+├── utils/
+│   ├── payroll.py        # 급여 계산 유틸리티
+│   ├── logger.py         # 로깅 시스템
+│   └── sample_data.py    # 샘플 데이터 생성
+├── templates/
+│   ├── admin/
+│   │   ├── attendances.html      # 출퇴근 관리
+│   │   ├── attendance_stats.html # 월별 통계
+│   │   └── action_logs.html      # 액션 로그
+│   ├── admin_dashboard.html      # 관리자 대시보드
+│   └── ...
+└── instance/             # 데이터베이스 파일
 ```
 
-## 🔧 주요 API
+## 🔧 주요 API 엔드포인트
 
-### 인증 API
-
-- `GET /login` - 로그인 페이지
-- `POST /login` - 로그인 처리
+### 인증 관련
+- `GET/POST /login` - 로그인
 - `GET /logout` - 로그아웃
-- `GET /register` - 회원가입 페이지
-- `POST /register` - 회원가입 처리
+- `GET/POST /register` - 회원가입
+- `GET/POST /change_password` - 비밀번호 변경
 
-### 관리자 API
+### 출퇴근 관리
+- `GET /dashboard` - 개인 대시보드
+- `GET /clock_in` - 출근 처리
+- `GET /clock_out` - 퇴근 처리
+- `GET /attendance` - 개인 출퇴근 내역
 
-- `GET /admin/dashboard` - 관리자 대시보드
-- `GET /admin/users` - 사용자 목록
-- `POST /admin/users/<id>/approve` - 사용자 승인
-- `POST /admin/users/<id>/reject` - 사용자 거절
-- `POST /admin/users/<id>/delete` - 사용자 삭제
-- `GET /admin/attendance` - 출근 기록 목록
-- `GET /admin/logs` - 액션 로그 목록
+### 관리자 기능
+- `GET /admin` - 관리자 대시보드
+- `GET /admin/attendance` - 전체 출퇴근 내역
+- `GET /admin/attendance/csv` - 출퇴근 내역 CSV 다운로드
+- `GET /admin/attendance/stats` - 월별 통계
+- `GET /admin/attendance/stats/csv` - 급여 통계 CSV 다운로드
+- `GET /admin/users` - 직원 관리
+- `GET /approve_users` - 승인 관리
 
-### 직원 API
+## 💡 사용 예시
 
-- `GET /employee/dashboard` - 직원 대시보드
-- `POST /employee/clock_in` - 출근 기록
-- `POST /employee/clock_out` - 퇴근 기록
-- `GET /employee/attendance` - 내 출근 기록
+### 1. 직원 출퇴근
+```python
+# 출근 처리
+GET /clock_in
+
+# 퇴근 처리  
+GET /clock_out
+
+# 개인 내역 조회
+GET /attendance
+```
+
+### 2. 관리자 통계 조회
+```python
+# 월별 통계 조회
+GET /admin/attendance/stats?year=2024&month=12
+
+# 급여 CSV 다운로드
+GET /admin/attendance/stats/csv?year=2024&month=12&wage=12000
+```
+
+### 3. 급여 계산
+```python
+from utils.payroll import calc_wage, calc_overtime_pay
+
+# 기본 급여 계산
+wage = calc_wage(user, work_hours, wage_table)
+
+# 초과근무 수당 포함
+base_pay, overtime_pay, total_pay = calc_overtime_pay(work_hours, hourly_wage)
+```
 
 ## 🔒 보안 기능
 
-### 비밀번호 보안
-- 모든 비밀번호는 Werkzeug의 `generate_password_hash`로 해싱
-- 평문 비밀번호는 절대 저장하지 않음
+- **비밀번호 해싱**: Werkzeug의 `generate_password_hash` 사용
+- **세션 관리**: Flask-Login을 통한 안전한 세션 처리
+- **권한 제어**: 역할 기반 접근 제어 (RBAC)
+- **입력 검증**: SQL Injection 방지를 위한 파라미터 바인딩
 
-### 역할 기반 접근 제어 (RBAC)
-- `admin`: 전체 시스템 관리
-- `manager`: 직원 관리 및 통계 조회
-- `employee`: 개인 출근 기록만 관리
+## 📈 확장 가능한 기능
 
-### 입력 검증
-- 모든 사용자 입력에 대한 검증
-- SQL Injection 방지
-- XSS 공격 방지
+### 급여 시스템 확장
+- 사용자별 급여 정책 설정
+- 월급제/시급제/주급제 분기
+- 세금 및 공제 자동 계산
+- 급여 명세서 PDF 생성
 
-### 로깅 및 감사
-- 모든 사용자 액션 로그 기록
-- IP 주소 및 User-Agent 정보 저장
-- 로그인 실패 시도 기록
+### 통계 및 분석
+- 주별/분기별 통계
+- 근무 패턴 분석
+- 지점별 비교 분석
+- 예측 분석 (AI/ML)
 
-## 📊 데이터 모델
-
-### User 모델
-```python
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=True)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default="employee")
-    status = db.Column(db.String(20), nullable=False, default="pending")
-    deleted_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-```
-
-### Attendance 모델
-```python
-class Attendance(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    clock_in = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    clock_out = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-```
-
-## 🚀 배포 가이드
-
-### 개발 환경
-```bash
-export FLASK_ENV=development
-export FLASK_DEBUG=1
-python app.py
-```
-
-### 프로덕션 환경
-```bash
-export FLASK_ENV=production
-export SECRET_KEY=your-production-secret-key
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
-```
-
-### Nginx 설정 (별도 관리)
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
+### 알림 시스템
+- 지각/결근 자동 알림
+- 급여 지급 알림
+- 정기 보고서 이메일 발송
 
 ## 🐛 문제 해결
 
-### 일반적인 문제
+### 일반적인 문제들
+1. **데이터베이스 연결 오류**: `instance/` 폴더 권한 확인
+2. **패키지 설치 오류**: 가상환경 활성화 상태 확인
+3. **템플릿 오류**: `templates/` 폴더 경로 확인
 
-1. **데이터베이스 오류**
-   ```bash
-   # 데이터베이스 파일 삭제 후 재생성
-   rm instance/restaurant.db
-   python app.py
-   ```
+### 로그 확인
+```bash
+# 애플리케이션 로그
+tail -f logs/restaurant.log
 
-2. **패키지 설치 오류**
-   ```bash
-   # 가상환경 재생성
-   deactivate
-   rm -rf venv
-   python -m venv venv
-   source venv/bin/activate  # 또는 venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. **권한 오류**
-   ```bash
-   # 파일 권한 확인
-   chmod 755 app.py
-   chmod 644 requirements.txt
-   ```
+# Flask 디버그 모드
+export FLASK_ENV=development
+flask run --debug
+```
 
 ## 📝 라이선스
 
@@ -246,6 +206,8 @@ server {
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📞 지원
+---
 
-문제가 발생하거나 질문이 있으시면 이슈를 생성해주세요. 
+**개발자**: Restaurant Management Team  
+**버전**: 2.0.0  
+**최종 업데이트**: 2024년 12월 

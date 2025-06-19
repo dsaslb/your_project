@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, session, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from config import DevConfig
 from extensions import db, migrate
@@ -8,6 +8,11 @@ from datetime import datetime, date, timedelta
 import pandas as pd
 from flask import send_file
 from io import BytesIO
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from models import User, ApproveLog, Attendance
+from sqlalchemy import extract, func
+from sqlalchemy.sql import func
 
 app = Flask(__name__)
 app.config.from_object(DevConfig)
@@ -21,14 +26,31 @@ login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    from models import User
     return User.query.get(int(user_id))
+
+# 로그인 required 데코레이터 (간단 버전)
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('user_id'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = User.query.get(session.get('user_id'))
+        if not user or user.role != 'admin':
+            flash("관리자 권한이 필요합니다.")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # --- 인증/회원가입/로그인 ---
 @app.route('/', methods=['GET'])
+@login_required
 def index():
-    if not current_user.is_authenticated:
-        return redirect(url_for('login'))
     if current_user.is_admin():
         return redirect(url_for('admin_dashboard'))
     elif current_user.is_manager():
@@ -38,45 +60,71 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    from models import User
     if request.method == 'POST':
-        username = request.form.get('username')
-        pw = request.form.get('password')
-        user = User.query.filter_by(username=username, deleted_at=None).first()
-        if user and user.check_password(pw) and user.status == 'approved':
-            login_user(user)
-            log_action(user, "login", "로그인 성공")
-            flash("로그인 성공!", "success")
-            return redirect(url_for('index'))
-        else:
-            flash("로그인 실패", "danger")
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password, password) and user.status == 'approved':
+            session['user_id'] = user.id
+            flash('로그인 성공!')
+            return redirect(url_for('dashboard'))
+        flash('로그인 실패! (아이디/비밀번호/승인상태 확인)')
+        return redirect(url_for('login'))
     return render_template('login.html')
 
 @app.route('/logout')
-@login_required
 def logout():
-    log_action(current_user, "logout", "로그아웃")
-    logout_user()
-    flash("로그아웃 완료", "success")
+    session.clear()
+    flash('로그아웃되었습니다.')
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    from models import User
     if request.method == 'POST':
-        username = request.form.get('username')
-        pw = request.form.get('password')
+        username = request.form['username']
+        password = request.form['password']
         if User.query.filter_by(username=username).first():
-            flash("이미 존재하는 아이디입니다.", "danger")
-        else:
-            user = User(username=username, role='employee', status='pending')
-            user.set_password(pw)
-            db.session.add(user)
-            db.session.commit()
-            log_action(user, "register", "회원가입 요청")
-            flash("회원가입 요청 완료(승인 후 사용 가능)", "success")
-            return redirect(url_for('login'))
+            flash('이미 존재하는 아이디입니다.')
+            return redirect(url_for('register'))
+        new_user = User(
+            username=username,
+            password=generate_password_hash(password),
+            status='pending',
+            role='employee'
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        flash('가입 신청 완료! 관리자의 승인을 기다려주세요.')
+        return redirect(url_for('login'))
     return render_template('register.html')
+
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    user = User.query.get(session['user_id'])
+    if request.method == 'POST':
+        current = request.form['current_password']
+        new = request.form['new_password']
+        if not check_password_hash(user.password, current):
+            flash("현재 비밀번호가 틀렸습니다.")
+            return redirect(url_for('change_password'))
+        user.password = generate_password_hash(new)
+        db.session.commit()
+        flash("비밀번호가 성공적으로 변경되었습니다.")
+        return redirect(url_for('dashboard'))
+    return render_template('change_password.html')
+
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    user = User.query.get(session['user_id'])
+    if request.method == 'POST':
+        user.name = request.form['name']
+        user.phone = request.form['phone']
+        db.session.commit()
+        flash("회원정보가 저장되었습니다.")
+        return redirect(url_for('dashboard'))
+    return render_template('profile.html', user=user)
 
 # --- 직원 출퇴근 CRUD ---
 @app.route('/dashboard')
@@ -86,40 +134,39 @@ def dashboard():
     records = Attendance.query.filter_by(user_id=current_user.id).order_by(Attendance.clock_in.desc()).all()
     return render_template('dashboard.html', records=records)
 
-@app.route('/clockin', methods=['POST'])
+@app.route('/clock_in')
 @login_required
 def clock_in():
-    from models import Attendance
-    today = datetime.now().date()
-    exist = Attendance.query.filter(
-        Attendance.user_id==current_user.id,
-        Attendance.clock_in >= datetime(today.year, today.month, today.day)
-    ).first()
-    if exist:
-        flash("이미 출근기록이 있습니다.", "danger")
+    user_id = session['user_id']
+    today = Attendance.query.filter_by(user_id=user_id).order_by(Attendance.id.desc()).first()
+    if today and today.clock_out is None:
+        flash("이미 출근 처리되었습니다. 퇴근 버튼을 눌러주세요.")
         return redirect(url_for('dashboard'))
-    now = datetime.now()
-    att = Attendance(user_id=current_user.id, clock_in=now)
-    db.session.add(att)
-    log_action(current_user, "clockin", f"출근 {now}")
+    attendance = Attendance(user_id=user_id)
+    db.session.add(attendance)
     db.session.commit()
-    flash("출근 완료", "success")
+    flash("출근 처리 완료!")
     return redirect(url_for('dashboard'))
 
-@app.route('/clockout/<int:att_id>', methods=['POST'])
+@app.route('/clock_out')
 @login_required
-def clock_out(att_id):
-    from models import Attendance
-    att = Attendance.query.get_or_404(att_id)
-    if att.user_id != current_user.id or att.clock_out:
-        flash("퇴근 기록 오류", "danger")
+def clock_out():
+    user_id = session['user_id']
+    today = Attendance.query.filter_by(user_id=user_id).order_by(Attendance.id.desc()).first()
+    if not today or today.clock_out is not None:
+        flash("출근 기록이 없거나 이미 퇴근 처리되었습니다.")
         return redirect(url_for('dashboard'))
-    now = datetime.now()
-    att.clock_out = now
-    log_action(current_user, "clockout", f"퇴근 {now}")
+    today.clock_out = datetime.utcnow()
     db.session.commit()
-    flash("퇴근 완료", "success")
+    flash("퇴근 처리 완료!")
     return redirect(url_for('dashboard'))
+
+@app.route('/attendance')
+@login_required
+def attendance():
+    user_id = session['user_id']
+    records = Attendance.query.filter_by(user_id=user_id).order_by(Attendance.clock_in.desc()).all()
+    return render_template('attendance.html', records=records)
 
 # --- 관리자 대시보드/사용자 관리/승인/거절/액션로그 ---
 @app.route('/admin')
@@ -282,132 +329,139 @@ def admin_users():
     users = User.query.filter_by(deleted_at=None).order_by(User.created_at.desc()).all()
     return render_template('admin_users.html', users=users)
 
-@app.route('/admin/users/approve/<int:user_id>', methods=['POST'])
+@app.route('/approve_users')
 @login_required
-def approve_user(user_id):
-    from models import User, ApproveLog
-    if not (current_user.is_admin() or current_user.is_manager()):
-        return redirect(url_for('dashboard'))
-    
-    user = User.query.get_or_404(user_id)
-    reason = request.form.get('reason', '')
-    
-    user.status = 'approved'
-    db.session.commit()
-    
-    # 승인 로그 기록
-    approve_log = ApproveLog(
-        user_id=user.id,
-        approver_id=current_user.id,
-        action='approved',
-        reason=reason
-    )
-    db.session.add(approve_log)
-    db.session.commit()
-    
-    log_action(current_user, "approve_user", f"사용자 승인: {user.username}")
-    flash(f"{user.username} 사용자 승인 완료", "success")
-    return redirect(url_for('admin_users'))
+@admin_required
+def approve_users():
+    users = User.query.filter(User.status != 'approved').all()
+    return render_template('approve_users.html', users=users)
 
-@app.route('/admin/users/reject/<int:user_id>', methods=['POST'])
+@app.route('/approve_user/<int:user_id>/<action>')
 @login_required
-def reject_user(user_id):
-    from models import User, ApproveLog
-    if not (current_user.is_admin() or current_user.is_manager()):
-        return redirect(url_for('dashboard'))
-    
+@admin_required
+def approve_user(user_id, action):
     user = User.query.get_or_404(user_id)
-    reason = request.form.get('reason', '')
-    
-    user.status = 'rejected'
+    admin_id = session['user_id']
+    if action == 'approve':
+        user.status = 'approved'
+        flash(f"{user.username} 승인 완료!")
+    elif action == 'reject':
+        user.status = 'rejected'
+        flash(f"{user.username} 거절 처리됨.")
     db.session.commit()
-    
-    # 거절 로그 기록
-    approve_log = ApproveLog(
-        user_id=user.id,
-        approver_id=current_user.id,
-        action='rejected',
-        reason=reason
-    )
-    db.session.add(approve_log)
+    # 승인/거절 로그 기록
+    log = ApproveLog(user_id=user.id, action=action, admin_id=admin_id)
+    db.session.add(log)
     db.session.commit()
-    
-    log_action(current_user, "reject_user", f"사용자 거절: {user.username}")
-    flash(f"{user.username} 사용자 거절 완료", "success")
-    return redirect(url_for('admin_users'))
+    return redirect(url_for('approve_users'))
 
-@app.route('/admin/attendance', methods=['GET', 'POST'])
+@app.route('/approve_logs')
 @login_required
+@admin_required
+def approve_logs():
+    logs = ApproveLog.query.order_by(ApproveLog.timestamp.desc()).all()
+    return render_template('approve_logs.html', logs=logs)
+
+@app.route('/admin/attendance', methods=['GET'])
+@login_required
+@admin_required
 def admin_attendance():
-    from models import User, Attendance
-    if not (current_user.is_admin() or current_user.is_manager()):
-        return redirect(url_for('dashboard'))
-    
-    # 필터링
+    # 필터 값 읽기
     user_id = request.args.get('user_id', type=int)
-    from_date = request.args.get('from_date')
-    to_date = request.args.get('to_date')
-    
-    query = Attendance.query.join(User).filter(User.deleted_at == None)
-    
-    if user_id:
-        query = query.filter(Attendance.user_id == user_id)
-    if from_date:
-        query = query.filter(Attendance.clock_in >= datetime.strptime(from_date, '%Y-%m-%d'))
-    if to_date:
-        query = query.filter(Attendance.clock_in <= datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1))
-    
-    attendances = query.order_by(Attendance.clock_in.desc()).all()
-    users = User.query.filter_by(deleted_at=None, status='approved').all()
-    
-    return render_template('admin_attendance.html', attendances=attendances, users=users)
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
 
-@app.route('/admin/attendance/download')
-@login_required
-def admin_attendance_download():
-    from models import User, Attendance
-    if not (current_user.is_admin() or current_user.is_manager()):
-        return redirect(url_for('dashboard'))
-    
-    # 필터링
-    user_id = request.args.get('user_id', type=int)
-    from_date = request.args.get('from_date')
-    to_date = request.args.get('to_date')
-    
-    query = Attendance.query.join(User).filter(User.deleted_at == None)
-    
+    query = db.session.query(Attendance, User).join(User, Attendance.user_id == User.id)
+
+    # 직원 필터
     if user_id:
         query = query.filter(Attendance.user_id == user_id)
-    if from_date:
-        query = query.filter(Attendance.clock_in >= datetime.strptime(from_date, '%Y-%m-%d'))
-    if to_date:
-        query = query.filter(Attendance.clock_in <= datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1))
-    
-    attendances = query.order_by(Attendance.clock_in.desc()).all()
-    
-    # CSV 생성
-    data = []
-    for att in attendances:
-        user = User.query.get(att.user_id)
-        data.append({
-            '사용자': user.username if user else '탈퇴',
-            '출근시간': att.clock_in.strftime('%Y-%m-%d %H:%M:%S') if att.clock_in else '',
-            '퇴근시간': att.clock_out.strftime('%Y-%m-%d %H:%M:%S') if att.clock_out else '',
-            '근무시간(분)': att.work_minutes,
-            '상태': att.status,
-            '등록일': att.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        })
-    
-    df = pd.DataFrame(data)
-    output = BytesIO()
-    df.to_csv(output, index=False, encoding='utf-8-sig')
-    output.seek(0)
-    
-    return send_file(
-        output,
+
+    # 날짜 필터
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d")
+            query = query.filter(Attendance.clock_in >= date_from_obj)
+        except:
+            pass
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d")
+            query = query.filter(Attendance.clock_in <= date_to_obj)
+        except:
+            pass
+
+    records = query.order_by(Attendance.clock_in.desc()).all()
+
+    # 직원 목록(셀렉트박스용)
+    employees = User.query.filter(User.deleted_at == None, User.status == "approved").order_by(User.username).all()
+
+    # 간단 통계: 출근 건수/총근무시간
+    total_days = len(records)
+    total_minutes = 0
+    for att, user in records:
+        if att.clock_in and att.clock_out:
+            total_minutes += int((att.clock_out - att.clock_in).total_seconds() // 60)
+    total_hours = total_minutes // 60
+
+    return render_template(
+        'admin/attendances.html',
+        records=records,
+        employees=employees,
+        total_days=total_days,
+        total_hours=total_hours,
+        request=request,
+        user_id=user_id,
+        date_from=date_from,
+        date_to=date_to
+    )
+
+# CSV 다운로드 라우트
+@app.route('/admin/attendance/csv', methods=['GET'])
+@login_required
+@admin_required
+def admin_attendance_csv():
+    user_id = request.args.get('user_id', type=int)
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+
+    query = db.session.query(Attendance, User).join(User, Attendance.user_id == User.id)
+    if user_id:
+        query = query.filter(Attendance.user_id == user_id)
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d")
+            query = query.filter(Attendance.clock_in >= date_from_obj)
+        except:
+            pass
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d")
+            query = query.filter(Attendance.clock_in <= date_to_obj)
+        except:
+            pass
+
+    records = query.order_by(Attendance.clock_in.desc()).all()
+
+    def generate():
+        header = '직원,출근,퇴근,근무시간(분)\n'
+        yield header
+        for att, user in records:
+            mins = 0
+            if att.clock_in and att.clock_out:
+                mins = int((att.clock_out - att.clock_in).total_seconds() // 60)
+            row = [
+                str(user.name or user.username),
+                att.clock_in.strftime('%Y-%m-%d %H:%M') if att.clock_in else '-',
+                att.clock_out.strftime('%Y-%m-%d %H:%M') if att.clock_out else '-',
+                str(mins)
+            ]
+            yield ','.join(row) + '\n'
+
+    return Response(
+        generate(),
         mimetype='text/csv',
-        as_attachment=True,
-        download_name=f'attendance_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        headers={"Content-Disposition": "attachment;filename=attendance.csv"}
     )
 
 @app.route('/admin/actionlog')
@@ -438,92 +492,6 @@ def admin_actionlog():
     users = User.query.filter_by(deleted_at=None).all()
     
     return render_template('admin_actionlog.html', logs=logs, users=users)
-
-@app.route('/admin/approve_logs')
-@login_required
-def approve_logs():
-    from models import User, ApproveLog
-    if not (current_user.is_admin() or current_user.is_manager()):
-        return redirect(url_for('dashboard'))
-    
-    # 필터링
-    user_id = request.args.get('user_id', type=int)
-    approver_id = request.args.get('approver_id', type=int)
-    action = request.args.get('action')
-    from_date = request.args.get('from_date')
-    to_date = request.args.get('to_date')
-    
-    query = ApproveLog.query
-    
-    if user_id:
-        query = query.filter(ApproveLog.user_id == user_id)
-    if approver_id:
-        query = query.filter(ApproveLog.approver_id == approver_id)
-    if action:
-        query = query.filter(ApproveLog.action == action)
-    if from_date:
-        query = query.filter(ApproveLog.timestamp >= datetime.strptime(from_date, '%Y-%m-%d'))
-    if to_date:
-        query = query.filter(ApproveLog.timestamp <= datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1))
-    
-    logs = query.order_by(ApproveLog.timestamp.desc()).all()
-    users = User.query.filter_by(deleted_at=None).all()
-    
-    return render_template('approve_logs.html', logs=logs, users=users)
-
-@app.route('/admin/approve_logs/download')
-@login_required
-def approve_logs_download():
-    from models import User, ApproveLog
-    if not (current_user.is_admin() or current_user.is_manager()):
-        return redirect(url_for('dashboard'))
-    
-    # 필터링
-    user_id = request.args.get('user_id', type=int)
-    approver_id = request.args.get('approver_id', type=int)
-    action = request.args.get('action')
-    from_date = request.args.get('from_date')
-    to_date = request.args.get('to_date')
-    
-    query = ApproveLog.query
-    
-    if user_id:
-        query = query.filter(ApproveLog.user_id == user_id)
-    if approver_id:
-        query = query.filter(ApproveLog.approver_id == approver_id)
-    if action:
-        query = query.filter(ApproveLog.action == action)
-    if from_date:
-        query = query.filter(ApproveLog.timestamp >= datetime.strptime(from_date, '%Y-%m-%d'))
-    if to_date:
-        query = query.filter(ApproveLog.timestamp <= datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1))
-    
-    logs = query.order_by(ApproveLog.timestamp.desc()).all()
-    
-    # CSV 생성
-    data = []
-    for log in logs:
-        user = User.query.get(log.user_id)
-        approver = User.query.get(log.approver_id)
-        data.append({
-            '사용자': user.username if user else '탈퇴',
-            '담당자': approver.username if approver else '탈퇴',
-            '액션': '승인' if log.action == 'approved' else '거절',
-            '사유': log.reason or '',
-            '일시': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-        })
-    
-    df = pd.DataFrame(data)
-    output = BytesIO()
-    df.to_csv(output, index=False, encoding='utf-8-sig')
-    output.seek(0)
-    
-    return send_file(
-        output,
-        mimetype='text/csv',
-        as_attachment=True,
-        download_name=f'approve_logs_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-    )
 
 @app.route('/admin/approve_stats')
 @login_required
@@ -601,6 +569,115 @@ def api_my_attendances():
             'status': att.status
         })
     return jsonify(data)
+
+@app.route('/admin/attendance/stats/csv', methods=['GET'])
+@login_required
+@admin_required
+def admin_attendance_stats_csv():
+    year = request.args.get('year', type=int) or datetime.utcnow().year
+    month = request.args.get('month', type=int)
+    user_id = request.args.get('user_id', type=int)
+    wage_per_hour = request.args.get('wage', type=int) or 12000  # 기본 시급
+
+    # 집계 쿼리 (집계와 동일)
+    base_query = db.session.query(
+        Attendance.user_id,
+        func.count(Attendance.id).label('days'),
+        func.sum(
+            func.strftime('%s', Attendance.clock_out) - func.strftime('%s', Attendance.clock_in)
+        ).label('total_seconds')
+    ).group_by(Attendance.user_id)
+
+    if month:
+        base_query = base_query.filter(extract('year', Attendance.clock_in) == year)
+        base_query = base_query.filter(extract('month', Attendance.clock_in) == month)
+    else:
+        base_query = base_query.filter(extract('year', Attendance.clock_in) == year)
+    if user_id:
+        base_query = base_query.filter(Attendance.user_id == user_id)
+
+    stats = base_query.all()
+
+    def generate():
+        header = '직원,근무일수,총근무시간(시간),총급여(원)\n'
+        yield header
+        for user_id, days, total_seconds in stats:
+            user = User.query.get(user_id)
+            total_hours = int((total_seconds or 0) // 3600)
+            minutes = int(((total_seconds or 0) % 3600) // 60)
+            work_time = total_hours + minutes/60
+            wage = int(work_time * wage_per_hour)
+            row = [
+                str(user.name or user.username),
+                str(days),
+                f"{total_hours}시간 {minutes}분",
+                str(wage)
+            ]
+            yield ','.join(row) + '\n'
+    return Response(
+        generate(),
+        mimetype='text/csv',
+        headers={"Content-Disposition": "attachment;filename=attendance_stats.csv"}
+    )
+
+@app.route('/admin/attendance/stats', methods=['GET'])
+@login_required
+@admin_required
+def attendance_stats():
+    from sqlalchemy import extract, func
+    
+    year = request.args.get('year', type=int) or datetime.utcnow().year
+    month = request.args.get('month', type=int)
+    user_id = request.args.get('user_id', type=int)
+    
+    # 집계 쿼리
+    base_query = db.session.query(
+        Attendance.user_id,
+        func.count(Attendance.id).label('days'),
+        func.sum(
+            func.strftime('%s', Attendance.clock_out) - func.strftime('%s', Attendance.clock_in)
+        ).label('total_seconds')
+    ).group_by(Attendance.user_id)
+
+    if month:
+        base_query = base_query.filter(extract('year', Attendance.clock_in) == year)
+        base_query = base_query.filter(extract('month', Attendance.clock_in) == month)
+    else:
+        base_query = base_query.filter(extract('year', Attendance.clock_in) == year)
+    if user_id:
+        base_query = base_query.filter(Attendance.user_id == user_id)
+
+    stats = base_query.all()
+    
+    # 통계 데이터 가공
+    stats_data = []
+    for user_id, days, total_seconds in stats:
+        user = User.query.get(user_id)
+        if user:
+            total_hours = int((total_seconds or 0) // 3600)
+            minutes = int(((total_seconds or 0) % 3600) // 60)
+            work_time = total_hours + minutes/60
+            
+            stats_data.append({
+                'user': user,
+                'days': days,
+                'total_hours': total_hours,
+                'total_minutes': minutes,
+                'work_time': work_time,
+                'work_time_formatted': f"{total_hours}시간 {minutes}분"
+            })
+    
+    # 직원 목록 (필터용)
+    employees = User.query.filter(User.deleted_at == None, User.status == "approved").order_by(User.username).all()
+    
+    return render_template(
+        'admin/attendance_stats.html',
+        stats_data=stats_data,
+        employees=employees,
+        year=year,
+        month=month,
+        user_id=user_id
+    )
 
 @app.errorhandler(404)
 def page_not_found(e):

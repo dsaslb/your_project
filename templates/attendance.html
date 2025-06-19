@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>출퇴근 기록</title></head>
+<body>
+    <h2>내 출퇴근 기록</h2>
+    <table border="1" cellpadding="8">
+        <tr><th>출근시각</th><th>퇴근시각</th></tr>
+        {% for rec in records %}
+        <tr>
+            <td>{{ rec.clock_in.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ rec.clock_out.strftime('%Y-%m-%d %H:%M') if rec.clock_out else '-' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <a href="{{ url_for('dashboard') }}">대시보드로</a>
+</body>
+</html> 

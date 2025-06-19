@@ -18,6 +18,26 @@
   </div>
 </form>
 
+<!-- 빠른 링크 -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="btn-group" role="group">
+      <a href="{{ url_for('attendance_stats') }}" class="btn btn-primary">
+        <i class="fas fa-chart-bar"></i> 월별 통계
+      </a>
+      <a href="{{ url_for('admin_attendance') }}" class="btn btn-info">
+        <i class="fas fa-clock"></i> 출퇴근 내역
+      </a>
+      <a href="{{ url_for('admin_users') }}" class="btn btn-success">
+        <i class="fas fa-users"></i> 직원 관리
+      </a>
+      <a href="{{ url_for('approve_users') }}" class="btn btn-warning">
+        <i class="fas fa-user-check"></i> 승인 관리
+      </a>
+    </div>
+  </div>
+</div>
+
 <div class="row mb-4">
   <div class="col-md-3">
     <div class="card text-bg-light mb-3">

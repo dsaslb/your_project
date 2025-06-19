@@ -1,37 +1,37 @@
 {% extends "base.html" %}
 
-{% block title %}출퇴근 관리{% endblock %}
+{% block title %}전체 직원 출퇴근 내역 (관리자){% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header bg-dark text-white">
-                <h5><i class="fas fa-clock"></i> 출퇴근 관리</h5>
+                <h5><i class="fas fa-clock"></i> 전체 직원 출퇴근 내역</h5>
             </div>
             <div class="card-body">
                 <!-- 필터 폼 -->
-                <form method="GET" class="row g-3 mb-4">
+                <form method="get" class="row g-3 mb-4">
                     <div class="col-md-3">
-                        <label for="user_id" class="form-label">사용자</label>
+                        <label for="user_id" class="form-label">직원</label>
                         <select class="form-select" id="user_id" name="user_id">
                             <option value="">전체</option>
-                            {% for user in users.values() %}
-                                <option value="{{ user.id }}" {% if request.args.get('user_id')|int == user.id %}selected{% endif %}>
-                                    {{ user.username }}
-                                </option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}" {% if user_id == emp.id %}selected{% endif %}>
+                                {{ emp.name or emp.username }}
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label for="date_from" class="form-label">시작일</label>
                         <input type="date" class="form-control" id="date_from" name="date_from" 
-                               value="{{ request.args.get('date_from', '') }}">
+                               value="{{ date_from or '' }}">
                     </div>
                     <div class="col-md-3">
                         <label for="date_to" class="form-label">종료일</label>
                         <input type="date" class="form-control" id="date_to" name="date_to" 
-                               value="{{ request.args.get('date_to', '') }}">
+                               value="{{ date_to or '' }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">&nbsp;</label>
@@ -46,52 +46,85 @@
                     </div>
                 </form>
 
-                <a href="{{ url_for('admin_attendance_download', user_id=request.args.get('user_id'), date_from=request.args.get('date_from'), date_to=request.args.get('date_to')) }}" class="btn btn-outline-secondary btn-sm float-end">
-                    CSV 다운로드
-                </a>
+                <!-- CSV 다운로드 버튼 -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <form method="get" action="{{ url_for('admin_attendance_csv') }}" class="d-inline">
+                            <input type="hidden" name="user_id" value="{{ user_id or '' }}">
+                            <input type="hidden" name="date_from" value="{{ date_from or '' }}">
+                            <input type="hidden" name="date_to" value="{{ date_to or '' }}">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-download"></i> CSV 다운로드
+                            </button>
+                        </form>
+                        <a href="{{ url_for('attendance_stats') }}" class="btn btn-info">
+                            <i class="fas fa-chart-bar"></i> 월별 통계
+                        </a>
+                    </div>
+                </div>
 
-                <!-- 결과 테이블 -->
+                <!-- 통계 표시 -->
+                <div class="alert alert-info">
+                    <strong>통계 요약:</strong><br>
+                    총 출근 건수: <b>{{ total_days }}</b>건<br>
+                    총 근무시간: <b>{{ total_hours }}</b>시간
+                </div>
+
+                <!-- 출퇴근 내역 테이블 -->
                 <div class="table-responsive">
                     <table class="table table-striped">
                         <thead class="table-dark">
                             <tr>
-                                <th>사용자</th>
-                                <th>출근 시간</th>
-                                <th>퇴근 시간</th>
-                                <th>근무 시간(분)</th>
+                                <th>직원</th>
+                                <th>출근 시각</th>
+                                <th>퇴근 시각</th>
+                                <th>근무시간(분)</th>
                                 <th>상태</th>
                             </tr>
                         </thead>
                         <tbody>
-                        {% for record in records %}
+                            {% for attendance, user in records %}
                             <tr>
-                                <td>{{ users[record.user_id] if record.user_id in users else "알 수 없음" }}</td>
-                                <td>{{ record.clock_in.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ user.name or user.username }}</td>
+                                <td>{{ attendance.clock_in.strftime('%Y-%m-%d %H:%M') if attendance.clock_in else '-' }}</td>
                                 <td>
-                                    {% if record.clock_out %}
-                                        {{ record.clock_out.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    {% if attendance.clock_out %}
+                                        {{ attendance.clock_out.strftime('%Y-%m-%d %H:%M') }}
                                     {% else %}
-                                        <span class="text-muted">미입력</span>
+                                        <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ record.work_minutes }}</td>
                                 <td>
-                                    {% if record.status == "정상" %}
-                                        <span class="badge bg-success">{{ record.status }}</span>
-                                    {% elif record.status == "지각" %}
-                                        <span class="badge bg-warning">{{ record.status }}</span>
-                                    {% elif record.status == "조퇴" %}
-                                        <span class="badge bg-info">{{ record.status }}</span>
-                                    {% elif record.status == "결근" %}
-                                        <span class="badge bg-danger">{{ record.status }}</span>
+                                    {% if attendance.clock_in and attendance.clock_out %}
+                                        {{ ((attendance.clock_out - attendance.clock_in).total_seconds() // 60)|int }}
                                     {% else %}
-                                        <span class="badge bg-secondary">{{ record.status }}</span>
+                                        0
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if attendance.status == "정상" %}
+                                        <span class="badge bg-success">{{ attendance.status }}</span>
+                                    {% elif attendance.status == "지각" %}
+                                        <span class="badge bg-warning">{{ attendance.status }}</span>
+                                    {% elif attendance.status == "조퇴" %}
+                                        <span class="badge bg-info">{{ attendance.status }}</span>
+                                    {% elif attendance.status == "결근" %}
+                                        <span class="badge bg-danger">{{ attendance.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ attendance.status }}</span>
                                     {% endif %}
                                 </td>
                             </tr>
-                        {% endfor %}
+                            {% endfor %}
                         </tbody>
                     </table>
+                </div>
+
+                <!-- 페이지네이션 또는 추가 정보 -->
+                <div class="mt-3">
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> 대시보드로
+                    </a>
                 </div>
             </div>
         </div>

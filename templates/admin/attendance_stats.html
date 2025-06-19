@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}월별 출퇴근 통계 (관리자){% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5><i class="fas fa-chart-bar"></i> 월별 출퇴근 통계</h5>
+            </div>
+            <div class="card-body">
+                <!-- 필터 폼 -->
+                <form method="get" class="row g-3 mb-4">
+                    <div class="col-md-2">
+                        <label for="year" class="form-label">년도</label>
+                        <input type="number" class="form-control" id="year" name="year" value="{{ year }}" min="2020" max="2030">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="month" class="form-label">월</label>
+                        <input type="number" class="form-control" id="month" name="month" value="{{ month or '' }}" min="1" max="12" placeholder="전체">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="user_id" class="form-label">직원</label>
+                        <select class="form-select" id="user_id" name="user_id">
+                            <option value="">전체</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}" {% if user_id == emp.id %}selected{% endif %}>
+                                {{ emp.name or emp.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> 검색
+                            </button>
+                            <a href="{{ url_for('attendance_stats') }}" class="btn btn-secondary">
+                                <i class="fas fa-undo"></i> 초기화
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- CSV 다운로드 폼 -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <form method="get" action="{{ url_for('admin_attendance_stats_csv') }}" class="d-inline">
+                            <input type="hidden" name="year" value="{{ year }}">
+                            <input type="hidden" name="month" value="{{ month or '' }}">
+                            <input type="hidden" name="user_id" value="{{ user_id or '' }}">
+                            <label for="wage" class="form-label">시급:</label>
+                            <input type="number" class="form-control d-inline-block w-auto" id="wage" name="wage" value="12000" min="8000" max="50000">원
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-download"></i> 월별 집계 CSV 다운로드
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 통계 요약 -->
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> 통계 요약</h6>
+                    <p class="mb-1">
+                        <strong>조회 기간:</strong> 
+                        {% if month %}{{ year }}년 {{ month }}월{% else %}{{ year }}년 전체{% endif %}
+                        {% if user_id %}
+                            {% for emp in employees %}
+                                {% if emp.id == user_id %}({{ emp.name or emp.username }}){% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </p>
+                    <p class="mb-1"><strong>총 직원 수:</strong> {{ stats_data|length }}명</p>
+                    <p class="mb-0"><strong>총 근무일수:</strong> {{ stats_data|sum(attribute='days') }}일</p>
+                </div>
+
+                <!-- 통계 테이블 -->
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>직원명</th>
+                                <th>근무일수</th>
+                                <th>총 근무시간</th>
+                                <th>평균 근무시간/일</th>
+                                <th>예상 급여 (시급 12,000원)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in stats_data %}
+                            <tr>
+                                <td>{{ stat.user.name or stat.user.username }}</td>
+                                <td><span class="badge bg-primary">{{ stat.days }}일</span></td>
+                                <td>{{ stat.work_time_formatted }}</td>
+                                <td>
+                                    {% if stat.days > 0 %}
+                                        <span class="badge bg-info">{{ "%.1f"|format(stat.work_time / stat.days) }}시간</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">0시간</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong>{{ "{:,}".format(stat.work_time * 12000) }}원</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 추가 기능 링크 -->
+                <div class="mt-3">
+                    <a href="{{ url_for('admin_attendance') }}" class="btn btn-info">
+                        <i class="fas fa-list"></i> 상세 출퇴근 내역
+                    </a>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> 관리자 대시보드
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

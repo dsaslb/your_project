@@ -11,23 +11,25 @@ class Branch(db.Model):
     users = db.relationship("User", backref="branch", lazy=True)
 
 # User 모델
-class User(db.Model, UserMixin):
+class User(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default="employee")  # admin/manager/employee
-    status = db.Column(db.String(20), nullable=False, default="pending")  # pending/approved/rejected
+    password = db.Column(db.String(128), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'approved', 'pending', 'rejected'
+    role = db.Column(db.String(20), default='employee')   # 'admin', 'employee'
     branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"))
     deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     attendances = db.relationship("Attendance", backref="user", lazy=True)
+    name = db.Column(db.String(50))
+    phone = db.Column(db.String(20))
 
     def set_password(self, pw):
-        self.password_hash = generate_password_hash(pw)
+        self.password = generate_password_hash(pw)
     def check_password(self, pw):
-        return check_password_hash(self.password_hash, pw)
+        return check_password_hash(self.password, pw)
     def is_admin(self):
         return self.role == "admin"
     def is_manager(self):
@@ -40,9 +42,8 @@ class Attendance(db.Model):
     __tablename__ = "attendances"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-    clock_in = db.Column(db.DateTime, nullable=False)
-    clock_out = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    clock_in = db.Column(db.DateTime, default=datetime.utcnow)
+    clock_out = db.Column(db.DateTime)
 
     @property
     def work_minutes(self):
@@ -90,9 +91,9 @@ class ApproveLog(db.Model):
     __tablename__ = "approve_logs"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    approver_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 담당자 ID
-    action = db.Column(db.String(32))  # 'approved' 또는 'rejected'
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    action = db.Column(db.String(32))  # 'approved' or 'rejected'
+    timestamp = db.Column(db.DateTime, default=db.func.now())
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 처리자
     reason = db.Column(db.String(256))  # 선택: 승인/거절 사유 기록용 (옵션)
     
     def __repr__(self):

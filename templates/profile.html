@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>회원정보 수정</title></head>
+<body>
+    <h2>회원정보 수정</h2>
+    <form method="post">
+        <input type="text" name="name" placeholder="이름" value="{{ user.name or '' }}"><br>
+        <input type="text" name="phone" placeholder="연락처" value="{{ user.phone or '' }}"><br>
+        <button type="submit">저장</button>
+    </form>
+    <a href="{{ url_for('dashboard') }}">대시보드로 돌아가기</a>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+</body>
+</html> 
