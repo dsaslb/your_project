@@ -28,10 +28,13 @@
       <a href="{{ url_for('admin_attendance') }}" class="btn btn-info">
         <i class="fas fa-clock"></i> 출퇴근 내역
       </a>
+      <a href="{{ url_for('bulk_payroll') }}" class="btn btn-warning">
+        <i class="fas fa-file-pdf"></i> 급여명세서 일괄생성
+      </a>
       <a href="{{ url_for('admin_users') }}" class="btn btn-success">
         <i class="fas fa-users"></i> 직원 관리
       </a>
-      <a href="{{ url_for('approve_users') }}" class="btn btn-warning">
+      <a href="{{ url_for('approve_users') }}" class="btn btn-secondary">
         <i class="fas fa-user-check"></i> 승인 관리
       </a>
     </div>

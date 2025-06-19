@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.name or user.username }} 님의 근무 통계{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5><i class="fas fa-chart-line"></i> {{ user.name or user.username }} 님의 {{ year }}년 월별 근무시간</h5>
+            </div>
+            <div class="card-body">
+                <!-- 년도 선택 -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <form method="get" class="d-flex">
+                            <select name="year" class="form-select me-2">
+                                {% for y in range(2020, 2031) %}
+                                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}년</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary">조회</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{{ url_for('payroll_pdf', user_id=user.id) }}" class="btn btn-success">
+                            <i class="fas fa-file-pdf"></i> 급여 명세서 PDF
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 통계 요약 -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">총 근무시간</h6>
+                                <h4 class="text-primary">{{ monthly_hours|sum }}시간</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">평균 근무시간</h6>
+                                <h4 class="text-info">{{ "%.1f"|format(monthly_hours|sum / 12) }}시간</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">최고 근무시간</h6>
+                                <h4 class="text-success">{{ monthly_hours|max }}시간</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">최저 근무시간</h6>
+                                <h4 class="text-warning">{{ monthly_hours|min }}시간</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 차트 -->
+                <div class="row">
+                    <div class="col-md-8">
+                        <canvas id="workChart" width="600" height="300"></canvas>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>월별 상세</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>월</th>
+                                        <th>근무시간</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for i in range(12) %}
+                                    <tr>
+                                        <td>{{ labels[i] }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ monthly_hours[i] }}시간</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 추가 기능 링크 -->
+                <div class="mt-4">
+                    <a href="{{ url_for('admin_attendance') }}?user_id={{ user.id }}" class="btn btn-info">
+                        <i class="fas fa-list"></i> 상세 출퇴근 내역
+                    </a>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> 관리자 대시보드
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('workChart').getContext('2d');
+const workChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ labels|tojson }},
+        datasets: [{
+            label: '근무시간(시간)',
+            data: {{ monthly_hours|tojson }},
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: 'rgb(75, 192, 192)',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgb(75, 192, 192)'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            title: {
+                display: true,
+                text: '{{ year }}년 월별 근무시간 트렌드'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: '근무시간 (시간)'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: '월'
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %} 

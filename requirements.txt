@@ -5,4 +5,5 @@ Flask-Login==0.6.3
 Werkzeug==2.3.7
 pandas==2.0.3
 python-dotenv==1.0.0
+reportlab==4.4.2
 # 필요시 추가: Flask-Login, pandas 등 

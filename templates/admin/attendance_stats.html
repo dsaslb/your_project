@@ -57,6 +57,9 @@
                                 <i class="fas fa-download"></i> 월별 집계 CSV 다운로드
                             </button>
                         </form>
+                        <a href="{{ url_for('bulk_payroll') }}?year={{ year }}&month={{ month or '' }}" class="btn btn-warning">
+                            <i class="fas fa-file-pdf"></i> 급여명세서 일괄생성
+                        </a>
                     </div>
                 </div>
 
@@ -86,6 +89,7 @@
                                 <th>총 근무시간</th>
                                 <th>평균 근무시간/일</th>
                                 <th>예상 급여 (시급 12,000원)</th>
+                                <th>작업</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -102,6 +106,18 @@
                                     {% endif %}
                                 </td>
                                 <td><strong>{{ "{:,}".format(stat.work_time * 12000) }}원</strong></td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('payroll_pdf', user_id=stat.user.id, year=year, month=month or '') }}" 
+                                           class="btn btn-sm btn-success" title="급여명세서 PDF">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </a>
+                                        <a href="{{ url_for('user_stats', user_id=stat.user.id, year=year) }}" 
+                                           class="btn btn-sm btn-info" title="근무 통계">
+                                            <i class="fas fa-chart-line"></i>
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>

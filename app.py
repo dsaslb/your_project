@@ -4,7 +4,7 @@ from config import DevConfig
 from extensions import db, migrate
 from utils.logger import log_action
 from werkzeug.exceptions import NotFound, InternalServerError
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 import pandas as pd
 from flask import send_file
 from io import BytesIO
@@ -13,6 +13,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, ApproveLog, Attendance
 from sqlalchemy import extract, func
 from sqlalchemy.sql import func
+import os
+from utils.payroll import generate_payroll_pdf
+from utils.attendance import get_user_monthly_trend
 
 app = Flask(__name__)
 app.config.from_object(DevConfig)
@@ -678,6 +681,159 @@ def attendance_stats():
         month=month,
         user_id=user_id
     )
+
+@app.route('/admin/payroll_pdf/<int:user_id>')
+@login_required
+@admin_required
+def payroll_pdf(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # 현재 월 정보 (실제로는 쿼리스트링으로 월/년도 지정 가능)
+    now = datetime.utcnow()
+    month = request.args.get('month', type=int) or now.month
+    year = request.args.get('year', type=int) or now.year
+    
+    # 근무 통계 조회
+    work_days = Attendance.query.filter(
+        Attendance.user_id == user_id,
+        extract('year', Attendance.clock_in) == year,
+        extract('month', Attendance.clock_in) == month,
+        Attendance.clock_out.isnot(None)
+    ).count()
+    
+    total_seconds = db.session.query(
+        func.sum(func.strftime('%s', Attendance.clock_out) - func.strftime('%s', Attendance.clock_in))
+    ).filter(
+        Attendance.user_id == user_id,
+        extract('year', Attendance.clock_in) == year,
+        extract('month', Attendance.clock_in) == month,
+        Attendance.clock_out.isnot(None)
+    ).scalar() or 0
+    
+    total_hours = int(total_seconds // 3600)
+    wage = total_hours * 12000  # 기본 시급
+    
+    # 지각/조퇴/야근 통계
+    attendances = Attendance.query.filter(
+        Attendance.user_id == user_id,
+        extract('year', Attendance.clock_in) == year,
+        extract('month', Attendance.clock_in) == month
+    ).all()
+    
+    late_count = 0
+    early_leave_count = 0
+    overtime_hours = 0
+    
+    for att in attendances:
+        if att.clock_in and att.clock_out:
+            if att.clock_in.time() > time(9, 0):
+                late_count += 1
+            if att.clock_out.time() < time(18, 0):
+                early_leave_count += 1
+            if att.clock_out.time() > time(18, 0):
+                overtime_hours += (att.clock_out - att.clock_in).total_seconds() / 3600 - 8
+    
+    # static 폴더가 없으면 생성
+    if not os.path.exists('static'):
+        os.makedirs('static')
+    
+    filename = f"payroll_{user.username}_{year}_{month:02d}.pdf"
+    filepath = os.path.join('static', filename)
+    
+    generate_payroll_pdf(filepath, user, month, year, work_days, total_hours, wage, 
+                        late_count, early_leave_count, overtime_hours)
+    
+    return redirect(url_for('static', filename=filename))
+
+@app.route('/admin/user_stats/<int:user_id>')
+@login_required
+@admin_required
+def user_stats(user_id):
+    user = User.query.get_or_404(user_id)
+    year = request.args.get('year', type=int) or datetime.utcnow().year
+    
+    labels, monthly_hours = get_user_monthly_trend(user_id, year, db.session)
+    
+    return render_template('admin/user_stats.html', 
+                         user=user, 
+                         labels=labels, 
+                         monthly_hours=monthly_hours,
+                         year=year)
+
+@app.route('/admin/bulk_payroll')
+@login_required
+@admin_required
+def bulk_payroll():
+    now = datetime.utcnow()
+    year = request.args.get('year', type=int) or now.year
+    month = request.args.get('month', type=int) or now.month
+    
+    users = User.query.filter(User.deleted_at == None, User.status == "approved").all()
+    pdf_links = []
+    
+    # static 폴더가 없으면 생성
+    if not os.path.exists('static'):
+        os.makedirs('static')
+    
+    for user in users:
+        # 근무 통계 조회
+        work_days = Attendance.query.filter(
+            Attendance.user_id == user.id,
+            extract('year', Attendance.clock_in) == year,
+            extract('month', Attendance.clock_in) == month,
+            Attendance.clock_out.isnot(None)
+        ).count()
+        
+        total_seconds = db.session.query(
+            func.sum(func.strftime('%s', Attendance.clock_out) - func.strftime('%s', Attendance.clock_in))
+        ).filter(
+            Attendance.user_id == user.id,
+            extract('year', Attendance.clock_in) == year,
+            extract('month', Attendance.clock_in) == month,
+            Attendance.clock_out.isnot(None)
+        ).scalar() or 0
+        
+        total_hours = int(total_seconds // 3600)
+        wage = total_hours * 12000
+        
+        # 지각/조퇴/야근 통계
+        attendances = Attendance.query.filter(
+            Attendance.user_id == user.id,
+            extract('year', Attendance.clock_in) == year,
+            extract('month', Attendance.clock_in) == month
+        ).all()
+        
+        late_count = 0
+        early_leave_count = 0
+        overtime_hours = 0
+        
+        for att in attendances:
+            if att.clock_in and att.clock_out:
+                if att.clock_in.time() > time(9, 0):
+                    late_count += 1
+                if att.clock_out.time() < time(18, 0):
+                    early_leave_count += 1
+                if att.clock_out.time() > time(18, 0):
+                    overtime_hours += (att.clock_out - att.clock_in).total_seconds() / 3600 - 8
+        
+        filename = f"payroll_{user.username}_{year}_{month:02d}.pdf"
+        filepath = os.path.join('static', filename)
+        
+        generate_payroll_pdf(filepath, user, month, year, work_days, total_hours, wage,
+                            late_count, early_leave_count, overtime_hours)
+        
+        pdf_links.append({
+            'filename': filename,
+            'username': user.name or user.username,
+            'work_days': work_days,
+            'total_hours': total_hours,
+            'wage': wage
+        })
+    
+    return render_template('admin/bulk_payroll.html', 
+                         pdf_links=pdf_links, 
+                         year=year, 
+                         month=month)
 
 @app.errorhandler(404)
 def page_not_found(e):
