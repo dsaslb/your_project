@@ -210,4 +210,4 @@ flask run --debug
 
 **개발자**: Restaurant Management Team  
 **버전**: 2.0.0  
-**최종 업데이트**: 2024년 12월 
+**최종 업데이트**: 2024년 12월
