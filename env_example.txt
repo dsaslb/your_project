@@ -1,0 +1,52 @@
+# Flask 설정
+SECRET_KEY=your-super-secret-key-here-change-this
+FLASK_ENV=development
+FLASK_DEBUG=True
+
+# 데이터베이스 설정
+DATABASE_URL=sqlite:///restaurant_dev.sqlite3
+SQLALCHEMY_DATABASE_URI=sqlite:///restaurant_dev.sqlite3
+
+# 보안 설정
+CSRF_SECRET_KEY=your-csrf-secret-key-here-change-this
+SESSION_COOKIE_SECURE=False
+WTF_CSRF_ENABLED=True
+
+# 로깅 설정
+LOG_LEVEL=INFO
+LOG_FILE=logs/restaurant.log
+
+# 캐시 설정
+CACHE_TYPE=SimpleCache
+CACHE_DEFAULT_TIMEOUT=300
+REDIS_URL=redis://localhost:6379/0
+
+# 요청 제한 설정
+RATELIMIT_DEFAULT=10 per minute
+RATELIMIT_STORAGE_URL=memory://
+
+# 파일 업로드 설정
+MAX_CONTENT_LENGTH=16777216
+UPLOAD_FOLDER=uploads
+
+# 이메일 설정 (선택사항)
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+
+# SMS 설정 (선택사항)
+SMS_API_KEY=your-sms-api-key
+SMS_SECRET_KEY=your-sms-secret-key
+
+# 카카오톡 설정 (선택사항)
+KAKAO_ACCESS_TOKEN=your-kakao-access-token
+
+# 외부 API 키 (선택사항)
+GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+
+# 은행 API 설정 (선택사항)
+BANK_API_URL=https://api.bank.example.com
+BANK_API_KEY=your-bank-api-key
+BANK_SECRET_KEY=your-bank-secret-key 

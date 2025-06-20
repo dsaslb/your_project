@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>공지사항 목록</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .search-filter {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .search-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .category-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 120px;
+        }
+        .search-btn {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .search-btn:hover {
+            background-color: #0056b3;
+        }
+        .clear-btn {
+            padding: 8px 16px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .clear-btn:hover {
+            background-color: #545b62;
+        }
+        .notice-list {
+            list-style: none;
+            padding: 0;
+        }
+        .notice-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .notice-item:hover {
+            background-color: #f8f9fa;
+        }
+        .notice-item.unread {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .notice-title {
+            font-weight: bold;
+            color: #333;
+            text-decoration: none;
+        }
+        .notice-title:hover {
+            color: #007bff;
+        }
+        .notice-meta {
+            color: #666;
+            font-size: 14px;
+        }
+        .notice-category {
+            background-color: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .notice-date {
+            color: #999;
+            font-size: 12px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .unread-badge {
+            background-color: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .empty-message {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            font-style: italic;
+        }
+        .search-results {
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>공지사항/자료실</h2>
+        
+        <!-- 검색/필터 폼 -->
+        <div class="search-filter">
+            <form method="get" class="search-form">
+                <input type="text" name="q" value="{{ q }}" 
+                       class="search-input" 
+                       placeholder="제목 또는 내용으로 검색...">
+                <select name="cat" class="category-select">
+                    <option value="">전체 카테고리</option>
+                    {% for category in categories %}
+                        <option value="{{ category }}" {% if cat == category %}selected{% endif %}>
+                            {{ category }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="search-btn">검색</button>
+                {% if q or cat %}
+                    <a href="{{ url_for('notices') }}" class="clear-btn">초기화</a>
+                {% endif %}
+            </form>
+        </div>
+        
+        <!-- 검색 결과 표시 -->
+        {% if q or cat %}
+            <div class="search-results">
+                {% if q and cat %}
+                    "{{ q }}" 검색 결과 (카테고리: {{ cat }})
+                {% elif q %}
+                    "{{ q }}" 검색 결과
+                {% elif cat %}
+                    카테고리: {{ cat }}
+                {% endif %}
+                - 총 {{ notices|length }}건
+            </div>
+        {% endif %}
+        
+        {% if notices %}
+            <ul class="notice-list">
+                {% for notice in notices %}
+                <li class="notice-item {% if notice.id in unread_notices %}unread{% endif %}">
+                    <div>
+                        <a href="{{ url_for('notice_view', notice_id=notice.id) }}" class="notice-title">
+                            {{ notice.title|highlight(q)|safe }}
+                            {% if notice.id in unread_notices %}
+                                <span class="unread-badge">N</span>
+                            {% endif %}
+                        </a>
+                        <div class="notice-meta">
+                            {% if notice.category %}
+                                <span class="notice-category">{{ notice.category }}</span>
+                            {% endif %}
+                            <span class="notice-date">{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            {% if notice.author %}
+                                <span>작성자: {{ notice.author.name or notice.author.username }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        {% if notice.file_path %}
+                            <span style="color: #28a745; font-size: 12px;">📎 첨부파일</span>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty-message">
+                {% if q or cat %}
+                    <p>검색 결과가 없습니다.</p>
+                    <p><a href="{{ url_for('notices') }}">전체 목록 보기</a></p>
+                {% else %}
+                    <p>등록된 공지사항이 없습니다.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+        
+        <div style="margin-top: 30px;">
+            {% if current_user.is_admin() or current_user.is_manager() %}
+                <a href="{{ url_for('notice_new') }}" class="btn">공지 등록</a>
+            {% endif %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">대시보드로</a>
+        </div>
+    </div>
+</body>
+</html> 

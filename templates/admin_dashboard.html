@@ -37,6 +37,86 @@
       <a href="{{ url_for('approve_users') }}" class="btn btn-secondary">
         <i class="fas fa-user-check"></i> 승인 관리
       </a>
+      <a href="{{ url_for('admin_shift_requests') }}" class="btn btn-warning">
+        <i class="fas fa-exchange-alt"></i> 근무 변경 신청
+      </a>
+      <a href="{{ url_for('admin_notifications') }}" class="btn btn-info">
+        <i class="fas fa-bell"></i> 알림센터
+      </a>
+      <a href="{{ url_for('notice_stats') }}" class="btn btn-warning">
+        <i class="fas fa-chart-pie"></i> 공지사항 통계
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- 새로운 기능 버튼들 -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-cogs"></i> 자동화 기능</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('monthly_summary_pdf') }}" class="btn btn-outline-primary w-100">
+              <i class="fas fa-file-pdf"></i> 월별 근태 요약 PDF
+            </a>
+          </div>
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('bulk_transfer') }}" class="btn btn-outline-success w-100" 
+               onclick="return confirm('일괄 급여 이체를 실행하시겠습니까?')">
+              <i class="fas fa-money-bill-wave"></i> 급여 자동이체
+            </a>
+          </div>
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('send_notification_page') }}" class="btn btn-outline-info w-100">
+              <i class="fas fa-bell"></i> 알림 발송
+            </a>
+          </div>
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('admin_backup') }}" class="btn btn-outline-secondary w-100">
+              <i class="fas fa-download"></i> DB 백업
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 백업/복원 기능 -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-database"></i> 데이터 관리</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('admin_restore') }}" class="btn btn-outline-warning w-100">
+              <i class="fas fa-upload"></i> DB 복원
+            </a>
+          </div>
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('admin_file_backup') }}" class="btn btn-outline-secondary w-100">
+              <i class="fas fa-file-archive"></i> 첨부파일 백업
+            </a>
+          </div>
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('admin_file_restore') }}" class="btn btn-outline-warning w-100">
+              <i class="fas fa-file-upload"></i> 첨부파일 복원
+            </a>
+          </div>
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('admin_actionlog') }}" class="btn btn-outline-info w-100">
+              <i class="fas fa-history"></i> 작업 로그
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -20,12 +20,18 @@
     <h3>개인 관리</h3>
     <a href="{{ url_for('change_password') }}">비밀번호 변경</a><br>
     <a href="{{ url_for('profile') }}">회원정보 수정</a><br>
+    <a href="{{ url_for('notices') }}">공지사항</a><br>
+    <a href="{{ url_for('faq') }}">AI FAQ/가이드</a><br>
+    <a href="{{ url_for('suggestion') }}">익명 건의함</a><br>
+    <a href="{{ url_for('shift_request') }}">근무 변경 신청</a><br>
+    <a href="{{ url_for('calendar') }}">내 근무 캘린더</a><br>
     <a href="{{ url_for('logout') }}">로그아웃</a>
     
     {% if user.role == 'admin' %}
       <h3>관리자 기능</h3>
       <a href="{{ url_for('approve_users') }}">가입 승인/거절 관리</a><br>
-      <a href="{{ url_for('approve_logs') }}">승인/거절 로그</a>
+      <a href="{{ url_for('approve_logs') }}">승인/거절 로그</a><br>
+      <a href="{{ url_for('admin_dashboard') }}">관리자 대시보드</a>
     {% endif %}
 </body>
 </html> 

@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}{{ notice.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <!-- 공지사항 상세 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h3 class="mb-1">{{ notice.title }}</h3>
+                            <div class="text-muted">
+                                <small>
+                                    <i class="fas fa-user"></i> {{ notice.author.name or notice.author.username }}
+                                    <i class="fas fa-calendar ml-2"></i> {{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% if notice.category %}
+                                        <span class="badge bg-primary ml-2">{{ notice.category }}</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        <div>
+                            {% if notice.author_id == current_user.id or current_user.is_admin() %}
+                                <a href="{{ url_for('notice_edit', notice_id=notice.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i> 수정
+                                </a>
+                                <form action="{{ url_for('notice_delete', notice_id=notice.id) }}" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                            onclick="return confirm('이 공지를 삭제하면 첨부파일과 모든 댓글이 함께 삭제됩니다. 계속하시겠습니까?')">
+                                        <i class="fas fa-trash"></i> 삭제
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 공지사항 내용 -->
+                    <div class="notice-content mb-4">
+                        {{ notice.content|safe }}
+                    </div>
+                    
+                    <!-- 첨부파일 -->
+                    {% if notice.file_path %}
+                        <div class="attachment-section mb-4">
+                            <h5><i class="fas fa-paperclip"></i> 첨부파일</h5>
+                            {% if notice.file_type in ['jpg','jpeg','png','gif','webp'] %}
+                                <!-- 이미지 미리보기 -->
+                                <div class="text-center">
+                                    <img src="{{ url_for('static', filename=notice.file_path) }}" 
+                                         class="img-fluid rounded" 
+                                         style="max-width: 100%; max-height: 400px;"
+                                         alt="첨부 이미지">
+                                </div>
+                            {% elif notice.file_type in ['txt','md','log','csv'] and preview %}
+                                <!-- 텍스트 파일 미리보기 -->
+                                <div class="text-preview bg-light p-3 rounded">
+                                    <pre class="mb-0" style="max-height: 300px; overflow-y: auto;">{{ preview }}</pre>
+                                </div>
+                            {% else %}
+                                <!-- 기타 파일 다운로드 링크 -->
+                                <div class="file-download">
+                                    <a href="{{ url_for('static', filename=notice.file_path) }}" 
+                                       class="btn btn-outline-primary" 
+                                       download>
+                                        <i class="fas fa-download"></i> 
+                                        {{ notice.file_path.split('/')[-1] }} 다운로드
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 댓글 섹션 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-comments"></i> 댓글</h5>
+                </div>
+                <div class="card-body">
+                    <!-- 댓글 작성 폼 -->
+                    <form method="post" action="{{ url_for('comment_new', notice_id=notice.id) }}" class="mb-4">
+                        <div class="form-group">
+                            <textarea name="content" class="form-control" rows="3" 
+                                      placeholder="댓글을 입력하세요..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> 댓글 작성
+                        </button>
+                    </form>
+                    
+                    <!-- 댓글 목록 -->
+                    {% if notice.comments %}
+                        <div class="comments-list">
+                            {% for comment in notice.comments %}
+                            <div class="comment-item border-bottom pb-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="comment-header mb-2">
+                                            <strong>{{ comment.user.name or comment.user.username }}</strong>
+                                            <small class="text-muted ml-2">
+                                                {{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            </small>
+                                        </div>
+                                        <div class="comment-content">
+                                            {{ comment.content }}
+                                        </div>
+                                    </div>
+                                    {% if comment.user_id == current_user.id or current_user.is_admin() %}
+                                        <div class="ml-2">
+                                            <form action="{{ url_for('comment_delete', comment_id=comment.id) }}" 
+                                                  method="post" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        onclick="return confirm('정말로 이 댓글을 삭제하시겠습니까?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-comment-slash fa-2x mb-2"></i>
+                            <p>아직 댓글이 없습니다.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 목록으로 돌아가기 -->
+            <div class="text-center mt-4">
+                <a href="{{ url_for('notices') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 목록으로 돌아가기
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.notice-content {
+    line-height: 1.6;
+}
+
+.text-preview {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.comment-item:last-child {
+    border-bottom: none !important;
+}
+
+.comment-content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.attachment-section {
+    border-top: 1px solid #dee2e6;
+    padding-top: 1rem;
+}
+
+.file-download {
+    margin-top: 0.5rem;
+}
+</style>
+
+{% endblock %} 

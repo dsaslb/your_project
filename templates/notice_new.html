@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>공지사항 등록</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 200px;
+            resize: vertical;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .file-input {
+            border: 2px dashed #ddd;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .file-input:hover {
+            border-color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>공지사항/자료실 등록</h2>
+        
+        <form method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="title">제목:</label>
+                <input type="text" name="title" id="title" required placeholder="공지사항 제목을 입력하세요">
+            </div>
+            
+            <div class="form-group">
+                <label for="category">분류:</label>
+                <select name="category" id="category">
+                    <option value="공지사항">공지사항</option>
+                    <option value="자료실">자료실</option>
+                    <option value="안내">안내</option>
+                    <option value="긴급">긴급</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="content">내용:</label>
+                <textarea name="content" id="content" required placeholder="공지사항 내용을 입력하세요"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="file">첨부파일:</label>
+                <div class="file-input">
+                    <input type="file" name="file" id="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.png">
+                    <p style="margin-top: 10px; color: #666;">PDF, Word, Excel, 이미지 파일 첨부 가능</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <button type="submit" class="btn">등록</button>
+                <a href="{{ url_for('notices') }}" class="btn btn-secondary">취소</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html> 

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}AI FAQ/가이드{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">
+                        <i class="fas fa-robot text-primary"></i>
+                        AI FAQ/가이드 챗봇
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- 질문 폼 -->
+                    <div class="mb-4">
+                        <form method="post" class="d-flex">
+                            <input 
+                                type="text" 
+                                name="question" 
+                                class="form-control me-2" 
+                                placeholder="질문을 입력하세요..."
+                                value="{{ request.form.question if request.form.question else '' }}"
+                                required
+                            >
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
+                                질문하기
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 답변 표시 -->
+                    {% if answer %}
+                    <div class="answer-box mb-4">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-lightbulb"></i>
+                                    AI 답변
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0">{{ answer }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 자주 묻는 질문 예시 -->
+                    <div class="faq-examples">
+                        <h5 class="text-primary mb-3">
+                            <i class="fas fa-question-circle"></i>
+                            자주 묻는 질문 예시
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-primary">
+                                            <i class="fas fa-money-bill-wave"></i>
+                                            급여 관련
+                                        </h6>
+                                        <ul class="list-unstyled mb-0">
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "급여는 어떻게 계산되나요?"</small>
+                                            </li>
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "급여명세서 PDF 받는법"</small>
+                                            </li>
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "월급 언제 지급되나요?"</small>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-primary">
+                                            <i class="fas fa-clock"></i>
+                                            근태 관련
+                                        </h6>
+                                        <ul class="list-unstyled mb-0">
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "지각 기록은 어디서 봐요?"</small>
+                                            </li>
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "근무 변경 신청 방법"</small>
+                                            </li>
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "출근 시간 변경 가능한가요?"</small>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-primary">
+                                            <i class="fas fa-bullhorn"></i>
+                                            공지사항/건의
+                                        </h6>
+                                        <ul class="list-unstyled mb-0">
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "공지사항 어디서 확인하나요?"</small>
+                                            </li>
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "건의사항 제출 방법"</small>
+                                            </li>
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "익명 건의함 사용법"</small>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-primary">
+                                            <i class="fas fa-user-cog"></i>
+                                            계정 관리
+                                        </h6>
+                                        <ul class="list-unstyled mb-0">
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "비밀번호 변경 방법"</small>
+                                            </li>
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "계정 잠금 해제 방법"</small>
+                                            </li>
+                                            <li class="mb-1">
+                                                <small class="text-muted">• "로그인 문제 해결"</small>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 도움말 -->
+                    <div class="help-section mt-4">
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle"></i>
+                                도움말
+                            </h6>
+                            <p class="mb-0">
+                                위의 예시 질문들을 참고하여 질문해보세요. 
+                                더 자세한 답변이 필요하시면 관리자에게 직접 문의하시기 바랍니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    대시보드로 돌아가기
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.answer-box {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.faq-examples .card {
+    transition: transform 0.2s ease;
+}
+
+.faq-examples .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %} 

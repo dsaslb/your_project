@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}알림 발송{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-bell"></i> 알림 발송
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="notification_type" class="form-label">알림 유형</label>
+                            <select class="form-select" id="notification_type" name="notification_type" required>
+                                <option value="email">이메일</option>
+                                <option value="sms">SMS</option>
+                                <option value="kakao">카카오톡</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="message" class="form-label">알림 내용</label>
+                            <textarea class="form-control" id="message" name="message" rows="5" 
+                                      placeholder="발송할 알림 내용을 입력하세요..." required></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">수신자 선택</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="select_all">
+                                <label class="form-check-label" for="select_all">
+                                    <strong>전체 선택</strong>
+                                </label>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                {% for user in users %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input user-checkbox" type="checkbox" 
+                                               name="user_ids" value="{{ user.id }}" id="user_{{ user.id }}">
+                                        <label class="form-check-label" for="user_{{ user.id }}">
+                                            {{ user.name or user.username }}
+                                            {% if user.email %}
+                                                <small class="text-muted">({{ user.email }})</small>
+                                            {% endif %}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">선택하지 않으면 모든 승인된 사용자에게 발송됩니다.</small>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> 취소
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> 발송
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('select_all').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// 개별 체크박스 변경 시 전체 선택 상태 업데이트
+document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const allCheckboxes = document.querySelectorAll('.user-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        document.getElementById('select_all').checked = allCheckboxes.length === checkedCheckboxes.length;
+    });
+});
+</script>
+{% endblock %} 

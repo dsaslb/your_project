@@ -2,54 +2,110 @@ from extensions import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import re
 
 # 지점 모델
 class Branch(db.Model):
     __tablename__ = "branches"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    address = db.Column(db.String(200))
+    phone = db.Column(db.String(20))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     users = db.relationship("User", backref="branch", lazy=True)
 
+    def __repr__(self):
+        return f'<Branch {self.name}>'
+
 # User 모델
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password = db.Column(db.String(128), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # 'approved', 'pending', 'rejected'
-    role = db.Column(db.String(20), default='employee')   # 'admin', 'employee'
-    branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"))
-    deleted_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='pending', index=True)  # 'approved', 'pending', 'rejected'
+    role = db.Column(db.String(20), default='employee', index=True)   # 'admin', 'manager', 'employee'
+    branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    attendances = db.relationship("Attendance", backref="user", lazy=True)
+    attendances = db.relationship("Attendance", backref="user", lazy=True, cascade="all, delete-orphan")
     name = db.Column(db.String(50))
     phone = db.Column(db.String(20))
+    email = db.Column(db.String(120), unique=True, index=True)
+    last_login = db.Column(db.DateTime, index=True)
+    login_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime, index=True)
 
     def set_password(self, pw):
-        self.password = generate_password_hash(pw)
+        if len(pw) < 8:
+            raise ValueError("비밀번호는 최소 8자 이상이어야 합니다.")
+        if not re.search(r'[A-Za-z]', pw) or not re.search(r'\d', pw):
+            raise ValueError("비밀번호는 영문자와 숫자를 포함해야 합니다.")
+        self.password = generate_password_hash(pw, method='pbkdf2:sha256')
+    
     def check_password(self, pw):
         return check_password_hash(self.password, pw)
+    
     def is_admin(self):
         return self.role == "admin"
+    
     def is_manager(self):
         return self.role == "manager"
+    
     def is_employee(self):
         return self.role == "employee"
+    
+    def is_locked(self):
+        if self.locked_until and self.locked_until > datetime.utcnow():
+            return True
+        return False
+    
+    def increment_login_attempts(self):
+        self.login_attempts += 1
+        if self.login_attempts >= 5:
+            from datetime import timedelta
+            self.locked_until = datetime.utcnow() + timedelta(minutes=30)
+        db.session.commit()
+    
+    def reset_login_attempts(self):
+        self.login_attempts = 0
+        self.locked_until = None
+        self.last_login = datetime.utcnow()
+        db.session.commit()
+
+    def __repr__(self):
+        return f'<User {self.username}>'
 
 # 출퇴근 모델
 class Attendance(db.Model):
     __tablename__ = "attendances"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-    clock_in = db.Column(db.DateTime, default=datetime.utcnow)
-    clock_out = db.Column(db.DateTime)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    clock_in = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    clock_out = db.Column(db.DateTime, index=True)
+    location_in = db.Column(db.String(100))  # 출근 위치 (GPS 등)
+    location_out = db.Column(db.String(100))  # 퇴근 위치
+    notes = db.Column(db.Text)  # 메모
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_attendance_user_date', 'user_id', 'clock_in'),
+        db.Index('idx_attendance_date_range', 'clock_in', 'clock_out'),
+    )
 
     @property
     def work_minutes(self):
         if self.clock_in and self.clock_out:
             return int((self.clock_out - self.clock_in).total_seconds() // 60)
         return 0
+
+    @property
+    def work_hours(self):
+        return round(self.work_minutes / 60, 2)
 
     @property
     def status(self):
@@ -67,34 +123,200 @@ class Attendance(db.Model):
             return "정상"
         return "/".join(s)
 
+    def __repr__(self):
+        return f'<Attendance {self.user_id} {self.clock_in.date()}>'
+
 # 액션로그
 class ActionLog(db.Model):
     __tablename__ = "action_logs"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer)
-    action = db.Column(db.String(50))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    action = db.Column(db.String(50), nullable=False, index=True)
     message = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ip_address = db.Column(db.String(45))  # IPv6 지원
+    user_agent = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_actionlog_user_action', 'user_id', 'action'),
+        db.Index('idx_actionlog_action_date', 'action', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f'<ActionLog {self.user_id} {self.action}>'
 
 # 피드백 모델
 class Feedback(db.Model):
     __tablename__ = "feedback"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     satisfaction = db.Column(db.Integer) # 1~5점
     health = db.Column(db.Integer) # 1~5점
-    comment = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    comment = db.Column(db.String(500))  # 길이 증가
+    category = db.Column(db.String(50))  # 피드백 카테고리
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f'<Feedback {self.user_id} {self.satisfaction}>'
 
 # 승인/거절 이력 로그
 class ApproveLog(db.Model):
     __tablename__ = "approve_logs"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    action = db.Column(db.String(32))  # 'approved' or 'rejected'
-    timestamp = db.Column(db.DateTime, default=db.func.now())
-    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 처리자
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    action = db.Column(db.String(32), nullable=False, index=True)  # 'approved' or 'rejected'
+    timestamp = db.Column(db.DateTime, default=db.func.now(), index=True)
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)  # 처리자
     reason = db.Column(db.String(256))  # 선택: 승인/거절 사유 기록용 (옵션)
+    ip_address = db.Column(db.String(45))
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_approvelog_user_action', 'user_id', 'action'),
+        db.Index('idx_approvelog_admin_date', 'admin_id', 'timestamp'),
+    )
     
     def __repr__(self):
         return f"<ApproveLog {self.user_id} {self.action} {self.timestamp}>"
+
+# 근무 변경(교대) 신청 모델
+class ShiftRequest(db.Model):
+    __tablename__ = "shift_requests"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    request_date = db.Column(db.Date, nullable=False, index=True)  # 신청 날짜
+    desired_date = db.Column(db.Date, nullable=False, index=True)  # 희망 날짜
+    reason = db.Column(db.String(255), nullable=False)  # 사유
+    status = db.Column(db.String(20), default='pending', index=True)  # pending/approved/rejected
+    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
+    
+    # 관계 설정
+    user = db.relationship("User", backref="shift_requests")
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_shiftrequest_user_status', 'user_id', 'status'),
+        db.Index('idx_shiftrequest_date_range', 'request_date', 'desired_date'),
+    )
+    
+    def __repr__(self):
+        return f'<ShiftRequest {self.user_id} {self.desired_date} {self.status}>'
+
+# 알림 모델
+class Notification(db.Model):
+    __tablename__ = "notifications"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    message = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    is_read = db.Column(db.Boolean, default=False, index=True)
+    
+    # 관계 설정
+    user = db.relationship("User", backref="notifications")
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_notification_user_read', 'user_id', 'is_read'),
+        db.Index('idx_notification_created', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<Notification {self.user_id} {self.message[:20]}...>'
+
+# 공지사항 모델
+class Notice(db.Model):
+    __tablename__ = "notices"
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    file_path = db.Column(db.String(255))  # 첨부파일 경로
+    file_type = db.Column(db.String(20))   # 파일 확장자
+    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    category = db.Column(db.String(30), index=True)  # 공지사항, 자료실 등
+    
+    # 관계 설정
+    author = db.relationship("User", backref="notices")
+    reads = db.relationship("NoticeRead", backref="notice", cascade="all, delete-orphan")
+    comments = db.relationship("NoticeComment", backref="notice", cascade="all, delete-orphan")
+    
+    # 검색 최적화를 위한 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_notice_title', 'title'),
+        db.Index('idx_notice_content', 'content'),
+        db.Index('idx_notice_category', 'category'),
+        db.Index('idx_notice_author_date', 'author_id', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f'<Notice {self.title}>'
+
+# 공지사항 읽음 체크 모델
+class NoticeRead(db.Model):
+    __tablename__ = "notice_reads"
+    id = db.Column(db.Integer, primary_key=True)
+    notice_id = db.Column(db.Integer, db.ForeignKey('notices.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    read_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_noticeread_user_notice', 'user_id', 'notice_id'),
+        db.Index('idx_noticeread_notice_date', 'notice_id', 'read_at'),
+    )
+    
+    def __repr__(self):
+        return f'<NoticeRead {self.notice_id} {self.user_id}>'
+
+# 익명 건의함 모델
+class Suggestion(db.Model):
+    __tablename__ = "suggestions"
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    answer = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    answered_at = db.Column(db.DateTime, index=True)
+    is_anonymous = db.Column(db.Boolean, default=True, index=True)
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_suggestion_created', 'created_at'),
+        db.Index('idx_suggestion_answered', 'answered_at'),
+    )
+    
+    def __repr__(self):
+        return f'<Suggestion {self.id}>'
+
+# 공지사항 댓글 모델
+class NoticeComment(db.Model):
+    __tablename__ = "notice_comments"
+    id = db.Column(db.Integer, primary_key=True)
+    notice_id = db.Column(db.Integer, db.ForeignKey('notices.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    
+    # 관계 설정
+    user = db.relationship("User", backref="notice_comments")
+    
+    def __repr__(self):
+        return f'<NoticeComment {self.id}>'
+
+# 시스템 로그 모델
+class SystemLog(db.Model):
+    """시스템 로그 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    action = db.Column(db.String(100), nullable=False)
+    detail = db.Column(db.String(500), nullable=True)
+    ip_address = db.Column(db.String(45), nullable=True)
+    user_agent = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+    
+    # 관계 설정
+    user = db.relationship('User', backref='system_logs')
+    
+    def __repr__(self):
+        return f'<SystemLog {self.action} by {self.user_id}>'

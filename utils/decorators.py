@@ -1,87 +1,132 @@
 from functools import wraps
-from flask import redirect, url_for, flash, request
+from flask import abort, session, flash, redirect, url_for, request
 from flask_login import current_user
+from models import User
+import os
+import logging
 
-def role_required(role):
-    """역할별 권한 데코레이터 팩토리"""
+# 로거 설정
+logger = logging.getLogger(__name__)
+
+def owner_or_admin(obj_getter):
+    """소유자 또는 관리자 권한 확인 데코레이터"""
     def decorator(f):
         @wraps(f)
-        def decorated(*args, **kwargs):
-            if not current_user.is_authenticated:
-                flash("로그인이 필요합니다.", "danger")
-                return redirect(url_for('auth.login'))
-            
-            if current_user.role != role:
-                flash(f"{role} 권한이 필요합니다.", "danger")
-                return redirect(url_for('auth.login'))
-            
-            return f(*args, **kwargs)
-        return decorated
+        def wrapper(*args, **kwargs):
+            try:
+                obj = obj_getter(*args, **kwargs)
+                if not obj:
+                    abort(404)
+                
+                # 현재 사용자 확인
+                if not current_user.is_authenticated:
+                    flash('로그인이 필요합니다.', 'warning')
+                    return redirect(url_for('login'))
+                
+                # 소유자 또는 관리자 권한 확인
+                is_owner = False
+                if hasattr(obj, 'user_id'):
+                    is_owner = obj.user_id == current_user.id
+                elif hasattr(obj, 'author_id'):
+                    is_owner = obj.author_id == current_user.id
+                
+                is_admin = current_user.is_admin() or current_user.is_manager()
+                
+                if not (is_owner or is_admin):
+                    logger.warning(f'Unauthorized access attempt: {current_user.id} -> {request.endpoint}')
+                    flash('접근 권한이 없습니다.', 'error')
+                    abort(403)
+                
+                return f(*args, **kwargs)
+                
+            except Exception as e:
+                logger.error(f'Permission check error: {e}')
+                flash('권한 확인 중 오류가 발생했습니다.', 'error')
+                abort(500)
+                
+        return wrapper
     return decorator
 
 def admin_required(f):
-    """관리자 권한 데코레이터"""
-    return role_required('admin')(f)
-
-def manager_required(f):
-    """매니저 권한 데코레이터"""
+    """관리자 권한 확인 데코레이터"""
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
-            flash("로그인이 필요합니다.", "danger")
-            return redirect(url_for('auth.login'))
+            flash('로그인이 필요합니다.', 'warning')
+            return redirect(url_for('login'))
         
-        if not current_user.is_manager():
-            flash("매니저 이상 권한이 필요합니다.", "danger")
-            return redirect(url_for('auth.login'))
+        if not (current_user.is_admin() or current_user.is_manager()):
+            logger.warning(f'Admin access denied: {current_user.id} -> {request.endpoint}')
+            flash("관리자 권한이 필요합니다.", 'error')
+            return redirect(url_for('dashboard'))
         
         return f(*args, **kwargs)
-    return decorated
+    return decorated_function
 
-def employee_required(f):
-    """직원 권한 데코레이터"""
+def login_required(f):
+    """로그인 확인 데코레이터"""
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
-            flash("로그인이 필요합니다.", "danger")
-            return redirect(url_for('auth.login'))
+            flash('로그인이 필요합니다.', 'warning')
+            return redirect(url_for('login'))
         return f(*args, **kwargs)
-    return decorated
+    return decorated_function
 
-def approved_user_required(f):
-    """승인된 사용자만 접근 가능한 데코레이터"""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not current_user.is_authenticated:
-            flash("로그인이 필요합니다.", "danger")
-            return redirect(url_for('auth.login'))
-        
-        if not current_user.is_active():
-            flash("승인 대기 중입니다. 관리자에게 문의하세요.", "warning")
-            return redirect(url_for('auth.login'))
-        
-        return f(*args, **kwargs)
-    return decorated
+# 파일 보안 함수들
+def allowed_file(filename):
+    """허용된 파일 확장자 확인"""
+    allowed_ext = {
+        'jpg', 'jpeg', 'png', 'gif', 'webp',  # 이미지
+        'txt', 'md', 'log', 'csv', 'pdf',     # 문서
+        'doc', 'docx', 'xls', 'xlsx',         # 오피스 문서
+        'zip', 'rar'                          # 압축파일
+    }
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_ext
 
-def log_action(action_name):
-    """액션 로깅 데코레이터"""
-    def decorator(f):
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            from models.action_log import ActionLog
-            
-            result = f(*args, **kwargs)
-            
-            # 액션 로그 기록
-            if current_user.is_authenticated:
-                ActionLog.log_action(
-                    user_id=current_user.id,
-                    action=action_name,
-                    detail=f"{f.__name__} 실행",
-                    ip_address=request.remote_addr,
-                    user_agent=request.user_agent.string
-                )
-            
-            return result
-        return decorated
-    return decorator 
+def safe_remove(file_path):
+    """안전한 파일 삭제"""
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            logger.info(f'File deleted successfully: {file_path}')
+            return True
+        except Exception as e:
+            logger.error(f"파일 삭제 실패: {file_path} / {e}")
+            return False
+    return False
+
+def get_file_size_mb(file_path):
+    """파일 크기 MB 단위로 반환"""
+    try:
+        size_bytes = os.path.getsize(file_path)
+        return size_bytes / (1024 * 1024)
+    except Exception:
+        return 0
+
+def validate_file_size(file, max_size_mb=10):
+    """파일 크기 검증"""
+    if file:
+        file.seek(0, 2)  # 파일 끝으로 이동
+        size_mb = file.tell() / (1024 * 1024)
+        file.seek(0)  # 파일 시작으로 복귀
+        return size_mb <= max_size_mb
+    return True
+
+def sanitize_filename(filename):
+    """파일명 안전화"""
+    import re
+    # 특수문자 제거 및 공백을 언더스코어로 변경
+    filename = re.sub(r'[^\w\s-]', '', filename)
+    filename = re.sub(r'[-\s]+', '_', filename)
+    return filename.strip('_')
+
+# XSS 방어 함수
+def escape_html(text):
+    """HTML 특수문자 이스케이프"""
+    import html
+    return html.escape(text)
+
+# 미리보기 관련 상수
+MAX_PREVIEW_SIZE = 5000  # 미리보기 최대 바이트 제한
+MAX_FILE_SIZE_MB = 10    # 최대 파일 크기 (MB) 

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>내 근무 스케줄 캘린더</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        #calendar {
+            margin: 20px 0;
+        }
+        .legend {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+        .legend-color {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .fc-event {
+            cursor: pointer;
+        }
+        .fc-event:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>내 근무/변경 캘린더</h2>
+        
+        <!-- 범례 -->
+        <div class="legend">
+            <h4>범례</h4>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #00aaff;"></span>
+                <span>출근</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #ffbb00;"></span>
+                <span>근무변경(승인)</span>
+            </div>
+        </div>
+
+        <div id="calendar"></div>
+        
+        <div style="margin-top: 30px;">
+            <a href="{{ url_for('profile') }}" class="btn btn-secondary">마이페이지로</a>
+            <a href="{{ url_for('shift_request') }}" class="btn">근무 변경 신청</a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">대시보드로</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'ko',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                buttonText: {
+                    today: '오늘',
+                    month: '월',
+                    week: '주',
+                    list: '목록'
+                },
+                events: {{ events|tojson }},
+                eventClick: function(info) {
+                    alert('이벤트: ' + info.event.title + '\n날짜: ' + info.event.startStr);
+                },
+                eventDidMount: function(info) {
+                    // 툴팁 추가
+                    info.el.title = info.event.title + ' - ' + info.event.startStr;
+                }
+            });
+            calendar.render();
+        });
+    </script>
+</body>
+</html> 

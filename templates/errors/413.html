@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}파일 크기 초과{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h4><i class="fas fa-exclamation-triangle"></i> 파일 크기 초과</h4>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-file-upload fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">{{ message or '파일 용량이 너무 큽니다!' }}</h5>
+                    <p class="card-text">
+                        업로드하려는 파일의 크기가 서버에서 허용하는 최대 크기를 초과했습니다.<br>
+                        최대 파일 크기: <strong>10MB</strong>
+                    </p>
+                    <div class="mt-4">
+                        <a href="javascript:history.back()" class="btn btn-primary">
+                            <i class="fas fa-arrow-left"></i> 이전 페이지로 돌아가기
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-home"></i> 대시보드로
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

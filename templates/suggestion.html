@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}익명 건의함{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">
+                        <i class="fas fa-comment-dots text-primary"></i>
+                        익명 건의함
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- 건의 제출 폼 -->
+                    <div class="mb-4">
+                        <h5 class="text-primary">
+                            <i class="fas fa-pen"></i>
+                            건의 제출
+                        </h5>
+                        <form method="post" class="mt-3">
+                            <div class="form-group">
+                                <label for="content" class="form-label">건의 내용</label>
+                                <textarea 
+                                    name="content" 
+                                    id="content" 
+                                    class="form-control" 
+                                    rows="5" 
+                                    placeholder="건의사항을 자유롭게 작성해주세요. (익명으로 처리됩니다)"
+                                    required
+                                ></textarea>
+                            </div>
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                    익명 건의 제출
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <hr>
+
+                    <!-- 건의 목록 -->
+                    <div>
+                        <h5 class="text-primary">
+                            <i class="fas fa-list"></i>
+                            전체 건의 목록
+                            <small class="text-muted">(관리자만 답변 가능)</small>
+                        </h5>
+                        
+                        {% if sugs %}
+                            <div class="mt-3">
+                                {% for s in sugs %}
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="mb-2">
+                                                    <span class="badge bg-secondary">
+                                                        <i class="fas fa-calendar"></i>
+                                                        {{ s.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                                    </span>
+                                                    {% if s.is_anonymous %}
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-user-secret"></i>
+                                                            익명
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                                
+                                                <div class="suggestion-content mb-3">
+                                                    <p class="mb-0">{{ s.content }}</p>
+                                                </div>
+                                                
+                                                {% if s.answer %}
+                                                    <div class="answer-section bg-light p-3 rounded">
+                                                        <h6 class="text-success mb-2">
+                                                            <i class="fas fa-reply"></i>
+                                                            관리자 답변
+                                                            <small class="text-muted">
+                                                                ({{ s.answered_at.strftime('%Y-%m-%d %H:%M') }})
+                                                            </small>
+                                                        </h6>
+                                                        <p class="mb-0 text-success">{{ s.answer }}</p>
+                                                    </div>
+                                                {% elif current_user.is_admin() %}
+                                                    <div class="answer-form mt-3">
+                                                        <form method="post" action="{{ url_for('suggestion_answer', sug_id=s.id) }}">
+                                                            <div class="form-group">
+                                                                <label for="answer_{{ s.id }}" class="form-label">답변 작성</label>
+                                                                <textarea 
+                                                                    name="answer" 
+                                                                    id="answer_{{ s.id }}" 
+                                                                    class="form-control" 
+                                                                    rows="3" 
+                                                                    placeholder="답변을 입력하세요"
+                                                                    required
+                                                                ></textarea>
+                                                            </div>
+                                                            <div class="mt-2">
+                                                                <button type="submit" class="btn btn-success btn-sm">
+                                                                    <i class="fas fa-reply"></i>
+                                                                    답변 등록
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="text-muted">
+                                                        <i class="fas fa-clock"></i>
+                                                        답변 대기 중
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">아직 건의사항이 없습니다.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    대시보드로 돌아가기
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.suggestion-content {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.answer-section {
+    border-left: 4px solid #28a745;
+}
+
+.answer-form {
+    background-color: #fff3cd;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #ffeaa7;
+}
+</style>
+{% endblock %} 

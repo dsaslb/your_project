@@ -159,4 +159,66 @@
         <i class="fas fa-download"></i> 엑셀 다운로드
     </a>
 </div>
+
+<!-- 페이지네이션 -->
+{% if pagination.pages > 1 %}
+<nav aria-label="페이지 네비게이션">
+    <ul class="pagination justify-content-center">
+        <!-- 이전 페이지 -->
+        {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('admin_attendance', page=pagination.prev_num, user_id=selected_user_id, start_date=start_date, end_date=end_date) }}">
+                    <i class="fas fa-chevron-left"></i> 이전
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link"><i class="fas fa-chevron-left"></i> 이전</span>
+            </li>
+        {% endif %}
+
+        <!-- 페이지 번호 -->
+        {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+            {% if page_num %}
+                {% if page_num != pagination.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin_attendance', page=page_num, user_id=selected_user_id, start_date=start_date, end_date=end_date) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        <!-- 다음 페이지 -->
+        {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('admin_attendance', page=pagination.next_num, user_id=selected_user_id, start_date=start_date, end_date=end_date) }}">
+                    다음 <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">다음 <i class="fas fa-chevron-right"></i></span>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+
+<!-- 페이지 정보 -->
+<div class="text-center text-muted">
+    <small>
+        {{ pagination.page }} / {{ pagination.pages }} 페이지 
+        (총 {{ pagination.total }}건 중 {{ (pagination.page - 1) * pagination.per_page + 1 }}-{{ pagination.page * pagination.per_page if pagination.page * pagination.per_page < pagination.total else pagination.total }}건 표시)
+    </small>
+</div>
+{% endif %}
 {% endblock %} 

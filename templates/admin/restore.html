@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}DB 복원 - 관리자{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-database"></i> DB 복원
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>주의사항:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>현재 데이터베이스가 백업 파일로 완전히 덮어씌워집니다.</li>
+                            <li>복원 전에 현재 DB를 백업하는 것을 권장합니다.</li>
+                            <li>복원 후에는 프로그램을 재시작해야 합니다.</li>
+                            <li>SQLite 데이터베이스 파일(.sqlite3)만 업로드 가능합니다.</li>
+                        </ul>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">백업 파일 선택</label>
+                            <input type="file" class="form-control" id="file" name="file" 
+                                   accept=".sqlite3" required>
+                            <div class="form-text">SQLite 데이터베이스 파일(.sqlite3)을 선택해주세요.</div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> 대시보드로
+                            </a>
+                            <button type="submit" class="btn btn-danger" 
+                                    onclick="return confirm('정말로 데이터베이스를 복원하시겠습니까? 현재 데이터가 모두 삭제됩니다.')">
+                                <i class="fas fa-upload"></i> 복원하기
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle"></i> 복원 절차 안내
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>백업 파일을 선택합니다.</li>
+                        <li>복원 버튼을 클릭합니다.</li>
+                        <li>복원 완료 후 프로그램을 재시작합니다.</li>
+                        <li>복원된 데이터를 확인합니다.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
