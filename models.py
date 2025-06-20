@@ -38,7 +38,9 @@ class User(db.Model, UserMixin):
     login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, index=True)
     failed_login = db.Column(db.Integer, default=0)    # 로그인 실패 횟수
-    is_locked = db.Column(db.Boolean, default=False)   # 계정 잠금 여부
+    
+    # is_locked는 프로퍼티로 관리하는 것이 더 효율적
+    # is_locked = db.Column(db.Boolean, default=False)   # 계정 잠금 여부
 
     def set_password(self, pw):
         if len(pw) < 8:
@@ -59,6 +61,7 @@ class User(db.Model, UserMixin):
     def is_employee(self):
         return self.role == "employee"
     
+    @property
     def is_locked(self):
         if self.locked_until and self.locked_until > datetime.utcnow():
             return True
@@ -251,11 +254,11 @@ class Notice(db.Model):
         db.Index('idx_notice_category_date', 'category', 'created_at'),
         db.Index('idx_notice_hidden_date', 'is_hidden', 'created_at'),
     )
-    
-    def __repr__(self):
-        return f'<Notice {self.title}>'
 
-# 공지사항 읽음 체크 모델
+    def __repr__(self):
+        return f'<Notice {self.id}: {self.title}>'
+
+# 공지사항 읽음 모델
 class NoticeRead(db.Model):
     __tablename__ = "notice_reads"
     id = db.Column(db.Integer, primary_key=True)
@@ -266,11 +269,10 @@ class NoticeRead(db.Model):
     # 복합 인덱스 추가
     __table_args__ = (
         db.Index('idx_noticeread_user_notice', 'user_id', 'notice_id'),
-        db.Index('idx_noticeread_notice_date', 'notice_id', 'read_at'),
     )
     
     def __repr__(self):
-        return f'<NoticeRead {self.notice_id} {self.user_id}>'
+        return f'<NoticeRead user:{self.user_id} notice:{self.notice_id}>'
 
 # 익명 건의함 모델
 class Suggestion(db.Model):
@@ -340,7 +342,7 @@ class NoticeHistory(db.Model):
     )
     
     def __repr__(self):
-        return f'<NoticeHistory {self.notice_id} {self.action}>'
+        return f'<NoticeHistory {self.id} for notice {self.notice_id}>'
 
 # 댓글 변경이력 모델
 class CommentHistory(db.Model):
@@ -365,7 +367,7 @@ class CommentHistory(db.Model):
     )
     
     def __repr__(self):
-        return f'<CommentHistory {self.comment_id} {self.action}>'
+        return f'<CommentHistory {self.id} for comment {self.comment_id}>'
 
 # 신고 모델
 class Report(db.Model):
@@ -396,11 +398,11 @@ class Report(db.Model):
     )
     
     def __repr__(self):
-        return f'<Report {self.target_type} {self.target_id}>'
+        return f'<Report {self.id} for {self.target_type}:{self.target_id}>'
 
-# 시스템 로그 모델
 class SystemLog(db.Model):
     """시스템 로그 모델"""
+    __tablename__ = 'system_log'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     action = db.Column(db.String(100), nullable=False)
@@ -411,6 +413,6 @@ class SystemLog(db.Model):
     
     # 관계 설정
     user = db.relationship('User', backref='system_logs')
-    
+
     def __repr__(self):
-        return f'<SystemLog {self.action} by {self.user_id}>'
+        return f'<SystemLog {self.id}: {self.action}>'

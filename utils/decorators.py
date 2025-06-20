@@ -1,7 +1,6 @@
 from functools import wraps
 from flask import abort, session, flash, redirect, url_for, request
 from flask_login import current_user
-from models import User
 import os
 import logging
 
