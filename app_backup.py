@@ -2,9 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta, date, time
-from sqlalchemy import func, extract
-from sqlalchemy.sql import text
+from datetime import datetime, timedelta
 import os
 import json
 import csv
@@ -13,7 +11,6 @@ from functools import wraps
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
-from flask_migrate import Migrate
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
@@ -22,72 +19,24 @@ import zipfile
 import shutil
 from flask_wtf.csrf import CSRFProtect
 import re
-from io import StringIO
-from markupsafe import escape as escape_html
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = 'your-secret-key-here'  # 실제 운영시에는 안전한 키로 변경
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///restaurant_dev.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-
-# 확장 기능 초기화
-db = SQLAlchemy()
-migrate = Migrate()
-cache = Cache()
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # CSRF 보호 설정
 csrf = CSRFProtect(app)
+
+# 임시로 CSRF 보호 비활성화 (개발 중)
+app.config['WTF_CSRF_ENABLED'] = False
 
 # 확장 기능 초기화
 db.init_app(app)
 migrate.init_app(app, db)
 cache.init_app(app)
-
-# 모델 import (순환 import 방지)
-from models import User, Attendance, Notice, NoticeComment, NoticeHistory, CommentHistory, Report, NoticeRead, ApproveLog, ShiftRequest, Notification, Suggestion, Feedback, ActionLog
-
-# 유틸리티 함수들 import
-try:
-    from utils.logger import setup_logger, log_error, log_action, log_action_consistency, log_security_event
-    from utils.attendance import check_account_lockout, increment_failed_attempts, reset_failed_attempts
-    from utils.notify import notify_approval_result, send_notification, notify_salary_payment
-    from utils.report import generate_attendance_report_pdf, generate_monthly_summary_pdf
-    from utils.pay_transfer import transfer_salary, validate_bank_account
-    from utils.payroll import generate_payroll_pdf
-    from utils.dashboard import get_user_monthly_trend
-    from utils.security import owner_or_admin
-    from utils.file_utils import save_uploaded_file, safe_remove, MAX_PREVIEW_SIZE
-except ImportError:
-    # 유틸리티 함수들이 없으면 더미 함수로 대체
-    def setup_logger(app): return None
-    def log_error(e): print(f"Error: {e}")
-    def log_action(user_id, action, message=""): pass
-    def log_action_consistency(user_id, action, message=""): pass
-    def log_security_event(user_id, action, message=""): pass
-    def check_account_lockout(user): return False, ""
-    def increment_failed_attempts(user): pass
-    def reset_failed_attempts(user): pass
-    def notify_approval_result(user_id, result): pass
-    def send_notification(user_id, message): pass
-    def generate_attendance_report_pdf(user_id): return None
-    def generate_monthly_summary_pdf(): return None
-    def transfer_salary(user_id, amount): return True
-    def validate_bank_account(account): return True
-    def generate_payroll_pdf(user_id): return None
-    def get_user_monthly_trend(user_id): return []
-    def owner_or_admin(getter_func): 
-        def decorator(f):
-            return f
-        return decorator
-    def save_uploaded_file(file): return ""
-    def safe_remove(path): pass
-    MAX_PREVIEW_SIZE = 1024 * 1024
+limiter.init_app(app)
 
 # 보안 헤더 미들웨어
 @app.after_request
@@ -2461,6 +2410,54 @@ def admin_notice_history(notice_id):
         log_error(e, current_user.id)
         flash('공지사항 이력 조회 중 오류가 발생했습니다.', 'error')
         return redirect(url_for('admin_dashboard'))
+
+
+        
+        # 변경이력 저장
+        save_notice_history(notice, current_user.id, 'hide')
+        
+        notice.is_hidden = True
+        db.session.commit()
+        
+        log_action_consistency(current_user.id, 'NOTICE_HIDDEN', 
+                             f'Hidden notice: {notice.title}', 
+                             request.remote_addr)
+        flash("공지사항이 숨김 처리되었습니다.", 'success')
+        return redirect(url_for('notices'))
+        
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('공지사항 숨김 처리 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('notice_view', notice_id=notice_id))
+
+@app.route('/notice/unhide/<int:notice_id>', methods=['POST'])
+@login_required
+@admin_required
+def notice_unhide(notice_id):
+    """공지사항 숨김 해제"""
+    try:
+        notice = Notice.query.get_or_404(notice_id)
+        
+        if not notice.is_hidden:
+            flash("숨김 처리되지 않은 공지사항입니다.", 'warning')
+            return redirect(url_for('notice_view', notice_id=notice_id))
+        
+        # 변경이력 저장
+        save_notice_history(notice, current_user.id, 'unhide')
+        
+        notice.is_hidden = False
+        db.session.commit()
+        
+        log_action_consistency(current_user.id, 'NOTICE_UNHIDDEN', 
+                             f'Unhidden notice: {notice.title}', 
+                             request.remote_addr)
+        flash("숨김 해제 완료", 'success')
+        return redirect(url_for('admin_hidden_notices'))
+        
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('공지사항 숨김 해제 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('notice_view', notice_id=notice_id))
 
 @app.route('/admin/hidden_notices')
 @login_required

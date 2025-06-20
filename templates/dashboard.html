@@ -1,37 +1,215 @@
-<!DOCTYPE html>
-<html>
-<head><title>대시보드</title></head>
-<body>
-    <h2>환영합니다, {{ user.username }}!</h2>
-    <p>상태: {{ user.status }}</p>
-    <p>이름: {{ user.name or '미설정' }}</p>
-    <p>연락처: {{ user.phone or '미설정' }}</p>
-    
-    {% if user.status == 'approved' %}
-        <form action="{{ url_for('clock_in') }}" method="get" style="display:inline;">
-            <button type="submit">출근</button>
-        </form>
-        <form action="{{ url_for('clock_out') }}" method="get" style="display:inline;">
-            <button type="submit">퇴근</button>
-        </form>
-        <a href="{{ url_for('attendance') }}">내 출퇴근 기록</a><br>
-    {% endif %}
+{% extends "base.html" %}
 
-    <h3>개인 관리</h3>
-    <a href="{{ url_for('change_password') }}">비밀번호 변경</a><br>
-    <a href="{{ url_for('profile') }}">회원정보 수정</a><br>
-    <a href="{{ url_for('notices') }}">공지사항</a><br>
-    <a href="{{ url_for('faq') }}">AI FAQ/가이드</a><br>
-    <a href="{{ url_for('suggestion') }}">익명 건의함</a><br>
-    <a href="{{ url_for('shift_request') }}">근무 변경 신청</a><br>
-    <a href="{{ url_for('calendar') }}">내 근무 캘린더</a><br>
-    <a href="{{ url_for('logout') }}">로그아웃</a>
-    
-    {% if user.role == 'admin' %}
-      <h3>관리자 기능</h3>
-      <a href="{{ url_for('approve_users') }}">가입 승인/거절 관리</a><br>
-      <a href="{{ url_for('approve_logs') }}">승인/거절 로그</a><br>
-      <a href="{{ url_for('admin_dashboard') }}">관리자 대시보드</a>
+{% block title %}대시보드{% endblock %}
+
+{% block content %}
+<div class="min-vh-100" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);">
+  <!-- 헤더 -->
+  <header class="bg-white bg-opacity-80 shadow-lg">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center py-3">
+        <div class="d-flex align-items-center">
+          <div class="p-2 rounded-3 shadow-lg me-3" style="background: linear-gradient(90deg, #fd7e14, #dc3545);">
+            <i class="fas fa-utensils text-white fs-4"></i>
+          </div>
+          <div>
+            <h1 class="fw-bold fs-3 mb-0">맛집관리</h1>
+            <p class="text-muted small mb-0">Restaurant Management</p>
+          </div>
+        </div>
+        <div class="d-flex align-items-center">
+          <span class="text-muted">{{ current_user.username }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container py-4">
+    <!-- 통계 카드 -->
+    <div class="row g-4 mb-5">
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-xl h-100" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <h6 class="card-title text-muted mb-0">총 직원 수</h6>
+              <div class="p-2 rounded-3 shadow-lg" style="background: linear-gradient(90deg, #3b82f6, #06b6d4);">
+                <i class="fas fa-users text-white"></i>
+              </div>
+            </div>
+            <div class="fs-1 fw-bold text-dark">24명</div>
+            <p class="text-muted small mb-0">
+              <i class="fas fa-arrow-up text-success me-1"></i>지난달 대비 +2명
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-xl h-100" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <h6 class="card-title text-muted mb-0">현재 근무 중</h6>
+              <div class="p-2 rounded-3 shadow-lg" style="background: linear-gradient(90deg, #10b981, #14b8a6);">
+                <i class="fas fa-clock text-white"></i>
+              </div>
+            </div>
+            <div class="fs-1 fw-bold text-dark">8명</div>
+            <p class="text-muted small mb-0">현재 근무 중인 직원</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-xl h-100" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <h6 class="card-title text-muted mb-0">월 매출</h6>
+              <div class="p-2 rounded-3 shadow-lg" style="background: linear-gradient(90deg, #f59e0b, #ea580c);">
+                <i class="fas fa-dollar-sign text-white"></i>
+              </div>
+            </div>
+            <div class="fs-1 fw-bold text-dark">5,420만원</div>
+            <p class="text-muted small mb-0">
+              <i class="fas fa-arrow-up text-success me-1"></i>지난달 대비 +12%
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-xl h-100" style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <h6 class="card-title text-muted mb-0">고객 만족도</h6>
+              <div class="p-2 rounded-3 shadow-lg" style="background: linear-gradient(90deg, #8b5cf6, #ec4899);">
+                <i class="fas fa-star text-white"></i>
+              </div>
+            </div>
+            <div class="fs-1 fw-bold text-dark">4.8/5</div>
+            <p class="text-muted small mb-0">
+              <i class="fas fa-arrow-up text-success me-1"></i>지난달 대비 +0.2
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 빠른 작업 -->
+    <div class="card border-0 shadow-xl mb-5" style="background: rgba(255, 255, 255, 0.6);">
+      <div class="card-header border-0 text-white rounded-top" style="background: linear-gradient(90deg, #6366f1, #8b5cf6);">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-magic me-2"></i>
+          <h5 class="card-title mb-0">빠른 작업</h5>
+        </div>
+        <p class="card-text mb-0 opacity-75">자주 사용하는 기능들</p>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-4">
+          <div class="col-md-4">
+            <a href="{{ url_for('register') }}" class="btn w-100 h-100 p-4 d-flex flex-column align-items-center justify-content-center border-0 shadow-lg text-decoration-none" 
+               style="background: linear-gradient(90deg, #8b5cf6, #7c3aed); color: white; min-height: 120px;">
+              <i class="fas fa-user-plus fs-2 mb-3"></i>
+              <div class="text-center">
+                <div class="fw-semibold">직원 추가</div>
+                <div class="small opacity-75">새로운 직원을 등록하세요</div>
+              </div>
+            </a>
+          </div>
+          <div class="col-md-4">
+            <a href="{{ url_for('calendar') }}" class="btn w-100 h-100 p-4 d-flex flex-column align-items-center justify-content-center border-0 shadow-lg text-decoration-none" 
+               style="background: linear-gradient(90deg, #3b82f6, #1d4ed8); color: white; min-height: 120px;">
+              <i class="fas fa-calendar fs-2 mb-3"></i>
+              <div class="text-center">
+                <div class="fw-semibold">일정 작성</div>
+                <div class="small opacity-75">근무 일정을 생성하세요</div>
+              </div>
+            </a>
+          </div>
+          <div class="col-md-4">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn w-100 h-100 p-4 d-flex flex-column align-items-center justify-content-center border-0 shadow-lg text-decoration-none" 
+               style="background: linear-gradient(90deg, #10b981, #059669); color: white; min-height: 120px;">
+              <i class="fas fa-chart-bar fs-2 mb-3"></i>
+              <div class="text-center">
+                <div class="fw-semibold">보고서 보기</div>
+                <div class="small opacity-75">성과 리포트를 확인하세요</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 메뉴 -->
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="card-title mb-0">
+              <i class="fas fa-cog me-2"></i>개인 관리
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="d-grid gap-2">
+              <a href="{{ url_for('profile') }}" class="btn btn-outline-primary">
+                <i class="fas fa-user-edit me-2"></i>회원정보 수정
+              </a>
+              <a href="{{ url_for('attendance') }}" class="btn btn-outline-primary">
+                <i class="fas fa-calendar-check me-2"></i>출퇴근 기록
+              </a>
+              <a href="{{ url_for('notices') }}" class="btn btn-outline-primary">
+                <i class="fas fa-bullhorn me-2"></i>공지사항
+              </a>
+              <a href="{{ url_for('faq') }}" class="btn btn-outline-primary">
+                <i class="fas fa-question-circle me-2"></i>FAQ
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if current_user.role == 'admin' %}
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="card-title mb-0">
+              <i class="fas fa-shield-alt me-2"></i>관리자 기능
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="d-grid gap-2">
+              <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-warning">
+                <i class="fas fa-tachometer-alt me-2"></i>관리자 대시보드
+              </a>
+              <a href="{{ url_for('approve_users') }}" class="btn btn-outline-warning">
+                <i class="fas fa-user-check me-2"></i>사용자 승인
+              </a>
+              <a href="{{ url_for('admin_attendance') }}" class="btn btn-outline-warning">
+                <i class="fas fa-users me-2"></i>직원 관리
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
     {% endif %}
-</body>
-</html> 
+    </div>
+  </div>
+</div>
+
+<style>
+.card {
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.btn {
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: scale(1.05);
+}
+</style>
+{% endblock %} 

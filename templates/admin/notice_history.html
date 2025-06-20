@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}공지사항 변경이력{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">공지 변경 이력 - {{ notice.title }}</h4>
+                    <div>
+                        <a href="{{ url_for('notice_view', notice_id=notice.id) }}" class="btn btn-primary">공지사항 보기</a>
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">돌아가기</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if history %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>작업시각</th>
+                                    <th>작업자</th>
+                                    <th>액션</th>
+                                    <th>제목</th>
+                                    <th>본문</th>
+                                    <th>파일</th>
+                                    <th>복원</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in history %}
+                                <tr>
+                                    <td>{{ h.edited_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ h.editor.name or h.editor.username }}</td>
+                                    <td>
+                                        {% if h.action == 'create' %}
+                                            <span class="badge bg-success">생성</span>
+                                        {% elif h.action == 'edit' %}
+                                            <span class="badge bg-primary">수정</span>
+                                        {% elif h.action == 'delete' %}
+                                            <span class="badge bg-danger">삭제</span>
+                                        {% elif h.action == 'hide' %}
+                                            <span class="badge bg-warning">숨김</span>
+                                        {% elif h.action == 'unhide' %}
+                                            <span class="badge bg-info">숨김해제</span>
+                                        {% elif h.action == 'restore' %}
+                                            <span class="badge bg-secondary">복원</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ h.before_title or '-' }}</td>
+                                    <td>
+                                        <pre class="mb-0" style="max-height: 100px; overflow-y: auto; font-size: 0.8em;">{{ h.before_content|truncate(50) or '-' }}</pre>
+                                    </td>
+                                    <td>{{ h.before_file_path or '-' }}</td>
+                                    <td>
+                                        {% if h.action == 'edit' %}
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="history_id" value="{{ h.id }}">
+                                            <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('이 버전으로 복원하시겠습니까?')">
+                                                복원
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">변경이력이 없습니다.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

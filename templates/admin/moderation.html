@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}신고/숨김/히스토리 통합 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">신고/숨김/히스토리 통합 관리</h4>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">돌아가기</a>
+                </div>
+                <div class="card-body">
+                    <!-- 통계 카드 -->
+                    <div class="row mb-4">
+                        <div class="col-md-2">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h5>{{ stats.total_reports }}</h5>
+                                    <small>총 신고</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h5>{{ stats.pending_reports }}</h5>
+                                    <small>대기 신고</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h5>{{ stats.hidden_notices }}</h5>
+                                    <small>숨김 공지</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-secondary text-white">
+                                <div class="card-body text-center">
+                                    <h5>{{ stats.hidden_comments }}</h5>
+                                    <small>숨김 댓글</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h5>{{ stats.today_reports }}</h5>
+                                    <small>오늘 신고</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 신고 내역 -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">신고 내역</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if reports %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>대상</th>
+                                            <th>유형</th>
+                                            <th>사유</th>
+                                            <th>신고자</th>
+                                            <th>일시</th>
+                                            <th>상태</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for r in reports %}
+                                        <tr>
+                                            <td>
+                                                {% if r.target_type == 'notice' %}
+                                                    공지사항 #{{ r.target_id }}
+                                                {% else %}
+                                                    댓글 #{{ r.target_id }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ r.category or '기타' }}</span>
+                                            </td>
+                                            <td>
+                                                <strong>{{ r.reason }}</strong>
+                                                {% if r.detail %}
+                                                <br><small class="text-muted">{{ r.detail[:50] }}{% if r.detail|length > 50 %}...{% endif %}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ r.reporter.name or r.reporter.username }}</td>
+                                            <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            <td>
+                                                {% if r.status == 'pending' %}
+                                                    <span class="badge bg-warning">대기중</span>
+                                                {% elif r.status == 'resolved' %}
+                                                    <span class="badge bg-success">해결됨</span>
+                                                {% elif r.status == 'dismissed' %}
+                                                    <span class="badge bg-secondary">기각됨</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted text-center">신고 내역이 없습니다.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 숨김 공지 -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">숨김 공지</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if hidden_notices %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>제목</th>
+                                            <th>작성자</th>
+                                            <th>일시</th>
+                                            <th>히스토리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for n in hidden_notices %}
+                                        <tr>
+                                            <td>{{ n.title }}</td>
+                                            <td>{{ n.author.name or n.author.username }}</td>
+                                            <td>{{ n.updated_at.strftime('%Y-%m-%d %H:%M') if n.updated_at else n.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            <td>
+                                                <a href="{{ url_for('admin_notice_history', notice_id=n.id) }}" class="btn btn-sm btn-info">
+                                                    변경이력
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted text-center">숨김 처리된 공지사항이 없습니다.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 최근 변경이력 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">최근 변경이력</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_history %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>일시</th>
+                                            <th>공지사항</th>
+                                            <th>작업자</th>
+                                            <th>작업</th>
+                                            <th>IP</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for h in recent_history %}
+                                        <tr>
+                                            <td>{{ h.edited_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            <td>
+                                                <a href="{{ url_for('notice_view', notice_id=h.notice_id) }}">
+                                                    {{ h.notice.title }}
+                                                </a>
+                                            </td>
+                                            <td>{{ h.editor.name or h.editor.username }}</td>
+                                            <td>
+                                                {% if h.action == 'create' %}
+                                                    <span class="badge bg-success">생성</span>
+                                                {% elif h.action == 'edit' %}
+                                                    <span class="badge bg-primary">수정</span>
+                                                {% elif h.action == 'delete' %}
+                                                    <span class="badge bg-danger">삭제</span>
+                                                {% elif h.action == 'hide' %}
+                                                    <span class="badge bg-warning">숨김</span>
+                                                {% elif h.action == 'unhide' %}
+                                                    <span class="badge bg-info">숨김해제</span>
+                                                {% elif h.action == 'restore' %}
+                                                    <span class="badge bg-secondary">복원</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ h.ip_address }}</small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted text-center">최근 변경이력이 없습니다.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

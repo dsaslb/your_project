@@ -13,7 +13,6 @@ from functools import wraps
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
-from flask_migrate import Migrate
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
@@ -26,14 +25,14 @@ from io import StringIO
 from markupsafe import escape as escape_html
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = 'your-secret-key-here'  # 실제 운영시에는 안전한 키로 변경
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///restaurant_dev.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # 확장 기능 초기화
 db = SQLAlchemy()
-migrate = Migrate()
+migrate = None  # Flask-Migrate는 나중에 필요시 추가
 cache = Cache()
 limiter = Limiter(
     app=app,
@@ -44,9 +43,11 @@ limiter = Limiter(
 # CSRF 보호 설정
 csrf = CSRFProtect(app)
 
+# 임시로 CSRF 보호 비활성화 (개발 중)
+app.config['WTF_CSRF_ENABLED'] = False
+
 # 확장 기능 초기화
 db.init_app(app)
-migrate.init_app(app, db)
 cache.init_app(app)
 
 # 모델 import (순환 import 방지)
@@ -56,7 +57,7 @@ from models import User, Attendance, Notice, NoticeComment, NoticeHistory, Comme
 try:
     from utils.logger import setup_logger, log_error, log_action, log_action_consistency, log_security_event
     from utils.attendance import check_account_lockout, increment_failed_attempts, reset_failed_attempts
-    from utils.notify import notify_approval_result, send_notification, notify_salary_payment
+    from utils.notify import notify_approval_result, send_notification
     from utils.report import generate_attendance_report_pdf, generate_monthly_summary_pdf
     from utils.pay_transfer import transfer_salary, validate_bank_account
     from utils.payroll import generate_payroll_pdf
@@ -2461,6 +2462,54 @@ def admin_notice_history(notice_id):
         log_error(e, current_user.id)
         flash('공지사항 이력 조회 중 오류가 발생했습니다.', 'error')
         return redirect(url_for('admin_dashboard'))
+
+
+        
+        # 변경이력 저장
+        save_notice_history(notice, current_user.id, 'hide')
+        
+        notice.is_hidden = True
+        db.session.commit()
+        
+        log_action_consistency(current_user.id, 'NOTICE_HIDDEN', 
+                             f'Hidden notice: {notice.title}', 
+                             request.remote_addr)
+        flash("공지사항이 숨김 처리되었습니다.", 'success')
+        return redirect(url_for('notices'))
+        
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('공지사항 숨김 처리 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('notice_view', notice_id=notice_id))
+
+@app.route('/notice/unhide/<int:notice_id>', methods=['POST'])
+@login_required
+@admin_required
+def notice_unhide(notice_id):
+    """공지사항 숨김 해제"""
+    try:
+        notice = Notice.query.get_or_404(notice_id)
+        
+        if not notice.is_hidden:
+            flash("숨김 처리되지 않은 공지사항입니다.", 'warning')
+            return redirect(url_for('notice_view', notice_id=notice_id))
+        
+        # 변경이력 저장
+        save_notice_history(notice, current_user.id, 'unhide')
+        
+        notice.is_hidden = False
+        db.session.commit()
+        
+        log_action_consistency(current_user.id, 'NOTICE_UNHIDDEN', 
+                             f'Unhidden notice: {notice.title}', 
+                             request.remote_addr)
+        flash("숨김 해제 완료", 'success')
+        return redirect(url_for('admin_hidden_notices'))
+        
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('공지사항 숨김 해제 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('notice_view', notice_id=notice_id))
 
 @app.route('/admin/hidden_notices')
 @login_required

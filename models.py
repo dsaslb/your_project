@@ -37,6 +37,8 @@ class User(db.Model, UserMixin):
     last_login = db.Column(db.DateTime, index=True)
     login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, index=True)
+    failed_login = db.Column(db.Integer, default=0)    # 로그인 실패 횟수
+    is_locked = db.Column(db.Boolean, default=False)   # 계정 잠금 여부
 
     def set_password(self, pw):
         if len(pw) < 8:
@@ -236,6 +238,7 @@ class Notice(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     category = db.Column(db.String(30), index=True)  # 공지사항, 자료실 등
+    is_hidden = db.Column(db.Boolean, default=False, index=True)  # 숨김 처리 여부
     
     # 관계 설정
     author = db.relationship("User", backref="notices")
@@ -244,12 +247,11 @@ class Notice(db.Model):
     
     # 검색 최적화를 위한 인덱스 추가
     __table_args__ = (
-        db.Index('idx_notice_title', 'title'),
-        db.Index('idx_notice_content', 'content'),
-        db.Index('idx_notice_category', 'category'),
         db.Index('idx_notice_author_date', 'author_id', 'created_at'),
+        db.Index('idx_notice_category_date', 'category', 'created_at'),
+        db.Index('idx_notice_hidden_date', 'is_hidden', 'created_at'),
     )
-
+    
     def __repr__(self):
         return f'<Notice {self.title}>'
 
@@ -297,12 +299,104 @@ class NoticeComment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    is_hidden = db.Column(db.Boolean, default=False, index=True)  # 숨김 처리 여부
     
     # 관계 설정
     user = db.relationship("User", backref="notice_comments")
     
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_comment_notice_date', 'notice_id', 'created_at'),
+        db.Index('idx_comment_user_date', 'user_id', 'created_at'),
+        db.Index('idx_comment_hidden_date', 'is_hidden', 'created_at'),
+    )
+    
     def __repr__(self):
         return f'<NoticeComment {self.id}>'
+
+# 공지사항 변경이력 모델
+class NoticeHistory(db.Model):
+    __tablename__ = "notice_histories"
+    id = db.Column(db.Integer, primary_key=True)
+    notice_id = db.Column(db.Integer, db.ForeignKey('notices.id'), nullable=False, index=True)
+    editor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    before_title = db.Column(db.String(100))
+    before_content = db.Column(db.Text)
+    before_file_path = db.Column(db.String(255))
+    before_file_type = db.Column(db.String(20))
+    edited_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    action = db.Column(db.String(10), index=True)  # 'edit'/'delete'/'hide'/'unhide'
+    ip_address = db.Column(db.String(45))
+    
+    # 관계 설정
+    editor = db.relationship("User", backref="notice_histories")
+    notice = db.relationship("Notice", backref="histories")
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_history_notice_date', 'notice_id', 'edited_at'),
+        db.Index('idx_history_editor_date', 'editor_id', 'edited_at'),
+        db.Index('idx_history_action_date', 'action', 'edited_at'),
+    )
+    
+    def __repr__(self):
+        return f'<NoticeHistory {self.notice_id} {self.action}>'
+
+# 댓글 변경이력 모델
+class CommentHistory(db.Model):
+    __tablename__ = "comment_histories"
+    id = db.Column(db.Integer, primary_key=True)
+    comment_id = db.Column(db.Integer, db.ForeignKey('notice_comments.id'), nullable=False, index=True)
+    editor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    before_content = db.Column(db.Text)
+    edited_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    action = db.Column(db.String(10), index=True)  # 'edit'/'delete'/'hide'/'unhide'
+    ip_address = db.Column(db.String(45))
+    
+    # 관계 설정
+    editor = db.relationship("User", backref="comment_histories")
+    comment = db.relationship("NoticeComment", backref="histories")
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_comment_history_comment_date', 'comment_id', 'edited_at'),
+        db.Index('idx_comment_history_editor_date', 'editor_id', 'edited_at'),
+        db.Index('idx_comment_history_action_date', 'action', 'edited_at'),
+    )
+    
+    def __repr__(self):
+        return f'<CommentHistory {self.comment_id} {self.action}>'
+
+# 신고 모델
+class Report(db.Model):
+    __tablename__ = "reports"
+    id = db.Column(db.Integer, primary_key=True)
+    target_type = db.Column(db.String(10), nullable=False, index=True)  # 'notice'/'comment'
+    target_id = db.Column(db.Integer, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    reason = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(20), index=True)  # '욕설/비방', '음란', '홍보', '기타'
+    detail = db.Column(db.Text)  # 상세 사유
+    status = db.Column(db.String(20), default='pending', index=True)  # 'pending'/'reviewed'/'resolved'
+    admin_comment = db.Column(db.Text)  # 관리자 처리 코멘트
+    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    reviewed_at = db.Column(db.DateTime, index=True)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    
+    # 관계 설정
+    reporter = db.relationship("User", foreign_keys=[user_id], backref="reports")
+    reviewer = db.relationship("User", foreign_keys=[reviewed_by], backref="reviewed_reports")
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_report_target', 'target_type', 'target_id'),
+        db.Index('idx_report_user_date', 'user_id', 'created_at'),
+        db.Index('idx_report_status_date', 'status', 'created_at'),
+        db.Index('idx_report_category', 'category'),
+    )
+    
+    def __repr__(self):
+        return f'<Report {self.target_type} {self.target_id}>'
 
 # 시스템 로그 모델
 class SystemLog(db.Model):

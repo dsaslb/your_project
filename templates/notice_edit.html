@@ -4,69 +4,50 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="mb-0">
-                        <i class="fas fa-edit text-primary"></i>
-                        공지사항 수정
-                    </h3>
+                    <h4 class="mb-0">공지사항 수정</h4>
                 </div>
                 <div class="card-body">
-                    <form method="post">
-                        <div class="form-group mb-3">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
                             <label for="title" class="form-label">제목</label>
-                            <input type="text" 
-                                   name="title" 
-                                   id="title" 
-                                   class="form-control" 
-                                   value="{{ notice.title }}" 
-                                   required>
+                            <input type="text" class="form-control" id="title" name="title" value="{{ notice.title }}" required>
                         </div>
                         
-                        <div class="form-group mb-3">
+                        <div class="mb-3">
                             <label for="category" class="form-label">카테고리</label>
-                            <select name="category" id="category" class="form-control">
+                            <select class="form-select" id="category" name="category">
                                 <option value="">카테고리 선택</option>
                                 <option value="공지사항" {% if notice.category == '공지사항' %}selected{% endif %}>공지사항</option>
                                 <option value="자료실" {% if notice.category == '자료실' %}selected{% endif %}>자료실</option>
-                                <option value="안내" {% if notice.category == '안내' %}selected{% endif %}>안내</option>
-                                <option value="이벤트" {% if notice.category == '이벤트' %}selected{% endif %}>이벤트</option>
+                                <option value="행사안내" {% if notice.category == '행사안내' %}selected{% endif %}>행사안내</option>
+                                <option value="기타" {% if notice.category == '기타' %}selected{% endif %}>기타</option>
                             </select>
                         </div>
                         
-                        <div class="form-group mb-3">
+                        <div class="mb-3">
                             <label for="content" class="form-label">내용</label>
-                            <textarea name="content" 
-                                      id="content" 
-                                      class="form-control" 
-                                      rows="10" 
-                                      required>{{ notice.content }}</textarea>
+                            <textarea class="form-control" id="content" name="content" rows="10" required>{{ notice.content }}</textarea>
                         </div>
                         
-                        <div class="form-group mb-3">
-                            <label class="form-label">현재 첨부파일</label>
+                        <div class="mb-3">
+                            <label for="file" class="form-label">첨부파일</label>
                             {% if notice.file_path %}
-                                <div class="current-file">
-                                    <i class="fas fa-paperclip"></i>
-                                    {{ notice.file_path.split('/')[-1] }}
-                                    <small class="text-muted">(파일 수정은 불가능합니다)</small>
+                            <div class="alert alert-info">
+                                <strong>현재 첨부파일:</strong> {{ notice.file_path.split('/')[-1] }}
+                                <br><small>새 파일을 선택하면 기존 파일이 교체됩니다.</small>
                                 </div>
-                            {% else %}
-                                <div class="text-muted">첨부파일 없음</div>
                             {% endif %}
+                            <input type="file" class="form-control" id="file" name="file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif">
+                            <div class="form-text">PDF, Word, 텍스트, 이미지 파일만 업로드 가능 (최대 10MB)</div>
                         </div>
                         
                         <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('notice_view', notice_id=notice.id) }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left"></i>
-                                취소
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i>
-                                수정 완료
-                            </button>
+                            <a href="{{ url_for('notice_view', notice_id=notice.id) }}" class="btn btn-secondary">취소</a>
+                            <button type="submit" class="btn btn-primary" onclick="return confirm('정말 수정하시겠습니까?')">수정하기</button>
                         </div>
                     </form>
                 </div>
@@ -75,12 +56,17 @@
     </div>
 </div>
 
-<style>
-.current-file {
-    background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
-}
-</style>
+<script>
+// 파일 크기 검증
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            alert('파일 크기가 10MB를 초과합니다.');
+            e.target.value = '';
+        }
+    }
+});
+</script>
 {% endblock %} 

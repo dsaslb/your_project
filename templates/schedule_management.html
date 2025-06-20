@@ -1,0 +1,185 @@
+<!-- 근무일정 탭 내용 -->
+<div class="space-y-6">
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold fs-3 mb-1">근무 일정</h2>
+      <p class="text-muted mb-0">직원들의 근무 일정을 관리하고 조정하세요</p>
+    </div>
+    <a href="{{ url_for('calendar') }}" class="btn btn-primary d-flex align-items-center" style="background: linear-gradient(90deg, #10b981, #059669);">
+      <i class="fas fa-plus me-2"></i>일정 추가
+    </a>
+  </div>
+
+  <!-- 일정 통계 -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-xl h-100" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">
+        <div class="card-body text-center">
+          <div class="p-3 rounded-circle d-inline-block mb-3" style="background: linear-gradient(90deg, #3b82f6, #1d4ed8);">
+            <i class="fas fa-calendar-check text-white fs-4"></i>
+          </div>
+          <h4 class="fw-bold mb-1">24</h4>
+          <p class="text-muted mb-0">총 일정</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-xl h-100" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+        <div class="card-body text-center">
+          <div class="p-3 rounded-circle d-inline-block mb-3" style="background: linear-gradient(90deg, #10b981, #059669);">
+            <i class="fas fa-clock text-white fs-4"></i>
+          </div>
+          <h4 class="fw-bold mb-1">8</h4>
+          <p class="text-muted mb-0">오늘 근무</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-xl h-100" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+        <div class="card-body text-center">
+          <div class="p-3 rounded-circle d-inline-block mb-3" style="background: linear-gradient(90deg, #f59e0b, #d97706);">
+            <i class="fas fa-user-clock text-white fs-4"></i>
+          </div>
+          <h4 class="fw-bold mb-1">12</h4>
+          <p class="text-muted mb-0">대기 중</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-xl h-100" style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);">
+        <div class="card-body text-center">
+          <div class="p-3 rounded-circle d-inline-block mb-3" style="background: linear-gradient(90deg, #8b5cf6, #7c3aed);">
+            <i class="fas fa-calendar-times text-white fs-4"></i>
+          </div>
+          <h4 class="fw-bold mb-1">4</h4>
+          <p class="text-muted mb-0">취소됨</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 일정 캘린더 -->
+  <div class="card border-0 shadow-xl" style="background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);">
+    <div class="card-header border-0 text-white rounded-top" style="background: linear-gradient(90deg, #3b82f6, #1d4ed8);">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-calendar-alt me-2"></i>
+          <h5 class="card-title mb-0">이번 주 일정</h5>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-light">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-light">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-4">
+      <div class="table-responsive">
+        <table class="table table-bordered mb-0">
+          <thead>
+            <tr>
+              <th class="text-center" style="width: 14.28%;">월</th>
+              <th class="text-center" style="width: 14.28%;">화</th>
+              <th class="text-center" style="width: 14.28%;">수</th>
+              <th class="text-center" style="width: 14.28%;">목</th>
+              <th class="text-center" style="width: 14.28%;">금</th>
+              <th class="text-center" style="width: 14.28%;">토</th>
+              <th class="text-center" style="width: 14.28%;">일</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-center p-2" style="height: 120px; vertical-align: top;">
+                <div class="small text-muted mb-1">15</div>
+                <div class="badge bg-primary mb-1">김민수</div>
+                <div class="badge bg-success">09:00-18:00</div>
+              </td>
+              <td class="text-center p-2" style="height: 120px; vertical-align: top;">
+                <div class="small text-muted mb-1">16</div>
+                <div class="badge bg-primary mb-1">이지영</div>
+                <div class="badge bg-success">10:00-19:00</div>
+              </td>
+              <td class="text-center p-2" style="height: 120px; vertical-align: top;">
+                <div class="small text-muted mb-1">17</div>
+                <div class="badge bg-warning">박준호</div>
+                <div class="badge bg-info">08:00-17:00</div>
+              </td>
+              <td class="text-center p-2" style="height: 120px; vertical-align: top;">
+                <div class="small text-muted mb-1">18</div>
+                <div class="badge bg-primary mb-1">김민수</div>
+                <div class="badge bg-success">09:00-18:00</div>
+              </td>
+              <td class="text-center p-2" style="height: 120px; vertical-align: top;">
+                <div class="small text-muted mb-1">19</div>
+                <div class="badge bg-primary mb-1">이지영</div>
+                <div class="badge bg-success">10:00-19:00</div>
+              </td>
+              <td class="text-center p-2" style="height: 120px; vertical-align: top;">
+                <div class="small text-muted mb-1">20</div>
+                <div class="badge bg-secondary">휴무</div>
+              </td>
+              <td class="text-center p-2" style="height: 120px; vertical-align: top;">
+                <div class="small text-muted mb-1">21</div>
+                <div class="badge bg-secondary">휴무</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 최근 일정 -->
+  <div class="card border-0 shadow-xl" style="background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);">
+    <div class="card-header border-0 text-white rounded-top" style="background: linear-gradient(90deg, #10b981, #14b8a6);">
+      <div class="d-flex align-items-center">
+        <i class="fas fa-list me-2"></i>
+        <h5 class="card-title mb-0">최근 일정</h5>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="list-group list-group-flush">
+        <div class="list-group-item border-0 d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <div class="p-2 rounded-3 shadow-lg me-3" style="background: linear-gradient(90deg, #3b82f6, #1d4ed8);">
+              <i class="fas fa-calendar text-white"></i>
+            </div>
+            <div>
+              <p class="fw-medium mb-1">김민수 - 주방 근무</p>
+              <p class="text-muted small mb-0">2024년 1월 15일 09:00 - 18:00</p>
+            </div>
+          </div>
+          <span class="badge bg-success">완료</span>
+        </div>
+        <div class="list-group-item border-0 d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <div class="p-2 rounded-3 shadow-lg me-3" style="background: linear-gradient(90deg, #10b981, #059669);">
+              <i class="fas fa-calendar text-white"></i>
+            </div>
+            <div>
+              <p class="fw-medium mb-1">이지영 - 서빙 근무</p>
+              <p class="text-muted small mb-0">2024년 1월 16일 10:00 - 19:00</p>
+            </div>
+          </div>
+          <span class="badge bg-warning">진행 중</span>
+        </div>
+        <div class="list-group-item border-0 d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <div class="p-2 rounded-3 shadow-lg me-3" style="background: linear-gradient(90deg, #f59e0b, #d97706);">
+              <i class="fas fa-calendar text-white"></i>
+            </div>
+            <div>
+              <p class="fw-medium mb-1">박준호 - 매니저 근무</p>
+              <p class="text-muted small mb-0">2024년 1월 17일 08:00 - 17:00</p>
+            </div>
+          </div>
+          <span class="badge bg-info">예정</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

@@ -1,0 +1,208 @@
+<!-- 직원관리 탭 내용 -->
+<div class="space-y-6">
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold fs-3 mb-1">직원 관리</h2>
+      <p class="text-muted mb-0">직원 정보를 관리하고 근무 일정을 조정하세요</p>
+    </div>
+    <a href="{{ url_for('register') }}" class="btn btn-primary d-flex align-items-center" style="background: linear-gradient(90deg, #3b82f6, #1d4ed8);">
+      <i class="fas fa-plus me-2"></i>직원 추가
+    </a>
+  </div>
+
+  <!-- 검색 및 필터 -->
+  <div class="card border-0 shadow-xl" style="background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);">
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0">
+              <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" class="form-control border-start-0" placeholder="직원 이름 검색...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <select class="form-select">
+            <option>모든 부서</option>
+            <option>주방</option>
+            <option>서빙</option>
+            <option>매니저</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select class="form-select">
+            <option>모든 상태</option>
+            <option>활성</option>
+            <option>비활성</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-outline-secondary w-100">
+            <i class="fas fa-filter me-1"></i>필터
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 직원 목록 -->
+  <div class="card border-0 shadow-xl" style="background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);">
+    <div class="card-header border-0 text-white rounded-top" style="background: linear-gradient(90deg, #10b981, #14b8a6);">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-users me-2"></i>
+          <h5 class="card-title mb-0">직원 목록</h5>
+        </div>
+        <span class="badge bg-white bg-opacity-20">총 24명</span>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="border-0 ps-4">직원</th>
+              <th class="border-0">부서</th>
+              <th class="border-0">연락처</th>
+              <th class="border-0">근무 상태</th>
+              <th class="border-0">근무 시간</th>
+              <th class="border-0 text-end pe-4">작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="ps-4">
+                <div class="d-flex align-items-center">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold me-3" 
+                       style="width: 40px; height: 40px; background: linear-gradient(90deg, #3b82f6, #1d4ed8);">
+                    김
+                  </div>
+                  <div>
+                    <div class="fw-medium">김민수</div>
+                    <div class="text-muted small">ID: 001</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge" style="background: linear-gradient(90deg, #10b981, #059669);">주방</span>
+              </td>
+              <td>010-1234-5678</td>
+              <td>
+                <span class="badge bg-success">근무 중</span>
+              </td>
+              <td>09:00 - 18:00</td>
+              <td class="text-end pe-4">
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="ps-4">
+                <div class="d-flex align-items-center">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold me-3" 
+                       style="width: 40px; height: 40px; background: linear-gradient(90deg, #8b5cf6, #7c3aed);">
+                    이
+                  </div>
+                  <div>
+                    <div class="fw-medium">이지영</div>
+                    <div class="text-muted small">ID: 002</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge" style="background: linear-gradient(90deg, #f59e0b, #d97706);">서빙</span>
+              </td>
+              <td>010-2345-6789</td>
+              <td>
+                <span class="badge bg-warning">휴식</span>
+              </td>
+              <td>10:00 - 19:00</td>
+              <td class="text-end pe-4">
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="ps-4">
+                <div class="d-flex align-items-center">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold me-3" 
+                       style="width: 40px; height: 40px; background: linear-gradient(90deg, #ec4899, #db2777);">
+                    박
+                  </div>
+                  <div>
+                    <div class="fw-medium">박준호</div>
+                    <div class="text-muted small">ID: 003</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge" style="background: linear-gradient(90deg, #6366f1, #4f46e5);">매니저</span>
+              </td>
+              <td>010-3456-7890</td>
+              <td>
+                <span class="badge bg-success">근무 중</span>
+              </td>
+              <td>08:00 - 17:00</td>
+              <td class="text-end pe-4">
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 페이지네이션 -->
+  <div class="d-flex justify-content-center">
+    <nav>
+      <ul class="pagination">
+        <li class="page-item disabled">
+          <a class="page-link" href="#" tabindex="-1">이전</a>
+        </li>
+        <li class="page-item active">
+          <a class="page-link" href="#">1</a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="#">2</a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="#">3</a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="#">다음</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div> 
