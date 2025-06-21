@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>직원 권한 관리 - Core System</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #333; color: white; padding: 15px; margin-bottom: 20px; }
+        .nav { background-color: #4CAF50; padding: 10px; margin-bottom: 20px; }
+        .nav a { color: white; text-decoration: none; margin-right: 20px; padding: 8px 16px; border-radius: 5px; }
+        .nav a:hover { background-color: rgba(255,255,255,0.2); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .user-info { text-align: left; }
+        .permission-checkbox { transform: scale(1.2); }
+        .save-btn { 
+            background-color: #4CAF50; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 5px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            margin-top: 20px; 
+        }
+        .save-btn:hover { background-color: #45a049; }
+        .info-box { 
+            background-color: #e7f3ff; 
+            border: 1px solid #2196F3; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+        }
+        .permission-label { 
+            font-size: 12px; 
+            font-weight: bold; 
+            color: #333; 
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>직원 권한 관리 (수시변경 가능)</h1>
+    </div>
+    
+    <div class="nav">
+        <a href="/dashboard">대시보드</a>
+        <a href="/admin/approve_users">승인 관리</a>
+        <a href="/admin/user_permissions">권한 관리</a>
+    </div>
+    
+    <div class="info-box">
+        <h3>권한 관리 안내</h3>
+        <ul>
+            <li><strong>발주:</strong> 발주 관리 기능 접근 권한</li>
+            <li><strong>스케줄:</strong> 직원 스케줄 관리 권한</li>
+            <li><strong>청소:</strong> 청소 스케줄 관리 권한</li>
+            <li><strong>재고:</strong> 재고 관리 기능 권한</li>
+            <li><strong>고객:</strong> 고객 관리 기능 권한</li>
+            <li><strong>보고서:</strong> 보고서 조회 권한</li>
+            <li><strong>예약:</strong> 예약 관리 기능 권한</li>
+            <li><strong>정산:</strong> 정산 관리 기능 권한</li>
+        </ul>
+        <p><strong>주의:</strong> 권한 변경 시 기존 업무 기록은 그대로 보존되며, 새로운 업무만 제한됩니다.</p>
+    </div>
+    
+    <form method="post">
+        <table>
+            <thead>
+                <tr>
+                    <th class="user-info">이름</th>
+                    <th class="user-info">직급</th>
+                    <th>발주</th>
+                    <th>스케줄</th>
+                    <th>청소</th>
+                    <th>재고</th>
+                    <th>고객</th>
+                    <th>보고서</th>
+                    <th>예약</th>
+                    <th>정산</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td class="user-info">
+                        <strong>{{ u.username }}</strong><br>
+                        <small style="color: #666;">{{ u.role|title }}</small>
+                    </td>
+                    <td class="user-info">{{ u.grade|title }}</td>
+                    {% set perms = u.get_permissions() %}
+                    {% set all_perms = ['order', 'schedule', 'clean', 'inventory', 'customer', 'reports', 'reservation', 'accounting'] %}
+                    {% for perm in all_perms %}
+                        <td>
+                            <input type="checkbox" 
+                                   name="perm_{{ perm }}_{{ u.id }}" 
+                                   class="permission-checkbox"
+                                   {% if perms.get(perm, False) %}checked{% endif %}>
+                            <br>
+                            <span class="permission-label">{{ perm|title }}</span>
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <button type="submit" class="save-btn">권한 일괄 저장</button>
+    </form>
+    
+    <div style="margin-top: 30px; text-align: center;">
+        <a href="/dashboard" style="color: #4CAF50; text-decoration: none;">대시보드로 돌아가기</a>
+    </div>
+</body>
+</html> 

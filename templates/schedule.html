@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>직원 스케줄</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .nav { background-color: #f8f9fa; padding: 10px; margin-bottom: 20px; }
+        .nav a { text-decoration: none; color: #007bff; }
+        .form-group { margin: 10px 0; }
+        input, select { padding: 8px; margin: 5px; }
+        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/dashboard">← 대시보드</a>
+    </div>
+    
+    <h2>직원 스케줄</h2>
+    
+    <form method="post">
+        <div class="form-group">
+            날짜: <input name="work_date" type="date" required>
+            근무타임: 
+            <select name="shift">
+                <option>오전</option>
+                <option>오후</option>
+                <option>종일</option>
+            </select>
+            <button type="submit">등록</button>
+        </div>
+    </form>
+    
+    <table>
+        <tr>
+            <th>날짜</th>
+            <th>직원ID</th>
+            <th>타임</th>
+        </tr>
+        {% for s in schedules %}
+        <tr>
+            <td>{{ s.work_date }}</td>
+            <td>{{ s.user_id }}</td>
+            <td>{{ s.shift }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html> 

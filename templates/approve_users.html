@@ -1,1 +1,125 @@
- 
+<!DOCTYPE html>
+<html>
+<head>
+    <title>직원 승인 관리 - Core System</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #333; color: white; padding: 15px; margin-bottom: 20px; }
+        .nav { background-color: #4CAF50; padding: 10px; margin-bottom: 20px; }
+        .nav a { color: white; text-decoration: none; margin-right: 20px; padding: 8px 16px; border-radius: 5px; }
+        .nav a:hover { background-color: rgba(255,255,255,0.2); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .btn { padding: 8px 16px; text-decoration: none; border-radius: 5px; margin: 2px; }
+        .btn-approve { background-color: #4CAF50; color: white; }
+        .btn-reject { background-color: #f44336; color: white; }
+        .btn-unlock { background-color: #2196F3; color: white; }
+        .no-data { text-align: center; color: #666; padding: 40px; }
+        .permission-group { display: flex; gap: 10px; }
+        .permission-item { display: flex; align-items: center; gap: 5px; }
+        select { padding: 5px; border-radius: 3px; }
+        .status-locked { color: red; }
+        .status-active { color: green; }
+        .status-pending { color: orange; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍽️ 직원 승인 관리 (매장관리자/최종관리자)</h1>
+    </div>
+    
+    <div class="nav">
+        <a href="/dashboard">🏠 대시보드</a>
+        <a href="/order">📦 발주 관리</a>
+        <a href="/schedule">👥 직원 스케줄</a>
+        <a href="/clean">🧹 청소 스케줄</a>
+        <a href="/admin/approve_users">✅ 승인 관리</a>
+    </div>
+    
+    {% if pendings %}
+        <table>
+            <thead>
+                <tr>
+                    <th>아이디</th>
+                    <th>역할</th>
+                    <th>가입일</th>
+                    <th>상태</th>
+                    <th>직급</th>
+                    <th>권한</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in pendings %}
+                <tr>
+                    <td>{{ u.username }}</td>
+                    <td>
+                        {% if u.role == 'admin' %}최종관리자
+                        {% elif u.role == 'manager' %}매장관리자
+                        {% else %}직원{% endif %}
+                    </td>
+                    <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                        {% if u.is_locked %}
+                            <span class="status-locked">🔒 잠금</span>
+                        {% elif u.status == 'pending' %}
+                            <span class="status-pending">⏳ 대기</span>
+                        {% else %}
+                            <span class="status-active">활성</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.status == 'pending' %}
+                            <select name="grade" form="approve_form_{{ u.id }}">
+                                <option value="manager">매니저</option>
+                                <option value="captain">캡틴</option>
+                                <option value="employee" selected>직원</option>
+                            </select>
+                        {% else %}
+                            {{ u.grade }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.status == 'pending' %}
+                            <div class="permission-group">
+                                {% set all_perms = ['order', 'schedule', 'clean', 'inventory', 'customer', 'reports'] %}
+                                {% for perm in all_perms %}
+                                    <div class="permission-item">
+                                        <input type="checkbox" name="perm_{{ perm }}" form="approve_form_{{ u.id }}" 
+                                               id="{{ perm }}_{{ u.id }}" 
+                                               {% if u.has_permission(perm) %}checked{% endif %}>
+                                        <label for="{{ perm }}_{{ u.id }}">{{ perm|title }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {% set perms = u.get_permissions() %}
+                            {% for perm, has_perm in perms.items() %}
+                                {% if has_perm %}{{ perm|title }}{% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.status == 'pending' %}
+                            <form method="post" action="/admin/approve/{{ u.id }}" id="approve_form_{{ u.id }}" style="display: inline;">
+                                <button type="submit" class="btn btn-approve">승인</button>
+                            </form>
+                            <a href="/admin/reject/{{ u.id }}" class="btn btn-reject">거절</a>
+                        {% endif %}
+                        {% if u.is_locked %}
+                            <a href="/admin/unlock/{{ u.id }}" class="btn btn-unlock">잠금해제</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="no-data">
+            <p>승인 대기 중인 사용자가 없습니다.</p>
+        </div>
+    {% endif %}
+</body>
+</html> 

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>대시보드 - Core System</title>
+    <meta charset="utf-8">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f5f5f5; 
+        }
+        .header { 
+            background-color: #333; 
+            color: white; 
+            padding: 15px 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .nav { 
+            background-color: #4CAF50; 
+            padding: 10px 20px; 
+            display: flex; 
+            gap: 20px; 
+        }
+        .nav a { 
+            color: white; 
+            text-decoration: none; 
+            padding: 8px 16px; 
+            border-radius: 5px; 
+            transition: background-color 0.3s; 
+        }
+        .nav a:hover { 
+            background-color: rgba(255,255,255,0.2); 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+        }
+        .notice-section { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .notice-list { 
+            list-style-type: none; 
+            padding: 0; 
+        }
+        .notice-item { 
+            background-color: #f9f9f9; 
+            margin: 10px 0; 
+            padding: 15px; 
+            border-radius: 5px; 
+            border-left: 4px solid #4CAF50; 
+        }
+        .logout-btn { 
+            background-color: #f44336; 
+            color: white; 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 5px; 
+            text-decoration: none; 
+            font-size: 14px; 
+        }
+        .logout-btn:hover { 
+            background-color: #d32f2f; 
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍽️ 레스토랑 관리 시스템</h1>
+        <a href="/logout" class="logout-btn">로그아웃</a>
+    </div>
+    
+    <div class="nav">
+        <a href="/order">📦 발주 관리</a>
+        <a href="/schedule">👥 직원 스케줄</a>
+        <a href="/clean">🧹 청소 스케줄</a>
+    </div>
+    
+    <div class="container">
+        <div class="notice-section">
+            <h3>📢 운영 방침/공지</h3>
+            <ul class="notice-list">
+                {% for n in notices %}
+                    <li class="notice-item">
+                        {{ n.content }} 
+                        <small style="color: #666;">({{ n.created_at.strftime('%Y-%m-%d') }})</small>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 

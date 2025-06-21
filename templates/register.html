@@ -1,22 +1,54 @@
 <!DOCTYPE html>
 <html>
-<head><title>회원가입</title></head>
+<head>
+    <title>회원가입 - Core System</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
+        .register-form { max-width: 400px; margin: 0 auto; }
+        input, select { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        .error { color: red; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+        .manager-select { margin: 10px 0; }
+    </style>
+</head>
 <body>
-    <h2>회원가입</h2>
-    <form method="post">
-        <input type="text" name="username" placeholder="아이디" required><br>
-        <input type="password" name="password" placeholder="비밀번호" required><br>
-        <button type="submit">가입 신청</button>
-    </form>
-    <a href="{{ url_for('login') }}">로그인</a>
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul>
-          {% for msg in messages %}
-            <li>{{ msg }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+    <h2>🍽️ 회원가입</h2>
+    <div class="register-form">
+        <form method="post">
+            <input name="username" placeholder="아이디" required>
+            <input name="password" type="password" placeholder="비밀번호" required>
+            <select name="role" id="role" onchange="toggleManager()">
+                <option value="manager">매장관리자</option>
+                <option value="employee">직원</option>
+            </select>
+            <div id="manager_select" class="manager-select" style="display:none;">
+                소속 매장관리자:
+                <select name="manager_id">
+                    {% for m in managers %}
+                        <option value="{{ m.id }}">{{ m.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit">가입 신청</button>
+        </form>
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+        {% if msg %}
+            <p class="success">{{ msg }}</p>
+        {% endif %}
+        <p><a href="/">로그인으로</a></p>
+    </div>
+    
+    <script>
+    function toggleManager() {
+        var role = document.getElementById("role").value;
+        document.getElementById("manager_select").style.display = role === "employee" ? "block" : "none";
+    }
+    window.onload = toggleManager;
+    </script>
 </body>
 </html> 

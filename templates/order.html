@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>발주 관리</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .nav { background-color: #f8f9fa; padding: 10px; margin-bottom: 20px; }
+        .nav a { text-decoration: none; color: #007bff; }
+        .form-group { margin: 10px 0; }
+        input, select { padding: 8px; margin: 5px; }
+        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/dashboard">← 대시보드</a>
+    </div>
+    
+    <h2>발주 관리</h2>
+    
+    <form method="post">
+        <div class="form-group">
+            품목: <input name="item" required>
+            수량: <input name="quantity" type="number" required>
+            <button type="submit">발주 등록</button>
+        </div>
+    </form>
+    
+    <table>
+        <tr>
+            <th>일자</th>
+            <th>품목</th>
+            <th>수량</th>
+        </tr>
+        {% for o in orders %}
+        <tr>
+            <td>{{ o.order_date }}</td>
+            <td>{{ o.item }}</td>
+            <td>{{ o.quantity }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html> 

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>권한 변경 이력 - Core System</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #333; color: white; padding: 15px; margin-bottom: 20px; }
+        .nav { background-color: #4CAF50; padding: 10px; margin-bottom: 20px; }
+        .nav a { color: white; text-decoration: none; margin-right: 20px; padding: 8px 16px; border-radius: 5px; }
+        .nav a:hover { background-color: rgba(255,255,255,0.2); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .action-approve { color: #4CAF50; font-weight: bold; }
+        .action-reject { color: #f44336; font-weight: bold; }
+        .action-permission { color: #2196F3; font-weight: bold; }
+        .memo { max-width: 300px; word-wrap: break-word; }
+        .no-data { text-align: center; color: #666; padding: 40px; }
+        .back-btn { 
+            background-color: #4CAF50; 
+            color: white; 
+            padding: 10px 20px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            display: inline-block; 
+            margin-top: 20px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 권한 변경 이력</h1>
+    </div>
+    
+    <div class="nav">
+        <a href="/dashboard">🏠 대시보드</a>
+        <a href="/admin/approve_users">✅ 승인 관리</a>
+        <a href="/admin/user_permissions">🔧 권한 관리</a>
+        <a href="/admin/approval_logs">📋 권한 변경 이력</a>
+    </div>
+    
+    {% if logs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>대상자</th>
+                    <th>처리자</th>
+                    <th>액션</th>
+                    <th>시각</th>
+                    <th>메모</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>
+                        {% set target_user = log.user_id %}
+                        {% if target_user == 1 %}관리자
+                        {% else %}사용자 ID: {{ target_user }}{% endif %}
+                    </td>
+                    <td>
+                        {% set approver_user = log.approver_id %}
+                        {% if approver_user == 1 %}관리자
+                        {% else %}사용자 ID: {{ approver_user }}{% endif %}
+                    </td>
+                    <td>
+                        {% if log.action == 'approve' %}
+                            <span class="action-approve">✅ 승인</span>
+                        {% elif log.action == 'reject' %}
+                            <span class="action-reject">❌ 거절</span>
+                        {% elif log.action == 'permission_change' %}
+                            <span class="action-permission">🔧 권한변경</span>
+                        {% else %}
+                            {{ log.action }}
+                        {% endif %}
+                    </td>
+                    <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td class="memo">
+                        {% if log.memo %}
+                            {{ log.memo }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="no-data">
+            <p>📭 권한 변경 이력이 없습니다.</p>
+        </div>
+    {% endif %}
+    
+    <div style="text-align: center;">
+        <a href="/dashboard" class="back-btn">← 대시보드로 돌아가기</a>
+    </div>
+</body>
+</html> 
