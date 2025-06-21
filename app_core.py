@@ -1,6 +1,6 @@
 import os
 import json
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session
 from functools import wraps
 
@@ -151,14 +151,24 @@ class Order(db.Model):  # 발주
 class Schedule(db.Model):  # 직원 스케줄
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    work_date = db.Column(db.Date)
-    shift = db.Column(db.String(20))  # 예: "오전", "오후", "종일"
+    date = db.Column(db.Date)
+    start_time = db.Column(db.Time)
+    end_time = db.Column(db.Time)
+    # ex: "day", "night", "휴무", "청소전담" 등도 필요시 추가
+    memo = db.Column(db.String(200))
 
-class CleanSchedule(db.Model):  # 청소 스케줄
+class CleanSchedule(db.Model):  # 청소 스케줄 (기존 호환성)
     id = db.Column(db.Integer, primary_key=True)
     team = db.Column(db.String(20))  # 예: "주방", "홀"
     work_date = db.Column(db.Date)
     content = db.Column(db.String(100))
+
+class CleaningPlan(db.Model):  # 청소 계획 (새로운 구조)
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date)
+    plan = db.Column(db.String(200))      # ex: "주방 소독/홀 바닥청소"
+    team = db.Column(db.String(30))       # ex: "주방", "홀" 등
+    manager_id = db.Column(db.Integer, db.ForeignKey('user.id'))  # 담당자(옵션)
 
 class Notification(db.Model):  # 알림 시스템
     id = db.Column(db.Integer, primary_key=True)
@@ -182,8 +192,100 @@ def init_db():
             )
             db.session.add(admin_user)
             db.session.commit()
+        
+        # 샘플 사용자 추가 (테스트용)
+        if not User.query.filter_by(username='manager1').first():
+            manager1 = User(
+                username='manager1',
+                password_hash=generate_password_hash('manager123'),
+                role='manager',
+                status='approved',
+                parent_id=1
+            )
+            db.session.add(manager1)
+            db.session.commit()
+            
+        if not User.query.filter_by(username='employee1').first():
+            employee1 = User(
+                username='employee1',
+                password_hash=generate_password_hash('employee123'),
+                role='employee',
+                status='approved',
+                parent_id=2  # manager1의 ID
+            )
+            db.session.add(employee1)
+            db.session.commit()
+        
+        # 공지사항 추가
         if not Notice.query.first():
             db.session.add(Notice(content='운영 방침/공지 예시입니다.'))
+            db.session.commit()
+        
+        # 샘플 스케줄 데이터 추가 (테스트용)
+        if not Schedule.query.first():
+            today = datetime.now().date()
+            tomorrow = today + timedelta(days=1)
+            
+            # 오늘 스케줄
+            schedule1 = Schedule(
+                user_id=2,  # manager1
+                date=today,
+                start_time=datetime.strptime('09:00', '%H:%M').time(),
+                end_time=datetime.strptime('18:00', '%H:%M').time(),
+                memo='매장 관리'
+            )
+            schedule2 = Schedule(
+                user_id=3,  # employee1
+                date=today,
+                start_time=datetime.strptime('10:00', '%H:%M').time(),
+                end_time=datetime.strptime('19:00', '%H:%M').time(),
+                memo='홀 서빙'
+            )
+            
+            # 내일 스케줄
+            schedule3 = Schedule(
+                user_id=2,  # manager1
+                date=tomorrow,
+                start_time=datetime.strptime('09:00', '%H:%M').time(),
+                end_time=datetime.strptime('18:00', '%H:%M').time(),
+                memo='매장 관리'
+            )
+            schedule4 = Schedule(
+                user_id=3,  # employee1
+                date=tomorrow,
+                start_time=datetime.strptime('14:00', '%H:%M').time(),
+                end_time=datetime.strptime('23:00', '%H:%M').time(),
+                memo='저녁 근무'
+            )
+            
+            db.session.add_all([schedule1, schedule2, schedule3, schedule4])
+            db.session.commit()
+        
+        # 샘플 청소 계획 데이터 추가 (테스트용)
+        if not CleaningPlan.query.first():
+            today = datetime.now().date()
+            tomorrow = today + timedelta(days=1)
+            
+            cleaning1 = CleaningPlan(
+                date=today,
+                plan='주방 소독 및 홀 바닥청소',
+                team='주방',
+                manager_id=2
+            )
+            cleaning2 = CleaningPlan(
+                date=today,
+                plan='화장실 청소 및 소독',
+                team='홀',
+                manager_id=2
+            )
+            cleaning3 = CleaningPlan(
+                date=tomorrow,
+                plan='냉장고 정리 및 청소',
+                team='주방',
+                manager_id=2
+            )
+            
+            db.session.add_all([cleaning1, cleaning2, cleaning3])
             db.session.commit()
 
 ## ---------- 로그인/로그아웃 ---------- ##
@@ -300,23 +402,51 @@ def order():
 @app.route('/schedule', methods=['GET', 'POST'])
 @require_perm('schedule')
 def schedule():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    user = User.query.get(session['user_id'])
-    if not user.can_schedule and user.role != 'admin':
-        return render_template('error.html', error="스케줄 권한이 없습니다.")
-    
     if request.method == 'POST':
-        work_date = datetime.strptime(request.form['work_date'], '%Y-%m-%d').date()
-        shift = request.form['shift']
-        schedule = Schedule(user_id=session['user_id'], work_date=work_date, shift=shift)
+        # 스케줄 등록
+        date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+        start_time = datetime.strptime(request.form['start_time'], '%H:%M').time()
+        end_time = datetime.strptime(request.form['end_time'], '%H:%M').time()
+        memo = request.form.get('memo', '')
+        schedule = Schedule(
+            user_id=session['user_id'], 
+            date=date, 
+            start_time=start_time, 
+            end_time=end_time, 
+            memo=memo
+        )
         db.session.add(schedule)
         db.session.commit()
         return redirect(url_for('schedule'))
-    schedules = Schedule.query.order_by(Schedule.work_date.desc()).all()
+    
+    # 스케줄 조회 (일/주/월간)
+    from_date = request.args.get('from') or datetime.now().strftime('%Y-%m-%d')
+    to_date = request.args.get('to') or datetime.now().strftime('%Y-%m-%d')
+    
+    from_dt = datetime.strptime(from_date, '%Y-%m-%d')
+    to_dt = datetime.strptime(to_date, '%Y-%m-%d')
+    
+    # 날짜 범위 생성
+    days = [(from_dt + timedelta(days=i)).date() for i in range((to_dt - from_dt).days + 1)]
+    
+    # 각 날짜별 스케줄과 청소 계획 조회
+    schedules = {d: Schedule.query.filter_by(date=d).all() for d in days}
+    cleanings = {d: CleaningPlan.query.filter_by(date=d).all() for d in days}
+    
+    # 기존 호환성을 위한 CleanSchedule도 조회
+    old_cleanings = {d: CleanSchedule.query.filter_by(work_date=d).all() for d in days}
+    
     users = User.query.filter_by(status='approved').all()
-    return render_template('schedule.html', schedules=schedules, users=users)
+    
+    return render_template('schedule.html',
+        from_date=from_date, 
+        to_date=to_date,
+        dates=days, 
+        schedules=schedules, 
+        cleanings=cleanings,
+        old_cleanings=old_cleanings,
+        users=users
+    )
 
 ## ---------- 청소 스케줄 관리 ---------- ##
 @app.route('/clean', methods=['GET', 'POST'])
