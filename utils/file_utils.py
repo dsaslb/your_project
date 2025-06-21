@@ -53,3 +53,41 @@ def is_valid_file_type(filename, allowed_extensions):
         return False
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in allowed_extensions 
+
+def delete_file(path):
+    """파일을 삭제합니다."""
+    return safe_remove(path)
+
+def backup_files(source_dir, backup_dir):
+    """파일들을 백업합니다."""
+    try:
+        if not os.path.exists(source_dir):
+            return False
+        
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # 간단한 백업 로직 (실제로는 더 복잡할 수 있음)
+        import shutil
+        shutil.copytree(source_dir, backup_dir, dirs_exist_ok=True)
+        return True
+    except Exception:
+        return False
+
+def restore_files(backup_dir, target_dir):
+    """백업된 파일들을 복원합니다."""
+    try:
+        if not os.path.exists(backup_dir):
+            return False
+        
+        os.makedirs(target_dir, exist_ok=True)
+        
+        # 간단한 복원 로직 (실제로는 더 복잡할 수 있음)
+        import shutil
+        shutil.copytree(backup_dir, target_dir, dirs_exist_ok=True)
+        return True
+    except Exception:
+        return False
+
+def save_file(file):
+    """파일을 저장합니다 (save_uploaded_file의 별칭)."""
+    return save_uploaded_file(file) 

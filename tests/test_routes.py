@@ -22,7 +22,7 @@ def test_edit_notice_route(client, session, admin_user, notice):
     
     # 3. Assert response
     assert response.status_code == 200
-    assert b"공지사항이 성공적으로 수정되었습니다." in response.data
+    assert "공지사항이 성공적으로 수정되었습니다.".encode("utf-8") in response.data
     
     # 4. Assert database changes for the notice
     updated_notice = session.get(Notice, notice.id)
