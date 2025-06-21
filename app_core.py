@@ -46,9 +46,8 @@ def require_perm(perm):
             if 'user_id' not in session:
                 return redirect(url_for('login'))
             
-            user = User.query.get(session['user_id'])
-            if not user:
-                session.clear()
+            user = User.query.get(session.get('user_id'))
+            if not user or user.status != 'approved':
                 return redirect(url_for('login'))
             
             # 관리자는 모든 권한 보유
@@ -56,7 +55,7 @@ def require_perm(perm):
                 return f(*args, **kwargs)
             
             # 특정 권한 체크
-            perms = user.get_permissions()
+            perms = json.loads(user.permissions or '{}')
             if not perms.get(perm, False):
                 return render_template('errors/403.html', 
                     error="권한이 없습니다.", 
