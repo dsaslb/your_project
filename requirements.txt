@@ -1,5 +1,5 @@
 Flask==2.3.3
-Flask-SQLAlchemy==3.0.5
+Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.5
 Flask-Login==0.6.3
 Flask-WTF==1.1.1
@@ -14,7 +14,7 @@ reportlab==4.0.4
 PyPDF2==3.0.1
 Flask-Mail==0.9.1
 requests==2.31.0
-SQLAlchemy==2.0.23
+SQLAlchemy==2.0.41
 alembic==1.12.1
 Werkzeug==2.3.7
 Jinja2==3.1.2
@@ -27,4 +27,5 @@ pytest
 pytest-flask
 Flask-RESTful
 PyJWT
-flasgger 
+flasgger
+psycopg2-binary 

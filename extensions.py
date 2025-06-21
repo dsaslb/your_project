@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -7,6 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 
 # 데이터베이스
 db = SQLAlchemy()
+migrate = Migrate()
 
 # 로그인 매니저
 login_manager = LoginManager()
@@ -26,6 +28,7 @@ csrf = CSRFProtect()
 def init_extensions(app):
     """모든 확장 기능을 초기화합니다."""
     db.init_app(app)
+    migrate.init_app(app, db)
     login_manager.init_app(app)
     limiter.init_app(app)
     cache.init_app(app)

@@ -1,9 +1,8 @@
 from functools import wraps
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 import jwt
 
 from models import User
-from config import DevConfig
 
 def token_required(f):
     """Decorator to protect routes with JWT authentication."""
@@ -17,7 +16,7 @@ def token_required(f):
             return jsonify({'message': 'Token is missing!'}), 401
 
         try:
-            data = jwt.decode(token, DevConfig.SECRET_KEY, algorithms=['HS256'])
+            data = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
             current_user = User.query.get(data['user_id'])
         except Exception:
             return jsonify({'message': 'Token is invalid!'}), 401
@@ -41,7 +40,7 @@ def admin_required(f):
             return jsonify({'message': 'Token is missing!'}), 401
 
         try:
-            data = jwt.decode(token, DevConfig.SECRET_KEY, algorithms=['HS256'])
+            data = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
             current_user = User.query.get(data['user_id'])
         except Exception:
             return jsonify({'message': 'Token is invalid!'}), 401

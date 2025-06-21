@@ -1,10 +1,10 @@
 # Flask 설정
-SECRET_KEY=your-super-secret-key-here-change-this
+SECRET_KEY=your_very_secret_key
 FLASK_ENV=development
 FLASK_DEBUG=True
 
 # 데이터베이스 설정
-DATABASE_URL=sqlite:///restaurant_dev.sqlite3
+DEV_DATABASE_URL=sqlite:///instance/restaurant_dev.sqlite3
 SQLALCHEMY_DATABASE_URI=sqlite:///restaurant_dev.sqlite3
 
 # 보안 설정
@@ -49,4 +49,7 @@ GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 # 은행 API 설정 (선택사항)
 BANK_API_URL=https://api.bank.example.com
 BANK_API_KEY=your-bank-api-key
-BANK_SECRET_KEY=your-bank-secret-key 
+BANK_SECRET_KEY=your-bank-secret-key
+
+# 테스트용 데이터베이스 (기본값: sqlite)
+TEST_DATABASE_URL=sqlite:///instance/restaurant_test.sqlite3 

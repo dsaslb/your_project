@@ -2,122 +2,105 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 
-load_dotenv()
+basedir = os.path.abspath(os.path.dirname(__file__))
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+# 환경 인식: FLASK_ENV 값으로 .env 파일 선택
+env = os.getenv('FLASK_ENV', 'development')
+env_file = f'.env.{env}'
+if os.path.exists(env_file):
+    load_dotenv(env_file)
+else:
+    load_dotenv('.env.development')  # Fallback
 
 class Config:
-    # 기본 보안 설정
-    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24)
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(BASE_DIR, 'restaurant_dev.sqlite3')
+    """기본 설정 클래스"""
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///restaurant_dev.sqlite3')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    DEBUG = bool(int(os.getenv('DEBUG', '0')))
     
-    # CSRF 보호
-    WTF_CSRF_ENABLED = True
-    WTF_CSRF_TIME_LIMIT = 3600  # 1시간
-    WTF_CSRF_SECRET_KEY = os.environ.get('CSRF_SECRET_KEY') or os.urandom(24)
+    # 파일 업로드 설정
+    MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))  # 16MB
+    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     
-    # 세션 보안
-    SESSION_COOKIE_SECURE = False  # 개발환경에서는 False, 프로덕션에서는 True
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
+    # 이메일 설정
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = bool(int(os.getenv('MAIL_USE_TLS', '1')))
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
     
     # 로깅 설정
-    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-    LOG_FILE = os.getenv('LOG_FILE', 'logs/restaurant.log')
-    LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
-    LOG_BACKUP_COUNT = 5
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')  # 기본값 INFO
+    LOG_FILE = os.getenv('LOG_FILE', 'logs/app.log')
     
-    # 파일 업로드 설정
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-    
-    # 캐시 설정
-    CACHE_TYPE = 'SimpleCache'
-    CACHE_DEFAULT_TIMEOUT = 300  # 5분
-    
-    # 요청 제한 설정
-    RATELIMIT_DEFAULT = "10 per minute"
-    RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL', 'memory://')
-    
-    # 보안 헤더 설정
-    SECURITY_HEADERS = {
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'SAMEORIGIN',
-        'X-XSS-Protection': '1; mode=block',
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
-    }
-
-class DevConfig(Config):
-    DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///' + os.path.join(BASE_DIR, 'restaurant_dev.sqlite3'))
-    SESSION_COOKIE_SECURE = False
-    CACHE_TYPE = 'SimpleCache'
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,
-        'pool_recycle': 300,
-    }
-    
-    # 파일 업로드 설정
-    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 최대 10MB
-    UPLOAD_FOLDER = 'static/uploads'
-    ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'txt', 'md', 'log', 'csv', 'pdf'}
+    # Slack 알림 설정
+    SLACK_WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL', '')
+    SLACK_ENABLED = bool(os.getenv('SLACK_ENABLED', '0'))
     
     # 보안 헤더
     SECURITY_HEADERS = {
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'SAMEORIGIN',
         'X-XSS-Protection': '1; mode=block',
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
     }
     
     # 캐시 설정
-    CACHE_TYPE = 'simple'
-    CACHE_DEFAULT_TIMEOUT = 300
+    CACHE_TYPE = os.getenv('CACHE_TYPE', 'simple')
+    CACHE_DEFAULT_TIMEOUT = int(os.getenv('CACHE_DEFAULT_TIMEOUT', 300))
     
     # 세션 설정
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
-    SESSION_COOKIE_SECURE = False  # 개발환경에서는 False
+    PERMANENT_SESSION_LIFETIME = int(os.getenv('PERMANENT_SESSION_LIFETIME', 3600))  # 1시간
+    SESSION_COOKIE_SECURE = bool(int(os.getenv('SESSION_COOKIE_SECURE', '0')))
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    
-    # 로깅 설정
-    LOG_LEVEL = 'INFO'
-    LOG_FILE = 'logs/restaurant.log'
-    ACTION_LOG_FILE = 'logs/action.log'
-    
-    # 이메일 설정 (선택사항)
-    MAIL_SERVER = 'smtp.gmail.com'
-    MAIL_PORT = 587
-    MAIL_USE_TLS = True
-    MAIL_USERNAME = 'your-email@gmail.com'
-    MAIL_PASSWORD = 'your-app-password'
-    
-    # 알림 설정
-    NOTIFICATION_ENABLED = True
-    SMS_ENABLED = False
-    EMAIL_ENABLED = True
 
-class ProdConfig(Config):
+class DevelopmentConfig(Config):
+    """개발 환경 설정"""
+    DEBUG = True
+    TESTING = False
+    
+    # 개발 환경에서는 보안 헤더 완화
+    SECURITY_HEADERS = {}
+    
+    # 개발용 로깅 - 상세한 디버그 정보
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
+    LOG_FILE = os.getenv('LOG_FILE', 'logs/restaurant_dev.log')
+
+class ProductionConfig(Config):
+    """운영 환경 설정"""
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///' + os.path.join(BASE_DIR, 'restaurant_prod.sqlite3'))
+    TESTING = False
+    
+    # 운영 환경 보안 강화
     SESSION_COOKIE_SECURE = True
-    LOG_LEVEL = 'WARNING'
-    CACHE_TYPE = 'RedisCache'
-    CACHE_REDIS_URL = os.getenv('REDIS_URL')
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Strict'
+    
+    # 운영용 로깅 - WARNING 이상만 기록
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'WARNING')
+    LOG_FILE = os.getenv('LOG_FILE', 'logs/restaurant_prod.log')
 
 class TestConfig(Config):
+    """테스트 환경 설정"""
     TESTING = True
+    DEBUG = True
+    
+    # 테스트용 데이터베이스
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    WTF_CSRF_ENABLED = False
-    SESSION_COOKIE_SECURE = False
-    CACHE_TYPE = 'SimpleCache'
+    
+    # 테스트용 보안 헤더 완화
+    SECURITY_HEADERS = {}
+    
+    # 테스트용 로깅 - 디버그 정보 포함
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
+    LOG_FILE = os.getenv('LOG_FILE', 'logs/restaurant_test.log')
 
-config = {
-    'development': DevConfig,
-    'production': ProdConfig,
-    'testing': TestConfig,
-    'default': DevConfig
+# 설정 매핑
+config_by_name = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'test': TestConfig,
+    'default': DevelopmentConfig
 } 

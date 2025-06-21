@@ -416,3 +416,7 @@ class SystemLog(db.Model):
 
     def __repr__(self):
         return f'<SystemLog {self.id}: {self.action}>'
+c l a s s   D a t a C h a n g e L o g ( d b . M o d e l ) :  
+         _ _ t a b l e n a m e _ _   =   ' d a t a _ c h a n g e _ l o g s '  
+         i d   =   d b . C o l u m n ( d b . I n t e g e r ,   p r i m a r y _ k e y = T r u e )  
+ 
