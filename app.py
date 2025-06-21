@@ -18,12 +18,57 @@ import shutil
 import re
 from io import StringIO
 from markupsafe import escape as escape_html
+from flasgger import Swagger
 
 from extensions import db, login_manager, limiter, cache, csrf, init_extensions
 from config import DevConfig
 
 app = Flask(__name__)
 app.config.from_object(DevConfig)
+
+# Swagger 설정
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec_1',
+            "route": '/apispec_1.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/apidocs/"
+}
+
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "레스토랑 직원 관리 시스템 API",
+        "description": "레스토랑 직원 관리 시스템의 RESTful API 문서",
+        "version": "1.0.0",
+        "contact": {
+            "name": "API Support",
+            "email": "support@restaurant.com"
+        }
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT 토큰을 'Bearer ' 접두사와 함께 입력하세요"
+        }
+    },
+    "security": [
+        {
+            "Bearer": []
+        }
+    ]
+}
+
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
 # 확장 기능 초기화
 init_extensions(app)

@@ -26,4 +26,5 @@ pytz==2023.3
 pytest
 pytest-flask
 Flask-RESTful
-PyJWT 
+PyJWT
+flasgger 

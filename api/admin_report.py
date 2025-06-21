@@ -7,7 +7,76 @@ admin_report_bp = Blueprint('admin_report', __name__, url_prefix='/api/admin/rep
 @admin_report_bp.route('/', methods=['GET'])
 @admin_required
 def get_admin_reports(current_admin):
-    """Retrieves a paginated list of all reports. Admin only."""
+    """
+    관리자용 신고 목록 조회
+    ---
+    tags:
+      - Admin
+    summary: 모든 신고 내역을 페이징으로 조회합니다
+    description: 관리자 권한이 필요하며, JWT 토큰 인증이 필요합니다.
+    security:
+      - Bearer: []
+    parameters:
+      - name: page
+        in: query
+        type: integer
+        description: 페이지 번호 (기본값: 1)
+        required: false
+        default: 1
+      - name: per_page
+        in: query
+        type: integer
+        description: 페이지당 항목 수 (기본값: 20)
+        required: false
+        default: 20
+    responses:
+      200:
+        description: 신고 목록 조회 성공
+        schema:
+          type: object
+          properties:
+            reports:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: 신고 ID
+                  target_type:
+                    type: string
+                    description: 신고 대상 유형
+                    enum: ["notice", "comment"]
+                  target_id:
+                    type: integer
+                    description: 신고 대상 ID
+                  reporter_id:
+                    type: integer
+                    description: 신고자 ID
+                  reason:
+                    type: string
+                    description: 신고 사유
+                  category:
+                    type: string
+                    description: 신고 카테고리
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: 신고 일시
+            total:
+              type: integer
+              description: 전체 신고 수
+            page:
+              type: integer
+              description: 현재 페이지
+            pages:
+              type: integer
+              description: 전체 페이지 수
+      401:
+        description: 인증 필요
+      403:
+        description: 관리자 권한 필요
+    """
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     
@@ -35,8 +104,59 @@ def get_admin_reports(current_admin):
 @admin_required
 def resolve_report(current_admin, report_id):
     """
-    Resolves a report by performing an action (delete, hide, dismiss) 
-    on the target content and logs the action. Admin only.
+    신고 처리
+    ---
+    tags:
+      - Admin
+    summary: 신고를 처리하여 대상 콘텐츠에 조치를 취합니다
+    description: 관리자 권한이 필요하며, 신고된 콘텐츠를 삭제/숨김/기각할 수 있습니다.
+    security:
+      - Bearer: []
+    parameters:
+      - name: report_id
+        in: path
+        type: integer
+        required: true
+        description: 처리할 신고 ID
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - action
+          properties:
+            action:
+              type: string
+              description: 처리 액션
+              enum: ["delete", "hide", "dismiss"]
+              example: "delete"
+    responses:
+      200:
+        description: 신고 처리 성공
+        schema:
+          type: object
+          properties:
+            msg:
+              type: string
+              example: "Report resolved successfully"
+            result:
+              type: string
+              example: "notice deleted"
+      400:
+        description: 잘못된 요청
+        schema:
+          type: object
+          properties:
+            msg:
+              type: string
+              example: "Invalid action specified"
+      401:
+        description: 인증 필요
+      403:
+        description: 관리자 권한 필요
+      404:
+        description: 신고를 찾을 수 없음
     """
     data = request.json
     action = data.get('action')
