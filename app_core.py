@@ -180,7 +180,9 @@ class Notification(db.Model):  # 알림 시스템
 ## ---------- DB/관리자 초기화 함수 ---------- ##
 def init_db():
     with app.app_context():
+        # 데이터베이스 테이블 생성
         db.create_all()
+        
         # 최종관리자만 자동 생성 (ID=1)
         if not User.query.filter_by(username='admin').first():
             admin_user = User(
@@ -192,101 +194,121 @@ def init_db():
             )
             db.session.add(admin_user)
             db.session.commit()
+            print("관리자 계정이 생성되었습니다. (username: admin, password: admin123)")
         
         # 샘플 사용자 추가 (테스트용)
-        if not User.query.filter_by(username='manager1').first():
-            manager1 = User(
-                username='manager1',
-                password_hash=generate_password_hash('manager123'),
-                role='manager',
-                status='approved',
-                parent_id=1
-            )
-            db.session.add(manager1)
-            db.session.commit()
+        try:
+            if not User.query.filter_by(username='manager1').first():
+                manager1 = User(
+                    username='manager1',
+                    password_hash=generate_password_hash('manager123'),
+                    role='manager',
+                    status='approved',
+                    parent_id=1
+                )
+                db.session.add(manager1)
+                db.session.commit()
+                print("매니저 계정이 생성되었습니다. (username: manager1, password: manager123)")
             
-        if not User.query.filter_by(username='employee1').first():
-            employee1 = User(
-                username='employee1',
-                password_hash=generate_password_hash('employee123'),
-                role='employee',
-                status='approved',
-                parent_id=2  # manager1의 ID
-            )
-            db.session.add(employee1)
-            db.session.commit()
+            if not User.query.filter_by(username='employee1').first():
+                employee1 = User(
+                    username='employee1',
+                    password_hash=generate_password_hash('employee123'),
+                    role='employee',
+                    status='approved',
+                    parent_id=2  # manager1의 ID
+                )
+                db.session.add(employee1)
+                db.session.commit()
+                print("직원 계정이 생성되었습니다. (username: employee1, password: employee123)")
+        except Exception as e:
+            print(f"샘플 사용자 생성 중 오류: {e}")
         
         # 공지사항 추가
-        if not Notice.query.first():
-            db.session.add(Notice(content='운영 방침/공지 예시입니다.'))
-            db.session.commit()
+        try:
+            if not Notice.query.first():
+                db.session.add(Notice(content='운영 방침/공지 예시입니다.'))
+                db.session.commit()
+                print("샘플 공지사항이 추가되었습니다.")
+        except Exception as e:
+            print(f"공지사항 생성 중 오류: {e}")
         
         # 샘플 스케줄 데이터 추가 (테스트용)
-        if not Schedule.query.first():
-            today = datetime.now().date()
-            tomorrow = today + timedelta(days=1)
-            
-            # 오늘 스케줄
-            schedule1 = Schedule(
-                user_id=2,  # manager1
-                date=today,
-                start_time=datetime.strptime('09:00', '%H:%M').time(),
-                end_time=datetime.strptime('18:00', '%H:%M').time(),
-                memo='매장 관리'
-            )
-            schedule2 = Schedule(
-                user_id=3,  # employee1
-                date=today,
-                start_time=datetime.strptime('10:00', '%H:%M').time(),
-                end_time=datetime.strptime('19:00', '%H:%M').time(),
-                memo='홀 서빙'
-            )
-            
-            # 내일 스케줄
-            schedule3 = Schedule(
-                user_id=2,  # manager1
-                date=tomorrow,
-                start_time=datetime.strptime('09:00', '%H:%M').time(),
-                end_time=datetime.strptime('18:00', '%H:%M').time(),
-                memo='매장 관리'
-            )
-            schedule4 = Schedule(
-                user_id=3,  # employee1
-                date=tomorrow,
-                start_time=datetime.strptime('14:00', '%H:%M').time(),
-                end_time=datetime.strptime('23:00', '%H:%M').time(),
-                memo='저녁 근무'
-            )
-            
-            db.session.add_all([schedule1, schedule2, schedule3, schedule4])
-            db.session.commit()
+        try:
+            if not Schedule.query.first():
+                today = datetime.now().date()
+                tomorrow = today + timedelta(days=1)
+                
+                # 오늘 스케줄
+                schedule1 = Schedule(
+                    user_id=2,  # manager1
+                    date=today,
+                    start_time=datetime.strptime('09:00', '%H:%M').time(),
+                    end_time=datetime.strptime('18:00', '%H:%M').time(),
+                    memo='매장 관리'
+                )
+                schedule2 = Schedule(
+                    user_id=3,  # employee1
+                    date=today,
+                    start_time=datetime.strptime('10:00', '%H:%M').time(),
+                    end_time=datetime.strptime('19:00', '%H:%M').time(),
+                    memo='홀 서빙'
+                )
+                
+                # 내일 스케줄
+                schedule3 = Schedule(
+                    user_id=2,  # manager1
+                    date=tomorrow,
+                    start_time=datetime.strptime('09:00', '%H:%M').time(),
+                    end_time=datetime.strptime('18:00', '%H:%M').time(),
+                    memo='매장 관리'
+                )
+                schedule4 = Schedule(
+                    user_id=3,  # employee1
+                    date=tomorrow,
+                    start_time=datetime.strptime('14:00', '%H:%M').time(),
+                    end_time=datetime.strptime('23:00', '%H:%M').time(),
+                    memo='저녁 근무'
+                )
+                
+                db.session.add_all([schedule1, schedule2, schedule3, schedule4])
+                db.session.commit()
+                print("샘플 스케줄 데이터가 추가되었습니다.")
+        except Exception as e:
+            print(f"스케줄 데이터 생성 중 오류: {e}")
         
         # 샘플 청소 계획 데이터 추가 (테스트용)
-        if not CleaningPlan.query.first():
-            today = datetime.now().date()
-            tomorrow = today + timedelta(days=1)
-            
-            cleaning1 = CleaningPlan(
-                date=today,
-                plan='주방 소독 및 홀 바닥청소',
-                team='주방',
-                manager_id=2
-            )
-            cleaning2 = CleaningPlan(
-                date=today,
-                plan='화장실 청소 및 소독',
-                team='홀',
-                manager_id=2
-            )
-            cleaning3 = CleaningPlan(
-                date=tomorrow,
-                plan='냉장고 정리 및 청소',
-                team='주방',
-                manager_id=2
-            )
-            
-            db.session.add_all([cleaning1, cleaning2, cleaning3])
-            db.session.commit()
+        try:
+            if not CleaningPlan.query.first():
+                today = datetime.now().date()
+                tomorrow = today + timedelta(days=1)
+                
+                cleaning1 = CleaningPlan(
+                    date=today,
+                    plan='주방 소독 및 홀 바닥청소',
+                    team='주방',
+                    manager_id=2
+                )
+                cleaning2 = CleaningPlan(
+                    date=today,
+                    plan='화장실 청소 및 소독',
+                    team='홀',
+                    manager_id=2
+                )
+                cleaning3 = CleaningPlan(
+                    date=tomorrow,
+                    plan='냉장고 정리 및 청소',
+                    team='주방',
+                    manager_id=2
+                )
+                
+                db.session.add_all([cleaning1, cleaning2, cleaning3])
+                db.session.commit()
+                print("샘플 청소 계획 데이터가 추가되었습니다.")
+        except Exception as e:
+            print(f"청소 계획 데이터 생성 중 오류: {e}")
+        
+        print("데이터베이스 초기화가 완료되었습니다.")
 
 ## ---------- 로그인/로그아웃 ---------- ##
 @app.route('/')
