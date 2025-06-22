@@ -272,47 +272,35 @@
         </div>
         
         <div class="dashboard-menu-row">
-            {% set perms = user.get_permissions() %}
+            {# {% set perms = user.get_permissions() %} #}
             
             <!-- 기본 권한 메뉴 -->
-            {% if perms.get('order', False) or user.role == 'admin' %}
+            {% if user.role == 'admin' %}
                 <a class="menu-card main-card" href="/order">
                     <span class="menu-icon">📦</span><br>발주 관리
                 </a>
-            {% endif %}
-            {% if perms.get('schedule', False) or user.role == 'admin' %}
                 <a class="menu-card main-card" href="/schedule">
                     <span class="menu-icon">📆</span><br>스케줄 관리
                 </a>
-            {% endif %}
-            {% if perms.get('clean', False) or user.role == 'admin' %}
                 <a class="menu-card main-card" href="/clean">
                     <span class="menu-icon">🧹</span><br>청소 관리
                 </a>
             {% endif %}
             
             <!-- 확장 권한 메뉴 -->
-            {% if perms.get('inventory', False) or user.role == 'admin' %}
+            {% if user.role == 'admin' %}
                 <a class="menu-card" href="/inventory">
                     <span class="menu-icon">📦</span><br>재고 관리
                 </a>
-            {% endif %}
-            {% if perms.get('reservation', False) or user.role == 'admin' %}
                 <a class="menu-card" href="/reservation">
                     <span class="menu-icon">📋</span><br>예약 관리
                 </a>
-            {% endif %}
-            {% if perms.get('accounting', False) or user.role == 'admin' %}
                 <a class="menu-card" href="/accounting">
                     <span class="menu-icon">💰</span><br>정산 관리
                 </a>
-            {% endif %}
-            {% if perms.get('customer', False) or user.role == 'admin' %}
                 <a class="menu-card" href="/customer">
                     <span class="menu-icon">👥</span><br>고객 관리
                 </a>
-            {% endif %}
-            {% if perms.get('reports', False) or user.role == 'admin' %}
                 <a class="menu-card" href="/reports">
                     <span class="menu-icon">📊</span><br>보고서
                 </a>

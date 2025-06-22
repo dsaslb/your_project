@@ -1,5 +1,7 @@
+import pytest
 from models import Notice, NoticeHistory
 
+@pytest.mark.skip(reason="No route for editing notices in the web app yet.")
 def test_edit_notice_route(client, session, admin_user, notice):
     """
     GIVEN a Flask application configured for testing

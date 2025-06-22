@@ -62,6 +62,25 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def require_perm(permission):
+    """지정된 권한을 확인하는 데코레이터. 현재는 is_admin으로만 동작."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash('로그인이 필요합니다.', 'warning')
+                return redirect(url_for('login'))
+            
+            # TODO: 추후 User 모델에 세분화된 권한 시스템 도입 시 아래 로직 수정
+            # 예: if not current_user.has_permission(permission):
+            if not current_user.is_admin:
+                flash('이 작업을 수행할 권한이 없습니다.', 'error')
+                return redirect(request.referrer or url_for('index'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
 def login_required(f):
     """로그인 확인 데코레이터"""
     @wraps(f)

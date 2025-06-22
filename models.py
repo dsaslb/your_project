@@ -214,8 +214,9 @@ class Notification(db.Model):
     __tablename__ = "notifications"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
-    message = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    content = db.Column(db.String(255), nullable=False)
+    related_url = db.Column(db.String(255), nullable=True) # 알림 클릭 시 이동할 URL
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     is_read = db.Column(db.Boolean, default=False, index=True)
     
     # 관계 설정
@@ -228,7 +229,7 @@ class Notification(db.Model):
     )
     
     def __repr__(self):
-        return f'<Notification {self.user_id} {self.message[:20]}...>'
+        return f'<Notification {self.id} for User {self.user_id}>'
 
 # 공지사항 모델
 class Notice(db.Model):
@@ -248,17 +249,14 @@ class Notice(db.Model):
     reads = db.relationship("NoticeRead", backref="notice", cascade="all, delete-orphan")
     comments = db.relationship("NoticeComment", backref="notice", cascade="all, delete-orphan")
     
-    # 검색 최적화를 위한 인덱스 추가
     __table_args__ = (
-        db.Index('idx_notice_author_date', 'author_id', 'created_at'),
-        db.Index('idx_notice_category_date', 'category', 'created_at'),
-        db.Index('idx_notice_hidden_date', 'is_hidden', 'created_at'),
+        db.Index('idx_notice_author_category', 'author_id', 'category'),
+        db.Index('idx_notice_created', 'created_at'),
     )
 
     def __repr__(self):
-        return f'<Notice {self.id}: {self.title}>'
+        return f'<Notice {self.title}>'
 
-# 공지사항 읽음 모델
 class NoticeRead(db.Model):
     __tablename__ = "notice_reads"
     id = db.Column(db.Integer, primary_key=True)
@@ -268,32 +266,13 @@ class NoticeRead(db.Model):
     
     # 복합 인덱스 추가
     __table_args__ = (
+        db.UniqueConstraint('notice_id', 'user_id', name='uq_notice_user'),
         db.Index('idx_noticeread_user_notice', 'user_id', 'notice_id'),
     )
     
     def __repr__(self):
-        return f'<NoticeRead user:{self.user_id} notice:{self.notice_id}>'
+        return f'<NoticeRead {self.user_id} read {self.notice_id}>'
 
-# 익명 건의함 모델
-class Suggestion(db.Model):
-    __tablename__ = "suggestions"
-    id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.Text, nullable=False)
-    answer = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
-    answered_at = db.Column(db.DateTime, index=True)
-    is_anonymous = db.Column(db.Boolean, default=True, index=True)
-    
-    # 복합 인덱스 추가
-    __table_args__ = (
-        db.Index('idx_suggestion_created', 'created_at'),
-        db.Index('idx_suggestion_answered', 'answered_at'),
-    )
-    
-    def __repr__(self):
-        return f'<Suggestion {self.id}>'
-
-# 공지사항 댓글 모델
 class NoticeComment(db.Model):
     __tablename__ = "notice_comments"
     id = db.Column(db.Integer, primary_key=True)
@@ -308,15 +287,13 @@ class NoticeComment(db.Model):
     
     # 복합 인덱스 추가
     __table_args__ = (
-        db.Index('idx_comment_notice_date', 'notice_id', 'created_at'),
-        db.Index('idx_comment_user_date', 'user_id', 'created_at'),
-        db.Index('idx_comment_hidden_date', 'is_hidden', 'created_at'),
+        db.Index('idx_noticecomment_notice_user', 'notice_id', 'user_id'),
+        db.Index('idx_noticecomment_created', 'created_at'),
     )
     
     def __repr__(self):
-        return f'<NoticeComment {self.id}>'
+        return f'<NoticeComment {self.id} on notice {self.notice_id}>'
 
-# 공지사항 변경이력 모델
 class NoticeHistory(db.Model):
     __tablename__ = "notice_histories"
     id = db.Column(db.Integer, primary_key=True)
@@ -336,15 +313,13 @@ class NoticeHistory(db.Model):
     
     # 복합 인덱스 추가
     __table_args__ = (
-        db.Index('idx_history_notice_date', 'notice_id', 'edited_at'),
-        db.Index('idx_history_editor_date', 'editor_id', 'edited_at'),
-        db.Index('idx_history_action_date', 'action', 'edited_at'),
+        db.Index('idx_noticehistory_notice', 'notice_id'),
+        db.Index('idx_noticehistory_editor', 'editor_id'),
     )
     
     def __repr__(self):
         return f'<NoticeHistory {self.id} for notice {self.notice_id}>'
 
-# 댓글 변경이력 모델
 class CommentHistory(db.Model):
     __tablename__ = "comment_histories"
     id = db.Column(db.Integer, primary_key=True)
@@ -361,15 +336,13 @@ class CommentHistory(db.Model):
     
     # 복합 인덱스 추가
     __table_args__ = (
-        db.Index('idx_comment_history_comment_date', 'comment_id', 'edited_at'),
-        db.Index('idx_comment_history_editor_date', 'editor_id', 'edited_at'),
-        db.Index('idx_comment_history_action_date', 'action', 'edited_at'),
+        db.Index('idx_commenthistory_comment', 'comment_id'),
+        db.Index('idx_commenthistory_editor', 'editor_id'),
     )
     
     def __repr__(self):
         return f'<CommentHistory {self.id} for comment {self.comment_id}>'
 
-# 신고 모델
 class Report(db.Model):
     __tablename__ = "reports"
     id = db.Column(db.Integer, primary_key=True)
@@ -392,17 +365,16 @@ class Report(db.Model):
     # 복합 인덱스 추가
     __table_args__ = (
         db.Index('idx_report_target', 'target_type', 'target_id'),
-        db.Index('idx_report_user_date', 'user_id', 'created_at'),
-        db.Index('idx_report_status_date', 'status', 'created_at'),
-        db.Index('idx_report_category', 'category'),
+        db.Index('idx_report_status_category', 'status', 'category'),
     )
     
     def __repr__(self):
-        return f'<Report {self.id} for {self.target_type}:{self.target_id}>'
+        return f'<Report {self.id} for {self.target_type} {self.target_id}>'
+
 
 class SystemLog(db.Model):
     """시스템 로그 모델"""
-    __tablename__ = 'system_log'
+    __tablename__ = 'system_logs'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     action = db.Column(db.String(100), nullable=False)
@@ -415,8 +387,52 @@ class SystemLog(db.Model):
     user = db.relationship('User', backref='system_logs')
 
     def __repr__(self):
-        return f'<SystemLog {self.id}: {self.action}>'
-c l a s s   D a t a C h a n g e L o g ( d b . M o d e l ) :  
-         _ _ t a b l e n a m e _ _   =   ' d a t a _ c h a n g e _ l o g s '  
-         i d   =   d b . C o l u m n ( d b . I n t e g e r ,   p r i m a r y _ k e y = T r u e )  
- 
+        return f'<SystemLog {self.action} by User {self.user_id}>'
+
+class Suggestion(db.Model):
+    __tablename__ = "suggestions"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    answer = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    answered_at = db.Column(db.DateTime, index=True)
+    is_anonymous = db.Column(db.Boolean, default=True, index=True)
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_suggestion_created', 'created_at'),
+        db.Index('idx_suggestion_answered', 'answered_at'),
+    )
+
+    def __repr__(self):
+        return f'<Suggestion {self.id}>'
+
+class Schedule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=False)
+    category = db.Column(db.String(50), nullable=False, default='근무')
+    status = db.Column(db.String(20), nullable=False, default='대기') # 대기, 승인, 거절
+    memo = db.Column(db.String(200), nullable=True)
+
+    user = db.relationship('User', backref=db.backref('schedules', lazy=True))
+
+    def __repr__(self):
+        return f'<Schedule {self.id} for User {self.user_id} on {self.date} from {self.start_time} to {self.end_time}>'
+
+class CleaningPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date)
+    plan = db.Column(db.String(200), nullable=False)
+    team = db.Column(db.String(30))       # ex: "주방", "홀" 등
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 담당자(옵션)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id')) # 담당 직원
+
+    user = db.relationship('User', foreign_keys=[user_id], backref='cleaning_assignments')
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_cleaning_plans')
+
+    def __repr__(self):
+        return f'<CleaningPlan {self.id}>' 

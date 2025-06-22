@@ -51,8 +51,24 @@ def get_notices():
                     type: string
                     format: date-time
                     description: 작성일시
+            total:
+              type: integer
+              description: 전체 공지사항 수
+            page:
+              type: integer
+              description: 현재 페이지 번호
+            pages:
+              type: integer
+              description: 전체 페이지 수
     """
-    notices = Notice.query.filter_by(is_hidden=False).order_by(Notice.created_at.desc()).limit(20).all()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    pagination = Notice.query.filter_by(is_hidden=False).order_by(Notice.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    notices = pagination.items
     output = []
     for notice in notices:
         notice_data = {
@@ -62,7 +78,13 @@ def get_notices():
             'created_at': notice.created_at.isoformat()
         }
         output.append(notice_data)
-    return jsonify({'notices': output})
+        
+    return jsonify({
+        'notices': output,
+        'total': pagination.total,
+        'page': pagination.page,
+        'pages': pagination.pages
+    })
 
 @api_notice_bp.route('/', methods=['POST'])
 @token_required

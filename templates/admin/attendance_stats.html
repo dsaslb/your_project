@@ -47,7 +47,7 @@
                 <!-- CSV 다운로드 폼 -->
                 <div class="row mb-3">
                     <div class="col-12">
-                        <form method="get" action="{{ url_for('admin_attendance_stats_csv') }}" class="d-inline">
+                        {# <form method="get" action="{{ url_for('admin_attendance_stats_csv') }}" class="d-inline">
                             <input type="hidden" name="year" value="{{ year }}">
                             <input type="hidden" name="month" value="{{ month or '' }}">
                             <input type="hidden" name="user_id" value="{{ user_id or '' }}">
@@ -56,7 +56,7 @@
                             <button type="submit" class="btn btn-success">
                                 <i class="fas fa-download"></i> 월별 집계 CSV 다운로드
                             </button>
-                        </form>
+                        </form> #}
                         <a href="{{ url_for('bulk_payroll') }}?year={{ year }}&month={{ month or '' }}" class="btn btn-warning">
                             <i class="fas fa-file-pdf"></i> 급여명세서 일괄생성
                         </a>

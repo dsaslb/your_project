@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}교대 신청 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3><i class="fas fa-exchange-alt me-2"></i> 교대 신청 관리</h3>
+    <p class="text-muted">승인 대기 중인 교대 신청 목록입니다.</p>
+    <hr>
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>날짜</th>
+                        <th>신청자</th>
+                        <th>요청 시간</th>
+                        <th>메모</th>
+                        <th>상태</th>
+                        <th class="text-center">작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in swap_requests %}
+                    <tr>
+                        <td>{{ req.date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ req.user.username }}</td>
+                        <td>{{ req.start_time.strftime('%H:%M') }} - {{ req.end_time.strftime('%H:%M') }}</td>
+                        <td>{{ req.memo }}</td>
+                        <td>
+                          {% if req.status == '대기' %}
+                          <form method="post" action="{{ url_for('approve_schedule', schedule_id=req.id) }}" class="d-inline">
+                            <button type="submit" name="status" value="승인" class="btn btn-success btn-sm">승인</button>
+                            <button type="submit" name="status" value="거절" class="btn btn-danger btn-sm">거절</button>
+                          </form>
+                          {% else %}
+                            {% if req.status == '승인' %}
+                              <span class="badge bg-success">{{ req.status }}</span>
+                            {% else %}
+                              <span class="badge bg-danger">{{ req.status }}</span>
+                            {% endif %}
+                          {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">대기 중인 교대 신청이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 

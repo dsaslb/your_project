@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}스케줄 수정{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>스케줄 수정</h3>
+    <hr>
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label for="date" class="form-label">날짜</label>
+                    <input type="date" class="form-control" id="date" name="date" value="{{ sch.date.strftime('%Y-%m-%d') }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="user_id" class="form-label">직원</label>
+                    <input type="text" class="form-control" value="{{ sch.user.username }}" readonly disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label for="category" class="form-label">종류</label>
+                    <select name="category" id="category" class="form-select">
+                        {% set categories = ['근무', '청소', '휴무', '교육', '기타'] %}
+                        {% for cat in categories %}
+                            <option value="{{ cat }}" {% if cat == sch.category %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="start_time" class="form-label">시작 시간</label>
+                        <input type="time" class="form-control" id="start_time" name="start_time" value="{{ sch.start_time.strftime('%H:%M') }}" required>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="end_time" class="form-label">종료 시간</label>
+                        <input type="time" class="form-control" id="end_time" name="end_time" value="{{ sch.end_time.strftime('%H:%M') }}" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="memo" class="form-label">메모 (선택)</label>
+                    <textarea class="form-control" id="memo" name="memo" rows="2" placeholder="전달 사항을 입력하세요">{{ sch.memo or '' }}</textarea>
+                </div>
+
+                <div class="mt-2">
+                    <button type="submit" class="btn btn-primary">저장</button>
+                    <a href="{{ url_for('schedule') }}" class="btn btn-secondary">취소</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

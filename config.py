@@ -87,8 +87,17 @@ class TestConfig(Config):
     TESTING = True
     DEBUG = True
     
-    # 테스트용 데이터베이스
+    # In-memory-db
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    
+    # CSRF protection disabled for tests
+    WTF_CSRF_ENABLED = False
+    
+    # Reduce password hashing rounds for speed
+    BCRYPT_LOG_ROUNDS = 4
+    
+    # Secret key for JWT
+    JWT_SECRET_KEY = 'test-secret-key'
     
     # 테스트용 보안 헤더 완화
     SECURITY_HEADERS = {}

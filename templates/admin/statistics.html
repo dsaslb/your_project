@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}통계 리포트 - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">휴무/교대 통계 리포트</h1>
+
+    <!-- Date Range Filter Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('admin_reports') }}" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="from_date" class="form-label">시작일</label>
+                    <input type="date" id="from_date" name="from" value="{{ request.args.get('from', '2025-06-01') }}" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="to_date" class="form-label">종료일</label>
+                    <input type="date" id="to_date" name="to" value="{{ request.args.get('to', '2025-06-30') }}" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">조회</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Leave Status -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3>휴무 현황</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for user in users %}
+                            {% if off_count.get(user.id, 0) > 0 %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ user.username }}
+                                    <span class="badge bg-primary rounded-pill">{{ off_count.get(user.id, 0) }}회</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shift Swap Status -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3>교대 신청 현황</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            대기
+                            <span class="badge bg-warning rounded-pill">{{ swap_count.get('대기', 0) }}건</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            승인
+                            <span class="badge bg-success rounded-pill">{{ swap_count.get('승인', 0) }}건</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            거절
+                            <span class="badge bg-danger rounded-pill">{{ swap_count.get('거절', 0) }}건</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

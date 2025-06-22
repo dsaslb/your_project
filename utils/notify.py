@@ -5,8 +5,11 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from extensions import db
-from models import User, ActionLog, Attendance
+from models import User, ActionLog, Attendance, Notification
 from utils.logger import log_action
+from flask import url_for
+# from utils.email_utils import send_mail # 실제 이메일 전송 함수
+# from utils.kakao_utils import send_kakao # 실제 카카오톡 전송 함수
 
 class NotificationService:
     """알림 서비스 클래스"""
@@ -96,24 +99,54 @@ class NotificationService:
         except Exception as e:
             return False, f"SMS 발송 실패: {str(e)}"
 
-def send_notification(user, message, method='all'):
+def send_notification(user_id, content, related_url=None, email_info=None, kakao_info=None):
+    """
+    사용자에게 알림을 생성하고, 이메일/카카오톡 전송을 트리거합니다.
+    email_info: {'to': 'email@example.com', 'subject': '제목', 'template': 'email_template.html'}
+    kakao_info: {'to': 'kakao_id', 'template_code': '...'}
+    """
     try:
-        print(f"[알림] to {user.name or user.username} ({getattr(user, 'phone', '-')}) : {message}")
-        # 실제 API 연동은 아래 주석 해제 후 API 키 입력
-        # api_url = "https://api-alimtalk.example.com/send"
-        # payload = {...}
-        # headers = {"Authorization": "Bearer YOUR_KAKAO_API_TOKEN"}
-        # r = requests.post(api_url, json=payload, headers=headers)
-        # if r.status_code == 200:
-        #     print("카카오톡 알림 발송 성공")
-        #     return True
-        # else:
-        #     print("알림 발송 실패:", r.text)
-        #     return False
-        return True
+        # 1. 데이터베이스에 알림 저장
+        n = Notification(
+            user_id=user_id,
+            content=content,
+            related_url=related_url
+        )
+        db.session.add(n)
+
+        # 2. 이메일 연동 (주석 처리)
+        # if email_info and email_info.get('to'):
+        #     # send_mail(
+        #     #     recipient=email_info['to'], 
+        #     #     subject=email_info.get('subject', '알림'), 
+        #     #     template=email_info.get('template', 'default_email'), 
+        #     #     context={'content': content}
+        #     # )
+        #     print(f"DEBUG: 이메일 전송 -> {email_info['to']}, 내용: {content}")
+
+        # 3. 카카오톡 연동 (주석 처리)
+        # if kakao_info and kakao_info.get('to'):
+        #     # send_kakao(
+        #     #     recipient=kakao_info['to'],
+        #     #     template_code=kakao_info['template_code'],
+        #     #     params={'content': content}
+        #     # )
+        #     print(f"DEBUG: 카카오톡 전송 -> {kakao_info['to']}, 내용: {content}")
+
     except Exception as e:
-        print("알림 예외:", e)
-        return True
+        print(f"알림 생성 중 오류 발생: {e}")
+        db.session.rollback()
+
+def notify_admins(content, related_url=None):
+    """
+    Sends a notification to all administrators.
+    """
+    try:
+        admins = User.query.filter_by(role='admin').all()
+        for admin in admins:
+            send_notification(admin.id, content, related_url)
+    except Exception as e:
+        print(f"Error sending admin notifications: {e}")
 
 def send_email(user, subject, message):
     try:
@@ -153,12 +186,12 @@ def notify_salary_payment(user, amount, year, month):
     
     # 이메일 알림
     if user.email:
-        send_notification(user, message, 'email')
+        send_notification(user.id, message, url_for('salary_payment', year=year, month=month))
     
     # SMS 알림 (선택사항)
     if user.phone:
         sms_message = f"{year}년{month}월 급여 {amount:,}원이 입금되었습니다."
-        send_notification(user, sms_message, 'sms')
+        send_notification(user.id, sms_message, url_for('salary_payment', year=year, month=month))
 
 def notify_attendance_issue(user, year, month, lateness, early_leave, night_work):
     """근태 이상 알림"""
@@ -184,7 +217,7 @@ def notify_attendance_issue(user, year, month, lateness, early_leave, night_work
 레스토랑 관리 시스템
         """.strip()
         
-        send_notification(user, message, 'email')
+        send_notification(user.id, message, url_for('attendance_issue', year=year, month=month))
 
 def notify_approval_result(user, approved):
     """승인 결과 알림"""
@@ -212,7 +245,7 @@ def notify_approval_result(user, approved):
 레스토랑 관리 시스템
         """.strip()
     
-    send_notification(user, message, 'email')
+    send_notification(user.id, message, url_for('approval_result', approved=approved))
 
 def notify_system_maintenance(message, users=None):
     """시스템 점검 알림"""
@@ -220,7 +253,7 @@ def notify_system_maintenance(message, users=None):
         users = User.query.filter_by(status='approved').all()
     
     for user in users:
-        send_notification(user, message, 'email')
+        send_notification(user.id, message, url_for('system_maintenance'))
 
 def notify_holiday_reminder(user, holiday_date, holiday_name):
     """공휴일 알림"""
@@ -238,7 +271,7 @@ def notify_holiday_reminder(user, holiday_date, holiday_name):
 레스토랑 관리 시스템
     """.strip()
     
-    send_notification(user, message, 'email')
+    send_notification(user.id, message, url_for('holiday_reminder', holiday_date=holiday_date))
 
 def notify_birthday(user):
     """생일 축하 알림"""
@@ -254,7 +287,7 @@ def notify_birthday(user):
 레스토랑 관리 시스템
     """.strip()
     
-    send_notification(user, message, 'email')
+    send_notification(user.id, message, url_for('birthday'))
 
 def log_notification(user_id, notification_type, message, success, error_msg=""):
     """알림 로그 기록"""

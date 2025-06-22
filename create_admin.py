@@ -5,14 +5,55 @@
 
 import os
 import sys
+from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 from sqlalchemy import create_engine, text
 
-# 프로젝트 루트 디렉토리를 Python 경로에 추가
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# 프로젝트 루트를 경로에 추가
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from app import app, db
 from models import User
+
+# .env 파일 로드
+load_dotenv()
+
+with app.app_context():
+    try:
+        # 기존 admin 사용자 확인
+        admin_user = User.query.filter_by(username='admin').first()
+
+        if not admin_user:
+            print("Creating new admin user...")
+            # 사용자 정보 설정
+            username = 'admin'
+            password = 'admin_password' # 실제 운영에서는 더 강력한 비밀번호를 사용해야 합니다.
+            email = 'admin@example.com'
+            
+            # 새 사용자 생성
+            new_admin = User(
+                username=username,
+                email=email,
+                role='admin',
+                status='approved'  # 바로 승인된 상태로 생성
+            )
+            new_admin.set_password(password)
+            
+            db.session.add(new_admin)
+            db.session.commit()
+            
+            print(f"Admin user '{username}' created successfully with password '{password}'.")
+        else:
+            print(f"Admin user 'admin' already exists.")
+            # 비밀번호 재설정 (필요시)
+            # print("Resetting admin password...")
+            # admin_user.set_password('new_admin_password')
+            # db.session.commit()
+            # print("Admin password has been reset.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        db.session.rollback()
 
 def create_admin_user():
     """관리자 계정을 생성합니다."""

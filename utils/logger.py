@@ -76,4 +76,19 @@ def log_security_event(user_id, event_type, details=None, ip_address=None):
         log_message += f", details={details}"
     if ip_address:
         log_message += f", ip={ip_address}"
-    logger.warning(log_message) 
+    logger.warning(log_message)
+
+def send_slack_alert_if_prod(message, level='INFO'):
+    """운영 환경일 경우에만 Slack 알림을 전송합니다."""
+    # FLASK_ENV 환경 변수를 확인하여 'production'일 때만 실행
+    if os.getenv('FLASK_ENV') == 'production':
+        try:
+            # send_slack_alert 함수가 있는지 확인하고 호출
+            # 이 함수는 utils.slack_alert 모듈에 있을 것으로 예상됩니다.
+            from .slack_alert import send_slack_alert
+            send_slack_alert(message, level)
+        except ImportError:
+            # send_slack_alert 함수가 없어도 오류를 발생시키지 않음
+            log_error("Slack alert function not found, but it's okay.")
+        except Exception as e:
+            log_error(f"Failed to send Slack alert: {e}") 

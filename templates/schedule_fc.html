@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}스케줄 캘린더{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/main.min.css' rel='stylesheet' />
+<style>
+  .fc-event {
+    font-size: 0.9em;
+    cursor: pointer;
+  }
+  .fc-daygrid-event {
+    white-space: normal;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>직원 스케줄 캘린더</h3>
+        <a href="{{ url_for('schedule') }}" class="btn btn-secondary">목록으로 돌아가기</a>
+    </div>
+
+    <div class="card p-3">
+        <div class="d-flex justify-content-end mb-3">
+            <div style="max-width: 200px;">
+                <select id="userFilter" class="form-select">
+                    <option value="">전체 직원</option>
+                    {% for u in employees %}
+                        <option value="{{ u.id }}">{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div id='calendar'></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/main.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var userFilter = document.getElementById('userFilter');
+    const isAdmin = {{ 'true' if current_user.is_admin else 'false' }};
+
+    function getEventSource() {
+        const selectedUserId = userFilter.value;
+        const eventSource = {
+            url: '/api/schedule',
+            method: 'GET',
+            extraParams: {},
+            failure: function() {
+                alert('스케줄 데이터를 불러오는 데 실패했습니다.');
+            }
+        };
+        if (selectedUserId) {
+            eventSource.extraParams.user_id = selectedUserId;
+        }
+        return eventSource;
+    }
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'ko',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        navLinks: true,
+        editable: isAdmin, 
+        dayMaxEvents: true,
+
+        events: getEventSource(),
+        
+        eventDrop: function(info) {
+            if (!isAdmin) return;
+            fetch('/api/schedule/' + info.event.id, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+                body: JSON.stringify({
+                    date: info.event.start.toISOString().slice(0, 10),
+                    start_time: info.event.start.toTimeString().slice(0, 5),
+                    end_time: info.event.end ? info.event.end.toTimeString().slice(0, 5) : info.event.start.toTimeString().slice(0, 5)
+                })
+            }).then(res => {
+                if(!res.ok) { alert('변경에 실패했습니다!'); info.revert(); }
+            });
+        },
+
+        eventResize: function(info) {
+            if (!isAdmin) return;
+            fetch('/api/schedule/' + info.event.id, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+                body: JSON.stringify({
+                    date: info.event.start.toISOString().slice(0, 10),
+                    start_time: info.event.start.toTimeString().slice(0, 5),
+                    end_time: info.event.end ? info.event.end.toTimeString().slice(0, 5) : info.event.start.toTimeString().slice(0, 5)
+                })
+            }).then(res => {
+                if(!res.ok) { alert('변경에 실패했습니다!'); info.revert(); }
+            });
+        },
+
+        dateClick: function(info) {
+            if (!isAdmin) return;
+            let name = prompt('새 스케줄을 추가할 직원명을 입력하세요:');
+            if (name) {
+                let time = prompt('시간을 입력하세요 (예: 09:00-18:00):');
+                if (time && time.includes('-')) {
+                    const [start, end] = time.split('-');
+                    fetch('/api/schedule', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+                        body: JSON.stringify({
+                            date: info.dateStr,
+                            username: name.trim(),
+                            start_time: start.trim(),
+                            end_time: end.trim()
+                        })
+                    }).then(res => {
+                        if(res.ok) calendar.refetchEvents();
+                        else alert('등록에 실패했습니다!');
+                    });
+                }
+            }
+        },
+
+        eventClick: function(info) {
+            if (!isAdmin) return;
+            if (confirm("'" + info.event.title + "' 스케줄을 삭제하시겠습니까?")) {
+                fetch('/api/schedule/' + info.event.id, { 
+                    method: 'DELETE',
+                    headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+                }).then(res => {
+                    if(res.ok) calendar.refetchEvents();
+                    else alert('삭제에 실패했습니다!');
+                });
+            }
+        }
+    });
+
+    calendar.render();
+
+    userFilter.addEventListener('change', function() {
+        calendar.removeAllEventSources();
+        calendar.addEventSource(getEventSource());
+    });
+});
+</script>
+{% endblock %} 

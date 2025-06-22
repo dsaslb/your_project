@@ -52,7 +52,7 @@
                                             <span class="badge bg-secondary">기각됨</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="text-center">
                                         {% if report.status == 'pending' %}
                                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#reviewModal{{ report.id }}">
                                             검토
@@ -78,6 +78,7 @@
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form method="POST" action="{{ url_for('admin_report_review', report_id=report.id) }}">
+                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <div class="modal-body">
                                                     <div class="mb-3">
                                                         <label class="form-label">신고 내용</label>

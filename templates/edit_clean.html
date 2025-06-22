@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}청소계획 수정{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>청소계획 수정</h3>
+    <hr>
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label for="date" class="form-label">날짜</label>
+                    <input type="date" class="form-control" id="date" name="date" value="{{ plan.date.strftime('%Y-%m-%d') }}" readonly disabled>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="user_id" class="form-label">담당자</label>
+                    <input type="text" class="form-control" value="{{ plan.user.username }}" readonly disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label for="plan" class="form-label">청소 계획</label>
+                    <input type="text" class="form-control" id="plan" name="plan" value="{{ plan.plan }}" required>
+                </div>
+
+                <div class="mt-2">
+                    <button type="submit" class="btn btn-primary">저장</button>
+                    <a href="{{ url_for('schedule') }}" class="btn btn-secondary">취소</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 
