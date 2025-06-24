@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}직원별 통계{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-bar"></i> 직원별 통계
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- 필터 폼 -->
+                    <form method="get" class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label for="user_id" class="form-label">직원 선택</label>
+                            <select name="user_id" id="user_id" class="form-select">
+                                {% for u in users %}
+                                <option value="{{ u.id }}" {% if u.id == user_id %}selected{% endif %}>
+                                    {{ u.name or u.username }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="from" class="form-label">시작일</label>
+                            <input type="date" name="from" id="from" value="{{ date_from }}" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="to" class="form-label">종료일</label>
+                            <input type="date" name="to" id="to" value="{{ date_to }}" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary d-block">
+                                <i class="fas fa-search"></i> 조회
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-secondary" onclick="setDateRange(7)">
+                                    최근 7일
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="setDateRange(30)">
+                                    최근 30일
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- 선택된 직원 정보 -->
+                    {% if selected_user %}
+                    <div class="alert alert-info">
+                        <strong>{{ selected_user.name or selected_user.username }}</strong>님의 통계 ({{ date_from }} ~ {{ date_to }})
+                    </div>
+                    {% endif %}
+
+                    <!-- 통계 카드 -->
+                    <div class="row mb-4">
+                        <div class="col-md-2">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-briefcase fa-2x mb-2"></i>
+                                    <h4>{{ work_cnt }}</h4>
+                                    <p class="mb-0">근무</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-broom fa-2x mb-2"></i>
+                                    <h4>{{ clean_cnt }}</h4>
+                                    <p class="mb-0">청소</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                    <h4>{{ order_cnt }}</h4>
+                                    <p class="mb-0">발주</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-bell fa-2x mb-2"></i>
+                                    <h4>{{ noti_cnt }}</h4>
+                                    <p class="mb-0">알림</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-secondary text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-clock fa-2x mb-2"></i>
+                                    <h4>{{ attendance_cnt }}</h4>
+                                    <p class="mb-0">출근</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-dark text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                    <h4>{{ work_cnt + clean_cnt + order_cnt + noti_cnt + attendance_cnt }}</h4>
+                                    <p class="mb-0">총계</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 차트 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-chart-area"></i> 일별 활동 현황
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="staffChart" height="100"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 상세 통계 테이블 -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-table"></i> 상세 통계
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>구분</th>
+                                                    <th>건수</th>
+                                                    <th>비율</th>
+                                                    <th>평균/일</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% set total = work_cnt + clean_cnt + order_cnt + noti_cnt + attendance_cnt %}
+                                                {% set days_diff = ((date_to|string).split('-')|list|join('')|int - (date_from|string).split('-')|list|join('')|int) + 1 %}
+                                                <tr>
+                                                    <td><i class="fas fa-briefcase text-primary"></i> 근무</td>
+                                                    <td><strong>{{ work_cnt }}</strong></td>
+                                                    <td>{{ "%.1f"|format(work_cnt / total * 100 if total > 0 else 0) }}%</td>
+                                                    <td>{{ "%.1f"|format(work_cnt / days_diff) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><i class="fas fa-broom text-success"></i> 청소</td>
+                                                    <td><strong>{{ clean_cnt }}</strong></td>
+                                                    <td>{{ "%.1f"|format(clean_cnt / total * 100 if total > 0 else 0) }}%</td>
+                                                    <td>{{ "%.1f"|format(clean_cnt / days_diff) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><i class="fas fa-shopping-cart text-warning"></i> 발주</td>
+                                                    <td><strong>{{ order_cnt }}</strong></td>
+                                                    <td>{{ "%.1f"|format(order_cnt / total * 100 if total > 0 else 0) }}%</td>
+                                                    <td>{{ "%.1f"|format(order_cnt / days_diff) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><i class="fas fa-bell text-info"></i> 알림</td>
+                                                    <td><strong>{{ noti_cnt }}</strong></td>
+                                                    <td>{{ "%.1f"|format(noti_cnt / total * 100 if total > 0 else 0) }}%</td>
+                                                    <td>{{ "%.1f"|format(noti_cnt / days_diff) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><i class="fas fa-clock text-secondary"></i> 출근</td>
+                                                    <td><strong>{{ attendance_cnt }}</strong></td>
+                                                    <td>{{ "%.1f"|format(attendance_cnt / total * 100 if total > 0 else 0) }}%</td>
+                                                    <td>{{ "%.1f"|format(attendance_cnt / days_diff) }}</td>
+                                                </tr>
+                                                <tr class="table-dark">
+                                                    <td><strong>총계</strong></td>
+                                                    <td><strong>{{ total }}</strong></td>
+                                                    <td><strong>100%</strong></td>
+                                                    <td><strong>{{ "%.1f"|format(total / days_diff) }}</strong></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 날짜 범위 설정 함수
+function setDateRange(days) {
+    const today = new Date();
+    const fromDate = new Date(today);
+    fromDate.setDate(today.getDate() - days);
+    
+    document.getElementById('from').value = fromDate.toISOString().split('T')[0];
+    document.getElementById('to').value = today.toISOString().split('T')[0];
+}
+
+// 차트 데이터
+let days = {{ days | safe }};
+let work_hist = {{ work_hist | safe }};
+let clean_hist = {{ clean_hist | safe }};
+let order_hist = {{ order_hist | safe }};
+let attendance_hist = {{ attendance_hist | safe }};
+
+// 차트 생성
+let ctx = document.getElementById('staffChart').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: days,
+        datasets: [
+            {
+                label: '근무',
+                data: work_hist,
+                backgroundColor: 'rgba(13, 110, 253, 0.8)',
+                borderColor: 'rgba(13, 110, 253, 1)',
+                borderWidth: 1
+            },
+            {
+                label: '청소',
+                data: clean_hist,
+                backgroundColor: 'rgba(25, 135, 84, 0.8)',
+                borderColor: 'rgba(25, 135, 84, 1)',
+                borderWidth: 1
+            },
+            {
+                label: '발주',
+                data: order_hist,
+                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
+            },
+            {
+                label: '출근',
+                data: attendance_hist,
+                backgroundColor: 'rgba(108, 117, 125, 0.8)',
+                borderColor: 'rgba(108, 117, 125, 1)',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            title: {
+                display: true,
+                text: '일별 활동 현황'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index'
+        }
+    }
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}청소 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-broom"></i> 청소 관리</h5>
+                </div>
+                <div class="card-body">
+                    <!-- 청소 등록 폼 -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h6>새 청소 계획 등록</h6>
+                            <form method="post" class="row g-3">
+                                <div class="col-md-2">
+                                    <input type="date" name="date" class="form-control" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" name="plan" class="form-control" placeholder="청소 내용" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <select name="team" class="form-select" required>
+                                        <option value="">팀 선택</option>
+                                        <option value="주방">주방</option>
+                                        <option value="홀">홀</option>
+                                        <option value="화장실">화장실</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="manager_id" class="form-select" required>
+                                        <option value="">담당자 선택</option>
+                                        {% for employee in employees %}
+                                            <option value="{{ employee.id }}">{{ employee.username }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-info">
+                                        <i class="fas fa-plus"></i> 청소 등록
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 청소 목록 -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>일자</th>
+                                    <th>내용</th>
+                                    <th>팀</th>
+                                    <th>담당자</th>
+                                    <th>작업</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cleaning in cleanings %}
+                                <tr>
+                                    <td>{{ cleaning.date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ cleaning.plan }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ cleaning.team }}</span>
+                                    </td>
+                                    <td>{{ cleaning.manager.username if cleaning.manager else 'Unknown' }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                    onclick="editCleaning({{ cleaning.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="deleteCleaning({{ cleaning.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">등록된 청소 계획이 없습니다.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function editCleaning(cleaningId) {
+    // 청소 수정 기능 (향후 구현)
+    alert('청소 수정 기능은 준비 중입니다.');
+}
+
+function deleteCleaning(cleaningId) {
+    if (confirm('정말로 이 청소 계획을 삭제하시겠습니까?')) {
+        // 청소 삭제 기능 (향후 구현)
+        alert('청소 삭제 기능은 준비 중입니다.');
+    }
+}
+</script>
+{% endblock %} 

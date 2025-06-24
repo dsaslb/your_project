@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}통계 리포트{% endblock %}
+{% block content %}
+<h3>직원별 근무일수</h3>
+<ul>
+  {% for uid, cnt in workdays %}
+    <li>{{users[uid]}} : {{cnt}}일</li>
+  {% endfor %}
+</ul>
+<h3>직원별 발주 건수</h3>
+<ul>
+  {% for uid, cnt in orders %}
+    <li>{{users[uid]}} : {{cnt}}건</li>
+  {% endfor %}
+</ul>
+<h3>청소 담당별 횟수</h3>
+<ul>
+  {% for uid, cnt in cleans %}
+    <li>{{users[uid]}} : {{cnt}}회</li>
+  {% endfor %}
+</ul>
+{% endblock %} 

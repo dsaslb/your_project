@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}직원 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fas fa-users"></i> 직원 관리</h5>
+                </div>
+                <div class="card-body">
+                    <!-- 직원 등록 폼 -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h6>새 직원 등록</h6>
+                            <form method="post" class="row g-3">
+                                <div class="col-md-4">
+                                    <input type="text" name="username" class="form-control" placeholder="직원 이름" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="role" class="form-select" required>
+                                        <option value="">역할 선택</option>
+                                        <option value="admin">최종관리자</option>
+                                        <option value="manager">매장관리자</option>
+                                        <option value="employee">직원</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> 직원 등록
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 직원 목록 -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>이름</th>
+                                    <th>역할</th>
+                                    <th>상태</th>
+                                    <th>가입일</th>
+                                    <th>작업</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.username }}</td>
+                                    <td>
+                                        {% if user.role == "admin" %}
+                                            <span class="badge bg-danger">{{ user.role }}</span>
+                                        {% elif user.role == "manager" %}
+                                            <span class="badge bg-warning">{{ user.role }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ user.role }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.status == "approved" %}
+                                            <span class="badge bg-success">{{ user.status }}</span>
+                                        {% elif user.status == "pending" %}
+                                            <span class="badge bg-warning">{{ user.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ user.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                    onclick="editUser({{ user.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="deleteUser({{ user.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">등록된 직원이 없습니다.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function editUser(userId) {
+    // 직원 수정 기능 (향후 구현)
+    alert('직원 수정 기능은 준비 중입니다.');
+}
+
+function deleteUser(userId) {
+    if (confirm('정말로 이 직원을 삭제하시겠습니까?')) {
+        // 직원 삭제 기능 (향후 구현)
+        alert('직원 삭제 기능은 준비 중입니다.');
+    }
+}
+</script>
+{% endblock %} 

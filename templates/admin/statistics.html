@@ -34,11 +34,11 @@
                 </div>
                 <div class="card-body">
                     <ul class="list-group">
-                        {% for user in users %}
-                            {% if off_count.get(user.id, 0) > 0 %}
+                        {% for user in users or [] %}
+                            {% if (off_count or {}).get(user.id, 0) > 0 %}
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                     {{ user.username }}
-                                    <span class="badge bg-primary rounded-pill">{{ off_count.get(user.id, 0) }}회</span>
+                                    <span class="badge bg-primary rounded-pill">{{ (off_count or {}).get(user.id, 0) }}회</span>
                                 </li>
                             {% endif %}
                         {% endfor %}
@@ -57,15 +57,15 @@
                     <ul class="list-group">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             대기
-                            <span class="badge bg-warning rounded-pill">{{ swap_count.get('대기', 0) }}건</span>
+                            <span class="badge bg-warning rounded-pill">{{ swap_count.get('대기', 0) if swap_count else 0 }}건</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             승인
-                            <span class="badge bg-success rounded-pill">{{ swap_count.get('승인', 0) }}건</span>
+                            <span class="badge bg-success rounded-pill">{{ swap_count.get('승인', 0) if swap_count else 0 }}건</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             거절
-                            <span class="badge bg-danger rounded-pill">{{ swap_count.get('거절', 0) }}건</span>
+                            <span class="badge bg-danger rounded-pill">{{ swap_count.get('거절', 0) if swap_count else 0 }}건</span>
                         </li>
                     </ul>
                 </div>

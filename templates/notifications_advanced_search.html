@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}알림 고급 검색{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-search-plus"></i> 알림 고급 검색
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('notifications_filtered') }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="category" class="form-label">카테고리</label>
+                                <select class="form-select" id="category" name="category">
+                                    <option value="">전체 카테고리</option>
+                                    <option value="발주">📦 발주</option>
+                                    <option value="청소">🧹 청소</option>
+                                    <option value="근무">👤 근무</option>
+                                    <option value="교대">🔁 교대</option>
+                                    <option value="공지">🔔 공지</option>
+                                    <option value="일반">📝 일반</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="keyword" class="form-label">키워드 검색</label>
+                                <input type="text" class="form-control" id="keyword" name="keyword" 
+                                       placeholder="알림 내용에서 검색할 키워드">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="is_read" class="form-label">읽음 상태</label>
+                                <select class="form-select" id="is_read" name="is_read">
+                                    <option value="">전체</option>
+                                    <option value="false">안읽음</option>
+                                    <option value="true">읽음</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="is_admin_only" class="form-label">알림 유형</label>
+                                <select class="form-select" id="is_admin_only" name="is_admin_only">
+                                    <option value="">전체</option>
+                                    <option value="false">일반 알림</option>
+                                    {% if current_user.is_admin() %}
+                                    <option value="true">관리자 전용</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- 빠른 검색 버튼들 -->
+                        <div class="mb-3">
+                            <label class="form-label">빠른 검색</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="setQuickSearch('발주', '승인', 'false', 'false')">
+                                    📦 발주 승인 알림
+                                </button>
+                                <button type="button" class="btn btn-outline-success btn-sm" 
+                                        onclick="setQuickSearch('청소', '', 'false', 'false')">
+                                    🧹 청소 알림 (안읽음)
+                                </button>
+                                <button type="button" class="btn btn-outline-warning btn-sm" 
+                                        onclick="setQuickSearch('교대', '', 'false', 'false')">
+                                    🔁 교대 신청 (안읽음)
+                                </button>
+                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                        onclick="setQuickSearch('', '', 'false', 'false')">
+                                    🔔 모든 안읽음 알림
+                                </button>
+                                {% if current_user.is_admin() %}
+                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                        onclick="setQuickSearch('', '', '', 'true')">
+                                    👑 관리자 전용 알림
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('notifications') }}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> 돌아가기
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> 검색
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 검색 팁 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb"></i> 검색 팁
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>키워드 검색 예시:</h6>
+                            <ul class="small">
+                                <li><code>승인</code> - 승인 관련 알림</li>
+                                <li><code>거절</code> - 거절 관련 알림</li>
+                                <li><code>배송</code> - 배송 관련 알림</li>
+                                <li><code>지각</code> - 지각 관련 알림</li>
+                                <li><code>결근</code> - 결근 관련 알림</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>카테고리별 특징:</h6>
+                            <ul class="small">
+                                <li><strong>발주:</strong> 물품 발주, 승인, 배송</li>
+                                <li><strong>청소:</strong> 청소 계획, 완료</li>
+                                <li><strong>근무:</strong> 출근, 퇴근, 지각</li>
+                                <li><strong>교대:</strong> 교대 신청, 승인</li>
+                                <li><strong>공지:</strong> 공지사항, 안내</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 빠른 검색 설정
+function setQuickSearch(category, keyword, isRead, isAdminOnly) {
+    document.getElementById('category').value = category;
+    document.getElementById('keyword').value = keyword;
+    document.getElementById('is_read').value = isRead;
+    document.getElementById('is_admin_only').value = isAdminOnly;
+}
+
+// 폼 제출 시 로딩 표시
+document.querySelector('form').addEventListener('submit', function() {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 검색 중...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %} 

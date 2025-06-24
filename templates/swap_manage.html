@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}근무 교대 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-exchange-alt"></i> 근무 교대 신청 관리</h5>
+                </div>
+                <div class="card-body">
+                    <!-- 교대 신청 등록 폼 -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h6>새 교대 신청</h6>
+                            <form method="post" class="row g-3">
+                                <div class="col-md-2">
+                                    <select name="user_id" class="form-select" required>
+                                        <option value="">직원 선택</option>
+                                        {% for employee in employees %}
+                                            <option value="{{ employee.id }}">{{ employee.username }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="date" name="date" class="form-control" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="time" name="start_time" class="form-control" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="time" name="end_time" class="form-control" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" name="memo" class="form-control" placeholder="교대 사유">
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="submit" class="btn btn-info">
+                                        <i class="fas fa-plus"></i> 신청
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 교대 신청 목록 -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>날짜</th>
+                                    <th>직원</th>
+                                    <th>시간</th>
+                                    <th>상태</th>
+                                    <th>비고</th>
+                                    <th>처리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for swap in swaps %}
+                                <tr>
+                                    <td>{{ swap.date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ swap.user.username if swap.user else 'Unknown' }}</td>
+                                    <td>{{ swap.start_time.strftime('%H:%M') }} ~ {{ swap.end_time.strftime('%H:%M') }}</td>
+                                    <td>
+                                        {% if swap.status == "대기" %}
+                                            <span class="badge bg-warning">대기</span>
+                                        {% elif swap.status == "승인" %}
+                                            <span class="badge bg-success">승인</span>
+                                        {% elif swap.status == "거절" %}
+                                            <span class="badge bg-danger">거절</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ swap.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ swap.memo or '-' }}</td>
+                                    <td>
+                                        {% if swap.status == '대기' and current_user.role in ['admin', 'manager'] %}
+                                            <form method="post" style="display:inline;">
+                                                <input type="hidden" name="sid" value="{{ swap.id }}">
+                                                <button type="submit" name="status" value="승인" 
+                                                        class="btn btn-sm btn-success" title="승인">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button type="submit" name="status" value="거절" 
+                                                        class="btn btn-sm btn-danger" title="거절">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </form>
+                                        {% elif swap.status != '대기' %}
+                                            <span class="text-muted">처리완료</span>
+                                        {% else %}
+                                            <span class="text-muted">대기중</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">등록된 교대 신청이 없습니다.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

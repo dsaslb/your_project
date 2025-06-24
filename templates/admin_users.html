@@ -60,10 +60,13 @@
                                                 <i class="fas fa-file-pdf"></i>
                                             </a> #}
                                             {% if user.status == "approved" %}
-                                                <a href="{{ url_for('individual_transfer', user_id=user.id) }}" class="btn btn-success btn-sm" 
+                                                {# <a href="{{ url_for('individual_transfer', user_id=user.id) }}" class="btn btn-success btn-sm" 
                                                    onclick="return confirm('{{ user.name or user.username }}님의 급여를 이체하시겠습니까?')" title="급여 이체">
                                                     <i class="fas fa-money-bill-wave"></i>
-                                                </a>
+                                                </a> #}
+                                                <span class="btn btn-secondary btn-sm" title="급여 이체 (준비중)">
+                                                    <i class="fas fa-money-bill-wave"></i>
+                                                </span>
                                             {% endif %}
                                         {% endif %}
                                     </div>
@@ -78,7 +81,7 @@
                                             <h5 class="modal-title">사용자 승인</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
-                                        <form method="post" action="{{ url_for('approve_user', user_id=user.id) }}">
+                                        <form method="post" action="#" onsubmit="alert('승인 기능은 준비 중입니다.'); return false;">
                                             <div class="modal-body">
                                                 <p><strong>{{ user.username }}</strong> 사용자를 승인하시겠습니까?</p>
                                                 <div class="mb-3">
@@ -103,7 +106,7 @@
                                             <h5 class="modal-title">사용자 거절</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
-                                        <form method="post" action="{{ url_for('reject_user', user_id=user.id) }}">
+                                        <form method="post" action="#" onsubmit="alert('거절 기능은 준비 중입니다.'); return false;">
                                             <div class="modal-body">
                                                 <p><strong>{{ user.username }}</strong> 사용자를 거절하시겠습니까?</p>
                                                 <div class="mb-3">

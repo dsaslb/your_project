@@ -98,37 +98,26 @@ def login():
         password = request.form.get('password')
         
         if not username or not password:
-            return '사용자명과 비밀번호를 입력해주세요.'
+            flash('사용자명과 비밀번호를 입력해주세요.', 'error')
+            return render_template('auth/login.html')
         
         user = User.query.filter_by(username=username).first()
         
         if not user or not user.check_password(password):
-            return '잘못된 사용자명 또는 비밀번호입니다.'
+            flash('잘못된 사용자명 또는 비밀번호입니다.', 'error')
+            return render_template('auth/login.html')
         
         # 로그인 성공 처리 (Flask-Login 사용)
         from flask_login import login_user
         login_user(user)
-        return '로그인되었습니다. <a href="/dashboard">대시보드로 이동</a>'
+        
+        # next 파라미터가 있으면 해당 페이지로, 없으면 대시보드로
+        next_page = request.args.get('next')
+        if next_page and next_page.startswith('/'):
+            return redirect(next_page)
+        return redirect(url_for('dashboard'))
     
-    # CSRF 토큰 생성
-    from flask_wtf.csrf import generate_csrf
-    csrf_token = generate_csrf()
-    
-    return f'''
-    <html>
-    <head><title>로그인</title></head>
-    <body>
-        <h2>로그인</h2>
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="{csrf_token}"/>
-            <p>사용자명: <input name="username" placeholder="사용자명" required></p>
-            <p>비밀번호: <input name="password" type="password" placeholder="비밀번호" required></p>
-            <button type="submit">로그인</button>
-        </form>
-        <p><a href="/register">회원가입</a></p>
-    </body>
-    </html>
-    '''
+    return render_template('auth/login.html')
 
 @auth_bp.route('/logout')
 def logout():

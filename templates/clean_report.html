@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}청소 리포트{% endblock %}
+{% block content %}
+<table class="table">
+  <tr><th>날짜</th><th>팀</th><th>청소 횟수</th></tr>
+  {% for t, d, cnt in counts %}
+    <tr>
+      <td>{{d}}</td>
+      <td>{{t}}</td>
+      <td>{{cnt}}</td>
+    </tr>
+  {% endfor %}
+</table>
+{% endblock %} 

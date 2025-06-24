@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-bell me-2"></i>관리자 알림센터</h2>
+                </div>
+                <div class="card-body">
+                    <!-- 필터 폼 -->
+                    <form method="get" class="mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">직원</label>
+                                <select name="user_id" class="form-select">
+                                    <option value="">직원 전체</option>
+                                    {% for u in users %}
+                                        <option value="{{ u.id }}" {% if user_id and u.id == user_id|int %}selected{% endif %}>
+                                            {{ u.username }} ({{ u.role }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">카테고리</label>
+                                <select name="category" class="form-select">
+                                    <option value="">카테고리 전체</option>
+                                    <option value="발주" {% if category=='발주' %}selected{% endif %}>📦 발주</option>
+                                    <option value="청소" {% if category=='청소' %}selected{% endif %}>🧹 청소</option>
+                                    <option value="근무" {% if category=='근무' %}selected{% endif %}>👤 근무</option>
+                                    <option value="교대" {% if category=='교대' %}selected{% endif %}>🔁 교대</option>
+                                    <option value="공지" {% if category=='공지' %}selected{% endif %}>🔔 공지</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">시작일</label>
+                                <input type="date" name="from" class="form-control" value="{{ request.args.get('from', '') }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">종료일</label>
+                                <input type="date" name="to" class="form-control" value="{{ request.args.get('to', '') }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-filter me-1"></i>필터
+                                    </button>
+                                    <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-undo me-1"></i>초기화
+                                    </a>
+                                    <form method="get" action="{{ url_for('admin_all_notifications_excel') }}" style="display:inline;">
+                                        <input type="hidden" name="user_id" value="{{ user_id or '' }}">
+                                        <input type="hidden" name="category" value="{{ category or '' }}">
+                                        <input type="hidden" name="from" value="{{ request.args.get('from', '') }}">
+                                        <input type="hidden" name="to" value="{{ request.args.get('to', '') }}">
+                                        <button type="submit" class="btn btn-success" title="현재 필터 결과를 엑셀로 다운로드">
+                                            <i class="fas fa-file-excel me-1"></i>엑셀 다운로드
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- 일괄 처리 폼 -->
+                    <form method="post" action="{{ url_for('notifications_bulk_action') }}" id="bulkForm">
+                        <div class="mb-3">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary" onclick="selectAll()">
+                                    <i class="fas fa-check-square me-1"></i>전체 선택
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="deselectAll()">
+                                    <i class="fas fa-square me-1"></i>선택 해제
+                                </button>
+                                <button type="submit" name="action" value="read" class="btn btn-success">
+                                    <i class="fas fa-check me-1"></i>일괄 읽음
+                                </button>
+                                <button type="submit" name="action" value="delete" class="btn btn-danger" onclick="return confirm('선택한 알림을 정말 삭제하시겠습니까?')">
+                                    <i class="fas fa-trash me-1"></i>일괄 삭제
+                                </button>
+                                <button type="submit" name="action" value="excel" class="btn btn-info">
+                                    <i class="fas fa-file-excel me-1"></i>엑셀 다운로드
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 알림 목록 테이블 -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th width="50">
+                                            <input type="checkbox" id="selectAll" onclick="toggleAll()">
+                                        </th>
+                                        <th width="120">직원</th>
+                                        <th width="100">카테고리</th>
+                                        <th>내용</th>
+                                        <th width="150">시각</th>
+                                        <th width="80">상태</th>
+                                        <th width="100">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set icons = {'발주':'📦','청소':'🧹','근무':'👤','교대':'🔁','공지':'🔔'} %}
+                                    {% for n in notis %}
+                                    <tr class="{% if not n.is_read %}table-warning{% endif %}">
+                                        <td>
+                                            <input type="checkbox" class="notification-checkbox" name="nids" value="{{ n.id }}">
+                                        </td>
+                                        <td>
+                                            <small>
+                                                <strong>{{ n.user.username if n.user else 'N/A' }}</strong><br>
+                                                <span class="badge bg-secondary">{{ n.user.role if n.user else '' }}</span>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 
+                                                'primary' if n.category == '발주' else
+                                                'success' if n.category == '청소' else
+                                                'info' if n.category == '근무' else
+                                                'warning' if n.category == '교대' else
+                                                'secondary' if n.category == '공지' else
+                                                'light'
+                                            }}">
+                                                {{ icons.get(n.category,'🔔') }} {{ n.category }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('notification_jump', nid=n.id) }}" class="text-decoration-none">
+                                                {{ n.content[:50] }}{% if n.content|length > 50 %}...{% endif %}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ n.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if n.is_read %}
+                                                <span class="badge bg-success">읽음</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">안읽음</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ url_for('admin_notification_detail', nid=n.id) }}" class="btn btn-outline-primary" title="상세보기">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <form method="post" action="{{ url_for('admin_delete_notification', nid=n.id) }}" style="display: inline;" onsubmit="return confirm('정말 삭제하시겠습니까?')">
+                                                    <button type="submit" class="btn btn-outline-danger" title="삭제">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                            알림이 없습니다.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
+
+                    <!-- 통계 정보 -->
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            총 {{ notis|length }}개의 알림이 조회되었습니다.
+                            {% set unread_count = notis|selectattr('is_read', 'equalto', False)|list|length %}
+                            (안읽음: {{ unread_count }}개)
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 전체 선택/해제
+function toggleAll() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.notification-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+}
+
+function selectAll() {
+    const checkboxes = document.querySelectorAll('.notification-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    document.getElementById('selectAll').checked = true;
+}
+
+function deselectAll() {
+    const checkboxes = document.querySelectorAll('.notification-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('selectAll').checked = false;
+}
+
+// 개별 체크박스 변경 시 전체 선택 상태 업데이트
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.notification-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+            
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = anyChecked && !allChecked;
+        });
+    });
+});
+</script>
+{% endblock %}

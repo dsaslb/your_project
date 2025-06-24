@@ -1,0 +1,269 @@
+/* 공통 메뉴 스타일 */
+.menu-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  background: #f5f9f7;
+  border-radius: 12px;
+  padding: 10px 18px;
+  box-shadow: 0 2px 6px 0 rgba(110,180,160,0.06);
+}
+
+.menu-link {
+  padding: 8px 15px;
+  border-radius: 8px;
+  background: #ecf4ef;
+  color: #333;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+
+.menu-link:hover {
+  background: #c7ebdd;
+  color: #004d40;
+  text-decoration: none;
+}
+
+.menu-link:last-child {
+  background: #ffeaea;
+  color: #d32f2f;
+}
+
+.menu-link:last-child:hover {
+  background: #ffcdd2;
+  color: #b71c1c;
+}
+
+/* 반응형 메뉴 */
+@media (max-width: 700px) {
+  .menu-bar { 
+    gap: 8px; 
+    padding: 6px; 
+    font-size: 0.97rem;
+  }
+  .menu-link { 
+    padding: 7px 8px; 
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .menu-bar { 
+    gap: 6px; 
+    padding: 4px; 
+    font-size: 0.9rem;
+  }
+  .menu-link { 
+    padding: 6px 6px; 
+    font-size: 0.85rem;
+  }
+}
+
+/* 헤더 메뉴 스타일 */
+.header-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 10px 20px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.header-menu-link {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.header-menu-link:hover {
+  background: rgba(255,255,255,0.3);
+  transform: translateY(-1px);
+  text-decoration: none;
+  color: white;
+}
+
+.header-menu-link.logout {
+  background: rgba(211, 47, 47, 0.8);
+  color: white;
+}
+
+.header-menu-link.logout:hover {
+  background: rgba(211, 47, 47, 1);
+}
+
+/* 네비바 오른쪽 상단 스타일 */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+  min-width: 220px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: #222;
+}
+
+.user-role {
+  background: #dde9f8;
+  color: #1257a2;
+  font-size: 0.93em;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  margin-left: 6px;
+}
+
+.logout-btn {
+  padding: 6px 15px;
+  background: #ffeaea;
+  border-radius: 8px;
+  color: #d32f2f;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.14s, color 0.14s;
+  margin-left: 8px;
+}
+
+.logout-btn:hover {
+  background: #ffc6c6;
+  color: #ba2121;
+  text-decoration: none;
+}
+
+/* 반응형 topbar */
+@media (max-width: 700px) {
+  .topbar-right { 
+    gap: 10px; 
+    min-width: 110px; 
+  }
+  .logout-btn { 
+    padding: 6px 8px; 
+    font-size: 0.96em;
+  }
+  .user-info {
+    font-size: 0.9em;
+  }
+  .user-role {
+    font-size: 0.85em;
+    padding: 1px 6px;
+  }
+}
+
+/* 대시보드 메뉴 카드 개선 */
+.dashboard-menu-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 30px;
+  justify-content: flex-start;
+  background: #f8f9fa;
+}
+
+.menu-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 110px;
+  background: linear-gradient(140deg, #b2f7cf 0%, #75b6fa 100%);
+  border-radius: 16px;
+  text-decoration: none;
+  color: #212121;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(60,110,80,0.15);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+}
+
+.menu-card:hover, .menu-card:focus {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(80,200,130,0.25);
+  background: linear-gradient(140deg, #a4e5d7 0%, #99c7ff 100%);
+  color: #004a6e;
+  text-decoration: none;
+}
+
+/* 버튼 그룹 스타일 */
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 15px 0;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+  color: white;
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #545b62;
+  color: white;
+  text-decoration: none;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+  color: white;
+  text-decoration: none;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #1e7e34;
+  color: white;
+  text-decoration: none;
+} 

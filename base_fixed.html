@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}레스토랑 관리 시스템{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/common.css') }}" rel="stylesheet">
+    <style>
+        /* 사이드바 스타일 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 250px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-main {
+            flex: 1;
+            padding: 1rem 0;
+            overflow-y: auto;
+        }
+        
+        .sidebar-main a {
+            display: block;
+            padding: 0.75rem 1.5rem;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .sidebar-main a:hover,
+        .sidebar-main a.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-left-color: #fff;
+        }
+        
+        .sidebar-group {
+            margin: 0.5rem 0;
+        }
+        
+        .sidebar-group-toggle {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.8);
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-group-toggle:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        
+        .sidebar-group-items {
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-group-items a {
+            padding-left: 2.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .sidebar-bottom {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-user-info {
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .sidebar-logout-btn {
+            display: block;
+            padding: 0.5rem;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            text-align: center;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-logout-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        
+        /* 메인 콘텐츠 */
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            min-height: 100vh;
+            background: #f8f9fa;
+        }
+        
+        /* 네비게이션 바 */
+        .navbar {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.25rem;
+        }
+        
+        /* 카드 스타일 */
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem 1rem 0 0 !important;
+            border: none;
+        }
+        
+        /* 버튼 스타일 */
+        .btn-primary {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* 배지 스타일 */
+        .badge {
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+        }
+        
+        /* 애니메이션 효과 */
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        /* 탭 스타일 */
+        .nav-pills .nav-link {
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-pills .nav-link.active {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            color: white;
+        }
+        
+        /* 스페이싱 유틸리티 */
+        .space-y-6 > * + * {
+            margin-top: 1.5rem;
+        }
+        
+        .space-y-4 > * + * {
+            margin-top: 1rem;
+        }
+        
+        /* 그라데이션 텍스트 */
+        .gradient-text {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-utensils"></i> 레스토랑 관리
+            </a>
+            {% if current_user.is_authenticated %}
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">
+                    <i class="fas fa-user"></i> {{ current_user.username }}
+                    <span class="badge bg-secondary">{{ current_user.role }}</span>
+                </span>
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                    <i class="fas fa-sign-out-alt"></i> 로그아웃
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    {% if current_user.is_authenticated %}
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h5><i class="fas fa-utensils me-2"></i> 레스토랑 관리</h5>
+        </div>
+        <div class="sidebar-main" id="sidebarMain">
+            <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'dashboard' or request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt me-2"></i> 대시보드
+            </a>
+            <a href="{{ url_for('schedule') }}" class="{% if request.endpoint and 'schedule' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-calendar-alt me-2"></i> 스케줄/청소
+            </a>
+            <a href="{{ url_for('schedule_fc') }}" class="{% if request.endpoint and 'schedule_fc' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-calendar-check me-2"></i> 근무 캘린더
+            </a>
+            <a href="{{ url_for('notifications') }}" class="{% if request.endpoint == 'notifications' %}active{% endif %}">
+                <i class="fas fa-bell me-2"></i> 알림
+                {% if unread_notification_count > 0 %}
+                    <span class="badge bg-danger">{{ unread_notification_count }}</span>
+                {% endif %}
+            </a>
+            
+            {% if current_user.role == 'admin' %}
+            <div class="sidebar-group">
+                <button class="sidebar-group-toggle" onclick="toggleAdminGroup()">
+                    <i class="fas fa-user-shield me-2"></i> 관리자 메뉴 ▼
+                </button>
+                <div class="sidebar-group-items" id="adminMenu" style="display:none;">
+                    <a href="{{ url_for('admin_dashboard') }}" class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                        <i class="fas fa-tachometer-alt me-2"></i> 관리자 대시보드
+                    </a>
+                    <a href="{{ url_for('admin_users') }}" class="{% if request.endpoint == 'admin_users' %}active{% endif %}">
+                        <i class="fas fa-users me-2"></i> 사용자 관리
+                    </a>
+                    <a href="{{ url_for('admin_swap_requests') }}" class="{% if request.endpoint == 'admin_swap_requests' %}active{% endif %}">
+                        <i class="fas fa-exchange-alt me-2"></i> 교대 신청 관리
+                    </a>
+                    <a href="{{ url_for('admin_reports') }}" class="{% if request.endpoint == 'admin_reports' %}active{% endif %}">
+                        <i class="fas fa-flag me-2"></i> 신고 관리
+                    </a>
+                    <a href="{{ url_for('admin_statistics') }}" class="{% if request.endpoint == 'admin_statistics' %}active{% endif %}">
+                        <i class="fas fa-chart-bar me-2"></i> 통계 리포트
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="sidebar-bottom">
+            <div class="sidebar-user-info">
+                <i class="fas fa-user"></i>
+                <span>{{ current_user.username }}</span>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-logout-btn">
+                <i class="fas fa-sign-out-alt"></i> 로그아웃
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="main-content">
+        {% if not current_user.is_authenticated %}
+            {% block auth_content %}
+            {% endblock %}
+        {% else %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 자동으로 플래시 메시지 숨기기
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+        
+        // 관리자 메뉴 접기/펼치기 기능
+        function toggleAdminGroup() {
+            var adminMenu = document.getElementById("adminMenu");
+            var toggleBtn = document.querySelector(".sidebar-group-toggle");
+            
+            if (adminMenu.style.display === "none" || adminMenu.style.display === "") {
+                adminMenu.style.display = "block";
+                toggleBtn.innerHTML = '<i class="fas fa-user-shield me-2"></i> 관리자 메뉴 ▲';
+            } else {
+                adminMenu.style.display = "none";
+                toggleBtn.innerHTML = '<i class="fas fa-user-shield me-2"></i> 관리자 메뉴 ▼';
+            }
+        }
+        
+        // 현재 페이지가 관리자 메뉴에 속하면 자동으로 펼치기
+        document.addEventListener('DOMContentLoaded', function() {
+            var adminMenu = document.getElementById("adminMenu");
+            var toggleBtn = document.querySelector(".sidebar-group-toggle");
+            
+            if (adminMenu && toggleBtn) {
+                var currentPath = window.location.pathname;
+                var adminPaths = ['/admin/dashboard', '/admin/users', '/admin/swap_requests', '/admin/reports', '/admin/statistics'];
+                
+                if (adminPaths.some(path => currentPath.includes(path))) {
+                    adminMenu.style.display = "block";
+                    toggleBtn.innerHTML = '<i class="fas fa-user-shield me-2"></i> 관리자 메뉴 ▲';
+                }
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

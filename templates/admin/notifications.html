@@ -1,153 +1,286 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>알림센터(관리자)</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h2 {
-            color: #333;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-        }
-        .notification-list {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-        .notification-item {
-            padding: 15px;
-            border-bottom: 1px solid #ddd;
-            background: white;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .notification-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-        .notification-time {
-            color: #666;
-            font-size: 12px;
-            margin-bottom: 5px;
-        }
-        .notification-user {
-            font-weight: bold;
-            color: #007bff;
-            margin-bottom: 5px;
-        }
-        .notification-message {
-            color: #333;
-            line-height: 1.4;
-        }
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 5px;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        .stats {
-            background: #e9ecef;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-        }
-        .stat-item {
-            text-align: center;
-            padding: 10px;
-            background: white;
-            border-radius: 5px;
-        }
-        .stat-number {
-            font-size: 20px;
-            font-weight: bold;
-            color: #007bff;
-        }
-        .stat-label {
-            color: #666;
-            font-size: 12px;
-        }
-        .empty-message {
-            text-align: center;
-            color: #666;
-            padding: 40px;
-            font-style: italic;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>알림센터</h2>
-        
-        <!-- 통계 요약 -->
-        <div class="stats">
-            <h3>알림 현황</h3>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-number">{{ notis|length }}</div>
-                    <div class="stat-label">전체 알림</div>
+{% extends "base.html" %}
+
+{% block title %}관리자 알림센터{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0">
+                        <i class="fas fa-bell me-2"></i>관리자 알림센터
+                        {% if unread_count > 0 %}
+                            <span class="badge bg-danger ms-2">{{ unread_count }}</span>
+                        {% endif %}
+                    </h2>
+                    <div>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="bulkDelete()">
+                            <i class="fas fa-trash me-1"></i>선택 삭제
+                        </button>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-number">{{ notis|selectattr('is_read', 'equalto', False)|list|length }}</div>
-                    <div class="stat-label">읽지 않음</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">{{ notis|selectattr('is_read', 'equalto', True)|list|length }}</div>
-                    <div class="stat-label">읽음</div>
+                
+                <div class="card-body">
+                    <!-- 필터 및 통계 -->
+                    <div class="row mb-4">
+                        <div class="col-md-10">
+                            <form method="get" class="row g-3">
+                                <div class="col-md-3">
+                                    <select name="category" class="form-select">
+                                        <option value="">전체 카테고리</option>
+                                        <option value="발주" {% if current_category == '발주' %}selected{% endif %}>발주</option>
+                                        <option value="청소" {% if current_category == '청소' %}selected{% endif %}>청소</option>
+                                        <option value="근무" {% if current_category == '근무' %}selected{% endif %}>근무</option>
+                                        <option value="교대" {% if current_category == '교대' %}selected{% endif %}>교대</option>
+                                        <option value="공지" {% if current_category == '공지' %}selected{% endif %}>공지</option>
+                                        <option value="일반" {% if current_category == '일반' %}selected{% endif %}>일반</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <select name="is_read" class="form-select">
+                                        <option value="">전체</option>
+                                        <option value="0" {% if current_is_read == '0' %}selected{% endif %}>안읽음</option>
+                                        <option value="1" {% if current_is_read == '1' %}selected{% endif %}>읽음</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="user_id" class="form-select">
+                                        <option value="">전체 사용자</option>
+                                        {% for user in users %}
+                                        <option value="{{ user.id }}" {% if current_user_id == user.id %}selected{% endif %}>
+                                            {{ user.name or user.username }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-filter me-1"></i>필터
+                                    </button>
+                                </div>
+                                <div class="col-md-2">
+                                    <a href="{{ url_for('notifications.admin_notification_center') }}" class="btn btn-outline-secondary w-100">
+                                        <i class="fas fa-undo me-1"></i>초기화
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-end">
+                                <small class="text-muted">
+                                    전체: {{ total_notifications }}개<br>
+                                    안읽음: {{ unread_count }}개
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 통계 카드 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body">
+                                    <h6 class="card-title">전체 알림</h6>
+                                    <h3>{{ total_notifications }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body">
+                                    <h6 class="card-title">안읽음</h6>
+                                    <h3>{{ unread_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body">
+                                    <h6 class="card-title">읽음</h6>
+                                    <h3>{{ total_notifications - unread_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body">
+                                    <h6 class="card-title">사용자 수</h6>
+                                    <h3>{{ users|length }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 카테고리별 탭 -->
+                    <ul class="nav nav-tabs mb-3" id="categoryTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if not current_category %}active{% endif %}" 
+                               href="{{ url_for('notifications.admin_notification_center') }}">
+                                전체 <span class="badge bg-secondary">{{ total_notifications }}</span>
+                            </a>
+                        </li>
+                        {% for stat in category_stats %}
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if current_category == stat.category %}active{% endif %}" 
+                               href="{{ url_for('notifications.admin_notification_center', category=stat.category) }}">
+                                {{ stat.category }} 
+                                <span class="badge bg-secondary">{{ stat.total }}</span>
+                                {% if stat.unread > 0 %}
+                                    <span class="badge bg-danger">{{ stat.unread }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <!-- 알림 목록 -->
+                    {% if notifications.items %}
+                        <form id="bulkDeleteForm" method="post" action="{{ url_for('notifications.bulk_delete_notifications') }}">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th width="50">
+                                                <input type="checkbox" id="selectAll" class="form-check-input">
+                                            </th>
+                                            <th width="80">분류</th>
+                                            <th width="120">사용자</th>
+                                            <th>내용</th>
+                                            <th width="120">시각</th>
+                                            <th width="80">읽음</th>
+                                            <th width="100">작업</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for notification in notifications.items %}
+                                        <tr class="{% if not notification.is_read %}table-warning{% endif %}">
+                                            <td>
+                                                <input type="checkbox" name="notification_ids" value="{{ notification.id }}" 
+                                                       class="form-check-input notification-checkbox">
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 
+                                                    'primary' if notification.category == '발주' else
+                                                    'success' if notification.category == '청소' else
+                                                    'info' if notification.category == '근무' else
+                                                    'warning' if notification.category == '교대' else
+                                                    'secondary' if notification.category == '공지' else
+                                                    'light'
+                                                }}">
+                                                    {{ notification.category }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <small>{{ notification.user.name or notification.user.username }}</small>
+                                            </td>
+                                            <td>
+                                                {% if notification.link %}
+                                                    <a href="{{ notification.link }}" class="text-decoration-none">
+                                                        {{ notification.content }}
+                                                    </a>
+                                                {% else %}
+                                                    {{ notification.content }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {{ notification.created_at.strftime('%m-%d %H:%M') }}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                {% if notification.is_read %}
+                                                    <i class="fas fa-check text-success"></i>
+                                                {% else %}
+                                                    <span class="text-warning">●</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('notifications.delete_notification', notification_id=notification.id) }}" 
+                                                   class="btn btn-outline-danger btn-sm"
+                                                   onclick="return confirm('이 알림을 삭제하시겠습니까?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </form>
+
+                        <!-- 페이징 -->
+                        {% if notifications.pages > 1 %}
+                        <nav aria-label="알림 페이지">
+                            <ul class="pagination justify-content-center">
+                                {% if notifications.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('notifications.admin_notification_center', 
+                                            page=notifications.prev_num, category=current_category, is_read=current_is_read, user_id=current_user_id) }}">
+                                            이전
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for page_num in notifications.iter_pages() %}
+                                    {% if page_num %}
+                                        <li class="page-item {% if page_num == notifications.page %}active{% endif %}">
+                                            <a class="page-link" href="{{ url_for('notifications.admin_notification_center', 
+                                                page=page_num, category=current_category, is_read=current_is_read, user_id=current_user_id) }}">
+                                                {{ page_num }}
+                                            </a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if notifications.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('notifications.admin_notification_center', 
+                                            page=notifications.next_num, category=current_category, is_read=current_is_read, user_id=current_user_id) }}">
+                                            다음
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">알림이 없습니다</h5>
+                            <p class="text-muted">조건에 맞는 알림이 없습니다.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
-
-        <div class="notification-list">
-            {% if notis %}
-                {% for n in notis %}
-                <div class="notification-item">
-                    <div class="notification-time">
-                        {{ n.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
-                    </div>
-                    <div class="notification-user">
-                        {{ n.user.name or n.user.username }}
-                    </div>
-                    <div class="notification-message">
-                        {{ n.message }}
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-message">
-                    <p>알림이 없습니다.</p>
-                </div>
-            {% endif %}
-        </div>
-        
-        <div style="margin-top: 30px;">
-            <a href="{{ url_for('admin_dashboard') }}" class="btn">관리자 대시보드로</a>
-            <a href="{{ url_for('admin_shift_requests') }}" class="btn">근무 변경 신청 관리</a>
-        </div>
     </div>
-</body>
-</html> 
+</div>
+
+<script>
+// 전체 선택/해제
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.notification-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// 일괄 삭제
+function bulkDelete() {
+    const selectedCheckboxes = document.querySelectorAll('.notification-checkbox:checked');
+    if (selectedCheckboxes.length === 0) {
+        alert('삭제할 알림을 선택해주세요.');
+        return;
+    }
+    
+    if (confirm(`선택한 ${selectedCheckboxes.length}개의 알림을 삭제하시겠습니까?`)) {
+        document.getElementById('bulkDeleteForm').submit();
+    }
+}
+</script>
+{% endblock %} 

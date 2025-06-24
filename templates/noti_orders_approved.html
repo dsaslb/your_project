@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}발주 승인 알림{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-box-open"></i> 발주 승인 알림 (안읽음)
+                    </h4>
+                    <div>
+                        <a href="{{ url_for('notifications') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> 전체 알림으로
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    {% if notis %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th width="80">분류</th>
+                                        <th>내용</th>
+                                        <th width="120">시각</th>
+                                        <th width="100">상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set icons = {'발주':'📦','청소':'🧹','근무':'👤','교대':'🔁','공지':'🔔'} %}
+                                    {% set colors = {'발주':'#e9f9ff','청소':'#e2fff7','근무':'#f7ffe2','교대':'#ffe0fa','공지':'#fff9e2'} %}
+                                    {% for n in notis %}
+                                        <tr style="background:{{ colors.get(n.category,'#fff') }}">
+                                            <td>
+                                                <span class="badge bg-primary">
+                                                    {{ icons.get(n.category,'🔔') }} {{ n.category }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if n.link %}
+                                                    <a href="{{ n.link }}" class="text-decoration-none">
+                                                        {{ n.content }}
+                                                    </a>
+                                                {% else %}
+                                                    {{ n.content }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {{ n.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning">안읽음</span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 통계 정보 -->
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body text-center">
+                                        <h5>총 발주 승인</h5>
+                                        <h3>{{ notis|length }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body text-center">
+                                        <h5>안읽음</h5>
+                                        <h3>{{ notis|length }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <h5>최근 24시간</h5>
+                                        <h3>{{ notis|selectattr('created_at', 'ge', (now - timedelta(days=1)))|list|length }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-success">발주 승인 알림이 없습니다</h5>
+                            <p class="text-muted">모든 발주 승인 알림을 확인하셨습니다.</p>
+                            <a href="{{ url_for('notifications') }}" class="btn btn-primary">
+                                <i class="fas fa-bell"></i> 전체 알림 보기
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

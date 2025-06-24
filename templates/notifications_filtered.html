@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}알림 필터링 결과{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-filter"></i> 알림 필터링 결과
+                    </h4>
+                    <div>
+                        <a href="{{ url_for('notifications_advanced') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-search-plus me-1"></i>고급 검색
+                        </a>
+                        <a href="{{ url_for('notifications') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> 돌아가기
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- 필터 조건 표시 -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> 현재 필터 조건:</h6>
+                        <ul class="mb-0">
+                            {% if category %}
+                                <li><strong>카테고리:</strong> {{ category }}</li>
+                            {% endif %}
+                            {% if keyword %}
+                                <li><strong>키워드:</strong> "{{ keyword }}"</li>
+                            {% endif %}
+                            {% if is_read == 'true' %}
+                                <li><strong>읽음 상태:</strong> 읽음</li>
+                            {% elif is_read == 'false' %}
+                                <li><strong>읽음 상태:</strong> 안읽음</li>
+                            {% endif %}
+                            {% if is_admin_only == 'true' %}
+                                <li><strong>알림 유형:</strong> 관리자 전용</li>
+                            {% elif is_admin_only == 'false' %}
+                                <li><strong>알림 유형:</strong> 일반 알림</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+
+                    <!-- 알림 목록 -->
+                    {% if notifications %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th width="80">분류</th>
+                                        <th>내용</th>
+                                        <th width="120">시각</th>
+                                        <th width="80">읽음</th>
+                                        <th width="100">유형</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for notification in notifications %}
+                                    <tr class="{% if not notification.is_read %}table-warning{% endif %}" 
+                                        style="background:{{ 
+                                            '#c7ffef' if notification.category == '발주' else
+                                            '#cde7fa' if notification.category == '청소' else
+                                            '#eff8e0' if notification.category == '근무' else
+                                            '#ffd1e0' if notification.category == '교대' else
+                                            '#ffeabf' if notification.category == '공지' else
+                                            '#fff'
+                                        }}">
+                                        <td>
+                                            {% set icons = {'발주':'📦','청소':'🧹','근무':'👤','교대':'🔁','공지':'🔔'} %}
+                                            <span class="badge bg-{{ 
+                                                'primary' if notification.category == '발주' else
+                                                'success' if notification.category == '청소' else
+                                                'info' if notification.category == '근무' else
+                                                'warning' if notification.category == '교대' else
+                                                'secondary' if notification.category == '공지' else
+                                                'light'
+                                            }}">
+                                                {{ icons.get(notification.category, '🔔') }} {{ notification.category }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('notification_jump', nid=notification.id) }}" class="text-decoration-none">
+                                                {{ notification.content }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ notification.created_at.strftime('%m-%d %H:%M') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if notification.is_read %}
+                                                <i class="fas fa-check text-success"></i>
+                                            {% else %}
+                                                <span class="text-warning">●</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if notification.is_admin_only %}
+                                                <span class="badge bg-danger">관리자</span>
+                                            {% else %}
+                                                <span class="badge bg-light text-dark">일반</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 통계 정보 -->
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body text-center">
+                                        <h6>총 결과</h6>
+                                        <h4>{{ notifications|length }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body text-center">
+                                        <h6>안읽음</h6>
+                                        <h4>{{ notifications|selectattr('is_read', 'equalto', False)|list|length }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <h6>읽음</h6>
+                                        <h4>{{ notifications|selectattr('is_read', 'equalto', True)|list|length }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <h6>관리자 전용</h6>
+                                        <h4>{{ notifications|selectattr('is_admin_only', 'equalto', True)|list|length }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">검색 결과가 없습니다</h5>
+                            <p class="text-muted">다른 조건으로 검색해보세요.</p>
+                            <a href="{{ url_for('notifications_advanced') }}" class="btn btn-primary">
+                                <i class="fas fa-search"></i> 다시 검색
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 알림 상세 팝업 -->
+<div id="noti-modal" style="display:none; position:fixed; top:30vh; left:30vw; z-index:9999; 
+     background:#fff; padding:20px; border-radius:12px; box-shadow:0 0 20px rgba(0,0,0,0.3); 
+     max-width:500px; width:90%;">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <h5 id="noti-modal-title" class="mb-0"></h5>
+        <button type="button" class="btn-close" onclick="hideModal()"></button>
+    </div>
+    <div id="noti-modal-content" class="mb-3"></div>
+    <div id="noti-modal-time" class="text-muted small"></div>
+    <div class="text-end">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="hideModal()">닫기</button>
+    </div>
+</div>
+
+<!-- 모달 배경 -->
+<div id="modal-backdrop" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+     background:rgba(0,0,0,0.5); z-index:9998;"></div>
+
+<script>
+// 알림 상세 팝업 표시
+function showNoti(content, category, datetime) {
+    var icons = {'발주':'📦','청소':'🧹','근무':'👤','교대':'🔁','공지':'🔔'};
+    var icon = icons[category] || '🔔';
+    
+    document.getElementById('noti-modal-title').innerHTML = 
+        '<span class="badge bg-secondary me-2">' + icon + ' ' + category + '</span>알림 상세';
+    document.getElementById('noti-modal-content').textContent = content;
+    document.getElementById('noti-modal-time').textContent = '발송일시: ' + datetime;
+    
+    document.getElementById('modal-backdrop').style.display = 'block';
+    document.getElementById('noti-modal').style.display = 'block';
+}
+
+// 팝업 닫기
+function hideModal() {
+    document.getElementById('modal-backdrop').style.display = 'none';
+    document.getElementById('noti-modal').style.display = 'none';
+}
+
+// ESC 키로 팝업 닫기
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideModal();
+    }
+});
+
+// 배경 클릭으로 팝업 닫기
+document.getElementById('modal-backdrop').addEventListener('click', hideModal);
+</script>
+{% endblock %} 

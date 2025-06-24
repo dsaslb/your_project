@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>근태 이력 리포트</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', Arial, sans-serif;
+            margin: 20px;
+            font-size: 12px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .stats {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .stats table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .stats td {
+            padding: 5px;
+            border: 1px solid #ddd;
+        }
+        .stats .label {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .date-col {
+            text-align: left;
+            width: 15%;
+        }
+        .time-col {
+            width: 12%;
+        }
+        .status-col {
+            width: 15%;
+        }
+        .check-col {
+            width: 8%;
+        }
+        .memo-col {
+            text-align: left;
+            width: 20%;
+        }
+        .normal { color: #28a745; }
+        .late { color: #ffc107; }
+        .early { color: #17a2b8; }
+        .overtime { color: #6c757d; }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>근태 이력 리포트</h1>
+        <p><strong>{{ user.name or user.username }}</strong>님의 근태 이력</p>
+        <p>기간: {{ date_from }} ~ {{ date_to }}</p>
+        <p>생성일: {{ moment().format('YYYY년 MM월 DD일 HH:mm') }}</p>
+    </div>
+
+    <!-- 통계 요약 -->
+    <div class="stats">
+        <h3>📊 근태 통계 요약</h3>
+        <table>
+            <tr>
+                <td class="label">총 출근일</td>
+                <td>{{ total_days }}일</td>
+                <td class="label">정상 출근</td>
+                <td>{{ normal_count }}일</td>
+                <td class="label">정상률</td>
+                <td>{{ "%.1f"|format(normal_count / total_days * 100 if total_days > 0 else 0) }}%</td>
+            </tr>
+            <tr>
+                <td class="label">지각</td>
+                <td>{{ late_count }}회</td>
+                <td class="label">조퇴</td>
+                <td>{{ early_leave_count }}회</td>
+                <td class="label">야근</td>
+                <td>{{ overtime_count }}회</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 근태 상세 이력 -->
+    <h3>📅 근태 상세 이력</h3>
+    <table>
+        <thead>
+            <tr>
+                <th class="date-col">일자</th>
+                <th class="time-col">출근시간</th>
+                <th class="time-col">퇴근시간</th>
+                <th class="time-col">근무시간</th>
+                <th class="status-col">상태</th>
+                <th class="check-col">지각</th>
+                <th class="check-col">조퇴</th>
+                <th class="check-col">야근</th>
+                <th class="memo-col">메모</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td class="date-col">
+                    <strong>{{ record.clock_in.strftime('%Y-%m-%d') if record.clock_in else '-' }}</strong><br>
+                    <small>{{ record.clock_in.strftime('%A') if record.clock_in else '' }}</small>
+                </td>
+                <td class="time-col">
+                    {% if record.clock_in %}
+                        <span class="{% if record.clock_in.time() > time(9, 0) %}late{% else %}normal{% endif %}">
+                            {{ record.clock_in.strftime('%H:%M') }}
+                        </span>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="time-col">
+                    {% if record.clock_out %}
+                        <span class="{% if record.clock_out.time() < time(18, 0) %}early{% else %}normal{% endif %}">
+                            {{ record.clock_out.strftime('%H:%M') }}
+                        </span>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="time-col">
+                    {% if record.work_hours > 0 %}
+                        {{ "%.1f"|format(record.work_hours) }}시간
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="status-col">
+                    {% if record.status %}
+                        {% if record.status == '정상' %}
+                            <span class="normal">{{ record.status }}</span>
+                        {% elif '지각' in record.status %}
+                            <span class="late">{{ record.status }}</span>
+                        {% elif '조퇴' in record.status %}
+                            <span class="early">{{ record.status }}</span>
+                        {% else %}
+                            <span class="overtime">{{ record.status }}</span>
+                        {% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="check-col">
+                    {% if record.status and '지각' in record.status %}
+                        O
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="check-col">
+                    {% if record.status and '조퇴' in record.status %}
+                        O
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="check-col">
+                    {% if record.clock_out and record.clock_out.time() > time(18, 0) %}
+                        O
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="memo-col">
+                    {% if record.notes %}
+                        {{ record.notes[:30] }}{% if record.notes|length > 30 %}...{% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" style="text-align: center; padding: 20px; color: #666;">
+                    해당 기간의 근태 기록이 없습니다.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 근태 기준 안내 -->
+    <div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+        <h4>📋 근태 기준</h4>
+        <ul style="margin: 5px 0; padding-left: 20px;">
+            <li><strong>정상 출근:</strong> 09:00 이전 출근, 18:00 이후 퇴근</li>
+            <li><strong>지각:</strong> 09:00 이후 출근</li>
+            <li><strong>조퇴:</strong> 18:00 이전 퇴근</li>
+            <li><strong>야근:</strong> 18:00 이후 퇴근</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        <p>이 문서는 자동 생성되었습니다.</p>
+        <p>문의사항이 있으시면 관리자에게 연락하시기 바랍니다.</p>
+    </div>
+</body>
+</html> 

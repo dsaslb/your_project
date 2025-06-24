@@ -1,7 +1,7 @@
 from extensions import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, date
 import re
 
 # 지점 모델
@@ -215,9 +215,12 @@ class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     content = db.Column(db.String(255), nullable=False)
+    category = db.Column(db.String(50), nullable=False, default='일반', index=True)  # 발주/청소/근무/교대/공지/일반
     related_url = db.Column(db.String(255), nullable=True) # 알림 클릭 시 이동할 URL
+    link = db.Column(db.String(255), nullable=True) # 상세 페이지 링크 (별칭)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     is_read = db.Column(db.Boolean, default=False, index=True)
+    is_admin_only = db.Column(db.Boolean, default=False, index=True)  # 관리자만 볼 수 있는 알림
     
     # 관계 설정
     user = db.relationship("User", backref="notifications")
@@ -225,11 +228,13 @@ class Notification(db.Model):
     # 복합 인덱스 추가
     __table_args__ = (
         db.Index('idx_notification_user_read', 'user_id', 'is_read'),
-        db.Index('idx_notification_created', 'created_at'),
+        db.Index('idx_notification_category_date', 'category', 'created_at'),
+        db.Index('idx_notification_user_category', 'user_id', 'category'),
+        db.Index('idx_notification_admin_only', 'is_admin_only', 'created_at'),
     )
     
     def __repr__(self):
-        return f'<Notification {self.id} for User {self.user_id}>'
+        return f'<Notification {self.user_id} {self.content[:20]}>'
 
 # 공지사항 모델
 class Notice(db.Model):
@@ -435,4 +440,87 @@ class CleaningPlan(db.Model):
     manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_cleaning_plans')
 
     def __repr__(self):
-        return f'<CleaningPlan {self.id}>' 
+        return f'<CleaningPlan {self.date} {self.plan}>'
+
+class Order(db.Model):
+    """발주 모델"""
+    __tablename__ = "orders"
+    id = db.Column(db.Integer, primary_key=True)
+    item = db.Column(db.String(200), nullable=False)  # 물품명
+    quantity = db.Column(db.Integer, nullable=False, default=1)  # 수량
+    order_date = db.Column(db.Date, nullable=False, default=date.today)  # 발주 날짜
+    ordered_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 발주자
+    status = db.Column(db.String(20), default='pending', index=True)  # pending/approved/rejected/delivered
+    detail = db.Column(db.String(500))  # 상세 설명
+    memo = db.Column(db.String(500))  # 메모
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    user = db.relationship('User', backref='orders')
+    
+    def __repr__(self):
+        return f'<Order {self.item} {self.quantity}>'
+
+class AttendanceEvaluation(db.Model):
+    """근태 평가 모델"""
+    __tablename__ = "attendance_evaluations"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    date_from = db.Column(db.Date, nullable=False, index=True)
+    date_to = db.Column(db.Date, nullable=False, index=True)
+    total_days = db.Column(db.Integer, default=0)
+    late_count = db.Column(db.Integer, default=0)
+    early_leave_count = db.Column(db.Integer, default=0)
+    overtime_count = db.Column(db.Integer, default=0)
+    normal_count = db.Column(db.Integer, default=0)
+    score = db.Column(db.Integer, default=0)  # 0-100점
+    grade = db.Column(db.String(5), default='D')  # A+, A, B+, B, C+, C, D
+    comment = db.Column(db.Text)  # 관리자 평가 코멘트
+    evaluator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    user = db.relationship('User', foreign_keys=[user_id], backref='attendance_evaluations')
+    evaluator = db.relationship('User', foreign_keys=[evaluator_id], backref='evaluated_attendance')
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_attendance_evaluation_user_period', 'user_id', 'date_from', 'date_to'),
+        db.Index('idx_attendance_evaluation_score', 'score'),
+        db.Index('idx_attendance_evaluation_grade', 'grade'),
+    )
+    
+    def __repr__(self):
+        return f'<AttendanceEvaluation {self.user_id} {self.date_from}~{self.date_to} {self.grade}>'
+
+class AttendanceReport(db.Model):
+    """근태 평가 리포트 모델 (요청사항에 맞춤)"""
+    __tablename__ = "attendance_reports"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    period_from = db.Column(db.String(10), nullable=False)  # 예: "2025-06-01"
+    period_to = db.Column(db.String(10), nullable=False)
+    total = db.Column(db.Integer, default=0)
+    late = db.Column(db.Integer, default=0)
+    early = db.Column(db.Integer, default=0)
+    ot = db.Column(db.Integer, default=0)
+    ontime = db.Column(db.Integer, default=0)
+    score = db.Column(db.Integer, default=0)
+    grade = db.Column(db.String(2), default='D')
+    comment = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # 관계 설정
+    user = db.relationship('User', backref='attendance_reports')
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_attendance_report_user_period', 'user_id', 'period_from', 'period_to'),
+        db.Index('idx_attendance_report_score', 'score'),
+        db.Index('idx_attendance_report_grade', 'grade'),
+    )
+    
+    def __repr__(self):
+        return f'<AttendanceReport {self.user_id} {self.period_from}~{self.period_to} {self.grade}>' 

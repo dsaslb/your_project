@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>근태 평가 이력</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 16px;
+        }
+        .info-section {
+            margin-bottom: 20px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            border: 1px solid #ddd;
+            padding: 8px;
+            background-color: #f9f9f9;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 3px;
+        }
+        .info-value {
+            color: #333;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .history-table th {
+            background-color: #333;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 10px;
+            border: 1px solid #ddd;
+        }
+        .history-table td {
+            padding: 6px;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-size: 10px;
+        }
+        .history-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .score-high {
+            background-color: #d4edda;
+            font-weight: bold;
+        }
+        .score-medium {
+            background-color: #fff3cd;
+            font-weight: bold;
+        }
+        .score-low {
+            background-color: #f8d7da;
+            font-weight: bold;
+        }
+        .comment-row td {
+            text-align: left;
+            background-color: #f8f9fa;
+            font-style: italic;
+            color: #666;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 9px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>직원 근태 평가 이력</h1>
+    </div>
+
+    <div class="info-section">
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">직원명</div>
+                <div class="info-value">{{selected_user.username}} {% if selected_user.name %}({{selected_user.name}}){% endif %}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">생성일</div>
+                <div class="info-value">{{now.strftime('%Y-%m-%d %H:%M')}}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">생성자</div>
+                <div class="info-value">{{current_user.username}}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">총 평가 건수</div>
+                <div class="info-value">{{history|length}}건</div>
+            </div>
+        </div>
+    </div>
+
+    {% if history %}
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>기간</th>
+                <th>점수</th>
+                <th>등급</th>
+                <th>지각</th>
+                <th>조퇴</th>
+                <th>야근</th>
+                <th>정상출근</th>
+                <th>총근무일</th>
+                <th>평가자</th>
+                <th>작성시각</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in history %}
+            <tr>
+                <td>{{ h.period_from }}~{{ h.period_to }}</td>
+                <td class="
+                    {% if h.score >= 90 %}score-high
+                    {% elif h.score >= 70 %}score-medium
+                    {% else %}score-low{% endif %}">
+                    {{ h.score }}점
+                </td>
+                <td class="
+                    {% if h.grade == 'A+' or h.grade == 'A' %}score-high
+                    {% elif h.grade == 'B+' or h.grade == 'B' %}score-medium
+                    {% else %}score-low{% endif %}">
+                    {{ h.grade }}
+                </td>
+                <td>{{ h.late }}</td>
+                <td>{{ h.early }}</td>
+                <td>{{ h.ot }}</td>
+                <td>{{ h.ontime }}</td>
+                <td>{{ h.total }}일</td>
+                <td>-</td>
+                <td>{{ h.created_at.strftime('%m-%d %H:%M') }}</td>
+            </tr>
+            {% if h.comment %}
+            <tr class="comment-row">
+                <td colspan="10">
+                    <strong>코멘트:</strong> {{ h.comment }}
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: #666;">
+        <p>평가 이력이 없습니다.</p>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p>본 리포트는 레스토랑 관리 시스템에서 자동 생성되었습니다.</p>
+        <p>생성일시: {{now.strftime('%Y-%m-%d %H:%M:%S')}}</p>
+    </div>
+</body>
+</html> 

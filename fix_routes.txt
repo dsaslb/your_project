@@ -1,0 +1,54 @@
+# --- Admin Routes ---
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if not current_user.is_admin():
+        return redirect(url_for('index'))
+    users = User.query.all()
+    return render_template('admin_users.html', users=users)
+
+@app.route('/admin/swap_requests', methods=['GET'])
+@login_required
+def admin_swap_requests():
+    if not current_user.is_admin():
+        return redirect(url_for('index'))
+    # '대기' 상태인 '교대' 카테고리의 스케줄만 조회
+    reqs = Schedule.query.filter_by(category='교대', status='대기').order_by(Schedule.date.asc()).all()
+    return render_template('admin/swap_requests.html', swap_requests=reqs)
+
+@app.route('/admin/reports')
+@login_required
+def admin_reports():
+    if not current_user.is_admin():
+        return redirect(url_for('index'))
+    reports = Report.query.order_by(Report.created_at.desc()).all()
+    return render_template('admin/reports.html', reports=reports)
+
+@app.route('/admin/statistics')
+@login_required
+def admin_statistics():
+    if not current_user.is_admin():
+        return redirect(url_for('index'))
+    return render_template('admin/statistics.html')
+
+@app.route('/admin/all_notifications')
+@login_required
+def all_notifications():
+    """관리자용 전체 알림 조회"""
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('index'))
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    notifications = Notification.query.order_by(Notification.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/all_notifications.html', notifications=notifications)
+
+@app.route('/schedule_fc')
+@login_required
+def schedule_fc():
+    return render_template('schedule_fc.html') 

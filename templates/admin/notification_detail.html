@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2><i class="fas fa-eye me-2"></i>알림 상세보기</h2>
+                    <div>
+                        <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        <form method="post" action="{{ url_for('admin_delete_notification', nid=n.id) }}" style="display: inline;" onsubmit="return confirm('정말 삭제하시겠습니까?')">
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="fas fa-trash me-1"></i>삭제
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% set icons = {'발주':'📦','청소':'🧹','근무':'👤','교대':'🔁','공지':'🔔'} %}
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <!-- 알림 내용 -->
+                            <div class="mb-4">
+                                <h4 class="text-primary">
+                                    {{ icons.get(n.category,'🔔') }} {{ n.category }}
+                                </h4>
+                                <div class="alert alert-{{ 
+                                    'primary' if n.category == '발주' else
+                                    'success' if n.category == '청소' else
+                                    'info' if n.category == '근무' else
+                                    'warning' if n.category == '교대' else
+                                    'secondary' if n.category == '공지' else
+                                    'light'
+                                }} p-3">
+                                    <p class="mb-0 fs-5">{{ n.content }}</p>
+                                </div>
+                            </div>
+
+                            <!-- 링크 정보 -->
+                            {% if n.link %}
+                            <div class="mb-4">
+                                <h5><i class="fas fa-link me-2"></i>연결 링크</h5>
+                                <div class="d-flex align-items-center">
+                                    <code class="me-3">{{ n.link }}</code>
+                                    <a href="{{ n.link }}" class="btn btn-primary btn-sm" target="_blank">
+                                        <i class="fas fa-external-link-alt me-1"></i>이동
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- 메모 정보 -->
+                            {% if n.memo %}
+                            <div class="mb-4">
+                                <h5><i class="fas fa-sticky-note me-2"></i>메모</h5>
+                                <div class="border rounded p-3 bg-light">
+                                    {{ n.memo }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <!-- 알림 정보 -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>알림 정보</h5>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th width="80">ID:</th>
+                                            <td>{{ n.id }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>직원:</th>
+                                            <td>
+                                                {% if n.user %}
+                                                    <strong>{{ n.user.username }}</strong><br>
+                                                    <span class="badge bg-secondary">{{ n.user.role }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>카테고리:</th>
+                                            <td>
+                                                <span class="badge bg-{{ 
+                                                    'primary' if n.category == '발주' else
+                                                    'success' if n.category == '청소' else
+                                                    'info' if n.category == '근무' else
+                                                    'warning' if n.category == '교대' else
+                                                    'secondary' if n.category == '공지' else
+                                                    'light'
+                                                }}">
+                                                    {{ icons.get(n.category,'🔔') }} {{ n.category }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>생성시각:</th>
+                                            <td>{{ n.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>상태:</th>
+                                            <td>
+                                                {% if n.is_read %}
+                                                    <span class="badge bg-success">읽음</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">안읽음</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- 빠른 작업 -->
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-tools me-2"></i>빠른 작업</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        {% if not n.is_read %}
+                                        <a href="{{ url_for('mark_notification_read', notification_id=n.id) }}" class="btn btn-success btn-sm">
+                                            <i class="fas fa-check me-1"></i>읽음 처리
+                                        </a>
+                                        {% endif %}
+                                        
+                                        {% if n.link %}
+                                        <a href="{{ n.link }}" class="btn btn-primary btn-sm" target="_blank">
+                                            <i class="fas fa-external-link-alt me-1"></i>연결 페이지로
+                                        </a>
+                                        {% endif %}
+                                        
+                                        <a href="{{ url_for('notification_jump', nid=n.id) }}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-eye me-1"></i>사용자 뷰로 보기
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 관련 알림 (같은 사용자의 최근 알림) -->
+                    {% if n.user %}
+                    <div class="mt-4">
+                        <h5><i class="fas fa-history me-2"></i>{{ n.user.username }}의 최근 알림</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>카테고리</th>
+                                        <th>내용</th>
+                                        <th>시각</th>
+                                        <th>상태</th>
+                                        <th>작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for related in n.user.notifications[:5] %}
+                                    {% if related.id != n.id %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-{{ 
+                                                'primary' if related.category == '발주' else
+                                                'success' if related.category == '청소' else
+                                                'info' if related.category == '근무' else
+                                                'warning' if related.category == '교대' else
+                                                'secondary' if related.category == '공지' else
+                                                'light'
+                                            }}">
+                                                {{ icons.get(related.category,'🔔') }} {{ related.category }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin_notification_detail', nid=related.id) }}" class="text-decoration-none">
+                                                {{ related.content[:40] }}{% if related.content|length > 40 %}...{% endif %}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ related.created_at.strftime('%m-%d %H:%M') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if related.is_read %}
+                                                <span class="badge bg-success">읽음</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">안읽음</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin_notification_detail', nid=related.id) }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

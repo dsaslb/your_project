@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}알림센터{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0">
+                        <i class="fas fa-bell me-2"></i>알림센터
+                        <span id="noti-badge" class="badge bg-danger ms-2" style="display: none;"></span>
+                    </h2>
+                    <div>
+                        <button type="button" class="btn btn-outline-success btn-sm me-2" onclick="markSelectedRead()">
+                            <i class="fas fa-check me-1"></i>선택 읽음
+                        </button>
+                        <a href="{{ url_for('mark_all_notifications_read') }}" 
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-check-double me-1"></i>모두 읽음
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- 필터 및 통계 -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <form method="get" class="row g-3">
+                                <div class="col-md-4">
+                                    <select name="category" class="form-select">
+                                        <option value="">전체 카테고리</option>
+                                        <option value="발주" {% if current_category == '발주' %}selected{% endif %}>발주</option>
+                                        <option value="청소" {% if current_category == '청소' %}selected{% endif %}>청소</option>
+                                        <option value="근무" {% if current_category == '근무' %}selected{% endif %}>근무</option>
+                                        <option value="교대" {% if current_category == '교대' %}selected{% endif %}>교대</option>
+                                        <option value="공지" {% if current_category == '공지' %}selected{% endif %}>공지</option>
+                                        <option value="일반" {% if current_category == '일반' %}selected{% endif %}>일반</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="is_read" class="form-select">
+                                        <option value="">전체</option>
+                                        <option value="0" {% if current_is_read == '0' %}selected{% endif %}>안읽음</option>
+                                        <option value="1" {% if current_is_read == '1' %}selected{% endif %}>읽음</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-filter me-1"></i>필터
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-end">
+                                <small class="text-muted">
+                                    전체: {{ total_notifications }}개 | 
+                                    안읽음: {{ unread_count }}개
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 카테고리별 탭 -->
+                    <ul class="nav nav-tabs mb-3" id="categoryTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if not current_category %}active{% endif %}" 
+                               href="{{ url_for('notifications') }}">
+                                전체 <span class="badge bg-secondary">{{ total_notifications }}</span>
+                            </a>
+                        </li>
+                        {% for stat in category_stats %}
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if current_category == stat.category %}active{% endif %}" 
+                               href="{{ url_for('notifications', category=stat.category) }}">
+                                {{ stat.category }} 
+                                <span class="badge bg-secondary">{{ stat.total }}</span>
+                                {% if stat.unread > 0 %}
+                                    <span class="badge bg-danger">{{ stat.unread }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <!-- 알림 목록 -->
+                    {% if notifications.items %}
+                        <form method="post" action="{{ url_for('mark_read') }}" id="notificationForm">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th width="50">
+                                                <input type="checkbox" id="allchk" onclick="checkAll(this)">
+                                            </th>
+                                            <th width="80">분류</th>
+                                            <th>내용</th>
+                                            <th width="120">시각</th>
+                                            <th width="80">읽음</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for notification in notifications.items %}
+                                        <tr class="{% if not notification.is_read %}table-warning{% endif %}" 
+                                            data-notification-id="{{ notification.id }}">
+                                            <td>
+                                                <input type="checkbox" name="noti_ids" value="{{ notification.id }}" 
+                                                       class="notification-checkbox">
+                                            </td>
+                                            <td>
+                                                {% set icons = {'발주':'📦','청소':'🧹','근무':'👤','교대':'🔁','공지':'🔔'} %}
+                                                <span class="badge bg-{{ 
+                                                    'primary' if notification.category == '발주' else
+                                                    'success' if notification.category == '청소' else
+                                                    'info' if notification.category == '근무' else
+                                                    'warning' if notification.category == '교대' else
+                                                    'secondary' if notification.category == '공지' else
+                                                    'light'
+                                                }}">
+                                                    {{ icons.get(notification.category, '🔔') }} {{ notification.category }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('notification_jump', nid=notification.id) }}" class="text-decoration-none">
+                                                    {{ notification.content }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {{ notification.created_at.strftime('%m-%d %H:%M') }}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                {% if notification.is_read %}
+                                                    <i class="fas fa-check text-success"></i>
+                                                {% else %}
+                                                    <span class="text-warning">●</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </form>
+
+                        <!-- 페이징 -->
+                        {% if notifications.pages > 1 %}
+                        <nav aria-label="알림 페이지">
+                            <ul class="pagination justify-content-center">
+                                {% if notifications.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('notifications', 
+                                            page=notifications.prev_num, category=current_category, is_read=current_is_read) }}">
+                                            이전
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for page_num in notifications.iter_pages() %}
+                                    {% if page_num %}
+                                        <li class="page-item {% if page_num == notifications.page %}active{% endif %}">
+                                            <a class="page-link" href="{{ url_for('notifications', 
+                                                page=page_num, category=current_category, is_read=current_is_read) }}">
+                                                {{ page_num }}
+                                            </a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if notifications.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('notifications', 
+                                            page=notifications.next_num, category=current_category, is_read=current_is_read) }}">
+                                            다음
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">알림이 없습니다</h5>
+                            <p class="text-muted">새로운 알림이 도착하면 여기에 표시됩니다.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 알림 상세 팝업 -->
+<div id="noti-modal" style="display:none; position:fixed; top:30vh; left:30vw; z-index:9999; 
+     background:#fff; padding:20px; border-radius:12px; box-shadow:0 0 20px rgba(0,0,0,0.3); 
+     max-width:500px; width:90%;">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <h5 id="noti-modal-title" class="mb-0"></h5>
+        <button type="button" class="btn-close" onclick="hideModal()"></button>
+    </div>
+    <div id="noti-modal-content" class="mb-3"></div>
+    <div id="noti-modal-time" class="text-muted small"></div>
+    <div class="text-end">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="hideModal()">닫기</button>
+    </div>
+</div>
+
+<!-- 모달 배경 -->
+<div id="modal-backdrop" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+     background:rgba(0,0,0,0.5); z-index:9998;"></div>
+
+<script>
+// 실시간 알림 체크
+function checkNewNoti() {
+    fetch('/api/new_notifications')
+        .then(r => r.json())
+        .then(d => {
+            let el = document.getElementById('noti-badge');
+            if (el) {
+                if (d.count > 0) {
+                    el.textContent = '🔔 ' + d.count;
+                    el.style.display = 'inline';
+                } else {
+                    el.style.display = 'none';
+                }
+            }
+        })
+        .catch(err => console.log('알림 체크 오류:', err));
+}
+
+// 8초마다 새로운 알림 체크
+setInterval(checkNewNoti, 8000);
+window.onload = checkNewNoti;
+
+// 전체 선택/해제
+function checkAll(master) {
+    var cbs = document.querySelectorAll('input[name="noti_ids"]');
+    for (var i = 0; i < cbs.length; i++) {
+        cbs[i].checked = master.checked;
+    }
+}
+
+// 선택한 알림 읽음 처리
+function markSelectedRead() {
+    var checkedBoxes = document.querySelectorAll('input[name="noti_ids"]:checked');
+    if (checkedBoxes.length === 0) {
+        alert('읽음 처리할 알림을 선택해주세요.');
+        return;
+    }
+    
+    if (confirm(checkedBoxes.length + '개의 알림을 읽음 처리하시겠습니까?')) {
+        document.getElementById('notificationForm').submit();
+    }
+}
+
+// 알림 상세 팝업 표시
+function showNoti(content, category, datetime) {
+    var icons = {'발주':'📦','청소':'🧹','근무':'👤','교대':'🔁','공지':'🔔'};
+    var icon = icons[category] || '🔔';
+    
+    document.getElementById('noti-modal-title').innerHTML = 
+        '<span class="badge bg-secondary me-2">' + icon + ' ' + category + '</span>알림 상세';
+    document.getElementById('noti-modal-content').textContent = content;
+    document.getElementById('noti-modal-time').textContent = '발송일시: ' + datetime;
+    
+    document.getElementById('modal-backdrop').style.display = 'block';
+    document.getElementById('noti-modal').style.display = 'block';
+}
+
+// 팝업 닫기
+function hideModal() {
+    document.getElementById('modal-backdrop').style.display = 'none';
+    document.getElementById('noti-modal').style.display = 'none';
+}
+
+// ESC 키로 팝업 닫기
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideModal();
+    }
+});
+
+// 배경 클릭으로 팝업 닫기
+document.getElementById('modal-backdrop').addEventListener('click', hideModal);
+
+// 알림 클릭 시 읽음 처리
+document.addEventListener('DOMContentLoaded', function() {
+    const notificationRows = document.querySelectorAll('tbody tr');
+    
+    notificationRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // 체크박스 클릭은 무시
+            if (e.target.type === 'checkbox') return;
+            
+            const notificationId = this.dataset.notificationId;
+            if (notificationId && !this.classList.contains('table-warning')) {
+                // 읽음 처리 API 호출
+                fetch(`/notifications/mark_read/${notificationId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.classList.remove('table-warning');
+                            const unreadBadge = this.querySelector('.text-warning');
+                            if (unreadBadge) {
+                                unreadBadge.innerHTML = '<i class="fas fa-check text-success"></i>';
+                            }
+                        }
+                    });
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

@@ -292,15 +292,214 @@ def notify_birthday(user):
 def log_notification(user_id, notification_type, message, success, error_msg=""):
     """알림 로그 기록"""
     try:
-        action_log = ActionLog(
-            user_id=user_id,
-            action=f"NOTIFICATION_{notification_type.upper()}",
-            message=f"{'성공' if success else '실패'}: {message[:100]}{'...' if len(message) > 100 else ''} {error_msg}"
-        )
-        db.session.add(action_log)
-        db.session.commit()
+        log_action(user_id, f"NOTIFICATION_{notification_type.upper()}", 
+                  f"{'SUCCESS' if success else 'FAILED'}: {message} {error_msg}")
     except Exception as e:
         print(f"알림 로그 기록 실패: {e}")
 
+def send_notification_enhanced(user_id, content, category='공지', link=None):
+    """
+    개선된 알림 생성 함수
+    Args:
+        user_id: 사용자 ID
+        content: 알림 내용
+        category: 카테고리 ('발주', '청소', '근무', '교대', '공지' 등)
+        link: 상세 페이지 링크
+    """
+    try:
+        n = Notification(
+            user_id=user_id,
+            content=content,
+            category=category,
+            link=link
+        )
+        db.session.add(n)
+        db.session.commit()
+        
+        log_notification(user_id, category, content, True)
+        return True, "알림 생성 성공"
+        
+    except Exception as e:
+        db.session.rollback()
+        log_notification(user_id, category, content, False, str(e))
+        return False, f"알림 생성 실패: {str(e)}"
+
+def send_notification_to_user(user, content, category='공지', link=None):
+    """
+    User 객체를 받아서 알림 생성
+    """
+    return send_notification_enhanced(user.id, content, category, link)
+
+def send_notification_to_multiple_users(user_ids, content, category='공지', link=None):
+    """
+    여러 사용자에게 동일한 알림 발송
+    """
+    success_count = 0
+    for user_id in user_ids:
+        success, _ = send_notification_enhanced(user_id, content, category, link)
+        if success:
+            success_count += 1
+    
+    return success_count, len(user_ids)
+
+# 특정 상황별 알림 함수들
+def notify_order_approval(order):
+    """발주 승인 알림"""
+    content = f"발주 '{order.item}' ({order.quantity}개)가 승인되었습니다."
+    link = f"/order_detail/{order.id}"
+    return send_notification_enhanced(order.ordered_by, content, "발주", link)
+
+def notify_order_rejection(order, reason=""):
+    """발주 거절 알림"""
+    content = f"발주 '{order.item}' ({order.quantity}개)가 거절되었습니다."
+    if reason:
+        content += f" 사유: {reason}"
+    link = f"/order_detail/{order.id}"
+    return send_notification_enhanced(order.ordered_by, content, "발주", link)
+
+def notify_shift_approval(schedule):
+    """교대 승인 알림"""
+    content = f"{schedule.date.strftime('%m월 %d일')} 교대 신청이 승인되었습니다."
+    link = "/swap_manage"
+    return send_notification_enhanced(schedule.user_id, content, "교대", link)
+
+def notify_shift_rejection(schedule, reason=""):
+    """교대 거절 알림"""
+    content = f"{schedule.date.strftime('%m월 %d일')} 교대 신청이 거절되었습니다."
+    if reason:
+        content += f" 사유: {reason}"
+    link = "/swap_manage"
+    return send_notification_enhanced(schedule.user_id, content, "교대", link)
+
+def notify_cleaning_assignment(cleaning_plan):
+    """청소 배정 알림"""
+    content = f"{cleaning_plan.date.strftime('%m월 %d일')} 청소 담당으로 배정되었습니다: {cleaning_plan.plan}"
+    link = "/clean"
+    return send_notification_enhanced(cleaning_plan.user_id, content, "청소", link)
+
+def notify_schedule_change(schedule):
+    """근무 일정 변경 알림"""
+    content = f"{schedule.date.strftime('%m월 %d일')} 근무 일정이 변경되었습니다: {schedule.start_time.strftime('%H:%M')}~{schedule.end_time.strftime('%H:%M')}"
+    link = "/schedule"
+    return send_notification_enhanced(schedule.user_id, content, "근무", link)
+
+def notify_new_notice(notice, target_users=None):
+    """새 공지사항 알림"""
+    content = f"새 공지사항: {notice.title}"
+    link = f"/notice_view/{notice.id}"
+    
+    if target_users:
+        # 특정 사용자들에게만 발송
+        for user in target_users:
+            send_notification_enhanced(user.id, content, "공지", link)
+    else:
+        # 모든 승인된 사용자에게 발송
+        users = User.query.filter_by(status='approved').all()
+        for user in users:
+            send_notification_enhanced(user.id, content, "공지", link)
+
+def notify_attendance_reminder(user, date):
+    """출근 알림"""
+    content = f"{date.strftime('%m월 %d일')} 출근 시간입니다. 출근 처리를 해주세요."
+    link = "/attendance"
+    return send_notification_enhanced(user.id, content, "근무", link)
+
+def notify_system_announcement(message, category='공지', target_users=None):
+    """시스템 공지 알림"""
+    if target_users:
+        for user in target_users:
+            send_notification_enhanced(user.id, message, category, None)
+    else:
+        users = User.query.filter_by(status='approved').all()
+        for user in users:
+            send_notification_enhanced(user.id, message, category, None)
+
 # 글로벌 알림 서비스 인스턴스
-notification_service = NotificationService() 
+notification_service = NotificationService()
+
+def send_order_approval_notification(order):
+    """발주 승인 시 담당 매니저와 발주자 모두에게 알림"""
+    try:
+        # 발주자에게 알림
+        send_notification_enhanced(
+            order.ordered_by, 
+            f"발주 '{order.item}' ({order.quantity}개)가 승인되었습니다.", 
+            "발주", 
+            f"/order_detail/{order.id}"
+        )
+        
+        # 매니저(관리자) 전체에게도 알림
+        managers = User.query.filter(User.role.in_(['admin', 'manager'])).all()
+        for manager in managers:
+            if manager.id != order.ordered_by:  # 발주자와 다른 경우만
+                send_notification_enhanced(
+                    manager.id,
+                    f"발주 '{order.item}' ({order.quantity}개)가 승인 처리되었습니다. (발주자: {order.user.username})",
+                    "발주",
+                    f"/order_detail/{order.id}"
+                )
+        
+        return True
+    except Exception as e:
+        print(f"발주 승인 알림 발송 실패: {e}")
+        return False
+
+def send_admin_only_notification(content, category='공지', link=None):
+    """관리자만 볼 수 있는 시스템 알림"""
+    try:
+        admins = User.query.filter_by(role='admin').all()
+        for admin in admins:
+            notification = Notification(
+                user_id=admin.id,
+                content=content,
+                category=category,
+                link=link,
+                is_admin_only=True
+            )
+            db.session.add(notification)
+        
+        db.session.commit()
+        return True
+    except Exception as e:
+        print(f"관리자 전용 알림 발송 실패: {e}")
+        db.session.rollback()
+        return False
+
+def send_notification_to_role(role, content, category='공지', link=None, is_admin_only=False):
+    """특정 역할의 사용자들에게 알림 발송"""
+    try:
+        users = User.query.filter_by(role=role).all()
+        for user in users:
+            notification = Notification(
+                user_id=user.id,
+                content=content,
+                category=category,
+                link=link,
+                is_admin_only=is_admin_only
+            )
+            db.session.add(notification)
+        
+        db.session.commit()
+        return True
+    except Exception as e:
+        print(f"역할별 알림 발송 실패: {e}")
+        db.session.rollback()
+        return False
+
+def send_notification_with_keyword_filter(keyword, content, category='공지', link=None):
+    """키워드가 포함된 알림을 받은 사용자들에게 추가 알림 발송"""
+    try:
+        # 키워드가 포함된 알림을 받은 사용자들 찾기
+        users_with_keyword = db.session.query(Notification.user_id).filter(
+            Notification.content.contains(keyword)
+        ).distinct().all()
+        
+        user_ids = [user_id[0] for user_id in users_with_keyword]
+        
+        for user_id in user_ids:
+            send_notification_enhanced(user_id, content, category, link)
+        
+        return True
+    except Exception as e:
+        print(f"키워드 필터 알림 발송 실패: {e}")
+        return False 

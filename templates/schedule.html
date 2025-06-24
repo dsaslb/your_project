@@ -234,12 +234,12 @@
                     </div>
                     {% if current_user.is_admin %}
                     <div class="col-auto">
-                        <a href="{{ url_for('add_schedule') }}" class="btn btn-success">
+                        <a href="#" class="btn btn-success" onclick="showAddForm()">
                             <i class="fas fa-plus"></i> 스케줄 등록
                         </a>
                     </div>
                     <div class="col-auto">
-                        <a href="{{ url_for('schedule_calendar') }}" class="btn btn-info">
+                        <a href="#" class="btn btn-info">
                             <i class="fas fa-calendar-alt"></i> 캘린더로 보기
                         </a>
                     </div>

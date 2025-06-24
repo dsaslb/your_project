@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>근태 리포트/평가</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .info-section {
+            margin-bottom: 20px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            border: 1px solid #ddd;
+            padding: 8px;
+            background-color: #f9f9f9;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 3px;
+        }
+        .info-value {
+            color: #333;
+        }
+        .stats-section {
+            margin-bottom: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+        .stat-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        .score-section {
+            border: 2px solid #333;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: #f0f0f0;
+        }
+        .score-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .score-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .grade-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background-color: #333;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+        .comment-section {
+            margin-bottom: 20px;
+        }
+        .comment-box {
+            border: 1px solid #ddd;
+            padding: 10px;
+            min-height: 60px;
+            background-color: #f9f9f9;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>직원 근태 리포트/평가</h1>
+    </div>
+
+    <div class="info-section">
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">직원명</div>
+                <div class="info-value">{{selected_user.username}} {% if selected_user.name %}({{selected_user.name}}){% endif %}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">평가 기간</div>
+                <div class="info-value">{{date_from}} ~ {{date_to}}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">생성일</div>
+                <div class="info-value">{{now.strftime('%Y-%m-%d %H:%M')}}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">생성자</div>
+                <div class="info-value">{{current_user.username}}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-section">
+        <h3>근태 통계</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">근무일수</div>
+                <div class="stat-value">{{total}}일</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">정상출근</div>
+                <div class="stat-value">{{ontime}}회</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">지각</div>
+                <div class="stat-value">{{late}}회</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">조퇴</div>
+                <div class="stat-value">{{early}}회</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">야근</div>
+                <div class="stat-value">{{ot}}회</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">출근률</div>
+                <div class="stat-value">
+                    {% if total > 0 %}
+                        {{((ontime / total) * 100)|round(1)}}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="score-section">
+        <div class="score-label">근태 점수</div>
+        <div class="score-value">{{score}}점</div>
+        <div class="grade-badge">{{grade}}</div>
+    </div>
+
+    {% if comment %}
+    <div class="comment-section">
+        <h3>관리자 평가 코멘트</h3>
+        <div class="comment-box">
+            {{comment|nl2br}}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p>본 리포트는 레스토랑 관리 시스템에서 자동 생성되었습니다.</p>
+        <p>생성일시: {{now.strftime('%Y-%m-%d %H:%M:%S')}}</p>
+    </div>
+</body>
+</html> 

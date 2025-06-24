@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}시스템 공지 (관리자용){% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cog"></i> 시스템 공지 (관리자용)
+                    </h4>
+                    <div>
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> 관리자 대시보드
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    {% if notis %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th width="80">분류</th>
+                                        <th>내용</th>
+                                        <th width="120">시각</th>
+                                        <th width="80">읽음</th>
+                                        <th width="100">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for n in notis %}
+                                    <tr class="{% if not n.is_read %}table-warning{% endif %}">
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                🔔 {{ n.category }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if n.link %}
+                                                <a href="{{ n.link }}" class="text-decoration-none">
+                                                    {{ n.content }}
+                                                </a>
+                                            {% else %}
+                                                {{ n.content }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ n.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if n.is_read %}
+                                                <i class="fas fa-check text-success"></i>
+                                            {% else %}
+                                                <span class="text-warning">●</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if not n.is_read %}
+                                                    <a href="{{ url_for('mark_notification_read', notification_id=n.id) }}" 
+                                                       class="btn btn-outline-success">
+                                                        <i class="fas fa-check"></i>
+                                                    </a>
+                                                {% endif %}
+                                                <a href="{{ url_for('delete_notification', notification_id=n.id) }}" 
+                                                   class="btn btn-outline-danger"
+                                                   onclick="return confirm('이 시스템 알림을 삭제하시겠습니까?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 통계 정보 -->
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <div class="card bg-secondary text-white">
+                                    <div class="card-body text-center">
+                                        <h5>총 시스템 알림</h5>
+                                        <h3>{{ notis|length }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body text-center">
+                                        <h5>안읽음</h5>
+                                        <h3>{{ notis|selectattr('is_read', 'equalto', False)|list|length }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <h5>읽음</h5>
+                                        <h3>{{ notis|selectattr('is_read', 'equalto', True)|list|length }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <h5>최근 7일</h5>
+                                        <h3>{{ notis|selectattr('created_at', 'ge', (now - timedelta(days=7)))|list|length }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 빠른 액션 -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">빠른 액션</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('mark_all_notifications_read') }}" 
+                                               class="btn btn-outline-primary">
+                                                <i class="fas fa-check-double"></i> 모두 읽음 처리
+                                            </a>
+                                            <a href="{{ url_for('admin_send_notification') }}" 
+                                               class="btn btn-outline-success">
+                                                <i class="fas fa-paper-plane"></i> 새 시스템 알림 발송
+                                            </a>
+                                            <a href="{{ url_for('all_notifications') }}" 
+                                               class="btn btn-outline-info">
+                                                <i class="fas fa-list"></i> 전체 알림 관리
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-cog fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">시스템 알림이 없습니다</h5>
+                            <p class="text-muted">새로운 시스템 알림이 생성되면 여기에 표시됩니다.</p>
+                            <a href="{{ url_for('admin_send_notification') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> 시스템 알림 발송
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
