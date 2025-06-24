@@ -47,7 +47,7 @@
                     {% if selected_user %}
                     <!-- PDF 다운로드 버튼 -->
                     <div class="mb-3">
-                        <a href="{{ url_for('staff_attendance_report_pdf', user_id=user_id, from_=date_from, to=date_to) }}" 
+                        <a href="{{ url_for('staff_attendance_report_pdf_individual', user_id=user_id) }}?from={{ date_from }}&to={{ date_to }}" 
                            class="btn btn-outline-secondary">
                             <i class="fas fa-file-pdf me-1"></i>
                             PDF 다운로드

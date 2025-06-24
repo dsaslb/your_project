@@ -1,0 +1,23 @@
+<h2>직원 근태 대시보드 (PDF)</h2>
+<table border="1" cellpadding="2" style="margin-top:10px;">
+  <tr>
+    <th>날짜</th>
+    <th>출근</th>
+    <th>퇴근</th>
+    <th>지각</th>
+    <th>조퇴</th>
+    <th>야근</th>
+    <th>사유</th>
+  </tr>
+  {% for r in records %}
+    <tr>
+      <td>{{r.clock_in.date() if r.clock_in else '-'}}</td>
+      <td>{{r.clock_in.strftime('%H:%M') if r.clock_in else '-'}}</td>
+      <td>{{r.clock_out.strftime('%H:%M') if r.clock_out else '-'}}</td>
+      <td>{% if r.is_late %}O{% endif %}</td>
+      <td>{% if r.is_early_leave %}O{% endif %}</td>
+      <td>{% if r.is_overtime %}O{% endif %}</td>
+      <td>{{r.reason or '-'}}</td>
+    </tr>
+  {% endfor %}
+</table> 

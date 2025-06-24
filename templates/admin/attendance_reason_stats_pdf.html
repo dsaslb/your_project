@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>근태 사유별 통계 리포트</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', Arial, sans-serif;
+            margin: 20px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            text-align: center;
+        }
+        .reason-table th:nth-child(1) { width: 60%; }
+        .reason-table th:nth-child(2) { width: 20%; }
+        .reason-table th:nth-child(3) { width: 20%; }
+        .staff-table th:nth-child(1) { width: 25%; }
+        .staff-table th:nth-child(2) { width: 25%; }
+        .staff-table th:nth-child(3) { width: 50%; }
+        .percentage {
+            text-align: center;
+            font-weight: bold;
+        }
+        .count {
+            text-align: center;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+        .summary {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .summary h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .summary p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>근태 사유별 통계 리포트</h1>
+        <p>기간: {{date_from}} ~ {{date_to}}</p>
+        <p>생성일시: {{ moment().format('YYYY-MM-DD HH:mm:ss') }}</p>
+    </div>
+
+    <div class="summary">
+        <h3>📊 통계 요약</h3>
+        {% set total_count = reasons|sum(attribute='count') %}
+        <p><strong>총 사유 건수:</strong> {{total_count}}건</p>
+        <p><strong>사유 종류:</strong> {{reasons|length}}가지</p>
+        <p><strong>직원 수:</strong> {{staff_reasons|map(attribute=0)|unique|list|length}}명</p>
+    </div>
+
+    <div class="section">
+        <h2>📈 사유별 집계</h2>
+        <table class="reason-table">
+            <thead>
+                <tr>
+                    <th>사유</th>
+                    <th>건수</th>
+                    <th>비율</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reason, count in reasons %}
+                <tr>
+                    <td>{{reason}}</td>
+                    <td class="count">{{count}}</td>
+                    <td class="percentage">
+                        {% if total_count > 0 %}
+                            {{ "%.1f"|format(count / total_count * 100) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>👥 직원별 사유 상세</h2>
+        <table class="staff-table">
+            <thead>
+                <tr>
+                    <th>직원명</th>
+                    <th>날짜</th>
+                    <th>사유</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for username, date, reason in staff_reasons %}
+                <tr>
+                    <td>{{username}}</td>
+                    <td>{{date.strftime('%Y-%m-%d') if date else '-'}}</td>
+                    <td>{{reason}}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>📋 사유별 분석</h2>
+        {% if reasons %}
+            {% set top_reason, top_count = reasons[0] %}
+            <p><strong>가장 빈번한 사유:</strong> "{{top_reason}}" ({{top_count}}건)</p>
+            
+            {% if reasons|length > 1 %}
+                {% set second_reason, second_count = reasons[1] %}
+                <p><strong>두 번째 빈번한 사유:</strong> "{{second_reason}}" ({{second_count}}건)</p>
+            {% endif %}
+            
+            {% set avg_count = total_count / reasons|length %}
+            <p><strong>평균 사유별 건수:</strong> {{ "%.1f"|format(avg_count) }}건</p>
+        {% else %}
+            <p>분석할 사유 데이터가 없습니다.</p>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        <p>본 리포트는 식당 관리 시스템에서 자동 생성되었습니다.</p>
+        <p>문의사항이 있으시면 관리자에게 연락해주세요.</p>
+    </div>
+</body>
+</html> 

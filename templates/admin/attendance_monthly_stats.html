@@ -1,0 +1,54 @@
+<h2>월별 직원 근태 비교(지각률·출근률·조퇴률·야근률)</h2>
+<a href="/admin/attendance_monthly_stats/excel" class="btn btn-outline-primary">Excel 다운로드</a>
+<a href="/admin/attendance_monthly_stats/pdf" class="btn btn-outline-secondary">PDF 다운로드</a>
+<table border="1" cellpadding="2">
+  <tr>
+    <th>직원명</th>
+    <th>총근무</th>
+    <th>정상출근</th>
+    <th>지각</th>
+    <th>조퇴</th>
+    <th>야근</th>
+    <th>지각률(%)</th>
+    <th>출근률(%)</th>
+    <th>조퇴률(%)</th>
+    <th>야근률(%)</th>
+  </tr>
+  {% for s in stats %}
+    <tr {% if s.late_rate>20 or s.early_rate>15 or s.ot_rate>40 %} style="background:#ffeaea;"{% endif %}>
+      <td>{{s.username}}</td>
+      <td>{{s.total}}</td>
+      <td>{{s.normal}}</td>
+      <td>{{s.late}}</td>
+      <td>{{s.early}}</td>
+      <td>{{s.ot}}</td>
+      <td style="color:{{'red' if s.late_rate>20 else '#222'}}"><b>{{s.late_rate}}</b></td>
+      <td style="color:{{'green' if s.attend_rate>=80 else '#222'}}"><b>{{s.attend_rate}}</b></td>
+      <td style="color:{{'orange' if s.early_rate>15 else '#222'}}"><b>{{s.early_rate}}</b></td>
+      <td style="color:{{'blue' if s.ot_rate>40 else '#222'}}"><b>{{s.ot_rate}}</b></td>
+    </tr>
+  {% endfor %}
+</table>
+<canvas id="barChart" width="760" height="270"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let names = [{% for s in stats %}'{{s.username}}',{% endfor %}];
+let late_rates = [{% for s in stats %}{{s.late_rate}},{% endfor %}];
+let attend_rates = [{% for s in stats %}{{s.attend_rate}},{% endfor %}];
+let ctx = document.getElementById('barChart').getContext('2d');
+new Chart(ctx, {
+  type:'bar',
+  data:{
+    labels:names,
+    datasets:[
+      {label:'지각률',data:late_rates,backgroundColor:'#e57373'},
+      {label:'출근률',data:attend_rates,backgroundColor:'#64b5f6'},
+    ]
+  },
+  options:{
+    responsive:true,
+    scales:{y:{beginAtZero:true, max:100}},
+    plugins:{legend:{position:'top'}}
+  }
+});
+</script> 

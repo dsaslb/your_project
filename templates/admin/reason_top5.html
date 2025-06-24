@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}최다 사유 TOP5{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-trophy"></i> 최다 사유 TOP5
+                        {% if team %}
+                            <span class="badge badge-primary ml-2">{{ team }} 팀</span>
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- 팀별 필터 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <form method="get" class="form-inline">
+                                <div class="form-group mr-2">
+                                    <label for="team" class="mr-2">팀 선택:</label>
+                                    <select name="team" id="team" class="form-control" onchange="this.form.submit()">
+                                        <option value="">전체</option>
+                                        <option value="주방" {% if team == '주방' %}selected{% endif %}>주방</option>
+                                        <option value="서빙" {% if team == '서빙' %}selected{% endif %}>서빙</option>
+                                        <option value="관리" {% if team == '관리' %}selected{% endif %}>관리</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <a href="{{ url_for('admin_reason_template_stats') }}" class="btn btn-info">
+                                <i class="fas fa-chart-bar"></i> 템플릿 통계 보기
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- TOP5 리스트 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-medal"></i> 
+                                        최다 사유 TOP5{% if team %} ({{ team }} 팀){% endif %}
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if top5 %}
+                                    <div class="list-group">
+                                        {% for reason, cnt in top5 %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge badge-primary mr-2">{{ loop.index }}</span>
+                                                <strong>{{ reason }}</strong>
+                                            </div>
+                                            <span class="badge badge-success badge-pill">{{ cnt }}회</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-info-circle fa-3x mb-3"></i>
+                                        <p>사용된 사유가 없습니다.</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 팀별 인기 사유 -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-users"></i> 팀별 인기 사유 TOP3
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if team_top3 %}
+                                    <div class="accordion" id="teamAccordion">
+                                        {% for team_name, reasons in team_top3.items() %}
+                                        <div class="card">
+                                            <div class="card-header" id="heading{{ loop.index }}">
+                                                <h6 class="mb-0">
+                                                    <button class="btn btn-link btn-block text-left" type="button" 
+                                                            data-toggle="collapse" data-target="#collapse{{ loop.index }}">
+                                                        <i class="fas fa-chevron-down"></i>
+                                                        {{ team_name }} 팀
+                                                    </button>
+                                                </h6>
+                                            </div>
+                                            <div id="collapse{{ loop.index }}" class="collapse" 
+                                                 data-parent="#teamAccordion">
+                                                <div class="card-body">
+                                                    <div class="list-group list-group-flush">
+                                                        {% for reason, cnt in reasons %}
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <span>{{ reason }}</span>
+                                                            <span class="badge badge-info badge-pill">{{ cnt }}회</span>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-users fa-3x mb-3"></i>
+                                        <p>팀별 데이터가 없습니다.</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 통계 요약 -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-chart-line"></i> 통계 요약
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h4 class="text-primary">{{ top5|length }}</h4>
+                                                <p class="text-muted">등록된 사유</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h4 class="text-success">
+                                                    {% if top5 %}
+                                                        {{ top5|sum(attribute='count') }}
+                                                    {% else %}
+                                                        0
+                                                    {% endif %}
+                                                </h4>
+                                                <p class="text-muted">총 사용 건수</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h4 class="text-info">{{ team_top3|length }}</h4>
+                                                <p class="text-muted">활성 팀 수</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h4 class="text-warning">
+                                                    {% if top5 %}
+                                                        {{ "%.1f"|format(top5|sum(attribute='count') / top5|length) }}
+                                                    {% else %}
+                                                        0
+                                                    {% endif %}
+                                                </h4>
+                                                <p class="text-muted">평균 사용</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
+
+.badge-pill {
+    padding-left: 0.6em;
+    padding-right: 0.6em;
+}
+
+.btn-link {
+    text-decoration: none;
+    color: #495057;
+}
+
+.btn-link:hover {
+    text-decoration: none;
+    color: #007bff;
+}
+
+.accordion .card {
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %} 

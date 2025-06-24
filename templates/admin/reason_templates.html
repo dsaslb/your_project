@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}사유 템플릿 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-list-alt"></i> 사유 템플릿 관리
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- 템플릿 추가 폼 -->
+                    <form method="post" class="mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="text">사유 템플릿</label>
+                                    <input type="text" class="form-control" id="text" name="text" 
+                                           placeholder="예: 월요일 컨디션 저하" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="team">팀 (선택사항)</label>
+                                    <input type="text" class="form-control" id="team" name="team" 
+                                           placeholder="예: 주방, 홀">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button type="submit" class="btn btn-primary btn-block">
+                                        <i class="fas fa-plus"></i> 추가
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- 템플릿 목록 -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>번호</th>
+                                    <th>사유 템플릿</th>
+                                    <th>팀</th>
+                                    <th>생성자</th>
+                                    <th>생성일</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for template in templates %}
+                                <tr>
+                                    <td>{{ template.id }}</td>
+                                    <td>
+                                        <span class="font-weight-bold">{{ template.text }}</span>
+                                    </td>
+                                    <td>
+                                        {% if template.team %}
+                                            <span class="badge badge-info">{{ template.team }}</span>
+                                        {% else %}
+                                            <span class="text-muted">전체</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if template.creator %}
+                                            {{ template.creator.username }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ template.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </td>
+                                    <td>
+                                        <form method="post" action="{{ url_for('delete_reason_template', tid=template.id) }}" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirm('정말 삭제하시겠습니까?')">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-trash"></i> 삭제
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        등록된 템플릿이 없습니다.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 사용법 안내 -->
+                    <div class="alert alert-info mt-4">
+                        <h5><i class="fas fa-info-circle"></i> 사용법</h5>
+                        <ul class="mb-0">
+                            <li>자주 사용하는 사유를 템플릿으로 등록하면 근태 사유 입력 시 드롭다운에서 선택할 수 있습니다.</li>
+                            <li>팀을 지정하면 해당 팀 직원들만 해당 템플릿을 볼 수 있습니다.</li>
+                            <li>팀을 비워두면 모든 직원이 사용할 수 있습니다.</li>
+                            <li>새로운 사유를 입력할 때마다 자동으로 템플릿에 추가됩니다.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+    border-top: none;
+    background-color: #343a40;
+    color: white;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %} 

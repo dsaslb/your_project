@@ -1,0 +1,212 @@
+<h2>직원 근태 대시보드</h2>
+<form method="get">
+  <select name="user_id">
+    {% for u in users %}
+      <option value="{{u.id}}" {% if u.id==user_id %}selected{% endif %}>{{u.username}}</option>
+    {% endfor %}
+  </select>
+  <input type="date" name="from" value="{{date_from}}">
+  ~
+  <input type="date" name="to" value="{{date_to}}">
+  <button>조회</button>
+</form>
+<table border="1" cellpadding="2" style="margin-top:10px;">
+  <tr>
+    <th>총 근무일</th>
+    <th>정상출근</th>
+    <th>지각</th>
+    <th>조퇴</th>
+    <th>야근</th>
+  </tr>
+  <tr>
+    <td>{{summary['총근무일']}}</td>
+    <td>{{summary['정상출근']}}</td>
+    <td>{{summary['지각']}}</td>
+    <td>{{summary['조퇴']}}</td>
+    <td>{{summary['야근']}}</td>
+  </tr>
+</table>
+<!-- 일별 근태 표시 (사유 입력/수정 기능 포함) -->
+<table border="1" cellpadding="2" style="margin-top:14px;">
+  <tr>
+    <th>날짜</th>
+    <th>출근</th>
+    <th>퇴근</th>
+    <th>지각</th>
+    <th>조퇴</th>
+    <th>야근</th>
+    <th>사유</th>
+    {% if session.get('role') in ('admin', 'manager', 'teamlead') %}
+    <th>수정</th>
+    {% endif %}
+  </tr>
+  {% for r in records %}
+    <tr>
+      <td>{{r.clock_in.date() if r.clock_in else '-'}}</td>
+      <td>{{r.clock_in.strftime('%H:%M') if r.clock_in else '-'}}</td>
+      <td>{{r.clock_out.strftime('%H:%M') if r.clock_out else '-'}}</td>
+      <td>{% if r.is_late %}✔️{% endif %}</td>
+      <td>{% if r.is_early_leave %}✔️{% endif %}</td>
+      <td>{% if r.is_overtime %}✔️{% endif %}</td>
+      <td>
+        {% if session.get('role') in ('admin', 'manager', 'teamlead') %}
+        <!-- 사유 템플릿 드롭다운 -->
+        <select class="reason-template-select" data-rid="{{r.id}}" style="width:120px; margin-bottom:2px;">
+          <option value="">템플릿 선택</option>
+          {% for t in reason_templates %}
+            <option value="{{t.text}}">{{t.text}}</option>
+          {% endfor %}
+        </select>
+        <!-- 실시간 편집 필드 -->
+        <input type="text" value="{{r.reason or ''}}" data-rid="{{r.id}}" class="reason-input" style="width:130px;" placeholder="사유 입력">
+        <span class="reason-save-status" id="rs-{{r.id}}"></span>
+        <!-- AI 추천 사유 -->
+        {% set ai_reason = ai_recommend_reason_template(user, r.clock_in.date()) if r.clock_in else "" %}
+        {% if ai_reason %}
+        <div style="font-size:0.85em; color:#888; margin-top:2px;">
+          AI 추천: <b>{{ai_reason}}</b>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="applyAIRecommend('{{ai_reason}}', {{r.id}})">
+            적용
+          </button>
+        </div>
+        {% endif %}
+        {% else %}
+        {{r.reason or '-'}}
+        {% endif %}
+      </td>
+      {% if session.get('role') in ('admin', 'manager', 'teamlead') %}
+      <td>
+        <button type="button" class="btn btn-success btn-sm" onclick="saveReason({{r.id}})">
+          <i class="fas fa-save"></i> 저장
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+  {% endfor %}
+</table>
+
+<!-- 다운로드 버튼들 -->
+<div style="margin-top: 20px;">
+  <form method="get" action="/attendance_dashboard/excel" style="display:inline; margin-right:10px;">
+    <input type="hidden" name="user_id" value="{{user_id}}">
+    <input type="hidden" name="from" value="{{date_from}}">
+    <input type="hidden" name="to" value="{{date_to}}">
+    <button type="submit">엑셀 다운로드</button>
+  </form>
+  
+  <form method="get" action="/attendance_dashboard/pdf" style="display:inline; margin-right:10px;">
+    <input type="hidden" name="user_id" value="{{user_id}}">
+    <input type="hidden" name="from" value="{{date_from}}">
+    <input type="hidden" name="to" value="{{date_to}}">
+    <button type="submit">PDF 다운로드</button>
+  </form>
+  
+  {% if session.get('role') == 'admin' %}
+  <form method="get" action="/staff/{{user_id}}/attendance_report/excel" style="display:inline; margin-right:10px;">
+    <input type="hidden" name="from" value="{{date_from}}">
+    <input type="hidden" name="to" value="{{date_to}}">
+    <button type="submit">개별 리포트 Excel</button>
+  </form>
+  
+  <form method="get" action="/staff/{{user_id}}/attendance_report/pdf" style="display:inline;">
+    <input type="hidden" name="from" value="{{date_from}}">
+    <input type="hidden" name="to" value="{{date_to}}">
+    <button type="submit">개별 리포트 PDF</button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- 관리자용 템플릿 관리 링크 -->
+{% if session.get('role') == 'admin' %}
+<div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+  <h5>관리 도구</h5>
+  <a href="{{ url_for('admin_reason_templates') }}" class="btn btn-outline-primary btn-sm">
+    <i class="fas fa-cog"></i> 사유 템플릿 관리
+  </a>
+  <a href="{{ url_for('admin_attendance_reason_stats') }}" class="btn btn-outline-info btn-sm">
+    <i class="fas fa-chart-bar"></i> 사유별 통계
+  </a>
+  <a href="{{ url_for('admin_reason_template_stats') }}" class="btn btn-outline-success btn-sm">
+    <i class="fas fa-chart-pie"></i> 템플릿 통계
+  </a>
+  <a href="{{ url_for('admin_reason_top5') }}" class="btn btn-outline-warning btn-sm">
+    <i class="fas fa-trophy"></i> TOP5 인기 사유
+  </a>
+</div>
+{% endif %}
+
+<!-- 팀장용 템플릿 관리 링크 -->
+{% if session.get('role') == 'teamlead' %}
+<div style="margin-top: 20px; padding: 10px; background-color: #e3f2fd; border-radius: 5px;">
+  <h5>팀 관리 도구</h5>
+  <a href="{{ url_for('teamlead_reason_templates') }}" class="btn btn-outline-primary btn-sm">
+    <i class="fas fa-cog"></i> 팀 템플릿 관리
+  </a>
+</div>
+{% endif %}
+
+<!-- 실시간 편집 JavaScript -->
+<script>
+// 템플릿 선택 시 자동 입력
+document.querySelectorAll('.reason-template-select').forEach(function(select) {
+    select.onchange = function() {
+        if (this.value) {
+            const rid = this.dataset.rid;
+            const reasonInput = document.querySelector(`input[data-rid="${rid}"]`);
+            reasonInput.value = this.value;
+        }
+    };
+});
+
+// 실시간 사유 편집
+document.querySelectorAll('.reason-input').forEach(function(input) {
+    input.onchange = function() {
+        const rid = this.dataset.rid;
+        const reason = this.value;
+        
+        fetch('/api/attendance/' + rid + '/reason', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({reason: reason})
+        })
+        .then(response => response.json())
+        .then(data => {
+            const status = document.getElementById('rs-' + rid);
+            if (data.result === 'ok') {
+                status.textContent = '✔️';
+                status.style.color = 'green';
+            } else {
+                status.textContent = '❌';
+                status.style.color = 'red';
+            }
+            setTimeout(() => {
+                status.textContent = '';
+            }, 1500);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const status = document.getElementById('rs-' + rid);
+            status.textContent = '❌';
+            status.style.color = 'red';
+            setTimeout(() => {
+                status.textContent = '';
+            }, 1500);
+        });
+    };
+});
+
+// AI 추천 적용
+function applyAIRecommend(reason, rid) {
+    const reasonInput = document.querySelector(`input[data-rid="${rid}"]`);
+    reasonInput.value = reason;
+    reasonInput.dispatchEvent(new Event('change'));
+}
+
+// 수동 저장 버튼
+function saveReason(rid) {
+    const reasonInput = document.querySelector(`input[data-rid="${rid}"]`);
+    reasonInput.dispatchEvent(new Event('change'));
+}
+</script> 

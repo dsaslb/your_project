@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}사유 템플릿별 사용 빈도 통계{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-chart-bar"></i> 사유 템플릿별 사용 빈도 통계
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- 팀별 필터 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <form method="get" class="form-inline">
+                                <div class="form-group mr-2">
+                                    <label for="team" class="mr-2">팀 선택:</label>
+                                    <select name="team" id="team" class="form-control" onchange="this.form.submit()">
+                                        <option value="">전체</option>
+                                        {% for team in teams %}
+                                        <option value="{{ team }}" {% if team == current_team %}selected{% endif %}>
+                                            {{ team }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <a href="{{ url_for('admin_reason_top5') }}" class="btn btn-info">
+                                <i class="fas fa-trophy"></i> TOP5 인기 사유 보기
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 차트 영역 -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">사용 빈도 Bar 차트</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="reasonBarChart" width="680" height="240"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">사용 비율 Pie 차트</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="reasonPieChart" width="340" height="240"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 통계 테이블 -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>순위</th>
+                                    <th>사유 템플릿</th>
+                                    <th>팀</th>
+                                    <th>사용 건수</th>
+                                    <th>비율</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total_count = stats|sum(attribute='usage_count') %}
+                                {% for template in stats %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <span class="font-weight-bold">{{ template.text }}</span>
+                                    </td>
+                                    <td>
+                                        {% if template.team %}
+                                            <span class="badge badge-primary">{{ template.team }}</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">전체</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ template.usage_count }}</span>
+                                    </td>
+                                    <td>
+                                        {% if total_count > 0 %}
+                                            {{ "%.1f"|format(template.usage_count / total_count * 100) }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        사용된 템플릿이 없습니다.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 요약 정보 -->
+                    <div class="row mt-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h5>총 템플릿 수</h5>
+                                    <h3>{{ stats|length }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h5>총 사용 건수</h5>
+                                    <h3>{{ total_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h5>평균 사용</h5>
+                                    <h3>
+                                        {% if stats|length > 0 %}
+                                            {{ "%.1f"|format(total_count / stats|length) }}
+                                        {% else %}
+                                            0
+                                        {% endif %}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h5>팀 수</h5>
+                                    <h3>{{ teams|length }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// 차트 데이터 준비
+let labels = [{% for template in stats %}'{{ template.text|replace("'", "\\'") }}',{% endfor %}];
+let counts = [{% for template in stats %}{{ template.usage_count }},{% endfor %}];
+let colors = [
+    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+    '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+];
+
+// Bar 차트
+new Chart(document.getElementById('reasonBarChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: '사용 건수',
+            data: counts,
+            backgroundColor: colors.slice(0, labels.length),
+            borderColor: colors.slice(0, labels.length),
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+
+// Pie 차트
+new Chart(document.getElementById('reasonPieChart').getContext('2d'), {
+    type: 'pie',
+    data: {
+        labels: labels,
+        datasets: [{
+            data: counts,
+            backgroundColor: colors.slice(0, labels.length),
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20,
+                    usePointStyle: true
+                }
+            }
+        }
+    }
+});
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+    border-top: none;
+    background-color: #343a40;
+    color: white;
+}
+
+.badge {
+    font-size: 0.875em;
+}
+</style>
+{% endblock %} 

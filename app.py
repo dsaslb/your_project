@@ -10,16 +10,19 @@ import io
 import pandas as pd
 import pdfkit
 from sqlalchemy import func, case
+from calendar import monthrange
 
 from config import config_by_name
 from extensions import db, migrate, login_manager, csrf, limiter, cache
-from models import User, Schedule, CleaningPlan, Report, Notification, Notice, Order, Attendance, AttendanceEvaluation, AttendanceReport
+from models import User, Schedule, CleaningPlan, Report, Notification, Notice, Order, Attendance, AttendanceEvaluation, AttendanceReport, ReasonTemplate
 
 # Import notification functions
 from utils.notify import (
     send_notification_enhanced, 
     send_admin_only_notification,
-    send_notification_to_role
+    send_notification_to_role,
+    send_kakao,
+    send_email
 )
 
 # Import API Blueprints
@@ -143,9 +146,8 @@ def admin_dashboard():
     result = db.session.query(
         User.branch,
         func.count(User.id).label('user_count'),
-        func.sum(Attendance.work_minutes).label('total_work'),
-        func.sum(case([(Attendance.status == 'late', 1)], else_=0)).label('total_late'),
-        func.sum(case([(Attendance.status == 'absent', 1)], else_=0)).label('total_absent')
+        func.sum(case((Attendance.status == 'late', 1), else_=0)).label('total_late'),
+        func.sum(case((Attendance.status == 'absent', 1), else_=0)).label('total_absent')
     ).join(Attendance, User.id == Attendance.user_id, isouter=True).group_by(User.branch).all()
     
     # 월별 통계 데이터 추가
@@ -210,7 +212,6 @@ def admin_dashboard():
         User.username.label('user'),
         Attendance.clock_in,
         Attendance.clock_out,
-        Attendance.work_minutes,
         Attendance.status
     ).join(User).order_by(Attendance.clock_in.desc()).limit(10).all()
     
@@ -1279,35 +1280,91 @@ def staff_attendance_pdf():
     overtime_count = sum(1 for r in records if r.clock_out and r.clock_out.time() > timedelta(hours=18).total_seconds())
     normal_count = sum(1 for r in records if r.status == '정상')
     
-    # HTML 템플릿 렌더링
-    html = render_template('staff_attendance_pdf.html', 
-                         user=user, 
-                         records=records, 
-                         date_from=date_from, 
-                         date_to=date_to,
-                         total_days=total_days,
-                         late_count=late_count,
-                         early_leave_count=early_leave_count,
-                         overtime_count=overtime_count,
-                         normal_count=normal_count)
+    # 근태 점수 계산 (100점 만점)
+    score = 100
+    if total_days > 0:
+        # 지각: -5점씩
+        score -= late_count * 5
+        # 조퇴: -3점씩
+        score -= early_leave_count * 3
+        # 야근: +2점씩 (최대 10점)
+        overtime_bonus = min(overtime_count * 2, 10)
+        score += overtime_bonus
+        # 정상 출근: +1점씩 (최대 20점)
+        normal_bonus = min(normal_count * 1, 20)
+        score += normal_bonus
     
+    # 점수 범위 제한
+    score = max(0, min(100, score))
+    
+    # 등급 부여
+    if score >= 90:
+        grade = "A+"
+    elif score >= 80:
+        grade = "A"
+    elif score >= 70:
+        grade = "B+"
+    elif score >= 60:
+        grade = "B"
+    elif score >= 50:
+        grade = "C+"
+    elif score >= 40:
+        grade = "C"
+    else:
+        grade = "D"
+    
+    # 기존 평가 코멘트 조회
+    comment = ""
+    evaluation = AttendanceReport.query.filter_by(
+        user_id=user_id,
+        period_from=date_from,
+        period_to=date_to
+    ).first()
+    
+    if evaluation:
+        comment = evaluation.comment
+    
+    # HTML 렌더링
+    html_content = render_template('staff_attendance_report_pdf.html',
+        selected_user=user,
+        date_from=date_from,
+        date_to=date_to,
+        total=total_days,
+        late=late_count,
+        early=early_leave_count,
+        ot=overtime_count,
+        ontime=normal_count,
+        score=score,
+        grade=grade,
+        comment=comment,
+        current_user=current_user,
+        now=datetime.utcnow()
+    )
+    
+    # PDF 생성
     try:
-        # PDF 생성
-        pdf = pdfkit.from_string(html, False)
-        output = io.BytesIO(pdf)
-        output.seek(0)
+        pdf = pdfkit.from_string(html_content, False)
         
-        filename = f"{user.username}_근태이력_{date_from}_{date_to}.pdf"
-        return send_file(output, download_name=filename, as_attachment=True)
+        # 파일명 생성
+        filename = f"근태리포트_{user.username}_{date_from}_{date_to}.pdf"
+        
+        # 응답 생성
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
     except Exception as e:
         flash(f'PDF 생성 중 오류가 발생했습니다: {str(e)}', 'error')
-        return redirect(url_for('staff_attendance', user_id=user_id, from_=date_from, to=date_to))
+        return redirect(url_for('staff_attendance_report', user_id=user_id, from_=date_from, to=date_to))
 
 @app.route('/staff_attendance_report', methods=['GET', 'POST'])
 @login_required
 def staff_attendance_report():
     """직원 근태 리포트/평가"""
     from datetime import date, timedelta
+    from utils.notify import send_notification_enhanced, send_notification_to_role
     
     # 사용자 목록 (관리자는 모든 사용자, 일반 사용자는 본인만)
     if current_user.is_admin():
@@ -1423,6 +1480,34 @@ def staff_attendance_report():
         
         db.session.commit()
         flash('평가가 저장되었습니다.', 'success')
+
+        # --- 근태 리포트 알림 자동 발송 ---
+        pdf_link = url_for('staff_attendance_report_pdf') + f'?user_id={user_id}'
+        noti_content = f"{date_from}~{date_to} 근태 평가 리포트가 등록되었습니다."
+        send_notification_enhanced(
+            user_id=user_id,
+            content=noti_content,
+            category="근무",
+            link=pdf_link
+        )
+        send_notification_to_role(
+            role='admin',
+            content=f"[{selected_user.username}] {noti_content}",
+            category="근무",
+            link=pdf_link
+        )
+
+        # --- 카카오톡/이메일 자동 전송 ---
+        kakao_msg = f"{selected_user.username}님, {date_from}~{date_to} 근태 평가 리포트가 등록되었습니다.\n결과 확인: {pdf_link}"
+        send_kakao(selected_user, kakao_msg)
+        # 이메일(PDF 첨부)
+        subject = "근태 평가 리포트"
+        body = f"{selected_user.username}님, {date_from}~{date_to} 근태 평가 리포트가 등록되었습니다.\n결과 확인: {pdf_link}"
+        try:
+            # PDF 생성 로직 제거 (html_content 변수 오류 해결)
+            send_email(selected_user, subject, body)
+        except Exception as e:
+            print(f"이메일 전송 오류: {e}")
     
     return render_template('staff_attendance_report.html',
         users=users,
@@ -1496,7 +1581,7 @@ def staff_attendance_report_excel():
         worksheet = writer.sheets['근태평가이력']
         
         # 열 너비 자동 조정
-        for i, col in enumerate(df.columns):
+        for i, col in enumerate(df.columns.values):
             max_len = max(df[col].astype(str).apply(len).max(), len(col)) + 2
             worksheet.set_column(i, i, max_len)
     
@@ -1512,127 +1597,342 @@ def staff_attendance_report_excel():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 
-@app.route('/staff_attendance_report_pdf')
+@app.route('/admin/bulk_send_report', methods=['POST'])
 @login_required
-def staff_attendance_report_pdf():
-    """직원 근태 리포트 PDF 다운로드"""
+def bulk_send_report():
+    if not current_user.is_admin():
+        return "권한없음", 403
+    from datetime import timedelta
+    from utils.notify import send_notification_enhanced, send_notification_to_role, send_kakao, send_email
     import pdfkit
-    import io
-    from datetime import date, timedelta
+    date_from = request.form.get('from')
+    date_to = request.form.get('to')
+    users = User.query.filter_by(role='employee', status='approved').all()
+    for user in users:
+        # 근태 기록 조회
+        records = Attendance.query.filter(
+            Attendance.user_id == user.id,
+            Attendance.clock_in >= date_from,
+            Attendance.clock_in <= date_to + ' 23:59:59'
+        ).order_by(Attendance.clock_in.desc()).all()
+        total_days = len(records)
+        late_count = sum(1 for r in records if r.status and '지각' in r.status)
+        early_leave_count = sum(1 for r in records if r.status and '조퇴' in r.status)
+        overtime_count = sum(1 for r in records if r.clock_out and r.clock_out.time() > timedelta(hours=18).total_seconds())
+        normal_count = sum(1 for r in records if r.status == '정상')
+        # 점수/등급 계산
+        score = 100
+        if total_days > 0:
+            score -= late_count * 5
+            score -= early_leave_count * 3
+            overtime_bonus = min(overtime_count * 2, 10)
+            score += overtime_bonus
+            normal_bonus = min(normal_count * 1, 20)
+            score += normal_bonus
+        score = max(0, min(100, score))
+        if score >= 90:
+            grade = "A+"
+        elif score >= 80:
+            grade = "A"
+        elif score >= 70:
+            grade = "B+"
+        elif score >= 60:
+            grade = "B"
+        elif score >= 50:
+            grade = "C+"
+        elif score >= 40:
+            grade = "C"
+        else:
+            grade = "D"
+        # 코멘트(기존 평가 있으면 유지)
+        evaluation = AttendanceReport.query.filter_by(
+            user_id=user.id,
+            period_from=date_from,
+            period_to=date_to
+        ).first()
+        comment = evaluation.comment if evaluation else ''
+        # 평가 저장/업데이트
+        if evaluation:
+            evaluation.comment = comment
+            evaluation.score = score
+            evaluation.grade = grade
+            evaluation.total = total_days
+            evaluation.late = late_count
+            evaluation.early = early_leave_count
+            evaluation.ot = overtime_count
+            evaluation.ontime = normal_count
+        else:
+            evaluation = AttendanceReport(
+                user_id=user.id,
+                period_from=date_from,
+                period_to=date_to,
+                total=total_days,
+                late=late_count,
+                early=early_leave_count,
+                ot=overtime_count,
+                ontime=normal_count,
+                score=score,
+                grade=grade,
+                comment=comment
+            )
+            db.session.add(evaluation)
+        db.session.commit()
+        # 알림/카톡/메일
+        pdf_link = url_for('staff_attendance_report_pdf') + f'?user_id={user.id}'
+        noti_content = f"{date_from}~{date_to} 근태 평가 리포트가 등록되었습니다."
+        send_notification_enhanced(
+            user_id=user.id,
+            content=noti_content,
+            category="근무",
+            link=pdf_link
+        )
+        send_notification_to_role(
+            role='admin',
+            content=f"[{user.username}] {noti_content}",
+            category="근무",
+            link=pdf_link
+        )
+        kakao_msg = f"{user.username}님, {date_from}~{date_to} 근태 평가 리포트가 등록되었습니다.\n결과 확인: {pdf_link}"
+        send_kakao(user, kakao_msg)
+        subject = "근태 평가 리포트"
+        body = f"{user.username}님, {date_from}~{date_to} 근태 평가 리포트가 등록되었습니다.\n결과 확인: {pdf_link}"
+        try:
+            # PDF 생성 로직 제거 (html_content 변수 오류 해결)
+            send_email(user, subject, body)
+        except Exception as e:
+            print(f"이메일 전송 오류: {e}")
+    return "일괄 발송 완료"
+
+@app.route('/attendance_dashboard', methods=['GET'])
+def attendance_dashboard():
+    from datetime import date
+    from calendar import monthrange
     
-    # 사용자 목록 (관리자는 모든 사용자, 일반 사용자는 본인만)
-    if current_user.is_admin():
-        users = User.query.filter_by(status='approved').all()
-    else:
-        users = [current_user]
+    users = User.query.all()
+    user_id = int(request.args.get('user_id', 0)) or users[0].id
+    today = date.today()
+    y, m = today.year, today.month
+    date_from = request.args.get('from', f"{y}-{m:02d}-01")
+    date_to = request.args.get('to', f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}")
     
-    # 선택된 사용자 (기본값: 첫 번째 사용자 또는 본인)
-    user_id = int(request.args.get('user_id', 0)) or (users[0].id if users else current_user.id)
+    records = Attendance.query.filter(
+        Attendance.user_id==user_id,
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59'
+    ).order_by(Attendance.clock_in).all()
     
-    # 권한 확인 (관리자가 아니면 본인만 조회 가능)
-    if not current_user.is_admin() and user_id != current_user.id:
-        flash('본인의 근태만 조회할 수 있습니다.', 'error')
-        return redirect(url_for('staff_attendance_report', user_id=current_user.id))
+    total = len(records)
+    late = sum(r.is_late for r in records)
+    early = sum(r.is_early_leave for r in records)
+    ot = sum(r.is_overtime for r in records)
+    normal = total - late - early
     
-    # 기간 지정 (기본 최근 30일)
-    date_from = request.args.get('from_', (date.today() - timedelta(days=30)).strftime('%Y-%m-%d'))
-    date_to = request.args.get('to', date.today().strftime('%Y-%m-%d'))
+    daily = {r.clock_in.date().strftime('%Y-%m-%d'): {
+        'late': r.is_late, 'early': r.is_early_leave, 'ot': r.is_overtime
+    } for r in records if r.clock_in}
+    
+    summary = {
+        '총근무일': total,
+        '정상출근': normal,
+        '지각': late,
+        '조퇴': early,
+        '야근': ot
+    }
+    
+    # 사유 템플릿 조회
+    reason_templates = ReasonTemplate.query.filter_by(is_active=True).order_by(ReasonTemplate.text).all()
+    
+    # 선택된 사용자 정보
+    user = User.query.get(user_id)
+    
+    return render_template('attendance_dashboard.html',
+        users=users, user_id=user_id, date_from=date_from, date_to=date_to,
+        summary=summary, records=records, daily=daily,
+        reason_templates=reason_templates, user=user)
+
+@app.route('/staff/<int:user_id>/attendance_report/pdf')
+@login_required
+def staff_attendance_report_pdf_individual(user_id):
+    """직원별 개별 근태 리포트 PDF 다운로드"""
+    from datetime import date
+    from calendar import monthrange
+    
+    # 권한 확인 (관리자만 가능)
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('staff_attendance_report'))
+    
+    # 날짜 범위 설정
+    y, m = date.today().year, date.today().month
+    date_from = request.args.get('from', f"{y}-{m:02d}-01")
+    date_to = request.args.get('to', f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}")
     
     # 근태 기록 조회
     records = Attendance.query.filter(
         Attendance.user_id == user_id,
         Attendance.clock_in >= date_from,
         Attendance.clock_in <= date_to + ' 23:59:59'
-    ).order_by(Attendance.clock_in.desc()).all()
+    ).order_by(Attendance.clock_in).all()
     
-    # 선택된 사용자 정보
-    selected_user = User.query.get(user_id)
-    
-    # 통계 계산
-    total_days = len(records)
-    late_count = sum(1 for r in records if r.status and '지각' in r.status)
-    early_leave_count = sum(1 for r in records if r.status and '조퇴' in r.status)
-    overtime_count = sum(1 for r in records if r.clock_out and r.clock_out.time() > timedelta(hours=18).total_seconds())
-    normal_count = sum(1 for r in records if r.status == '정상')
-    
-    # 근태 점수 계산 (100점 만점)
-    score = 100
-    if total_days > 0:
-        # 지각: -5점씩
-        score -= late_count * 5
-        # 조퇴: -3점씩
-        score -= early_leave_count * 3
-        # 야근: +2점씩 (최대 10점)
-        overtime_bonus = min(overtime_count * 2, 10)
-        score += overtime_bonus
-        # 정상 출근: +1점씩 (최대 20점)
-        normal_bonus = min(normal_count * 1, 20)
-        score += normal_bonus
-    
-    # 점수 범위 제한
-    score = max(0, min(100, score))
-    
-    # 등급 부여
-    if score >= 90:
-        grade = "A+"
-    elif score >= 80:
-        grade = "A"
-    elif score >= 70:
-        grade = "B+"
-    elif score >= 60:
-        grade = "B"
-    elif score >= 50:
-        grade = "C+"
-    elif score >= 40:
-        grade = "C"
-    else:
-        grade = "D"
-    
-    # 기존 평가 코멘트 조회
-    comment = ""
-    evaluation = AttendanceReport.query.filter_by(
-        user_id=user_id,
-        period_from=date_from,
-        period_to=date_to
-    ).first()
-    
-    if evaluation:
-        comment = evaluation.comment
+    user = User.query.get(user_id)
+    if not user:
+        flash('사용자를 찾을 수 없습니다.', 'error')
+        return redirect(url_for('staff_attendance_report'))
     
     # HTML 렌더링
-    html_content = render_template('staff_attendance_report_pdf.html',
-        selected_user=selected_user,
-        date_from=date_from,
-        date_to=date_to,
-        total=total_days,
-        late=late_count,
-        early=early_leave_count,
-        ot=overtime_count,
-        ontime=normal_count,
-        score=score,
-        grade=grade,
-        comment=comment,
-        current_user=current_user,
-        now=datetime.utcnow()
-    )
+    html = render_template('staff/attendance_report_pdf.html', 
+                          user=user, records=records, date_from=date_from, date_to=date_to)
     
     # PDF 생성
-    try:
-        pdf = pdfkit.from_string(html_content, False)
+    import pdfkit, io
+    pdf = pdfkit.from_string(html, False)
+    
+    return send_file(io.BytesIO(pdf), 
+                    download_name=f"{user.username}_근태리포트.pdf", 
+                    as_attachment=True)
+
+@app.route('/staff/<int:user_id>/attendance_report/excel')
+@login_required
+def staff_attendance_report_excel_individual(user_id):
+    """직원별 개별 근태 리포트 Excel 다운로드"""
+    from datetime import date
+    from calendar import monthrange
+    import pandas as pd, io
+    
+    # 권한 확인 (관리자만 가능)
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('staff_attendance_report'))
+    
+    # 날짜 범위 설정
+    y, m = date.today().year, date.today().month
+    date_from = request.args.get('from', f"{y}-{m:02d}-01")
+    date_to = request.args.get('to', f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}")
+    
+    # 근태 기록 조회
+    records = Attendance.query.filter(
+        Attendance.user_id == user_id,
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59'
+    ).order_by(Attendance.clock_in).all()
+    
+    user = User.query.get(user_id)
+    if not user:
+        flash('사용자를 찾을 수 없습니다.', 'error')
+        return redirect(url_for('staff_attendance_report'))
+    
+    # DataFrame 생성
+    df = pd.DataFrame([{
+        '날짜': r.clock_in.date() if r.clock_in else None,
+        '출근': r.clock_in.strftime('%H:%M') if r.clock_in else '',
+        '퇴근': r.clock_out.strftime('%H:%M') if r.clock_out else '',
+        '지각': 'O' if r.is_late else '',
+        '조퇴': 'O' if r.is_early_leave else '',
+        '야근': 'O' if r.is_overtime else '',
+        '사유': r.reason or ''
+    } for r in records])
+    
+    # Excel 파일 생성
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    output.seek(0)
+    
+    return send_file(output, 
+                    download_name=f"{user.username}_근태리포트.xlsx", 
+                    as_attachment=True)
+
+@app.route('/attendance/<int:rid>/reason', methods=['POST'])
+@login_required
+def update_attendance_reason(rid):
+    """근태 사유 수정"""
+    from datetime import date, timedelta
+    
+    # 권한 확인 (관리자/매니저만 가능)
+    if session.get('role') not in ('admin', 'manager'):
+        flash('권한이 없습니다.', 'error')
+        return redirect(request.referrer or url_for('attendance_dashboard'))
+    
+    # 근태 기록 조회
+    attendance = Attendance.query.get_or_404(rid)
+    old_reason = attendance.reason
+    new_reason = request.form.get('reason', '').strip()
+    
+    attendance.reason = new_reason
+    db.session.commit()
+    
+    # 사유 템플릿 자동 저장 (새로운 사유인 경우)
+    if new_reason and not ReasonTemplate.query.filter_by(text=new_reason).first():
+        template = ReasonTemplate(
+            text=new_reason,
+            created_by=current_user.id
+        )
+        db.session.add(template)
+        db.session.commit()
+    
+    # 사유별 누적 카운트 체크 (예: '지각' 3회 이상)
+    if new_reason and "지각" in new_reason:
+        cnt = Attendance.query.filter(
+            Attendance.user_id == attendance.user_id,
+            Attendance.reason.like('%지각%'),
+            Attendance.clock_in >= (date.today() - timedelta(days=30))
+        ).count()
         
-        # 파일명 생성
-        filename = f"근태리포트_{selected_user.username}_{date_from}_{date_to}.pdf"
-        
-        # 응답 생성
-        response = make_response(pdf)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-        
-        return response
-        
-    except Exception as e:
-        flash(f'PDF 생성 중 오류가 발생했습니다: {str(e)}', 'error')
-        return redirect(url_for('staff_attendance_report', user_id=user_id, from_=date_from, to=date_to))
+        if cnt >= 3:
+            # 알림 생성
+            notification = Notification(
+                user_id=attendance.user_id,
+                content=f"최근 한 달간 '지각' 사유가 {cnt}회 발생했습니다. 주의하세요!",
+                category="근무",
+                link="/attendance_dashboard"
+            )
+            db.session.add(notification)
+            db.session.commit()
+    
+    flash('사유가 업데이트되었습니다.', 'success')
+    return redirect(request.referrer or url_for('attendance_dashboard'))
+
+@app.route('/attendance_dashboard/excel')
+def attendance_dashboard_excel():
+    user_id = int(request.args['user_id'])
+    date_from = request.args['from']
+    date_to = request.args['to']
+    records = Attendance.query.filter(
+        Attendance.user_id==user_id,
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59'
+    ).order_by(Attendance.clock_in).all()
+    import pandas as pd, io
+    df = pd.DataFrame([{
+        '날짜': r.clock_in.date() if r.clock_in else None,
+        '출근': r.clock_in.strftime('%H:%M') if r.clock_in else '',
+        '퇴근': r.clock_out.strftime('%H:%M') if r.clock_out else '',
+        '지각': 'O' if r.is_late else '',
+        '조퇴': 'O' if r.is_early_leave else '',
+        '야근': 'O' if r.is_overtime else '',
+        '사유': r.reason or ''
+    } for r in records])
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    output.seek(0)
+    return send_file(output, download_name="attendance_dashboard.xlsx", as_attachment=True)
+
+@app.route('/attendance_dashboard/pdf')
+def attendance_dashboard_pdf():
+    user_id = int(request.args['user_id'])
+    date_from = request.args['from']
+    date_to = request.args['to']
+    records = Attendance.query.filter(
+        Attendance.user_id==user_id,
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59'
+    ).order_by(Attendance.clock_in).all()
+    html = render_template('attendance_dashboard_pdf.html', records=records)
+    import pdfkit
+    pdf = pdfkit.from_string(html, False)
+    import io
+    return send_file(io.BytesIO(pdf), download_name="attendance_dashboard.pdf", as_attachment=True)
 
 # --- CLI Commands ---
 @app.cli.command('create-admin')
@@ -1645,6 +1945,719 @@ def create_admin(username, password):
     db.session.add(user)
     db.session.commit()
     click.echo(f'관리자 계정 {username}이 생성되었습니다.')
+
+@app.route('/admin/attendance_monthly_stats')
+def admin_attendance_monthly_stats():
+    from datetime import date
+    from calendar import monthrange
+    today = date.today()
+    y, m = today.year, today.month
+    date_from = f"{y}-{m:02d}-01"
+    date_to = f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}"
+    users = User.query.all()
+    stats = []
+    for u in users:
+        records = Attendance.query.filter(
+            Attendance.user_id==u.id,
+            Attendance.clock_in >= date_from,
+            Attendance.clock_in <= date_to + ' 23:59:59'
+        ).all()
+        total = len(records)
+        late = sum(r.is_late for r in records)
+        early = sum(r.is_early_leave for r in records)
+        ot = sum(r.is_overtime for r in records)
+        normal = total - late - early
+        late_rate = round(100 * late / total, 1) if total else 0
+        attend_rate = round(100 * normal / total, 1) if total else 0
+        early_rate = round(100 * early / total, 1) if total else 0
+        ot_rate = round(100 * ot / total, 1) if total else 0
+        stats.append({
+            "username": u.username,
+            "total": total,
+            "normal": normal,
+            "late": late,
+            "early": early,
+            "ot": ot,
+            "late_rate": late_rate,
+            "attend_rate": attend_rate,
+            "early_rate": early_rate,
+            "ot_rate": ot_rate,
+        })
+    return render_template('admin/attendance_monthly_stats.html', stats=stats, date_from=date_from, date_to=date_to)
+
+@app.route('/admin/attendance_monthly_stats/excel')
+def admin_attendance_monthly_stats_excel():
+    from datetime import date
+    from calendar import monthrange
+    import pandas as pd, io
+    today = date.today()
+    y, m = today.year, today.month
+    date_from = f"{y}-{m:02d}-01"
+    date_to = f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}"
+    users = User.query.all()
+    rows = []
+    for u in users:
+        records = Attendance.query.filter(
+            Attendance.user_id==u.id,
+            Attendance.clock_in >= date_from,
+            Attendance.clock_in <= date_to + ' 23:59:59'
+        ).all()
+        total = len(records)
+        late = sum(r.is_late for r in records)
+        early = sum(r.is_early_leave for r in records)
+        ot = sum(r.is_overtime for r in records)
+        normal = total - late - early
+        late_rate = round(100 * late / total, 1) if total else 0
+        attend_rate = round(100 * normal / total, 1) if total else 0
+        early_rate = round(100 * early / total, 1) if total else 0
+        ot_rate = round(100 * ot / total, 1) if total else 0
+        rows.append({
+            "직원명": u.username,
+            "총근무": total,
+            "정상출근": normal,
+            "지각": late,
+            "조퇴": early,
+            "야근": ot,
+            "지각률(%)": late_rate,
+            "출근률(%)": attend_rate,
+            "조퇴률(%)": early_rate,
+            "야근률(%)": ot_rate,
+        })
+    df = pd.DataFrame(rows)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    output.seek(0)
+    return send_file(output, download_name="attendance_monthly_report.xlsx", as_attachment=True)
+
+@app.route('/admin/attendance_monthly_stats/pdf')
+def admin_attendance_monthly_stats_pdf():
+    from datetime import date
+    from calendar import monthrange
+    today = date.today()
+    y, m = today.year, today.month
+    date_from = f"{y}-{m:02d}-01"
+    date_to = f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}"
+    users = User.query.all()
+    stats = []
+    for u in users:
+        records = Attendance.query.filter(
+            Attendance.user_id==u.id,
+            Attendance.clock_in >= date_from,
+            Attendance.clock_in <= date_to + ' 23:59:59'
+        ).all()
+        total = len(records)
+        late = sum(r.is_late for r in records)
+        early = sum(r.is_early_leave for r in records)
+        ot = sum(r.is_overtime for r in records)
+        normal = total - late - early
+        late_rate = round(100 * late / total, 1) if total else 0
+        attend_rate = round(100 * normal / total, 1) if total else 0
+        early_rate = round(100 * early / total, 1) if total else 0
+        ot_rate = round(100 * ot / total, 1) if total else 0
+        stats.append({
+            "username": u.username,
+            "total": total,
+            "normal": normal,
+            "late": late,
+            "early": early,
+            "ot": ot,
+            "late_rate": late_rate,
+            "attend_rate": attend_rate,
+            "early_rate": early_rate,
+            "ot_rate": ot_rate,
+        })
+    html = render_template('admin/attendance_monthly_stats_pdf.html', stats=stats, date_from=date_from, date_to=date_to)
+    import pdfkit, io
+    pdf = pdfkit.from_string(html, False)
+    return send_file(io.BytesIO(pdf), download_name="attendance_monthly_report.pdf", as_attachment=True)
+
+@app.route('/admin/attendance_reason_stats')
+@login_required
+def admin_attendance_reason_stats():
+    """근태 사유별 통계"""
+    from datetime import date
+    from calendar import monthrange
+    from sqlalchemy import func
+    
+    # 권한 확인
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    # 이번달 기본
+    today = date.today()
+    y, m = today.year, today.month
+    date_from = request.args.get('from', f"{y}-{m:02d}-01")
+    date_to = request.args.get('to', f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}")
+    
+    # 사유별 집계
+    reasons = db.session.query(
+        Attendance.reason, func.count().label('count')
+    ).filter(
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59',
+        Attendance.reason != None,
+        Attendance.reason != ""
+    ).group_by(Attendance.reason).order_by(func.count().desc()).all()
+    
+    # 직원별 사유 리스트
+    staff_reasons = db.session.query(
+        User.username, Attendance.clock_in, Attendance.reason
+    ).join(User, User.id == Attendance.user_id).filter(
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59',
+        Attendance.reason != None,
+        Attendance.reason != ""
+    ).order_by(Attendance.clock_in.desc()).all()
+    
+    return render_template('admin/attendance_reason_stats.html',
+        reasons=reasons, staff_reasons=staff_reasons, date_from=date_from, date_to=date_to)
+
+@app.route('/admin/attendance_reason_stats/excel')
+@login_required
+def admin_attendance_reason_stats_excel():
+    """사유별 통계 Excel 다운로드"""
+    from datetime import date
+    from calendar import monthrange
+    from sqlalchemy import func
+    import pandas as pd, io
+    
+    # 권한 확인
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    # 이번달 기본
+    today = date.today()
+    y, m = today.year, today.month
+    date_from = request.args.get('from', f"{y}-{m:02d}-01")
+    date_to = request.args.get('to', f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}")
+    
+    # 사유별 집계
+    reasons = db.session.query(
+        Attendance.reason, func.count().label('count')
+    ).filter(
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59',
+        Attendance.reason != None,
+        Attendance.reason != ""
+    ).group_by(Attendance.reason).order_by(func.count().desc()).all()
+    
+    # 직원별 사유 리스트
+    staff_reasons = db.session.query(
+        User.username, Attendance.clock_in, Attendance.reason
+    ).join(User, User.id == Attendance.user_id).filter(
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59',
+        Attendance.reason != None,
+        Attendance.reason != ""
+    ).order_by(Attendance.clock_in.desc()).all()
+    
+    # Excel 생성
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        # 1. 사유별 집계 시트
+        reason_rows = []
+        total_count = sum(count for _, count in reasons)
+        
+        for reason, count in reasons:
+            percentage = round(count / total_count * 100, 1) if total_count > 0 else 0
+            reason_rows.append({
+                "사유": reason,
+                "건수": count,
+                "비율(%)": percentage
+            })
+        
+        df_reasons = pd.DataFrame(reason_rows)
+        df_reasons.to_excel(writer, index=False, sheet_name='사유별집계')
+        
+        # 2. 직원별 상세 시트
+        staff_rows = []
+        for username, clock_in, reason in staff_reasons:
+            staff_rows.append({
+                "직원명": username,
+                "날짜": clock_in.strftime('%Y-%m-%d') if clock_in else '-',
+                "시간": clock_in.strftime('%H:%M') if clock_in else '-',
+                "사유": reason
+            })
+        
+        df_staff = pd.DataFrame(staff_rows)
+        df_staff.to_excel(writer, index=False, sheet_name='직원별상세')
+        
+        # 워크북 및 워크시트 가져오기
+        workbook = writer.book
+        
+        # 스타일 설정
+        header_format = workbook.add_format({
+            'bold': True,
+            'text_wrap': True,
+            'valign': 'top',
+            'fg_color': '#D7E4BC',
+            'border': 1
+        })
+        
+        # 사유별 집계 시트 스타일링
+        worksheet1 = writer.sheets['사유별집계']
+        for col_num, value in enumerate(df_reasons.columns.values):
+            worksheet1.write(0, col_num, value, header_format)
+        
+        # 열 너비 자동 조정
+        for i, col in enumerate(df_reasons.columns):
+            max_len = max(df_reasons[col].astype(str).apply(len).max(), len(col)) + 2
+            worksheet1.set_column(i, i, max_len)
+        
+        # 직원별 상세 시트 스타일링
+        worksheet2 = writer.sheets['직원별상세']
+        for col_num, value in enumerate(df_staff.columns.values):
+            worksheet2.write(0, col_num, value, header_format)
+        
+        # 열 너비 자동 조정
+        for i, col in enumerate(df_staff.columns):
+            max_len = max(df_staff[col].astype(str).apply(len).max(), len(col)) + 2
+            worksheet2.set_column(i, i, max_len)
+    
+    output.seek(0)
+    return send_file(output, download_name=f"attendance_reason_stats_{date_from}_{date_to}.xlsx", as_attachment=True)
+
+@app.route('/admin/attendance_reason_stats/pdf')
+@login_required
+def admin_attendance_reason_stats_pdf():
+    """사유별 통계 PDF 다운로드"""
+    from datetime import date
+    from calendar import monthrange
+    from sqlalchemy import func
+    import pdfkit, io
+    
+    # 권한 확인
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    # 이번달 기본
+    today = date.today()
+    y, m = today.year, today.month
+    date_from = request.args.get('from', f"{y}-{m:02d}-01")
+    date_to = request.args.get('to', f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}")
+    
+    # 사유별 집계
+    reasons = db.session.query(
+        Attendance.reason, func.count().label('count')
+    ).filter(
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59',
+        Attendance.reason != None,
+        Attendance.reason != ""
+    ).group_by(Attendance.reason).order_by(func.count().desc()).all()
+    
+    # 직원별 사유 리스트
+    staff_reasons = db.session.query(
+        User.username, Attendance.clock_in, Attendance.reason
+    ).join(User, User.id == Attendance.user_id).filter(
+        Attendance.clock_in >= date_from,
+        Attendance.clock_in <= date_to + ' 23:59:59',
+        Attendance.reason != None,
+        Attendance.reason != ""
+    ).order_by(Attendance.clock_in.desc()).all()
+    
+    html = render_template('admin/attendance_reason_stats_pdf.html',
+        reasons=reasons, staff_reasons=staff_reasons, date_from=date_from, date_to=date_to)
+    
+    pdf = pdfkit.from_string(html, False)
+    return send_file(io.BytesIO(pdf), download_name=f"attendance_reason_stats_{date_from}_{date_to}.pdf", as_attachment=True)
+
+# 사유 템플릿 관리 (관리자만)
+@app.route('/admin/reason_templates', methods=['GET', 'POST'])
+@login_required
+def admin_reason_templates():
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    if request.method == 'POST':
+        text = request.form['text'].strip()
+        team = request.form.get('team', '').strip()
+        
+        if text and not ReasonTemplate.query.filter_by(text=text, team=team or None).first():
+            template = ReasonTemplate(
+                text=text,
+                team=team or None,
+                created_by=current_user.id
+            )
+            db.session.add(template)
+            db.session.commit()
+            flash('사유 템플릿이 추가되었습니다.', 'success')
+            return redirect(url_for('admin_reason_templates'))
+        else:
+            flash('이미 존재하는 템플릿입니다.', 'error')
+    
+    templates = ReasonTemplate.query.filter_by(is_active=True).order_by(ReasonTemplate.text).all()
+    return render_template('admin/reason_templates.html', templates=templates)
+
+@app.route('/admin/reason_templates/delete/<int:tid>', methods=['POST'])
+@login_required
+def delete_reason_template(tid):
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    template = ReasonTemplate.query.get_or_404(tid)
+    db.session.delete(template)
+    db.session.commit()
+    flash('사유 템플릿이 삭제되었습니다.', 'success')
+    return redirect(url_for('admin_reason_templates'))
+
+# AI 사유 추천 함수 (정교화)
+def ai_recommend_reason(user, date_):
+    """AI 사유 추천 (정교화된 패턴 분석)"""
+    import calendar
+    from collections import Counter
+    
+    if not user:
+        return ""
+    
+    dow = calendar.day_name[date_.weekday()]
+    
+    # 1. 최근 10회 입력한 사유 중 최빈값
+    last_reasons = []
+    recent_attendances = Attendance.query.filter_by(user_id=user.id)\
+        .order_by(Attendance.clock_in.desc()).limit(10).all()
+    
+    for att in recent_attendances:
+        if att.reason and att.reason.strip():
+            last_reasons.append(att.reason.strip())
+    
+    if last_reasons:
+        counter = Counter(last_reasons)
+        most_common = counter.most_common(1)
+        if most_common and most_common[0][1] >= 2:  # 2회 이상 사용된 사유
+            return most_common[0][0]
+    
+    # 2. 요일 기반 추천
+    if dow == 'Monday':
+        return "월요일 컨디션 저하"
+    elif dow == 'Friday':
+        return "금요일 야근"
+    elif dow == 'Wednesday':
+        return "수요일 중간점검"
+    elif dow == 'Tuesday':
+        return "화요일 업무 집중"
+    elif dow == 'Thursday':
+        return "목요일 업무 마무리"
+    
+    # 3. 계절/월별 패턴 (예시)
+    month = date_.month
+    if month in [12, 1, 2]:  # 겨울
+        return "겨울철 교통 지연"
+    elif month in [6, 7, 8]:  # 여름
+        return "여름철 컨디션 저하"
+    
+    return ""
+
+# 모바일 API - 사유 템플릿 제공
+@app.route('/api/mobile/reason_templates')
+def api_mobile_reason_templates():
+    team = request.args.get('team')
+    q = ReasonTemplate.query.filter_by(is_active=True)
+    if team:
+        q = q.filter_by(team=team)
+    templates = q.all()
+    return jsonify([t.text for t in templates])
+
+# 모바일 API - 사유 업데이트
+@app.route('/api/mobile/attendance_reason', methods=['POST'])
+def api_mobile_attendance_reason():
+    data = request.json
+    rid = data.get('rid')
+    reason = data.get('reason', '').strip()
+    
+    # 모바일 인증 체크 (실제 구현시 토큰 검증 추가)
+    attendance = Attendance.query.get(rid)
+    if not attendance:
+        return jsonify({'result': 'error', 'message': '근태 기록을 찾을 수 없습니다.'}), 404
+    
+    attendance.reason = reason
+    db.session.commit()
+    
+    return jsonify({'result': 'ok', 'message': '사유가 업데이트되었습니다.'})
+
+# AJAX 실시간 사유 편집 API
+@app.route('/api/attendance/<int:rid>/reason', methods=['POST'])
+def api_attendance_reason_edit(rid):
+    """AJAX 실시간 사유 편집"""
+    from datetime import date, timedelta
+    
+    # 권한 확인
+    if session.get('role') not in ('admin', 'manager', 'teamlead'):
+        return jsonify({'result': 'fail', 'msg': '권한없음'})
+    
+    # 근태 기록 조회
+    attendance = Attendance.query.get_or_404(rid)
+    data = request.get_json()
+    new_reason = data.get('reason', '').strip()
+    
+    # 사유 업데이트
+    attendance.reason = new_reason
+    db.session.commit()
+    
+    # 사유 템플릿 자동 저장 (새로운 사유인 경우)
+    if new_reason and not ReasonTemplate.query.filter_by(text=new_reason).first():
+        template = ReasonTemplate(
+            text=new_reason,
+            created_by=current_user.id if current_user.is_authenticated else None
+        )
+        db.session.add(template)
+        db.session.commit()
+    
+    # 사유별 누적 카운트 체크 (예: '지각' 3회 이상)
+    if new_reason and "지각" in new_reason:
+        cnt = Attendance.query.filter(
+            Attendance.user_id == attendance.user_id,
+            Attendance.reason.like('%지각%'),
+            Attendance.clock_in >= (date.today() - timedelta(days=30))
+        ).count()
+        
+        if cnt >= 3:
+            # 알림 생성
+            notification = Notification(
+                user_id=attendance.user_id,
+                content=f"최근 한 달간 '지각' 사유가 {cnt}회 발생했습니다. 주의하세요!",
+                category="근무",
+                link="/attendance_dashboard"
+            )
+            db.session.add(notification)
+            db.session.commit()
+    
+    return jsonify({'result': 'ok', 'msg': '사유가 업데이트되었습니다.'})
+
+# 팀장용 사유 템플릿 관리 (팀별 권한)
+@app.route('/teamlead/reason_templates', methods=['GET', 'POST'])
+@login_required
+def teamlead_reason_templates():
+    """팀장용 사유 템플릿 관리"""
+    if session.get('role') != 'teamlead':
+        flash('팀장 권한이 필요합니다.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    team = session.get('team')
+    if not team:
+        flash('팀 정보가 없습니다.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        text = request.form['text'].strip()
+        
+        if text and not ReasonTemplate.query.filter_by(text=text, team=team).first():
+            template = ReasonTemplate(
+                text=text,
+                team=team,
+                created_by=current_user.id
+            )
+            db.session.add(template)
+            db.session.commit()
+            flash('사유 템플릿이 추가되었습니다.', 'success')
+            return redirect(url_for('teamlead_reason_templates'))
+        else:
+            flash('이미 존재하는 템플릿입니다.', 'error')
+    
+    # 해당 팀의 템플릿만 조회
+    templates = ReasonTemplate.query.filter_by(team=team, is_active=True).order_by(ReasonTemplate.text).all()
+    return render_template('teamlead/reason_templates.html', templates=templates, team=team)
+
+@app.route('/teamlead/reason_templates/delete/<int:tid>', methods=['POST'])
+@login_required
+def teamlead_delete_reason_template(tid):
+    """팀장용 템플릿 삭제"""
+    if session.get('role') != 'teamlead':
+        flash('팀장 권한이 필요합니다.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    template = ReasonTemplate.query.get_or_404(tid)
+    
+    # 본인 팀의 템플릿만 삭제 가능
+    if template.team != session.get('team'):
+        flash('다른 팀의 템플릿은 삭제할 수 없습니다.', 'error')
+        return redirect(url_for('teamlead_reason_templates'))
+    
+    db.session.delete(template)
+    db.session.commit()
+    flash('사유 템플릿이 삭제되었습니다.', 'success')
+    return redirect(url_for('teamlead_reason_templates'))
+
+# 템플릿별 사용 빈도 통계 (차트 포함)
+@app.route('/admin/reason_template_stats')
+@login_required
+def admin_reason_template_stats():
+    """사유 템플릿별 사용 빈도 통계 (차트 포함)"""
+    from sqlalchemy import func
+    
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    # 팀별 필터링
+    team = request.args.get('team')
+    
+    # 사유별 빈도 집계
+    q = db.session.query(
+        ReasonTemplate.text, 
+        ReasonTemplate.team,
+        func.count(Attendance.id).label('usage_count')
+    ).outerjoin(
+        Attendance, 
+        Attendance.reason == ReasonTemplate.text
+    ).filter(
+        ReasonTemplate.is_active == True
+    )
+    
+    if team:
+        q = q.filter(ReasonTemplate.team == team)
+    
+    stats = q.group_by(ReasonTemplate.text, ReasonTemplate.team)\
+        .order_by(func.count(Attendance.id).desc()).all()
+    
+    # 팀 목록 (필터용)
+    teams = db.session.query(ReasonTemplate.team)\
+        .filter(ReasonTemplate.team.isnot(None))\
+        .distinct().all()
+    teams = [t[0] for t in teams]
+    
+    return render_template('admin/reason_template_stats.html', 
+                         stats=stats, teams=teams, current_team=team)
+
+# 최다 사유 TOP5, 팀별 인기 사유
+@app.route('/admin/reason_top5')
+@login_required
+def admin_reason_top5():
+    """최다 사유 TOP5, 팀별 인기 사유"""
+    from sqlalchemy import func
+    
+    if not current_user.is_admin():
+        flash('관리자 권한이 필요합니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    team = request.args.get('team')
+    
+    # 전체 최다 사유 TOP5
+    q = db.session.query(
+        Attendance.reason, 
+        func.count().label('count')
+    ).filter(
+        Attendance.reason != None, 
+        Attendance.reason != ""
+    )
+    
+    if team:
+        q = q.join(User, User.id == Attendance.user_id).filter(User.team == team)
+    
+    top5 = q.group_by(Attendance.reason)\
+        .order_by(func.count().desc()).limit(5).all()
+    
+    # 팀별 인기 사유 (전체)
+    team_stats = db.session.query(
+        User.team,
+        Attendance.reason,
+        func.count().label('count')
+    ).join(
+        User, User.id == Attendance.user_id
+    ).filter(
+        Attendance.reason != None,
+        Attendance.reason != "",
+        User.team.isnot(None)
+    ).group_by(
+        User.team, Attendance.reason
+    ).order_by(
+        User.team, func.count().desc()
+    ).all()
+    
+    # 팀별로 TOP3 정리
+    team_top3 = {}
+    for t, r, c in team_stats:
+        if t not in team_top3:
+            team_top3[t] = []
+        if len(team_top3[t]) < 3:
+            team_top3[t].append((r, c))
+    
+    return render_template('admin/reason_top5.html', 
+                         top5=top5, team=team, team_top3=team_top3)
+
+# AI 기반 템플릿 자동 추천 (정교화)
+def ai_recommend_reason_template(user, date_):
+    """AI 기반 템플릿 자동 추천 (빈도+팀별+요일)"""
+    from collections import Counter
+    import calendar
+    
+    if not user:
+        return ""
+    
+    # 1. 최근 본인 사용 최빈 사유
+    last_personal = []
+    recent_attendances = Attendance.query.filter_by(user_id=user.id)\
+        .order_by(Attendance.clock_in.desc()).limit(10).all()
+    
+    for att in recent_attendances:
+        if att.reason and att.reason.strip():
+            last_personal.append(att.reason.strip())
+    
+    if last_personal:
+        counter = Counter(last_personal)
+        most_common = counter.most_common(1)
+        if most_common and most_common[0][1] >= 2:  # 2회 이상 사용
+            return most_common[0][0]
+    
+    # 2. 같은 팀 최빈 사유
+    if hasattr(user, 'team') and user.team:
+        team = user.team
+        team_attendances = db.session.query(Attendance.reason)\
+            .join(User, User.id == Attendance.user_id)\
+            .filter(User.team == team)\
+            .order_by(Attendance.clock_in.desc()).limit(20).all()
+        
+        team_reasons = [r[0] for r in team_attendances if r[0] and r[0].strip()]
+        if team_reasons:
+            counter = Counter(team_reasons)
+            most_common = counter.most_common(1)
+            if most_common:
+                return most_common[0][0]
+    
+    # 3. 요일별 사유
+    dow = calendar.day_name[date_.weekday()]
+    if dow == 'Monday':
+        return "월요일 컨디션 저하"
+    elif dow == 'Friday':
+        return "금요일 야근"
+    elif dow == 'Wednesday':
+        return "수요일 중간점검"
+    elif dow == 'Tuesday':
+        return "화요일 업무 집중"
+    elif dow == 'Thursday':
+        return "목요일 업무 마무리"
+    
+    return ""
+
+# 모바일 인기 사유 API
+@app.route('/api/mobile/reason_top', methods=['GET'])
+def api_mobile_reason_top():
+    """모바일 인기 사유 TOP5 API"""
+    from sqlalchemy import func
+    
+    team = request.args.get('team')
+    
+    q = db.session.query(
+        Attendance.reason, 
+        func.count().label('count')
+    ).filter(
+        Attendance.reason != None, 
+        Attendance.reason != ""
+    )
+    
+    if team:
+        q = q.join(User, User.id == Attendance.user_id).filter(User.team == team)
+    
+    top = q.group_by(Attendance.reason)\
+        .order_by(func.count().desc()).limit(5).all()
+    
+    return jsonify([{'reason': r, 'count': c} for r, c in top])
 
 if __name__ == '__main__':
     app.run(debug=True) 

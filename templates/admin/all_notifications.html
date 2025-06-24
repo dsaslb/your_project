@@ -10,60 +10,30 @@
                 </div>
                 <div class="card-body">
                     <!-- 필터 폼 -->
-                    <form method="get" class="mb-4">
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label">직원</label>
-                                <select name="user_id" class="form-select">
-                                    <option value="">직원 전체</option>
-                                    {% for u in users %}
-                                        <option value="{{ u.id }}" {% if user_id and u.id == user_id|int %}selected{% endif %}>
-                                            {{ u.username }} ({{ u.role }})
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">카테고리</label>
-                                <select name="category" class="form-select">
-                                    <option value="">카테고리 전체</option>
-                                    <option value="발주" {% if category=='발주' %}selected{% endif %}>📦 발주</option>
-                                    <option value="청소" {% if category=='청소' %}selected{% endif %}>🧹 청소</option>
-                                    <option value="근무" {% if category=='근무' %}selected{% endif %}>👤 근무</option>
-                                    <option value="교대" {% if category=='교대' %}selected{% endif %}>🔁 교대</option>
-                                    <option value="공지" {% if category=='공지' %}selected{% endif %}>🔔 공지</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">시작일</label>
-                                <input type="date" name="from" class="form-control" value="{{ request.args.get('from', '') }}">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">종료일</label>
-                                <input type="date" name="to" class="form-control" value="{{ request.args.get('to', '') }}">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">&nbsp;</label>
-                                <div>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-filter me-1"></i>필터
-                                    </button>
-                                    <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-outline-secondary">
-                                        <i class="fas fa-undo me-1"></i>초기화
-                                    </a>
-                                    <form method="get" action="{{ url_for('admin_all_notifications_excel') }}" style="display:inline;">
-                                        <input type="hidden" name="user_id" value="{{ user_id or '' }}">
-                                        <input type="hidden" name="category" value="{{ category or '' }}">
-                                        <input type="hidden" name="from" value="{{ request.args.get('from', '') }}">
-                                        <input type="hidden" name="to" value="{{ request.args.get('to', '') }}">
-                                        <button type="submit" class="btn btn-success" title="현재 필터 결과를 엑셀로 다운로드">
-                                            <i class="fas fa-file-excel me-1"></i>엑셀 다운로드
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+                    <form method="get" class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label for="category" class="form-label">카테고리</label>
+                            <select name="category" id="category" class="form-select">
+                                <option value="">전체</option>
+                                <option value="근무" {% if request.args.get('category')=='근무' %}selected{% endif %}>근무</option>
+                                <option value="공지" {% if request.args.get('category')=='공지' %}selected{% endif %}>공지</option>
+                                <option value="발주" {% if request.args.get('category')=='발주' %}selected{% endif %}>발주</option>
+                                <option value="청소" {% if request.args.get('category')=='청소' %}selected{% endif %}>청소</option>
+                                <option value="교대" {% if request.args.get('category')=='교대' %}selected{% endif %}>교대</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="kw" class="form-label">내용 키워드</label>
+                            <input type="text" name="kw" id="kw" class="form-control" value="{{request.args.get('kw','')}}" placeholder="예: 근태 평가 리포트">
+                        </div>
+                        <div class="col-md-2 align-self-end">
+                            <button type="submit" class="btn btn-primary w-100">필터</button>
                         </div>
                     </form>
+                    <div class="alert alert-info mb-3">
+                        <b>TIP:</b> 카테고리 "근무"와 키워드 "근태 평가 리포트"로 필터하면 근태 리포트 알림만 볼 수 있습니다.<br>
+                        알림 클릭 시 PDF 리포트가 바로 열립니다.
+                    </div>
 
                     <!-- 일괄 처리 폼 -->
                     <form method="post" action="{{ url_for('notifications_bulk_action') }}" id="bulkForm">
@@ -129,9 +99,11 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <a href="{{ url_for('notification_jump', nid=n.id) }}" class="text-decoration-none">
-                                                {{ n.content[:50] }}{% if n.content|length > 50 %}...{% endif %}
-                                            </a>
+                                            {% if n.link %}
+                                                <a href="{{ n.link }}" target="_blank">{{ n.content }}</a>
+                                            {% else %}
+                                                {{ n.content }}
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <small class="text-muted">

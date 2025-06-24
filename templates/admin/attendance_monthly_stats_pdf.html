@@ -1,0 +1,21 @@
+<h2>월별 직원 근태 리포트 ({{date_from}} ~ {{date_to}})</h2>
+<table border="1" cellpadding="3" cellspacing="0">
+  <tr>
+    <th>직원명</th><th>총근무</th><th>정상출근</th><th>지각</th><th>조퇴</th><th>야근</th>
+    <th>지각률(%)</th><th>출근률(%)</th><th>조퇴률(%)</th><th>야근률(%)</th>
+  </tr>
+  {% for s in stats %}
+    <tr>
+      <td>{{s.username}}</td>
+      <td>{{s.total}}</td>
+      <td>{{s.normal}}</td>
+      <td>{{s.late}}</td>
+      <td>{{s.early}}</td>
+      <td>{{s.ot}}</td>
+      <td>{{s.late_rate}}</td>
+      <td>{{s.attend_rate}}</td>
+      <td>{{s.early_rate}}</td>
+      <td>{{s.ot_rate}}</td>
+    </tr>
+  {% endfor %}
+</table> 

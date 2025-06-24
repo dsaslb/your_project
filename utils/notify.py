@@ -148,15 +148,9 @@ def notify_admins(content, related_url=None):
     except Exception as e:
         print(f"Error sending admin notifications: {e}")
 
-def send_email(user, subject, message):
-    try:
-        print(f"[이메일] to {getattr(user, 'email', '-')}: {subject} - {message}")
-        # 실제 SMTP 연동은 아래 주석 해제
-        # ...
-        return True
-    except Exception as e:
-        print("이메일 예외:", e)
-        return True
+def send_email(user, subject, body, attachment=None):
+    # 실제 연동은 나중에! 현재는 아무 동작 안 함
+    pass
 
 def send_sms(user, message):
     try:
@@ -502,4 +496,12 @@ def send_notification_with_keyword_filter(keyword, content, category='공지', l
         return True
     except Exception as e:
         print(f"키워드 필터 알림 발송 실패: {e}")
-        return False 
+        return False
+
+def send_kakao(user, message):
+    # 실제 연동은 나중에! 현재는 아무 동작 안 함
+    pass
+
+def send_email(user, subject, body, attachment=None):
+    # 실제 연동은 나중에! 현재는 아무 동작 안 함
+    pass 

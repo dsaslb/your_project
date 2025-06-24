@@ -93,6 +93,7 @@ class Attendance(db.Model):
     location_in = db.Column(db.String(100))  # 출근 위치 (GPS 등)
     location_out = db.Column(db.String(100))  # 퇴근 위치
     notes = db.Column(db.Text)  # 메모
+    reason = db.Column(db.String(200))  # 지각/조퇴/야근 사유 등
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -127,6 +128,22 @@ class Attendance(db.Model):
         if not s:
             return "정상"
         return "/".join(s)
+
+    @property
+    def is_late(self):
+        from datetime import time
+        work_start = time(9, 0)
+        return self.clock_in and self.clock_in.time() > work_start
+
+    @property
+    def is_early_leave(self):
+        from datetime import time
+        work_end = time(18, 0)
+        return self.clock_out and self.clock_out.time() < work_end
+
+    @property
+    def is_overtime(self):
+        return self.work_hours > 8
 
     def __repr__(self):
         return f'<Attendance {self.user_id} {self.clock_in.date()}>'
@@ -496,31 +513,45 @@ class AttendanceEvaluation(db.Model):
         return f'<AttendanceEvaluation {self.user_id} {self.date_from}~{self.date_to} {self.grade}>'
 
 class AttendanceReport(db.Model):
-    """근태 평가 리포트 모델 (요청사항에 맞춤)"""
-    __tablename__ = "attendance_reports"
+    """근태 평가 리포트 모델"""
+    __tablename__ = 'attendance_reports'
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
-    period_from = db.Column(db.String(10), nullable=False)  # 예: "2025-06-01"
-    period_to = db.Column(db.String(10), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    period_from = db.Column(db.Date, nullable=False)
+    period_to = db.Column(db.Date, nullable=False)
     total = db.Column(db.Integer, default=0)
     late = db.Column(db.Integer, default=0)
     early = db.Column(db.Integer, default=0)
     ot = db.Column(db.Integer, default=0)
     ontime = db.Column(db.Integer, default=0)
     score = db.Column(db.Integer, default=0)
-    grade = db.Column(db.String(2), default='D')
-    comment = db.Column(db.String(300))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    grade = db.Column(db.String(10), default='')
+    comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     
-    # 관계 설정
-    user = db.relationship('User', backref='attendance_reports')
-    
-    # 복합 인덱스 추가
-    __table_args__ = (
-        db.Index('idx_attendance_report_user_period', 'user_id', 'period_from', 'period_to'),
-        db.Index('idx_attendance_report_score', 'score'),
-        db.Index('idx_attendance_report_grade', 'grade'),
-    )
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='attendance_reports')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_reports')
     
     def __repr__(self):
-        return f'<AttendanceReport {self.user_id} {self.period_from}~{self.period_to} {self.grade}>' 
+        return f'<AttendanceReport {self.user_id} {self.period_from}~{self.period_to}>'
+
+class ReasonTemplate(db.Model):
+    """근태 사유 템플릿 모델"""
+    __tablename__ = 'reason_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String(100), unique=True, nullable=False, comment='사유 텍스트')
+    team = db.Column(db.String(30), comment='팀별 템플릿(옵션)')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_templates')
+    
+    def __repr__(self):
+        return f'<ReasonTemplate {self.text}>' 

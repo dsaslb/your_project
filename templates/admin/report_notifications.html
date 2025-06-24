@@ -1,0 +1,30 @@
+{% block content %}
+<div class="container mt-4">
+    <h2>근태 평가 리포트 알림 이력</h2>
+    <div class="alert alert-info mb-3">
+        근태 평가 리포트 알림만 모아봅니다. 알림 클릭 시 PDF 리포트가 바로 열립니다.
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>알림 내용</th>
+                <th>알림 발생 시간</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for n in notifications %}
+            <tr>
+                <td>
+                    {% if n.link %}
+                        <a href="{{ n.link }}" target="_blank">{{ n.content }}</a>
+                    {% else %}
+                        {{ n.content }}
+                    {% endif %}
+                </td>
+                <td>{{ n.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 
