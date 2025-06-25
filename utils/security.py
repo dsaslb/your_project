@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import re
 import hashlib
 import secrets
 from datetime import datetime, timedelta
-from flask import request, session
+from flask import request, session, current_app
 from extensions import db
 from models import User, ActionLog
 import os
@@ -10,36 +13,27 @@ import uuid
 import bleach
 from werkzeug.utils import secure_filename
 import time
+from functools import wraps
+from flask import redirect, url_for, flash
 
 def password_strong(password):
-    """비밀번호 강도 검증 (강화된 버전)"""
+    """비밀번호 강도 체크"""
     if len(password) < 8:
         return False, "비밀번호는 최소 8자 이상이어야 합니다."
     
-    if not re.search(r'[A-Z]', password):
+    if not re.search(r"[A-Z]", password):
         return False, "비밀번호는 대문자를 포함해야 합니다."
     
-    if not re.search(r'[a-z]', password):
+    if not re.search(r"[a-z]", password):
         return False, "비밀번호는 소문자를 포함해야 합니다."
     
-    if not re.search(r'\d', password):
+    if not re.search(r"\d", password):
         return False, "비밀번호는 숫자를 포함해야 합니다."
     
-    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+    if not re.search(r"[^A-Za-z0-9]", password):
         return False, "비밀번호는 특수문자를 포함해야 합니다."
     
-    # 연속된 문자나 숫자 체크
-    if re.search(r'(.)\1{2,}', password):
-        return False, "비밀번호에 연속된 같은 문자가 3개 이상 포함될 수 없습니다."
-    
-    # 키보드 패턴 체크
-    keyboard_patterns = ['qwerty', 'asdfgh', 'zxcvbn', '123456', 'abcdef']
-    password_lower = password.lower()
-    for pattern in keyboard_patterns:
-        if pattern in password_lower:
-            return False, "비밀번호에 키보드 패턴이 포함될 수 없습니다."
-    
-    return True, "비밀번호가 유효합니다."
+    return True, "비밀번호가 안전합니다."
 
 def validate_password_strength(password):
     """비밀번호 강도 검증 (기존 호환성)"""
@@ -64,11 +58,9 @@ def validate_username(username):
     return True, "사용자명이 유효합니다."
 
 def validate_email(email):
-    """이메일 유효성 검증"""
+    """이메일 형식 검증"""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    if not re.match(pattern, email):
-        return False, "유효한 이메일 주소를 입력해주세요."
-    return True, "이메일이 유효합니다."
+    return re.match(pattern, email) is not None
 
 def generate_secure_token():
     """보안 토큰 생성"""
@@ -94,86 +86,55 @@ def check_rate_limit(user_id, action, limit=5, window=300):
     except Exception:
         return True  # 에러 시 제한하지 않음
 
-def log_security_event(user_id, event_type, details=None, ip_address=None):
+def log_security_event(user_id, action, message, ip_address=None, user_agent=None):
     """보안 이벤트 로깅"""
-    try:
         if not ip_address:
             ip_address = request.remote_addr if request else None
+    if not user_agent:
+        user_agent = request.headers.get('User-Agent') if request else None
         
-        action_log = ActionLog(
+    log = ActionLog(
             user_id=user_id,
-            action=f'SECURITY_{event_type}',
-            message=details,
+        action=action,
+        message=message,
             ip_address=ip_address,
-            user_agent=request.headers.get('User-Agent') if request else None
+        user_agent=user_agent
         )
-        db.session.add(action_log)
+    db.session.add(log)
         db.session.commit()
-    except Exception as e:
-        print(f"Security logging failed: {e}")
 
-def sanitize_input(input_string):
-    """사용자 입력 데이터 정제"""
-    if not input_string:
+def sanitize_input(text):
+    """입력값 정제"""
+    if not text:
         return ""
     
-    # HTML 태그 제거
-    import html
-    sanitized = html.escape(input_string)
+    # XSS 방지를 위한 기본 정제
+    text = text.replace('<', '&lt;').replace('>', '&gt;')
+    text = text.replace('"', '&quot;').replace("'", '&#x27;')
     
-    # 추가적인 정제 작업
-    sanitized = re.sub(r'<script.*?</script>', '', sanitized, flags=re.IGNORECASE | re.DOTALL)
-    sanitized = re.sub(r'<.*?>', '', sanitized)
-    
-    # SQL 인젝션 패턴 제거
-    sql_patterns = [
-        r'(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION)\b)',
-        r'(\b(OR|AND)\b\s+\d+\s*=\s*\d+)',
-        r'(\b(OR|AND)\b\s+\'[^\']*\'\s*=\s*\'[^\']*\')',
-        r'(\b(OR|AND)\b\s+\d+\s*=\s*\d+\s*--)',
-        r'(\b(OR|AND)\b\s+\'[^\']*\'\s*=\s*\'[^\']*\'--)',
-    ]
-    
-    for pattern in sql_patterns:
-        sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE)
-    
-    return sanitized.strip()
+    return text.strip()
 
-def validate_file_upload(file, allowed_extensions=None, max_size=None):
-    """파일 업로드 유효성 검증"""
-    if not file:
+def validate_file_upload(filename, allowed_extensions=None):
+    """파일 업로드 검증"""
+    if not filename:
         return False, "파일이 선택되지 않았습니다."
     
-    if allowed_extensions:
-        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
-        if file_ext not in allowed_extensions:
-            return False, f"허용되지 않는 파일 형식입니다. 허용: {', '.join(allowed_extensions)}"
+    if allowed_extensions is None:
+        allowed_extensions = {'.txt', '.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.gif'}
     
-    if max_size:
-        file.seek(0, 2)  # 파일 끝으로 이동
-        file_size = file.tell()
-        file.seek(0)  # 파일 시작으로 복귀
-        
-        if file_size > max_size:
-            return False, f"파일 크기가 너무 큽니다. 최대: {max_size // (1024*1024)}MB"
+    import os
+    file_ext = os.path.splitext(filename)[1].lower()
+    
+    if file_ext not in allowed_extensions:
+        return False, f"허용되지 않는 파일 형식입니다: {file_ext}"
     
     return True, "파일이 유효합니다."
 
 def get_client_ip():
-    """클라이언트 IP 주소 가져오기 (프록시 고려)"""
-    if request:
-        # X-Forwarded-For 헤더 확인 (프록시 환경)
-        forwarded_for = request.headers.get('X-Forwarded-For')
-        if forwarded_for:
-            return forwarded_for.split(',')[0].strip()
-        
-        # X-Real-IP 헤더 확인
-        real_ip = request.headers.get('X-Real-IP')
-        if real_ip:
-            return real_ip
-        
+    """클라이언트 IP 주소 가져오기"""
+    if request.headers.get('X-Forwarded-For'):
+        return request.headers.get('X-Forwarded-For').split(',')[0]
         return request.remote_addr
-    return None
 
 def is_suspicious_activity(user_id, action_type):
     """의심스러운 활동 감지"""
@@ -211,20 +172,40 @@ def create_audit_trail(user_id, action, resource_type, resource_id, details=None
     except Exception as e:
         print(f"Audit trail creation failed: {e}")
 
-def check_account_lockout(user_id, max_attempts=5, lockout_duration=30):
-    """계정 잠금 확인 (간소화 버전)"""
-    # 실제로는 데이터베이스에서 확인해야 함
-    return False
+def check_account_lockout(user):
+    """계정 잠금 상태 확인"""
+    if user.is_locked:
+        return True, "계정이 잠겼습니다. 관리자에게 문의하세요."
+    
+    if user.locked_until and user.locked_until > datetime.utcnow():
+        remaining = user.locked_until - datetime.utcnow()
+        minutes = int(remaining.total_seconds() // 60)
+        return True, f"계정이 {minutes}분 후에 잠금 해제됩니다."
+    
+    return False, None
 
-def increment_failed_attempts(user_id):
-    """로그인 실패 횟수 증가 (간소화 버전)"""
-    # 실제로는 데이터베이스에 저장해야 함
-    pass
+def handle_failed_login(user):
+    """로그인 실패 처리"""
+    user.failed_login += 1
+    
+    if user.failed_login >= 5:
+        user.locked_until = datetime.utcnow() + timedelta(minutes=30)
+        log_security_event(
+            user.id, 
+            "account_locked", 
+            f"계정 잠금: {user.failed_login}회 연속 로그인 실패"
+        )
+    
+    db.session.commit()
 
-def reset_failed_attempts(user_id):
-    """로그인 실패 횟수 초기화 (간소화 버전)"""
-    # 실제로는 데이터베이스에서 초기화해야 함
-    pass
+def reset_login_attempts(user):
+    """로그인 시도 초기화"""
+    if user.failed_login > 0:
+        user.failed_login = 0
+        user.locked_until = None
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+        log_security_event(user.id, "login_success", "로그인 성공")
 
 def validate_password(password):
     """비밀번호 유효성 검사 (간소화 버전)"""
@@ -233,14 +214,15 @@ def validate_password(password):
     return True, ""
 
 def hash_password(password):
-    """비밀번호 해시 (간소화 버전)"""
-    # 실제로는 bcrypt 등을 사용해야 함
-    return password
+    """비밀번호 해시화"""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_password(password, hashed):
-    """비밀번호 검증 (간소화 버전)"""
-    # 실제로는 bcrypt 등을 사용해야 함
-    return password == hashed
+    """비밀번호 검증"""
+    salt = hashed[:32]
+    stored_hash = hashed[32:]
+    hash_obj = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000)
+    return hash_obj.hex() == stored_hash
 
 def allowed_file(filename):
     """허용된 파일 확장자 확인 (강화된 버전)"""
@@ -284,7 +266,6 @@ def save_uploaded_file(file):
         return file_path, None
     except Exception as e:
         return None, f"파일 저장 중 오류 발생: {e}"
-
 
 def clean_comment(content):
     """댓글 내용 정제 (강화된 버전)"""
@@ -341,3 +322,64 @@ def escape_html(text):
         return ""
     import html
     return html.escape(text) 
+
+def admin_required(f):
+    """관리자 권한 데코레이터"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('user_id'):
+            flash('로그인이 필요합니다.', 'error')
+            return redirect(url_for('login'))
+        
+        from models import User
+        user = User.query.get(session['user_id'])
+        if not user or user.role != 'admin':
+            flash('관리자만 접근 가능합니다.', 'error')
+            return redirect(url_for('dashboard'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+def rate_limit_exceeded(identifier, limit=5, window=300):
+    """요청 제한 체크"""
+    from extensions import cache
+    
+    key = f"rate_limit:{identifier}"
+    current_count = cache.get(key, 0)
+    
+    if current_count >= limit:
+        return True
+    
+    cache.set(key, current_count + 1, timeout=window)
+    return False
+
+def increment_failed_attempts(user_id):
+    """로그인 실패 횟수 증가 (간소화 버전)"""
+    # 실제로는 데이터베이스에 저장해야 함
+    pass
+
+def reset_failed_attempts(user_id):
+    """로그인 실패 횟수 초기화 (간소화 버전)"""
+    # 실제로는 데이터베이스에서 초기화해야 함
+    pass
+
+def validate_phone(phone):
+    """전화번호 형식 검증"""
+    pattern = r'^[0-9-+\s()]{10,15}$'
+    return re.match(pattern, phone) is not None
+
+def is_suspicious_request():
+    """의심스러운 요청 감지"""
+    user_agent = request.headers.get('User-Agent', '')
+    
+    # 봇이나 스크래퍼 감지
+    suspicious_patterns = [
+        'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget',
+        'python-requests', 'java', 'perl', 'ruby'
+    ]
+    
+    for pattern in suspicious_patterns:
+        if pattern.lower() in user_agent.lower():
+            return True
+    
+    return False 

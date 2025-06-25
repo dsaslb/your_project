@@ -14,8 +14,8 @@ else:
 
 class Config:
     """기본 설정 클래스"""
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key')
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///restaurant_dev.sqlite3')
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'super-secret-key')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///restaurant_dev.sqlite3')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = bool(int(os.getenv('DEBUG', '0')))
     
@@ -47,14 +47,21 @@ class Config:
     }
     
     # 캐시 설정
-    CACHE_TYPE = os.getenv('CACHE_TYPE', 'simple')
-    CACHE_DEFAULT_TIMEOUT = int(os.getenv('CACHE_DEFAULT_TIMEOUT', 300))
+    CACHE_TYPE = "SimpleCache"
+    CACHE_DEFAULT_TIMEOUT = 300
     
     # 세션 설정
     PERMANENT_SESSION_LIFETIME = int(os.getenv('PERMANENT_SESSION_LIFETIME', 3600))  # 1시간
-    SESSION_COOKIE_SECURE = bool(int(os.getenv('SESSION_COOKIE_SECURE', '0')))
+    SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # CSRF 설정
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_SECRET_KEY = os.environ.get('CSRF_SECRET_KEY', 'csrf-key')
+    
+    # Rate limiting
+    RATELIMIT_DEFAULT = "10 per minute"
 
 class DevelopmentConfig(Config):
     """개발 환경 설정"""

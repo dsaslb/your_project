@@ -60,23 +60,20 @@ class BankTransferAPI:
             print(f"이체 로그 기록 실패: {e}")
 
 def transfer_salary(user, amount):
-    try:
-        print(f"[이체] {user.name or user.username} ({getattr(user, 'account_number', '-')})에게 {amount}원 이체(모의)")
-        # 실제 API 연동은 아래 주석 해제
-        # api_url = "https://api.bank.com/v1/transfer"
-        # payload = {...}
-        # headers = {"Authorization": "Bearer 은행API키"}
-        # r = requests.post(api_url, json=payload, headers=headers)
-        # if r.status_code == 200:
-        #     print("이체 성공")
-        #     return True
-        # else:
-        #     print("이체 실패:", r.text)
-        #     return False
-        return True
-    except Exception as e:
-        print("이체 예외:", e)
-        return True
+    # 실제 서비스라면 여기에 은행 API 연동
+    # 아래는 가상 REST API(POST 방식) 예시
+    api_url = "https://yourbank.example.com/api/transfer"
+    payload = {
+        "name": user.name or user.username,
+        "account": user.account_number,   # User 모델에 추가 필요
+        "amount": amount,
+    }
+    # 예: 인증 토큰이 필요한 경우 headers에 추가
+    # headers = {"Authorization": "Bearer ..."}
+    # r = requests.post(api_url, json=payload, headers=headers)
+    # 아래는 테스트용(실제 이체X)
+    print(f"[가상이체] {payload}")
+    return True
 
 def bulk_transfer_salary(users_data):
     """일괄 급여 이체"""

@@ -2,6 +2,8 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 from datetime import datetime
+import time
+import zipfile
 
 # 최대 파일 크기 (1MB)
 MAX_PREVIEW_SIZE = 1024 * 1024
@@ -90,4 +92,52 @@ def restore_files(backup_dir, target_dir):
 
 def save_file(file):
     """파일을 저장합니다 (save_uploaded_file의 별칭)."""
-    return save_uploaded_file(file) 
+    return save_uploaded_file(file)
+
+def cleanup_old_backups(backup_dir, days=30):
+    """지정한 일수보다 오래된 백업(.bak/.sqlite3/.zip) 파일 자동 삭제"""
+    now = time.time()
+    removed = []
+    for fname in os.listdir(backup_dir):
+        if not (fname.endswith('.bak') or fname.endswith('.sqlite3') or fname.endswith('.zip')):
+            continue
+        fpath = os.path.join(backup_dir, fname)
+        if os.path.isfile(fpath):
+            if now - os.path.getmtime(fpath) > days * 86400:
+                os.remove(fpath)
+                removed.append(fname)
+    return removed
+
+def compress_backup_files(backup_dir, compress_after_days=3):
+    """지정한 일수보다 오래된 백업 파일을 zip으로 압축 (원본 삭제)"""
+    now = time.time()
+    compressed = []
+    for fname in os.listdir(backup_dir):
+        if not (fname.endswith('.bak') or fname.endswith('.sqlite3')):
+            continue
+        fpath = os.path.join(backup_dir, fname)
+        if os.path.isfile(fpath):
+            if now - os.path.getmtime(fpath) > compress_after_days * 86400:
+                zipname = fpath + '.zip'
+                with zipfile.ZipFile(zipname, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    zf.write(fpath, arcname=fname)
+                os.remove(fpath)
+                compressed.append(zipname)
+    return compressed
+
+def send_backup_notification(success, admin_email, msg):
+    """백업 성공/실패시 관리자에게 이메일 알림 (샘플)"""
+    from utils.email_utils import send_email
+    subject = '[백업 성공]' if success else '[백업 실패]'
+    send_email(admin_email, subject, msg)
+
+def upload_backup_to_cloud(filepath, bucket_name, key):
+    """(샘플) AWS S3에 백업 파일 업로드"""
+    try:
+        import boto3
+        s3 = boto3.client('s3')
+        s3.upload_file(filepath, bucket_name, key)
+        return True
+    except Exception as e:
+        print('S3 업로드 실패:', e)
+        return False 

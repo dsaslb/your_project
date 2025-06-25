@@ -1,5 +1,5 @@
 # Flask 설정
-SECRET_KEY=your_very_secret_key
+SECRET_KEY=랜덤값
 FLASK_ENV=development
 FLASK_DEBUG=True
 
@@ -8,16 +8,16 @@ DEV_DATABASE_URL=sqlite:///instance/restaurant_dev.sqlite3
 SQLALCHEMY_DATABASE_URI=sqlite:///restaurant_dev.sqlite3
 
 # 보안 설정
-CSRF_SECRET_KEY=your-csrf-secret-key-here-change-this
+CSRF_SECRET_KEY=랜덤값2
 SESSION_COOKIE_SECURE=False
 WTF_CSRF_ENABLED=True
 
 # 로깅 설정
 LOG_LEVEL=INFO
-LOG_FILE=logs/restaurant.log
+LOG_FILE=logs/app.log
 
 # 캐시 설정
-CACHE_TYPE=SimpleCache
+CACHE_TYPE=simple
 CACHE_DEFAULT_TIMEOUT=300
 REDIS_URL=redis://localhost:6379/0
 
@@ -29,10 +29,10 @@ RATELIMIT_STORAGE_URL=memory://
 MAX_CONTENT_LENGTH=16777216
 UPLOAD_FOLDER=uploads
 
-# 이메일 설정 (선택사항)
+# 이메일 설정
 MAIL_SERVER=smtp.gmail.com
 MAIL_PORT=587
-MAIL_USE_TLS=True
+MAIL_USE_TLS=1
 MAIL_USERNAME=your-email@gmail.com
 MAIL_PASSWORD=your-app-password
 
@@ -52,4 +52,15 @@ BANK_API_KEY=your-bank-api-key
 BANK_SECRET_KEY=your-bank-secret-key
 
 # 테스트용 데이터베이스 (기본값: sqlite)
-TEST_DATABASE_URL=sqlite:///instance/restaurant_test.sqlite3 
+TEST_DATABASE_URL=sqlite:///instance/restaurant_test.sqlite3
+
+# 세션 설정
+PERMANENT_SESSION_LIFETIME=3600
+
+# Slack 알림 설정
+SLACK_WEBHOOK_URL=your-slack-webhook-url
+SLACK_ENABLED=0
+
+# 개발 환경 설정
+FLASK_ENV=development
+DEBUG=1 

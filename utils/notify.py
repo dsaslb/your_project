@@ -99,6 +99,12 @@ class NotificationService:
         except Exception as e:
             return False, f"SMS 발송 실패: {str(e)}"
 
+def send_notification(user, message):
+    # 실제 카카오톡/이메일/SMS API 연동 위치
+    # 예: requests.post 또는 SMTP, 문자 발송 등
+    print(f"[알림] to {user.name or user.username}: {message}")
+    return True
+
 def send_notification(user_id, content, related_url=None, email_info=None, kakao_info=None):
     """
     사용자에게 알림을 생성하고, 이메일/카카오톡 전송을 트리거합니다.
@@ -504,4 +510,10 @@ def send_kakao(user, message):
 
 def send_email(user, subject, body, attachment=None):
     # 실제 연동은 나중에! 현재는 아무 동작 안 함
-    pass 
+    pass
+
+def send_notification_simple(user, message):
+    # 실제 카카오톡/이메일/SMS API 연동 위치
+    # 예: requests.post 또는 SMTP, 문자 발송 등
+    print(f"[알림] to {user.name or user.username}: {message}")
+    return True 

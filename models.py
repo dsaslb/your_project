@@ -255,7 +255,7 @@ class Notification(db.Model):
         db.Index('idx_notification_priority_date', 'priority', 'created_at'),
         db.Index('idx_notification_team_role', 'recipient_team', 'recipient_role'),
     )
-
+    
     def __repr__(self):
         return f'<Notification {self.id} {self.content[:20]}>'
 
@@ -564,7 +564,7 @@ class ReasonTemplate(db.Model):
     approver = db.relationship('User', foreign_keys=[approved_by], backref='approved_templates')
     
     def __repr__(self):
-        return f'<ReasonTemplate {self.text}>'
+        return f'<ReasonTemplate {self.text}>' 
 
 class ReasonEditLog(db.Model):
     """근태 사유 변경 이력 모델"""
