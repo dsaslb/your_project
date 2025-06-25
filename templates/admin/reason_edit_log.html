@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}사유 변경 이력 (감사 로그){% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history text-info"></i>
+                        사유 변경 이력 (감사 로그)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- 필터 -->
+                    <form method="GET" class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">수정자</label>
+                            <select name="user_id" class="form-select">
+                                <option value="">전체</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" {% if user_id == user.id %}selected{% endif %}>
+                                    {{ user.username }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">시작일</label>
+                            <input type="date" name="from" class="form-control" value="{{ date_from or '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">종료일</label>
+                            <input type="date" name="to" class="form-control" value="{{ date_to or '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> 검색
+                                </button>
+                                <a href="{{ url_for('admin_reason_edit_log') }}" class="btn btn-secondary">
+                                    <i class="fas fa-undo"></i> 초기화
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    {% if logs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">ID</th>
+                                    <th width="10%">근태ID</th>
+                                    <th width="15%">수정자</th>
+                                    <th width="20%">이전 사유</th>
+                                    <th width="20%">새 사유</th>
+                                    <th width="15%">수정일시</th>
+                                    <th width="15%">IP 주소</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs %}
+                                <tr>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">{{ log.id }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{{ url_for('attendance_dashboard', user_id=log.attendance.user_id) }}" 
+                                           class="text-decoration-none">
+                                            {{ log.attendance_id }}
+                                        </a>
+                                    </td>
+                                    <td class="text-center">
+                                        <small class="fw-bold">{{ log.editor.username }}</small>
+                                    </td>
+                                    <td>
+                                        {% if log.old_reason %}
+                                        <span class="text-muted">{{ log.old_reason }}</span>
+                                        {% else %}
+                                        <span class="text-muted fst-italic">없음</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.new_reason %}
+                                        <span class="text-success fw-bold">{{ log.new_reason }}</span>
+                                        {% else %}
+                                        <span class="text-danger fst-italic">삭제됨</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <small>{{ log.edited_at.strftime('%m-%d %H:%M') }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <small class="text-muted">{{ log.ip_address or '-' }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 통계 요약 -->
+                    <div class="row mt-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h4>{{ logs|length }}</h4>
+                                    <small>총 변경 건수</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h4>{{ logs|selectattr('new_reason')|list|length }}</h4>
+                                    <small>사유 추가</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center">
+                                    <h4>{{ logs|selectattr('old_reason')|selectattr('new_reason')|list|length }}</h4>
+                                    <small>사유 변경</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <h4>{{ logs|selectattr('old_reason')|rejectattr('new_reason')|list|length }}</h4>
+                                    <small>사유 삭제</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-info-circle fa-3x text-info mb-3"></i>
+                        <h5 class="text-info">변경 이력이 없습니다</h5>
+                        <p class="text-muted">검색 조건을 변경해보세요.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    .card-body {
+        padding: 1rem;
+    }
+    .form-label {
+        font-size: 0.9rem;
+    }
+}
+</style>
+{% endblock %} 

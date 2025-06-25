@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}사용자 근태 상세{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user"></i>
+                        {{ user.username }} - 근태 상세 정보
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- 사용자 기본 정보 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>기본 정보</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>이름:</strong></td>
+                                    <td>{{ user.username }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>역할:</strong></td>
+                                    <td>{{ user.role }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>지점:</strong></td>
+                                    <td>{{ user.branch }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>상태:</strong></td>
+                                    <td>
+                                        {% if user.status == 'approved' %}
+                                            <span class="badge badge-success">승인됨</span>
+                                        {% else %}
+                                            <span class="badge badge-warning">대기중</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>AI 분석 결과</h5>
+                            {% if analysis.warnings %}
+                                <div class="alert alert-warning">
+                                    <h6>경고사항:</h6>
+                                    <ul class="mb-0">
+                                        {% for warning in analysis.warnings %}
+                                        <li>{{ warning }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                            {% if analysis.recommendations %}
+                                <div class="alert alert-info">
+                                    <h6>권장사항:</h6>
+                                    <ul class="mb-0">
+                                        {% for rec in analysis.recommendations %}
+                                        <li>{{ rec }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- 최근 근태 기록 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5>최근 30일 근태 기록</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>날짜</th>
+                                            <th>출근시간</th>
+                                            <th>퇴근시간</th>
+                                            <th>사유</th>
+                                            <th>상태</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for record in attendance_records %}
+                                        <tr>
+                                            <td>{{ record.clock_in.strftime('%m-%d') }}</td>
+                                            <td>{{ record.clock_in.strftime('%H:%M') }}</td>
+                                            <td>
+                                                {% if record.clock_out %}
+                                                    {{ record.clock_out.strftime('%H:%M') }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if record.reason %}
+                                                    <span class="text-primary">{{ record.reason }}</span>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if record.status == 'normal' %}
+                                                    <span class="badge badge-success">정상</span>
+                                                {% elif record.status == 'late' %}
+                                                    <span class="badge badge-warning">지각</span>
+                                                {% elif record.status == 'absent' %}
+                                                    <span class="badge badge-danger">결근</span>
+                                                {% else %}
+                                                    <span class="badge badge-secondary">{{ record.status }}</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 사유별 통계 -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>사유별 통계</h5>
+                            <div class="row">
+                                {% for reason, count in analysis.reason_counts.items() %}
+                                <div class="col-md-3 mb-2">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title">{{ reason }}</h6>
+                                            <h4 class="text-primary">{{ count }}회</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

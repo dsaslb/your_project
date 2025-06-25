@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}AI 사유 분석 경고{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        AI 사유 분석 경고
+                    </h3>
+                    <div class="card-tools">
+                        <span class="badge badge-warning">{{ total_warnings }}개 경고</span>
+                        <span class="badge badge-info">{{ total_users_with_warnings }}명 대상</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if results %}
+                        <div class="row">
+                            {% for result in results %}
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-warning">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h5 class="card-title mb-0">
+                                            <i class="fas fa-user"></i>
+                                            {{ result.user.username }}
+                                            <small class="text-muted">({{ result.user.role }})</small>
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <h6 class="text-danger">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                경고사항 ({{ result.analysis.warnings|length }}개)
+                                            </h6>
+                                            <ul class="list-unstyled">
+                                                {% for warning in result.analysis.warnings %}
+                                                <li class="mb-1">
+                                                    <i class="fas fa-times-circle text-danger"></i>
+                                                    {{ warning }}
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        
+                                        {% if result.analysis.recommendations %}
+                                        <div class="mb-3">
+                                            <h6 class="text-success">
+                                                <i class="fas fa-lightbulb"></i>
+                                                권장사항
+                                            </h6>
+                                            <ul class="list-unstyled">
+                                                {% for rec in result.analysis.recommendations %}
+                                                <li class="mb-1">
+                                                    <i class="fas fa-check-circle text-success"></i>
+                                                    {{ rec }}
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="mt-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-chart-bar"></i>
+                                                최근 30일 기록: {{ result.analysis.total_records }}건
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="mt-2">
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    onclick="showUserDetails({{ result.user.id }})">
+                                                <i class="fas fa-eye"></i>
+                                                상세보기
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-success" 
+                                                    onclick="sendNotification({{ result.user.id }})">
+                                                <i class="fas fa-bell"></i>
+                                                알림발송
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- 전체 통계 -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-chart-pie"></i>
+                                            전체 통계
+                                        </h5>
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h3 class="text-warning">{{ total_warnings }}</h3>
+                                                    <p class="text-muted">총 경고 수</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h3 class="text-info">{{ total_users_with_warnings }}</h3>
+                                                    <p class="text-muted">경고 대상자</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h3 class="text-success">{{ results|length }}</h3>
+                                                    <p class="text-muted">관리 대상</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h3 class="text-primary">{{ (total_warnings / total_users_with_warnings)|round(1) if total_users_with_warnings > 0 else 0 }}</h3>
+                                                    <p class="text-muted">평균 경고 수</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                            <h4 class="mt-3 text-success">경고 대상이 없습니다!</h4>
+                            <p class="text-muted">모든 직원의 근태가 양호합니다.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 사용자 상세 모달 -->
+<div class="modal fade" id="userDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">사용자 상세 정보</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="userDetailContent">
+                <!-- 동적으로 로드됨 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 알림 발송 모달 -->
+<div class="modal fade" id="notificationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">알림 발송</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="notificationForm">
+                    <div class="form-group">
+                        <label>수신자</label>
+                        <input type="text" class="form-control" id="recipientName" readonly>
+                        <input type="hidden" id="recipientId">
+                    </div>
+                    <div class="form-group">
+                        <label>알림 내용</label>
+                        <textarea class="form-control" id="notificationContent" rows="3" 
+                                  placeholder="알림 내용을 입력하세요..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>카테고리</label>
+                        <select class="form-control" id="notificationCategory">
+                            <option value="근무">근무</option>
+                            <option value="공지">공지</option>
+                            <option value="경고">경고</option>
+                            <option value="상담">상담</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="sendNotificationSubmit()">발송</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showUserDetails(userId) {
+    // 사용자 상세 정보 로드
+    fetch(`/admin/user/${userId}/attendance_details`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('userDetailContent').innerHTML = html;
+            $('#userDetailModal').modal('show');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('사용자 정보를 불러오는데 실패했습니다.');
+        });
+}
+
+function sendNotification(userId) {
+    // 사용자 정보 가져오기
+    fetch(`/api/user/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('recipientId').value = userId;
+            document.getElementById('recipientName').value = data.username;
+            
+            // 기본 알림 내용 설정
+            const defaultContent = `${data.username}님, 근태 관리에 대한 상담이 필요합니다. 관리자와 상담을 요청드립니다.`;
+            document.getElementById('notificationContent').value = defaultContent;
+            
+            $('#notificationModal').modal('show');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('사용자 정보를 불러오는데 실패했습니다.');
+        });
+}
+
+function sendNotificationSubmit() {
+    const userId = document.getElementById('recipientId').value;
+    const content = document.getElementById('notificationContent').value;
+    const category = document.getElementById('notificationCategory').value;
+    
+    if (!content.trim()) {
+        alert('알림 내용을 입력해주세요.');
+        return;
+    }
+    
+    fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            user_id: userId,
+            content: content,
+            category: category
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('알림이 발송되었습니다.');
+            $('#notificationModal').modal('hide');
+        } else {
+            alert('알림 발송에 실패했습니다: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('알림 발송 중 오류가 발생했습니다.');
+    });
+}
+
+// 페이지 로드 시 자동 새로고침 (5분마다)
+setInterval(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %} 

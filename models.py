@@ -239,6 +239,12 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False, index=True)
     is_admin_only = db.Column(db.Boolean, default=False, index=True)  # 관리자만 볼 수 있는 알림
     
+    # 새로운 필드들 추가
+    recipient_role = db.Column(db.String(20), index=True)  # ex. 'admin', 'manager', 'employee'
+    recipient_team = db.Column(db.String(20), index=True)  # ex. '주방', '홀'
+    priority = db.Column(db.String(10), default='일반', index=True)  # '긴급', '중요', '일반'
+    ai_priority = db.Column(db.String(10), index=True)  # AI가 추천한 우선순위
+    
     # 관계 설정
     user = db.relationship("User", backref="notifications")
     
@@ -246,12 +252,12 @@ class Notification(db.Model):
     __table_args__ = (
         db.Index('idx_notification_user_read', 'user_id', 'is_read'),
         db.Index('idx_notification_category_date', 'category', 'created_at'),
-        db.Index('idx_notification_user_category', 'user_id', 'category'),
-        db.Index('idx_notification_admin_only', 'is_admin_only', 'created_at'),
+        db.Index('idx_notification_priority_date', 'priority', 'created_at'),
+        db.Index('idx_notification_team_role', 'recipient_team', 'recipient_role'),
     )
-    
+
     def __repr__(self):
-        return f'<Notification {self.user_id} {self.content[:20]}>'
+        return f'<Notification {self.id} {self.content[:20]}>'
 
 # 공지사항 모델
 class Notice(db.Model):
@@ -545,13 +551,43 @@ class ReasonTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(100), unique=True, nullable=False, comment='사유 텍스트')
     team = db.Column(db.String(30), comment='팀별 템플릿(옵션)')
+    status = db.Column(db.String(20), default='pending', comment='승인 상태: pending/approved/rejected')
     is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), comment='생성자')
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), comment='승인자')
+    approved_at = db.Column(db.DateTime, comment='승인일시')
     created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
     
     # 관계
-    creator = db.relationship('User', backref='created_templates')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_templates')
+    approver = db.relationship('User', foreign_keys=[approved_by], backref='approved_templates')
     
     def __repr__(self):
-        return f'<ReasonTemplate {self.text}>' 
+        return f'<ReasonTemplate {self.text}>'
+
+class ReasonEditLog(db.Model):
+    """근태 사유 변경 이력 모델"""
+    __tablename__ = 'reason_edit_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    attendance_id = db.Column(db.Integer, db.ForeignKey('attendances.id'), nullable=False, comment='근태 기록 ID')
+    old_reason = db.Column(db.String(200), comment='이전 사유')
+    new_reason = db.Column(db.String(200), comment='새 사유')
+    edited_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, comment='수정자')
+    edited_at = db.Column(db.DateTime, default=datetime.utcnow, comment='수정일시')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    
+    # 관계
+    attendance = db.relationship('Attendance', backref='reason_edit_logs')
+    editor = db.relationship('User', backref='reason_edits')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_reasonedit_attendance_date', 'attendance_id', 'edited_at'),
+        db.Index('idx_reasonedit_editor_date', 'edited_by', 'edited_at'),
+    )
+    
+    def __repr__(self):
+        return f'<ReasonEditLog {self.attendance_id} {self.edited_at}>' 

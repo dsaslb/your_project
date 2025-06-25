@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}사유 템플릿 요청{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus-circle text-primary"></i>
+                        사유 템플릿 추가 요청
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="templateRequestForm" method="POST" action="{{ url_for('request_reason_template') }}">
+                        <div class="mb-3">
+                            <label for="text" class="form-label">
+                                <strong>사유 텍스트 *</strong>
+                            </label>
+                            <input type="text" class="form-control" id="text" name="text" 
+                                   placeholder="예: 월요일 컨디션 저하, 교통 지연, 개인 사정 등" 
+                                   required maxlength="100">
+                            <div class="form-text">
+                                명확하고 간결한 사유를 입력해주세요. (최대 100자)
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="team" class="form-label">팀 (선택사항)</label>
+                            <select class="form-select" id="team" name="team">
+                                <option value="">전체 팀</option>
+                                <option value="홀">홀</option>
+                                <option value="주방">주방</option>
+                                <option value="매니저">매니저</option>
+                                <option value="기타">기타</option>
+                            </select>
+                            <div class="form-text">
+                                특정 팀에서만 사용할 템플릿인 경우 선택하세요.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                                템플릿 요청 제출
+                            </button>
+                            <a href="{{ url_for('attendance_dashboard') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i>
+                                돌아가기
+                            </a>
+                        </div>
+                    </form>
+                    
+                    <!-- 실시간 요청 상태 -->
+                    <div id="requestStatus" class="mt-3" style="display: none;">
+                        <div class="alert alert-info">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span id="statusMessage">요청 처리 중...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 기존 템플릿 참고 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-lightbulb text-warning"></i>
+                        기존 템플릿 참고
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">인기 템플릿</h6>
+                            <ul class="list-unstyled" id="popularTemplates">
+                                <li class="text-muted">로딩 중...</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success">최근 추가된 템플릿</h6>
+                            <ul class="list-unstyled" id="recentTemplates">
+                                <li class="text-muted">로딩 중...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 실시간 템플릿 요청 (AJAX)
+document.getElementById('templateRequestForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        text: formData.get('text'),
+        team: formData.get('team')
+    };
+    
+    // 상태 표시
+    document.getElementById('requestStatus').style.display = 'block';
+    document.getElementById('statusMessage').textContent = '요청 처리 중...';
+    
+    fetch('/api/reason_templates/request', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            document.getElementById('statusMessage').textContent = result.message;
+            document.getElementById('requestStatus').className = 'mt-3 alert alert-success';
+            document.getElementById('templateRequestForm').reset();
+            
+            // 3초 후 상태 숨김
+            setTimeout(() => {
+                document.getElementById('requestStatus').style.display = 'none';
+            }, 3000);
+        } else {
+            document.getElementById('statusMessage').textContent = result.message;
+            document.getElementById('requestStatus').className = 'mt-3 alert alert-danger';
+        }
+    })
+    .catch(error => {
+        document.getElementById('statusMessage').textContent = '요청 처리 중 오류가 발생했습니다.';
+        document.getElementById('requestStatus').className = 'mt-3 alert alert-danger';
+    });
+});
+
+// 기존 템플릿 로드
+function loadTemplates() {
+    // 인기 템플릿 로드
+    fetch('/api/mobile/reason_top_enhanced?period=30')
+        .then(response => response.json())
+        .then(data => {
+            const popularList = document.getElementById('popularTemplates');
+            if (data.reasons && data.reasons.length > 0) {
+                popularList.innerHTML = data.reasons.slice(0, 5).map(item => 
+                    `<li><i class="fas fa-star text-warning"></i> ${item.reason} <small class="text-muted">(${item.count}회)</small></li>`
+                ).join('');
+            } else {
+                popularList.innerHTML = '<li class="text-muted">데이터가 없습니다.</li>';
+            }
+        });
+    
+    // 승인된 템플릿 로드
+    fetch('/api/reason_templates/approved')
+        .then(response => response.json())
+        .then(data => {
+            const recentList = document.getElementById('recentTemplates');
+            if (data && data.length > 0) {
+                recentList.innerHTML = data.slice(0, 5).map(item => 
+                    `<li><i class="fas fa-check text-success"></i> ${item.text}</li>`
+                ).join('');
+            } else {
+                recentList.innerHTML = '<li class="text-muted">데이터가 없습니다.</li>';
+            }
+        });
+}
+
+// 페이지 로드 시 템플릿 로드
+document.addEventListener('DOMContentLoaded', loadTemplates);
+</script>
+
+<style>
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    .form-label {
+        font-size: 0.9rem;
+    }
+}
+</style>
+{% endblock %} 

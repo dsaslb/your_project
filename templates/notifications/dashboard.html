@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}알림센터 대시보드{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-bell"></i> 알림센터 대시보드
+                    </h2>
+                    <div class="card-tools">
+                        <span class="badge badge-primary">전체: {{total}}개</span>
+                        <span class="badge badge-danger">미확인: <b>{{unread}}</b>개</span>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- 필터/검색 폼 -->
+                    <form method="get" class="mb-4">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <select name="category" class="form-control">
+                                    <option value="">카테고리 전체</option>
+                                    <option value="근무" {% if request.args.get('category') == '근무' %}selected{% endif %}>근무</option>
+                                    <option value="사유" {% if request.args.get('category') == '사유' %}selected{% endif %}>사유</option>
+                                    <option value="승인" {% if request.args.get('category') == '승인' %}selected{% endif %}>승인</option>
+                                    <option value="공지" {% if request.args.get('category') == '공지' %}selected{% endif %}>공지</option>
+                                    <option value="일반" {% if request.args.get('category') == '일반' %}selected{% endif %}>일반</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select name="is_read" class="form-control">
+                                    <option value="">상태 전체</option>
+                                    <option value="0" {% if request.args.get('is_read') == '0' %}selected{% endif %}>미확인</option>
+                                    <option value="1" {% if request.args.get('is_read') == '1' %}selected{% endif %}>확인</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" name="q" class="form-control" placeholder="내용 검색..." 
+                                       value="{{ request.args.get('q', '') }}">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> 검색
+                                </button>
+                                <a href="{{ url_for('notification_automation.notifications_dashboard') }}" 
+                                   class="btn btn-secondary">
+                                    <i class="fas fa-redo"></i> 초기화
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- 알림 목록 -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>내용</th>
+                                    <th>분류</th>
+                                    <th>일시</th>
+                                    <th>상태</th>
+                                    <th>액션</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for notification in notifications %}
+                                <tr class="{% if not notification.is_read %}table-warning{% endif %}">
+                                    <td>
+                                        <span class="notification-content">{{notification.content}}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{notification.category}}</span>
+                                    </td>
+                                    <td>{{notification.created_at.strftime('%Y-%m-%d %H:%M')}}</td>
+                                    <td>
+                                        {% if notification.is_read %}
+                                            <span class="badge badge-success">확인</span>
+                                        {% else %}
+                                            <span class="badge badge-warning">미확인</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if not notification.is_read %}
+                                            <button class="btn btn-sm btn-success mark-read-btn" 
+                                                    data-notification-id="{{notification.id}}">
+                                                <i class="fas fa-check"></i> 확인
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                        알림이 없습니다.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 알림 읽음 처리
+    document.querySelectorAll('.mark-read-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const notificationId = this.dataset.notificationId;
+            
+            fetch('/notifications/mark_read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    notification_id: notificationId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // UI 업데이트
+                    const row = this.closest('tr');
+                    row.classList.remove('table-warning');
+                    
+                    const statusCell = row.querySelector('td:nth-child(4)');
+                    statusCell.innerHTML = '<span class="badge badge-success">확인</span>';
+                    
+                    this.remove();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('알림 확인 처리 중 오류가 발생했습니다.');
+            });
+        });
+    });
+});
+</script>
+
+<style>
+.notification-content {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.table-warning {
+    background-color: #fff3cd !important;
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}알림 통계{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-chart-bar"></i> 알림 통계
+                    </h2>
+                    <div class="card-tools">
+                        <form method="get" class="d-inline">
+                            <select name="days" class="form-control form-control-sm d-inline-block" style="width: auto;">
+                                <option value="7" {% if days == 7 %}selected{% endif %}>최근 7일</option>
+                                <option value="30" {% if days == 30 %}selected{% endif %}>최근 30일</option>
+                                <option value="90" {% if days == 90 %}selected{% endif %}>최근 90일</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary">조회</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row">
+                        <!-- 일별 알림 차트 -->
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">일별 알림 현황</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="dailyChart" height="100"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 카테고리별 차트 -->
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">카테고리별 분포</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="categoryChart" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <!-- 우선순위별 차트 -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">우선순위별 분포</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="priorityChart" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 통계 요약 -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">통계 요약</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="info-box bg-info">
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">총 알림 수</span>
+                                                    <span class="info-box-number" id="total-count">-</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="info-box bg-warning">
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">일평균</span>
+                                                    <span class="info-box-number" id="daily-avg">-</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="info-box bg-success">
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">최고 일</span>
+                                                    <span class="info-box-number" id="max-day">-</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="info-box bg-danger">
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">긴급 비율</span>
+                                                    <span class="info-box-number" id="urgent-ratio">-</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 차트 데이터 준비
+    const dailyData = {{ daily_stats | tojson }};
+    const categoryData = {{ category_stats | tojson }};
+    const priorityData = {{ priority_stats | tojson }};
+    
+    // 일별 차트
+    const dailyLabels = dailyData.map(d => d.date);
+    const dailyCounts = dailyData.map(d => d.count);
+    
+    new Chart(document.getElementById('dailyChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: dailyLabels,
+            datasets: [{
+                label: '일별 알림 수',
+                data: dailyCounts,
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // 카테고리별 차트
+    const categoryLabels = categoryData.map(c => c.category);
+    const categoryCounts = categoryData.map(c => c.count);
+    const categoryColors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+        '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+    ];
+    
+    new Chart(document.getElementById('categoryChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: categoryLabels,
+            datasets: [{
+                data: categoryCounts,
+                backgroundColor: categoryColors.slice(0, categoryLabels.length),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // 우선순위별 차트
+    const priorityLabels = priorityData.map(p => p.priority);
+    const priorityCounts = priorityData.map(p => p.count);
+    const priorityColors = ['#dc3545', '#ffc107', '#6c757d'];
+    
+    new Chart(document.getElementById('priorityChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: priorityLabels,
+            datasets: [{
+                label: '우선순위별 알림 수',
+                data: priorityCounts,
+                backgroundColor: priorityColors.slice(0, priorityLabels.length),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // 통계 요약 업데이트
+    updateSummary();
+    
+    function updateSummary() {
+        const totalCount = dailyCounts.reduce((a, b) => a + b, 0);
+        const dailyAvg = totalCount / Math.max(dailyCounts.length, 1);
+        const maxDay = Math.max(...dailyCounts);
+        
+        // 긴급 알림 비율 계산
+        const urgentData = priorityData.find(p => p.priority === '긴급');
+        const urgentCount = urgentData ? urgentData.count : 0;
+        const urgentRatio = totalCount > 0 ? ((urgentCount / totalCount) * 100).toFixed(1) : 0;
+        
+        document.getElementById('total-count').textContent = totalCount;
+        document.getElementById('daily-avg').textContent = dailyAvg.toFixed(1);
+        document.getElementById('max-day').textContent = maxDay;
+        document.getElementById('urgent-ratio').textContent = urgentRatio + '%';
+    }
+});
+</script>
+
+<style>
+.info-box {
+    display: block;
+    min-height: 60px;
+    background: #fff;
+    width: 100%;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    border-radius: 2px;
+    margin-bottom: 15px;
+    padding: 15px;
+}
+
+.info-box-content {
+    text-align: center;
+}
+
+.info-box-text {
+    display: block;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+    font-weight: bold;
+}
+
+.info-box-number {
+    display: block;
+    font-weight: bold;
+    font-size: 24px;
+    color: #fff;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+</style>
+{% endblock %} 
