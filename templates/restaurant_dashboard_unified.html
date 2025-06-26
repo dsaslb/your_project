@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>레스토랑 관리 시스템 - 통합 대시보드</title>
+    <link href="{{ url_for('static', filename='css/tailwind.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/common.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-utensils h-8 w-8 text-orange-600"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">레스토랑 관리 시스템</h1>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">직원 및 운영 관리 대시보드</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="theme-toggle" class="btn btn-outline btn-sm">
+                        <i class="fas fa-bell mr-2"></i>
+                        알림
+                    </button>
+                    <button class="btn btn-outline btn-sm">
+                        <i class="fas fa-cog mr-2"></i>
+                        설정
+                    </button>
+                    <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                        {{ current_user.name[0] if current_user.name else current_user.username[0] }}
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen">
+                <nav class="p-4 space-y-2">
+                    <button id="tab-dashboard" class="tab-button active w-full justify-start" data-tab="dashboard">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        대시보드
+                    </button>
+                    <button id="tab-schedule" class="tab-button w-full justify-start" data-tab="schedule">
+                        <i class="fas fa-calendar-days mr-2"></i>
+                        스케줄 관리
+                    </button>
+                    <button id="tab-staff" class="tab-button w-full justify-start" data-tab="staff">
+                        <i class="fas fa-users mr-2"></i>
+                        직원 관리
+                    </button>
+                    <button id="tab-attendance" class="tab-button w-full justify-start" data-tab="attendance">
+                        <i class="fas fa-clock mr-2"></i>
+                        출석 관리
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 p-6">
+                <!-- Dashboard Tab -->
+                <div id="content-dashboard" class="tab-content active">
+                    <div class="space-y-6">
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div class="card">
+                                <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">오늘 출근 직원</h3>
+                                    <i class="fas fa-user-check h-4 w-4 text-gray-400"></i>
+                                </div>
+                                <div class="card-content">
+                                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.today_attendance }}</div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">전체 {{ stats.total_users }}명 중</p>
+                                    <span class="badge badge-secondary mt-2 text-xs">+2 from yesterday</span>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">이번 주 매출</h3>
+                                    <i class="fas fa-dollar-sign h-4 w-4 text-gray-400"></i>
+                                </div>
+                                <div class="card-content">
+                                    <div class="text-2xl font-bold text-gray-900 dark:text-white">₩{{ "{:,}".format(stats.monthly_revenue) }}</div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">+12% from last week</p>
+                                    <span class="badge badge-secondary mt-2 text-xs">↗️ 12%</span>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">오늘 예약</h3>
+                                    <i class="fas fa-calendar h-4 w-4 text-gray-400"></i>
+                                </div>
+                                <div class="card-content">
+                                    <div class="text-2xl font-bold text-gray-900 dark:text-white">28</div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">테이블 예약 현황</p>
+                                    <span class="badge badge-secondary mt-2 text-xs">85% 점유율</span>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">활성 주문</h3>
+                                    <i class="fas fa-utensils h-4 w-4 text-gray-400"></i>
+                                </div>
+                                <div class="card-content">
+                                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.active_orders }}</div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">현재 처리 중</p>
+                                    <span class="badge badge-secondary mt-2 text-xs">평균 15분 대기</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity & Today's Schedule -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">최근 활동</h3>
+                                    <p class="card-description">오늘의 주요 활동 내역</p>
+                                </div>
+                                <div class="card-content space-y-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">김서버님이 출근했습니다</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">09:00 AM</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">새로운 예약이 등록되었습니다</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">08:45 AM</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">주방 직원 교대 시간입니다</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">08:30 AM</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">오늘의 스케줄</h3>
+                                    <p class="card-description">현재 근무 중인 직원</p>
+                                </div>
+                                <div class="card-content space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
+                                                김서
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">김서버</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">서빙</p>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-outline text-green-600 border-green-600">근무중</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">
+                                                박셰
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">박셰프</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">주방</p>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-outline text-green-600 border-green-600">근무중</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
+                                                이매
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">이매니저</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">관리</p>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-outline text-orange-600 border-orange-600">휴게시간</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Tab -->
+                <div id="content-schedule" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">스케줄 관리</h2>
+                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 스케줄을 관리하고 조정하세요</p>
+                            </div>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-plus mr-2"></i>
+                                새 스케줄 추가
+                            </button>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">이번 주 스케줄</h3>
+                                <p class="card-description">2024년 1월 15일 - 21일</p>
+                            </div>
+                            <div class="card-content">
+                                <div class="overflow-x-auto">
+                                    <table class="table w-full">
+                                        <thead>
+                                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">직원</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">월</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">화</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">수</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">목</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">금</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">토</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">일</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="border-b border-gray-100 dark:border-gray-800">
+                                                <td class="py-3 px-4">
+                                                    <div class="flex items-center space-x-3">
+                                                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
+                                                            김서
+                                                        </div>
+                                                        <div>
+                                                            <p class="font-medium text-gray-900 dark:text-white">김서버</p>
+                                                            <p class="text-sm text-gray-500 dark:text-gray-400">서빙</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">10:00-18:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="text-gray-400">휴무</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Staff Tab -->
+                <div id="content-staff" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">직원 관리</h2>
+                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 정보를 관리하고 권한을 설정하세요</p>
+                            </div>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-plus mr-2"></i>
+                                새 직원 추가
+                            </button>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">직원 목록</h3>
+                                <p class="card-description">전체 {{ stats.total_users }}명의 직원</p>
+                            </div>
+                            <div class="card-content">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                                                김서
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">김서버</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">서빙</p>
+                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white">
+                                                박셰
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">박셰프</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">주방</p>
+                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white">
+                                                이매
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">이매니저</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">관리</p>
+                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Tab -->
+                <div id="content-attendance" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">출석 관리</h2>
+                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 출퇴근 현황을 확인하고 관리하세요</p>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <select id="date-select" class="w-48 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                    <option value="2024-01-15">2024년 1월 15일</option>
+                                    <option value="2024-01-14">2024년 1월 14일</option>
+                                    <option value="2024-01-13">2024년 1월 13일</option>
+                                </select>
+                                <button class="btn btn-primary">
+                                    <i class="fas fa-calendar mr-2"></i>
+                                    출석 보고서
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Summary Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">예정 인원</p>
+                                        <p class="text-2xl font-bold text-gray-900 dark:text-white">5명</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">출근</p>
+                                        <p class="text-2xl font-bold text-green-600">4명</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">지각</p>
+                                        <p class="text-2xl font-bold text-yellow-600">1명</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">결근</p>
+                                        <p class="text-2xl font-bold text-red-600">0명</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">총 근무시간</p>
+                                        <p class="text-2xl font-bold text-blue-600">32.5h</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">초과근무</p>
+                                        <p class="text-2xl font-bold text-orange-600">2.5h</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Attendance Table -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">일일 출석 현황</h3>
+                                <p class="card-description">2024년 1월 15일 출퇴근 기록</p>
+                            </div>
+                            <div class="card-content">
+                                <div class="overflow-x-auto">
+                                    <table class="table w-full">
+                                        <thead>
+                                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">직원</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">예정 출근</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">실제 출근</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">예정 퇴근</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">실제 퇴근</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">상태</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="border-b border-gray-100 dark:border-gray-800">
+                                                <td class="py-3 px-4">
+                                                    <div class="flex items-center space-x-3">
+                                                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                                                            김서
+                                                        </div>
+                                                        <div>
+                                                            <p class="font-medium text-gray-900 dark:text-white">김서버</p>
+                                                            <p class="text-sm text-gray-500 dark:text-gray-400">서빙</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center py-3 px-4 font-mono text-gray-900 dark:text-white">09:00</td>
+                                                <td class="text-center py-3 px-4 font-mono text-green-600">08:55</td>
+                                                <td class="text-center py-3 px-4 font-mono text-gray-900 dark:text-white">17:00</td>
+                                                <td class="text-center py-3 px-4 font-mono text-gray-900 dark:text-white">17:10</td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                                                        <i class="fas fa-check-circle mr-1"></i>출근
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // Tab switching functionality
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.getAttribute('data-tab');
+                
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.add('hidden'));
+                
+                // Add active class to clicked button and show corresponding content
+                button.classList.add('active');
+                document.getElementById(`content-${targetTab}`).classList.remove('hidden');
+            });
+        });
+
+        // Tab button styles
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => {
+                button.classList.add('btn', 'btn-ghost', 'w-full', 'justify-start');
+            });
+        });
+    </script>
+</body>
+</html> 

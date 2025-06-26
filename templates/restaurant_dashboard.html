@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>레스토랑 관리 시스템 - 통합 대시보드</title>
+    
+    <!-- Tailwind CSS -->
+    <link href="{{ url_for('static', filename='css/tailwind.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/common.css') }}" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Theme Provider -->
+    <script src="{{ url_for('static', filename='js/theme-provider.js') }}"></script>
+</head>
+<body class="h-full bg-background text-foreground transition-colors duration-300">
+    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <!-- Header -->
+        <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 px-6 py-4 sticky top-0 z-50">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <div class="absolute inset-0 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl blur opacity-75"></div>
+                        <div class="relative h-10 w-10 text-white bg-gradient-to-r from-orange-500 to-pink-500 p-2 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-utensils text-lg"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                            레스토랑 관리 시스템
+                        </h1>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">직원 및 운영 관리 대시보드</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:block text-yellow-400"></i>
+                    </button>
+                    
+                    <!-- User Menu -->
+                    <div class="relative">
+                        <button id="user-menu-button" class="flex items-center space-x-2 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                            <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                {{ user.name[0] if user.name else user.username[0] }}
+                            </div>
+                            <span class="text-sm font-medium">{{ user.name or user.username }}</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        
+                        <!-- Dropdown Menu -->
+                        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                            <div class="py-2">
+                                <a href="{{ url_for('profile') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <i class="fas fa-user mr-2"></i>프로필
+                                </a>
+                                <a href="{{ url_for('notifications') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <i class="fas fa-bell mr-2"></i>알림
+                                    {% if stats.unread_notifications > 0 %}
+                                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">{{ stats.unread_notifications }}</span>
+                                    {% endif %}
+                                </a>
+                                <hr class="my-2 border-gray-200 dark:border-gray-700">
+                                <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-700 min-h-screen">
+                <nav class="p-4 space-y-2">
+                    <button id="tab-dashboard" class="tab-button active w-full justify-start" data-tab="dashboard">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        대시보드
+                    </button>
+                    <button id="tab-schedule" class="tab-button w-full justify-start" data-tab="schedule">
+                        <i class="fas fa-calendar-days mr-2"></i>
+                        스케줄 관리
+                    </button>
+                    <button id="tab-staff" class="tab-button w-full justify-start" data-tab="staff">
+                        <i class="fas fa-users mr-2"></i>
+                        직원 관리
+                    </button>
+                    <button id="tab-attendance" class="tab-button w-full justify-start" data-tab="attendance">
+                        <i class="fas fa-clock mr-2"></i>
+                        출석 관리
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 p-6">
+                <!-- Dashboard Tab -->
+                <div id="content-dashboard" class="tab-content active">
+                    <div class="space-y-6">
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {% if user.role == 'admin' %}
+                                <!-- 관리자용 통계 -->
+                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">오늘 출근 직원</h3>
+                                        <div class="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
+                                            <i class="fas fa-user-check h-4 w-4 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="card-content relative z-10">
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.today_attendance }}</div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">전체 {{ stats.total_users }}명 중</p>
+                                        <span class="badge badge-secondary mt-2 text-xs">+2 from yesterday</span>
+                                    </div>
+                                </div>
+
+                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">이번 주 매출</h3>
+                                        <div class="p-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg">
+                                            <i class="fas fa-dollar-sign h-4 w-4 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="card-content relative z-10">
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">₩{{ "{:,}".format(stats.monthly_revenue) }}</div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">+12% from last week</p>
+                                        <span class="badge badge-secondary mt-2 text-xs">↗️ 12%</span>
+                                    </div>
+                                </div>
+
+                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">오늘 예약</h3>
+                                        <div class="p-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 shadow-lg">
+                                            <i class="fas fa-calendar h-4 w-4 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="card-content relative z-10">
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">28</div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">테이블 예약 현황</p>
+                                        <span class="badge badge-secondary mt-2 text-xs">85% 점유율</span>
+                                    </div>
+                                </div>
+
+                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">활성 주문</h3>
+                                        <div class="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 shadow-lg">
+                                            <i class="fas fa-utensils h-4 w-4 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="card-content relative z-10">
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.active_orders }}</div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">현재 처리 중</p>
+                                        <span class="badge badge-secondary mt-2 text-xs">평균 15분 대기</span>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <!-- 일반 사용자용 통계 -->
+                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">오늘 출근</h3>
+                                        <div class="p-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg">
+                                            <i class="fas fa-clock h-4 w-4 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="card-content relative z-10">
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">
+                                            {% if stats.today_attendance %}
+                                                <i class="fas fa-check text-green-500"></i>
+                                            {% else %}
+                                                <i class="fas fa-times text-red-500"></i>
+                                            {% endif %}
+                                        </div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            {% if stats.today_attendance %}출근 완료{% else %}미출근{% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">이번 달 출근</h3>
+                                        <div class="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
+                                            <i class="fas fa-calendar h-4 w-4 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="card-content relative z-10">
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.monthly_attendance }}</div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">이번 달 출근일</p>
+                                    </div>
+                                </div>
+
+                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">미읽 알림</h3>
+                                        <div class="p-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 shadow-lg">
+                                            <i class="fas fa-bell h-4 w-4 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="card-content relative z-10">
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.unread_notifications }}</div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">새로운 알림</p>
+                                    </div>
+                                </div>
+
+                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">내 정보</h3>
+                                        <div class="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 shadow-lg">
+                                            <i class="fas fa-user h-4 w-4 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="card-content relative z-10">
+                                        <div class="text-lg font-bold text-gray-900 dark:text-white">{{ stats.user_name }}</div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ user.role }}</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Recent Activity & Today's Schedule -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">최근 활동</h3>
+                                    <p class="card-description">오늘의 주요 활동 내역</p>
+                                </div>
+                                <div class="card-content space-y-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">김서버님이 출근했습니다</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">09:00 AM</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">새로운 예약이 등록되었습니다</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">08:45 AM</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">주방 직원 교대 시간입니다</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">08:30 AM</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">오늘의 스케줄</h3>
+                                    <p class="card-description">현재 근무 중인 직원</p>
+                                </div>
+                                <div class="card-content space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
+                                                김서
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">김서버</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">서빙</p>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-outline text-green-600 border-green-600">근무중</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">
+                                                박셰
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">박셰프</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">주방</p>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-outline text-green-600 border-green-600">근무중</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
+                                                이매
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">이매니저</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">관리</p>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-outline text-orange-600 border-orange-600">휴게시간</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Tab -->
+                <div id="content-schedule" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">스케줄 관리</h2>
+                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 스케줄을 관리하고 조정하세요</p>
+                            </div>
+                            <a href="{{ url_for('schedule') }}" class="btn btn-primary">
+                                <i class="fas fa-plus mr-2"></i>
+                                새 스케줄 추가
+                            </a>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">이번 주 스케줄</h3>
+                                <p class="card-description">2024년 1월 15일 - 21일</p>
+                            </div>
+                            <div class="card-content">
+                                <div class="overflow-x-auto">
+                                    <table class="table w-full">
+                                        <thead>
+                                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">직원</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">월</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">화</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">수</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">목</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">금</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">토</th>
+                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">일</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="border-b border-gray-100 dark:border-gray-800">
+                                                <td class="py-3 px-4">
+                                                    <div class="flex items-center space-x-3">
+                                                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
+                                                            김서
+                                                        </div>
+                                                        <div>
+                                                            <p class="font-medium text-gray-900 dark:text-white">김서버</p>
+                                                            <p class="text-sm text-gray-500 dark:text-gray-400">서빙</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">09:00-17:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="badge badge-outline">10:00-18:00</span>
+                                                </td>
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="text-gray-400">휴무</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Staff Tab -->
+                <div id="content-staff" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">직원 관리</h2>
+                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 정보를 관리하고 권한을 설정하세요</p>
+                            </div>
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-primary">
+                                <i class="fas fa-plus mr-2"></i>
+                                새 직원 추가
+                            </a>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">직원 목록</h3>
+                                <p class="card-description">전체 {{ stats.total_users }}명의 직원</p>
+                            </div>
+                            <div class="card-content">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                                                김서
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">김서버</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">서빙</p>
+                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white">
+                                                박셰
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">박셰프</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">주방</p>
+                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white">
+                                                이매
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">이매니저</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">관리</p>
+                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Tab -->
+                <div id="content-attendance" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">출석 관리</h2>
+                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 출퇴근 현황을 확인하고 관리하세요</p>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <a href="{{ url_for('attendance_tracker') }}" class="btn btn-primary">
+                                    <i class="fas fa-calendar mr-2"></i>
+                                    출석 보고서
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Summary Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">예정 인원</p>
+                                        <p class="text-2xl font-bold text-gray-900 dark:text-white">5명</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">출근</p>
+                                        <p class="text-2xl font-bold text-green-600">4명</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">지각</p>
+                                        <p class="text-2xl font-bold text-yellow-600">1명</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">결근</p>
+                                        <p class="text-2xl font-bold text-red-600">0명</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">총 근무시간</p>
+                                        <p class="text-2xl font-bold text-blue-600">32.5h</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-content p-4">
+                                    <div class="text-center">
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">초과근무</p>
+                                        <p class="text-2xl font-bold text-orange-600">2.5h</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">빠른 작업</h3>
+                                <p class="card-description">자주 사용하는 기능에 빠르게 접근하세요</p>
+                            </div>
+                            <div class="card-content">
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <a href="{{ url_for('m_attendance') }}" class="flex flex-col items-center p-4 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105">
+                                        <i class="fas fa-clock text-2xl mb-2"></i>
+                                        <span class="text-sm font-medium">출결 관리</span>
+                                    </a>
+                                    
+                                    <a href="{{ url_for('m_notifications') }}" class="flex flex-col items-center p-4 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105">
+                                        <i class="fas fa-bell text-2xl mb-2"></i>
+                                        <span class="text-sm font-medium">알림센터</span>
+                                    </a>
+                                    
+                                    <a href="{{ url_for('m_stats') }}" class="flex flex-col items-center p-4 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 transition-all duration-300 transform hover:scale-105">
+                                        <i class="fas fa-chart-bar text-2xl mb-2"></i>
+                                        <span class="text-sm font-medium">통계</span>
+                                    </a>
+                                    
+                                    <a href="{{ url_for('m_profile') }}" class="flex flex-col items-center p-4 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105">
+                                        <i class="fas fa-user text-2xl mb-2"></i>
+                                        <span class="text-sm font-medium">프로필</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Theme Toggle Script -->
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    
+    <!-- User Menu Script -->
+    <script>
+        // User dropdown toggle
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userDropdown = document.getElementById('user-dropdown');
+        
+        userMenuButton.addEventListener('click', () => {
+            userDropdown.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!userMenuButton.contains(e.target) && !userDropdown.contains(e.target)) {
+                userDropdown.classList.add('hidden');
+            }
+        });
+        
+        // Tab switching functionality
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.getAttribute('data-tab');
+                
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.add('hidden'));
+                
+                // Add active class to clicked button and show corresponding content
+                button.classList.add('active');
+                document.getElementById(`content-${targetTab}`).classList.remove('hidden');
+            });
+        });
+
+        // Tab button styles
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => {
+                button.classList.add('btn', 'btn-ghost', 'w-full', 'justify-start');
+            });
+        });
+    </script>
+</body>
+</html> 
