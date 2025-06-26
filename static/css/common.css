@@ -1,3 +1,367 @@
+/* Tailwind CSS Design System */
+@import url('tailwind.css');
+
+/* Restaurant Management System Custom Styles */
+:root {
+  --restaurant-primary: #667eea;
+  --restaurant-secondary: #764ba2;
+  --restaurant-success: #48bb78;
+  --restaurant-warning: #ed8936;
+  --restaurant-danger: #f56565;
+  --restaurant-info: #4299e1;
+  --restaurant-light: #f7fafc;
+  --restaurant-dark: #2d3748;
+}
+
+/* Base Styles */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+}
+
+/* Card Components */
+.card {
+  @apply bg-card text-card-foreground rounded-lg border shadow-sm;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  @apply shadow-md;
+}
+
+.card-header {
+  @apply flex flex-col space-y-1.5 p-6;
+}
+
+.card-title {
+  @apply text-2xl font-semibold leading-none tracking-tight;
+}
+
+.card-description {
+  @apply text-sm text-muted-foreground;
+}
+
+.card-content {
+  @apply p-6 pt-0;
+}
+
+.card-footer {
+  @apply flex items-center p-6 pt-0;
+}
+
+/* Button Components */
+.btn {
+  @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background;
+  padding: 0.5rem 1rem;
+  min-height: 2.5rem;
+}
+
+.btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+}
+
+.btn-destructive {
+  @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
+}
+
+.btn-outline {
+  @apply border border-input hover:bg-accent hover:text-accent-foreground;
+}
+
+.btn-ghost {
+  @apply hover:bg-accent hover:text-accent-foreground;
+}
+
+.btn-sm {
+  @apply h-9 px-3 rounded-md;
+}
+
+.btn-lg {
+  @apply h-11 px-8 rounded-md;
+}
+
+/* Form Components */
+.input {
+  @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.textarea {
+  @apply flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.select {
+  @apply flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+/* Navigation */
+.nav {
+  @apply flex items-center space-x-4 lg:space-x-6;
+}
+
+.nav-link {
+  @apply text-sm font-medium transition-colors hover:text-primary;
+}
+
+.nav-link.active {
+  @apply text-primary;
+}
+
+/* Mobile Navigation */
+.mobile-nav {
+  @apply fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4;
+  z-index: 1000;
+}
+
+.mobile-nav-item {
+  @apply flex flex-col items-center space-y-1 text-xs;
+}
+
+.mobile-nav-link {
+  @apply p-2 rounded-lg transition-colors hover:bg-accent;
+}
+
+.mobile-nav-link.active {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* Dashboard Components */
+.stats-card {
+  @apply card p-6;
+}
+
+.stats-number {
+  @apply text-3xl font-bold text-primary;
+}
+
+.stats-label {
+  @apply text-sm text-muted-foreground mt-1;
+}
+
+.stats-change {
+  @apply text-xs flex items-center mt-2;
+}
+
+.stats-change.positive {
+  @apply text-green-600;
+}
+
+.stats-change.negative {
+  @apply text-red-600;
+}
+
+/* Table Styles */
+.table {
+  @apply w-full caption-bottom text-sm;
+}
+
+.table-header {
+  @apply [&_tr]:border-b;
+}
+
+.table-body {
+  @apply [&_tr:last-child]:border-0;
+}
+
+.table-row {
+  @apply border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted;
+}
+
+.table-head {
+  @apply h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0;
+}
+
+.table-cell {
+  @apply p-4 align-middle [&:has([role=checkbox])]:pr-0;
+}
+
+/* Alert Components */
+.alert {
+  @apply relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground;
+}
+
+.alert-info {
+  @apply bg-blue-50 border-blue-200 text-blue-800;
+}
+
+.alert-success {
+  @apply bg-green-50 border-green-200 text-green-800;
+}
+
+.alert-warning {
+  @apply bg-yellow-50 border-yellow-200 text-yellow-800;
+}
+
+.alert-error {
+  @apply bg-red-50 border-red-200 text-red-800;
+}
+
+/* Badge Components */
+.badge {
+  @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.badge-default {
+  @apply border-transparent bg-primary text-primary-foreground hover:bg-primary/80;
+}
+
+.badge-secondary {
+  @apply border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80;
+}
+
+.badge-destructive {
+  @apply border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80;
+}
+
+.badge-outline {
+  @apply text-foreground;
+}
+
+/* Loading States */
+.loading {
+  @apply animate-pulse bg-muted;
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Dark Mode Enhancements */
+.dark .card {
+  @apply border-border/50;
+}
+
+.dark .input {
+  @apply border-border/50;
+}
+
+.dark .table-row:hover {
+  @apply bg-muted/30;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .card {
+    @apply rounded-none border-x-0;
+  }
+  
+  .table {
+    @apply text-xs;
+  }
+  
+  .table-cell {
+    @apply p-2;
+  }
+  
+  .stats-number {
+    @apply text-2xl;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .card {
+    @apply shadow-none border;
+  }
+  
+  .table {
+    @apply border-collapse;
+  }
+  
+  .table-cell {
+    @apply border border-border;
+  }
+}
+
+/* Accessibility */
+.sr-only {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+}
+
+/* Focus Styles */
+.focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+/* Custom Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Restaurant Specific Styles */
+.restaurant-header {
+  @apply bg-gradient-to-r from-primary to-secondary text-white;
+}
+
+.restaurant-logo {
+  @apply text-2xl font-bold;
+}
+
+.restaurant-nav {
+  @apply bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60;
+}
+
+.restaurant-footer {
+  @apply bg-muted/50 border-t;
+}
+
+/* Status Indicators */
+.status-online {
+  @apply w-2 h-2 bg-green-500 rounded-full;
+}
+
+.status-offline {
+  @apply w-2 h-2 bg-gray-400 rounded-full;
+}
+
+.status-busy {
+  @apply w-2 h-2 bg-red-500 rounded-full;
+}
+
+/* Chart Colors */
+.chart-color-1 { background-color: hsl(var(--chart-1)); }
+.chart-color-2 { background-color: hsl(var(--chart-2)); }
+.chart-color-3 { background-color: hsl(var(--chart-3)); }
+.chart-color-4 { background-color: hsl(var(--chart-4)); }
+.chart-color-5 { background-color: hsl(var(--chart-5)); }
+
 /* 공통 메뉴 스타일 */
 .menu-bar {
   display: flex;

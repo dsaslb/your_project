@@ -1,22 +1,49 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file, make_response
 from flask_login import UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, time
 from dateutil import parser as date_parser
 import os
 import click
 from collections import defaultdict
+import io
+import pandas as pd
+import pdfkit
+from sqlalchemy import func, case, extract, and_
+from calendar import monthrange
+import base64
+import json
 
-from config import config_by_name
+from config import config_by_name, COOKIE_SECURE
 from extensions import db, migrate, login_manager, csrf, limiter, cache
-from models import User, Schedule, CleaningPlan, Report, Notification, Notice, Order
+from models import User, Schedule, CleaningPlan, Report, Notification, Notice, Order, Attendance, AttendanceEvaluation, AttendanceReport, ReasonTemplate, ShiftRequest, ReasonEditLog, PermissionChangeLog, UserPermission, PermissionTemplate, Team
 
 # Import notification functions
 from utils.notify import (
     send_notification_enhanced, 
     send_admin_only_notification,
-    send_notification_to_role
+    send_notification_to_role,
+    send_kakao,
+    send_email
 )
+
+# Import new utility functions
+from utils.report import generate_attendance_report_pdf
+from utils.pay_transfer import transfer_salary
+
+# Import security functions
+from utils.security import (
+    password_strong, log_security_event, check_account_lockout,
+    handle_failed_login, reset_login_attempts, sanitize_input,
+    validate_email, validate_phone, get_client_ip, is_suspicious_request,
+    admin_required
+)
+
+# Import file utility functions
+from utils.file_utils import cleanup_old_backups, compress_backup_files, send_backup_notification
+
+# Import logging functions
+from utils.logger import log_action, log_error
 
 # Import API Blueprints
 from api.auth import api_auth_bp, auth_bp
@@ -31,6 +58,27 @@ from api.comment_report import comment_report_bp
 # Import Route Blueprints
 from routes.payroll import payroll_bp
 from routes.notifications import notifications_bp
+
+# AttendanceDispute 모델 정의
+class AttendanceDispute(db.Model):
+    """근태 신고/이의제기 모델"""
+    __tablename__ = 'attendance_disputes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    attendance_id = db.Column(db.Integer, db.ForeignKey('attendances.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    dispute_type = db.Column(db.String(20), nullable=False)  # 'report', 'dispute'
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'processing', 'resolved', 'rejected'
+    admin_reply = db.Column(db.Text)
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    attendance = db.relationship('Attendance', backref='disputes')
+    user = db.relationship('User', foreign_keys=[user_id], backref='disputes')
+    admin = db.relationship('User', foreign_keys=[admin_id], backref='admin_disputes')
 
 config_name = os.getenv('FLASK_ENV', 'default')
 
@@ -80,9 +128,17 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # --- Error Handlers ---
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template('errors/403.html'), 403
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('errors/404.html'), 404
+
+@app.errorhandler(413)
+def request_entity_too_large(e):
+    return render_template('errors/413.html'), 413
 
 @app.errorhandler(500)
 def server_error(e):
@@ -634,6 +690,14 @@ def stat_report():
     ).group_by(CleaningPlan.manager_id).all()
     users = {u.id:u.username for u in User.query.all()}
     return render_template('stat_report.html', workdays=workdays, orders=orders, cleans=cleans, users=users)
+
+# 대시보드에 미처리 신고/이의제기 건수 표시
+def get_pending_disputes_count():
+    """미처리 신고/이의제기 건수 조회"""
+    try:
+        return AttendanceDispute.query.filter_by(status='pending').count()
+    except:
+        return 0
 
 if __name__ == '__main__':
     app.run(debug=True) 
