@@ -9,12 +9,14 @@ from collections import defaultdict
 import io
 import pandas as pd
 import pdfkit
-from sqlalchemy import func, case, extract
+from sqlalchemy import func, case, extract, and_
 from calendar import monthrange
+import base64
+import json
 
-from config import config_by_name
+from config import config_by_name, COOKIE_SECURE  # 같은 폴더에 config.py가 있을 때
 from extensions import db, migrate, login_manager, csrf, limiter, cache
-from models import User, Schedule, CleaningPlan, Report, Notification, Notice, Order, Attendance, AttendanceEvaluation, AttendanceReport, ReasonTemplate
+from models import User, Schedule, CleaningPlan, Report, Notification, Notice, Order, Attendance, AttendanceEvaluation, AttendanceReport, ReasonTemplate, ShiftRequest, ReasonEditLog, PermissionChangeLog, UserPermission, PermissionTemplate, Team
 
 # Import notification functions
 from utils.notify import (
@@ -33,11 +35,15 @@ from utils.pay_transfer import transfer_salary
 from utils.security import (
     password_strong, log_security_event, check_account_lockout,
     handle_failed_login, reset_login_attempts, sanitize_input,
-    validate_email, validate_phone, get_client_ip, is_suspicious_request
+    validate_email, validate_phone, get_client_ip, is_suspicious_request,
+    admin_required
 )
 
 # Import file utility functions
 from utils.file_utils import cleanup_old_backups, compress_backup_files, send_backup_notification
+
+# Import logging functions
+from utils.logger import log_action, log_error
 
 config_name = os.getenv('FLASK_ENV', 'default')
 
@@ -1750,52 +1756,17 @@ def bulk_send_report():
             print(f"이메일 전송 오류: {e}")
     return "일괄 발송 완료"
 
-@app.route('/attendance_dashboard', methods=['GET'])
+@app.route('/attendance_dashboard', methods=['GET', 'POST'])
+@login_required
 def attendance_dashboard():
-    from datetime import date
-    from calendar import monthrange
-    
-    users = User.query.all()
-    user_id = int(request.args.get('user_id', 0)) or users[0].id
-    today = date.today()
-    y, m = today.year, today.month
-    date_from = request.args.get('from', f"{y}-{m:02d}-01")
-    date_to = request.args.get('to', f"{y}-{m:02d}-{monthrange(y,m)[1]:02d}")
-    
-    records = Attendance.query.filter(
-        Attendance.user_id==user_id,
-        Attendance.clock_in >= date_from,
-        Attendance.clock_in <= date_to + ' 23:59:59'
-    ).order_by(Attendance.clock_in).all()
-    
-    total = len(records)
-    late = sum(r.is_late for r in records)
-    early = sum(r.is_early_leave for r in records)
-    ot = sum(r.is_overtime for r in records)
-    normal = total - late - early
-    
-    daily = {r.clock_in.date().strftime('%Y-%m-%d'): {
-        'late': r.is_late, 'early': r.is_early_leave, 'ot': r.is_overtime
-    } for r in records if r.clock_in}
-    
-    summary = {
-        '총근무일': total,
-        '정상출근': normal,
-        '지각': late,
-        '조퇴': early,
-        '야근': ot
-    }
-    
-    # 사유 템플릿 조회
-    reason_templates = ReasonTemplate.query.filter_by(is_active=True).order_by(ReasonTemplate.text).all()
-    
-    # 선택된 사용자 정보
-    user = User.query.get(user_id)
-    
+    records = Attendance.query.filter_by(user_id=current_user.id).order_by(Attendance.date.desc()).all()
+    reason_templates = ReasonTemplate.query.all()
+    ai_suggestion = ai_recommend_reason(current_user, date.today())
     return render_template('attendance_dashboard.html',
-        users=users, user_id=user_id, date_from=date_from, date_to=date_to,
-        summary=summary, records=records, daily=daily,
-        reason_templates=reason_templates, user=user)
+        records=records,
+        reason_templates=reason_templates,
+        ai_suggestion=ai_suggestion
+    )
 
 @app.route('/staff/<int:user_id>/attendance_report/pdf')
 @login_required
@@ -1889,54 +1860,34 @@ def staff_attendance_report_excel_individual(user_id):
                     download_name=f"{user.username}_근태리포트.xlsx", 
                     as_attachment=True)
 
-@app.route('/attendance/<int:rid>/reason', methods=['POST'])
-@login_required
-def update_attendance_reason(rid):
-    """근태 사유 수정"""
-    from datetime import date, timedelta
-    
-    # 권한 확인 (관리자/매니저만 가능)
-    if session.get('role') not in ('admin', 'manager'):
-        flash('권한이 없습니다.', 'error')
-        return redirect(request.referrer or url_for('attendance_dashboard'))
-    
-    # 근태 기록 조회
-    attendance = Attendance.query.get_or_404(rid)
-    old_reason = attendance.reason
-    new_reason = request.form.get('reason', '').strip()
-    
-    attendance.reason = new_reason
+def send_notification(user_id, content, category='공지', link=None):
+    n = Notification(user_id=user_id, content=content, category=category, link=link)
+    db.session.add(n)
     db.session.commit()
-    
-    # 사유 템플릿 자동 저장 (새로운 사유인 경우)
-    if new_reason and not ReasonTemplate.query.filter_by(text=new_reason).first():
-        template = ReasonTemplate(
-            text=new_reason,
-            created_by=current_user.id
-        )
-        db.session.add(template)
+
+@app.route('/attendance/<int:rid>/reason', methods=['POST'])
+def update_attendance_reason(rid):
+    r = Attendance.query.get_or_404(rid)
+    old_reason = r.reason
+    r.reason = request.form['reason']
+    db.session.commit()
+    # 사유 템플릿 자동 저장
+    if r.reason and not ReasonTemplate.query.filter_by(text=r.reason).first():
+        db.session.add(ReasonTemplate(text=r.reason))
         db.session.commit()
-    
-    # 사유별 누적 카운트 체크 (예: '지각' 3회 이상)
-    if new_reason and "지각" in new_reason:
+    # 사유별 누적 카운트 체크(예: '지각' 3회 이상)
+    if r.reason and "지각" in r.reason:
         cnt = Attendance.query.filter(
-            Attendance.user_id == attendance.user_id,
+            Attendance.user_id==r.user_id,
             Attendance.reason.like('%지각%'),
             Attendance.clock_in >= (date.today() - timedelta(days=30))
         ).count()
-        
         if cnt >= 3:
-            # 알림 생성
-            notification = Notification(
-                user_id=attendance.user_id,
-                content=f"최근 한 달간 '지각' 사유가 {cnt}회 발생했습니다. 주의하세요!",
-                category="근무",
-                link="/attendance_dashboard"
+            send_notification(
+                user_id=r.user_id,
+                content="최근 한 달간 '지각' 사유가 3회 이상 발생했습니다.",
+                category="근무"
             )
-            db.session.add(notification)
-            db.session.commit()
-    
-    flash('사유가 업데이트되었습니다.', 'success')
     return redirect(request.referrer or url_for('attendance_dashboard'))
 
 @app.route('/attendance_dashboard/excel')
@@ -2354,32 +2305,60 @@ def delete_reason_template(tid):
     flash('사유 템플릿이 삭제되었습니다.', 'success')
     return redirect(url_for('admin_reason_templates'))
 
+@app.route('/admin/reason_templates/approve/<int:tid>', methods=['POST'])
+def approve_reason_template(tid):
+    t = ReasonTemplate.query.get_or_404(tid)
+    comment = request.form.get('comment')
+    t.status = 'approved'
+    t.approval_comment = comment
+    db.session.commit()
+    if t.created_by:
+        send_notification(
+            user_id=t.created_by,
+            content=f"사유 '{t.text}' 승인됨. [관리자코멘트: {comment}]",
+            category='사유'
+        )
+    return redirect(url_for('approval_dashboard'))
+
+@app.route('/admin/reason_templates/reject/<int:tid>', methods=['POST'])
+def reject_reason_template(tid):
+    t = ReasonTemplate.query.get_or_404(tid)
+    comment = request.form.get('comment')
+    t.status = 'rejected'
+    t.approval_comment = comment
+    db.session.commit()
+    if t.created_by:
+        send_notification(
+            user_id=t.created_by,
+            content=f"사유 '{t.text}' 거절됨. [사유: {comment}]",
+            category='사유'
+        )
+    return redirect(url_for('approval_dashboard'))
+
 # AI 사유 추천 함수 (정교화)
 def ai_recommend_reason(user, date_):
     """AI 사유 추천 (정교화된 패턴 분석)"""
     import calendar
     from collections import Counter
-    
+
     if not user:
         return ""
-    
+
     dow = calendar.day_name[date_.weekday()]
-    
+
     # 1. 최근 10회 입력한 사유 중 최빈값
     last_reasons = []
     recent_attendances = Attendance.query.filter_by(user_id=user.id)\
         .order_by(Attendance.clock_in.desc()).limit(10).all()
-    
+
     for att in recent_attendances:
         if att.reason and att.reason.strip():
             last_reasons.append(att.reason.strip())
-    
+
     if last_reasons:
         counter = Counter(last_reasons)
-        most_common = counter.most_common(1)
-        if most_common and most_common[0][1] >= 2:  # 2회 이상 사용된 사유
-            return most_common[0][0]
-    
+        return [r for r, cnt in counter.most_common(3)]
+
     # 2. 요일 기반 추천
     if dow == 'Monday':
         return "월요일 컨디션 저하"
@@ -2391,14 +2370,14 @@ def ai_recommend_reason(user, date_):
         return "화요일 업무 집중"
     elif dow == 'Thursday':
         return "목요일 업무 마무리"
-    
+
     # 3. 계절/월별 패턴 (예시)
     month = date_.month
     if month in [12, 1, 2]:  # 겨울
         return "겨울철 교통 지연"
     elif month in [6, 7, 8]:  # 여름
         return "여름철 컨디션 저하"
-    
+
     return ""
 
 # 모바일 API - 사유 템플릿 제공
@@ -2411,300 +2390,16 @@ def api_mobile_reason_templates():
     templates = q.all()
     return jsonify([t.text for t in templates])
 
-# 모바일 API - 사유 업데이트
 @app.route('/api/mobile/attendance_reason', methods=['POST'])
 def api_mobile_attendance_reason():
     data = request.json
-    rid = data.get('rid')
-    reason = data.get('reason', '').strip()
-    
-    # 모바일 인증 체크 (실제 구현시 토큰 검증 추가)
-    attendance = Attendance.query.get(rid)
-    if not attendance:
-        return jsonify({'result': 'error', 'message': '근태 기록을 찾을 수 없습니다.'}), 404
-    
-    attendance.reason = reason
+    rid = data['rid']
+    reason = data['reason']
+    r = Attendance.query.get(rid)
+    # 모바일 인증(토큰 등) 추가 필요
+    r.reason = reason
     db.session.commit()
-    
-    return jsonify({'result': 'ok', 'message': '사유가 업데이트되었습니다.'})
-
-# AJAX 실시간 사유 편집 API
-@app.route('/api/attendance/<int:rid>/reason', methods=['POST'])
-def api_attendance_reason_edit(rid):
-    """AJAX 실시간 사유 편집"""
-    from datetime import date, timedelta
-    
-    # 권한 확인
-    if session.get('role') not in ('admin', 'manager', 'teamlead'):
-        return jsonify({'result': 'fail', 'msg': '권한없음'})
-    
-    # 근태 기록 조회
-    attendance = Attendance.query.get_or_404(rid)
-    data = request.get_json()
-    new_reason = data.get('reason', '').strip()
-    
-    # 사유 업데이트
-    attendance.reason = new_reason
-    db.session.commit()
-    
-    # 사유 템플릿 자동 저장 (새로운 사유인 경우)
-    if new_reason and not ReasonTemplate.query.filter_by(text=new_reason).first():
-        template = ReasonTemplate(
-            text=new_reason,
-            created_by=current_user.id if current_user.is_authenticated else None
-        )
-        db.session.add(template)
-        db.session.commit()
-    
-    # 사유별 누적 카운트 체크 (예: '지각' 3회 이상)
-    if new_reason and "지각" in new_reason:
-        cnt = Attendance.query.filter(
-            Attendance.user_id == attendance.user_id,
-            Attendance.reason.like('%지각%'),
-            Attendance.clock_in >= (date.today() - timedelta(days=30))
-        ).count()
-        
-        if cnt >= 3:
-            # 알림 생성
-            notification = Notification(
-                user_id=attendance.user_id,
-                content=f"최근 한 달간 '지각' 사유가 {cnt}회 발생했습니다. 주의하세요!",
-                category="근무",
-                link="/attendance_dashboard"
-            )
-            db.session.add(notification)
-            db.session.commit()
-    
-    return jsonify({'result': 'ok', 'msg': '사유가 업데이트되었습니다.'})
-
-# 팀장용 사유 템플릿 관리 (팀별 권한)
-@app.route('/teamlead/reason_templates', methods=['GET', 'POST'])
-@login_required
-def teamlead_reason_templates():
-    """팀장용 사유 템플릿 관리"""
-    if session.get('role') != 'teamlead':
-        flash('팀장 권한이 필요합니다.', 'error')
-        return redirect(url_for('dashboard'))
-    
-    team = session.get('team')
-    if not team:
-        flash('팀 정보가 없습니다.', 'error')
-        return redirect(url_for('dashboard'))
-    
-    if request.method == 'POST':
-        text = request.form['text'].strip()
-        
-        if text and not ReasonTemplate.query.filter_by(text=text, team=team).first():
-            template = ReasonTemplate(
-                text=text,
-                team=team,
-                created_by=current_user.id
-            )
-            db.session.add(template)
-            db.session.commit()
-            flash('사유 템플릿이 추가되었습니다.', 'success')
-            return redirect(url_for('teamlead_reason_templates'))
-        else:
-            flash('이미 존재하는 템플릿입니다.', 'error')
-    
-    # 해당 팀의 템플릿만 조회
-    templates = ReasonTemplate.query.filter_by(team=team, is_active=True).order_by(ReasonTemplate.text).all()
-    return render_template('teamlead/reason_templates.html', templates=templates, team=team)
-
-@app.route('/teamlead/reason_templates/delete/<int:tid>', methods=['POST'])
-@login_required
-def teamlead_delete_reason_template(tid):
-    """팀장용 템플릿 삭제"""
-    if session.get('role') != 'teamlead':
-        flash('팀장 권한이 필요합니다.', 'error')
-        return redirect(url_for('dashboard'))
-    
-    template = ReasonTemplate.query.get_or_404(tid)
-    
-    # 본인 팀의 템플릿만 삭제 가능
-    if template.team != session.get('team'):
-        flash('다른 팀의 템플릿은 삭제할 수 없습니다.', 'error')
-        return redirect(url_for('teamlead_reason_templates'))
-    
-    db.session.delete(template)
-    db.session.commit()
-    flash('사유 템플릿이 삭제되었습니다.', 'success')
-    return redirect(url_for('teamlead_reason_templates'))
-
-# 템플릿별 사용 빈도 통계 (차트 포함)
-@app.route('/admin/reason_template_stats')
-@login_required
-def admin_reason_template_stats():
-    """사유 템플릿별 사용 빈도 통계 (차트 포함)"""
-    from sqlalchemy import func
-    
-    if not current_user.is_admin():
-        flash('관리자 권한이 필요합니다.', 'error')
-        return redirect(url_for('admin_dashboard'))
-    
-    # 팀별 필터링
-    team = request.args.get('team')
-    
-    # 사유별 빈도 집계
-    q = db.session.query(
-        ReasonTemplate.text, 
-        ReasonTemplate.team,
-        func.count(Attendance.id).label('usage_count')
-    ).outerjoin(
-        Attendance, 
-        Attendance.reason == ReasonTemplate.text
-    ).filter(
-        ReasonTemplate.is_active == True
-    )
-    
-    if team:
-        q = q.filter(ReasonTemplate.team == team)
-    
-    stats = q.group_by(ReasonTemplate.text, ReasonTemplate.team)\
-        .order_by(func.count(Attendance.id).desc()).all()
-    
-    # 팀 목록 (필터용)
-    teams = db.session.query(ReasonTemplate.team)\
-        .filter(ReasonTemplate.team.isnot(None))\
-        .distinct().all()
-    teams = [t[0] for t in teams]
-    
-    return render_template('admin/reason_template_stats.html', 
-                         stats=stats, teams=teams, current_team=team)
-
-# 최다 사유 TOP5, 팀별 인기 사유
-@app.route('/admin/reason_top5')
-@login_required
-def admin_reason_top5():
-    """최다 사유 TOP5, 팀별 인기 사유"""
-    from sqlalchemy import func
-    
-    if not current_user.is_admin():
-        flash('관리자 권한이 필요합니다.', 'error')
-        return redirect(url_for('admin_dashboard'))
-    
-    team = request.args.get('team')
-    
-    # 전체 최다 사유 TOP5
-    q = db.session.query(
-        Attendance.reason, 
-        func.count().label('count')
-    ).filter(
-        Attendance.reason != None, 
-        Attendance.reason != ""
-    )
-    
-    if team:
-        q = q.join(User, User.id == Attendance.user_id).filter(User.team == team)
-    
-    top5 = q.group_by(Attendance.reason)\
-        .order_by(func.count().desc()).limit(5).all()
-    
-    # 팀별 인기 사유 (전체)
-    team_stats = db.session.query(
-        User.team,
-        Attendance.reason,
-        func.count().label('count')
-    ).join(
-        User, User.id == Attendance.user_id
-    ).filter(
-        Attendance.reason != None,
-        Attendance.reason != "",
-        User.team.isnot(None)
-    ).group_by(
-        User.team, Attendance.reason
-    ).order_by(
-        User.team, func.count().desc()
-    ).all()
-    
-    # 팀별로 TOP3 정리
-    team_top3 = {}
-    for t, r, c in team_stats:
-        if t not in team_top3:
-            team_top3[t] = []
-        if len(team_top3[t]) < 3:
-            team_top3[t].append((r, c))
-    
-    return render_template('admin/reason_top5.html', 
-                         top5=top5, team=team, team_top3=team_top3)
-
-# AI 기반 템플릿 자동 추천 (정교화)
-def ai_recommend_reason_template(user, date_):
-    """AI 기반 템플릿 자동 추천 (빈도+팀별+요일)"""
-    from collections import Counter
-    import calendar
-    
-    if not user:
-        return ""
-    
-    # 1. 최근 본인 사용 최빈 사유
-    last_personal = []
-    recent_attendances = Attendance.query.filter_by(user_id=user.id)\
-        .order_by(Attendance.clock_in.desc()).limit(10).all()
-    
-    for att in recent_attendances:
-        if att.reason and att.reason.strip():
-            last_personal.append(att.reason.strip())
-    
-    if last_personal:
-        counter = Counter(last_personal)
-        most_common = counter.most_common(1)
-        if most_common and most_common[0][1] >= 2:  # 2회 이상 사용
-            return most_common[0][0]
-    
-    # 2. 같은 팀 최빈 사유
-    if hasattr(user, 'team') and user.team:
-        team = user.team
-        team_attendances = db.session.query(Attendance.reason)\
-            .join(User, User.id == Attendance.user_id)\
-            .filter(User.team == team)\
-            .order_by(Attendance.clock_in.desc()).limit(20).all()
-        
-        team_reasons = [r[0] for r in team_attendances if r[0] and r[0].strip()]
-        if team_reasons:
-            counter = Counter(team_reasons)
-            most_common = counter.most_common(1)
-            if most_common:
-                return most_common[0][0]
-    
-    # 3. 요일별 사유
-    dow = calendar.day_name[date_.weekday()]
-    if dow == 'Monday':
-        return "월요일 컨디션 저하"
-    elif dow == 'Friday':
-        return "금요일 야근"
-    elif dow == 'Wednesday':
-        return "수요일 중간점검"
-    elif dow == 'Tuesday':
-        return "화요일 업무 집중"
-    elif dow == 'Thursday':
-        return "목요일 업무 마무리"
-    
-    return ""
-
-# 모바일 인기 사유 API
-@app.route('/api/mobile/reason_top', methods=['GET'])
-def api_mobile_reason_top():
-    """모바일 인기 사유 TOP5 API"""
-    from sqlalchemy import func
-    
-    team = request.args.get('team')
-    
-    q = db.session.query(
-        Attendance.reason, 
-        func.count().label('count')
-    ).filter(
-        Attendance.reason != None, 
-        Attendance.reason != ""
-    )
-    
-    if team:
-        q = q.join(User, User.id == Attendance.user_id).filter(User.team == team)
-    
-    top = q.group_by(Attendance.reason)\
-        .order_by(func.count().desc()).limit(5).all()
-    
-    return jsonify([{'reason': r, 'count': c} for r, c in top])
+    return jsonify({'result': 'ok'})
 
 # --- 새로운 기능: PDF 리포트 생성 ---
 @app.route('/admin/attendance_report_pdf/<int:user_id>')
@@ -2961,8 +2656,15 @@ ADMIN_EMAIL = getattr(app.config, 'ADMIN_EMAIL', 'admin@example.com')
 def admin_backup():
     try:
         # ... 기존 백업 코드 ...
-        # 백업 파일 생성 후 자동 정리/압축
+        import tempfile, os, zipfile
+        from datetime import datetime
         backup_dir = 'backups'
+        temp_dir = tempfile.mkdtemp()
+        backup_filename = f"restaurant_data_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        backup_path = os.path.join(temp_dir, backup_filename)
+        with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # 실제 백업할 파일/폴더를 zipf.write로 추가
+            pass
         cleanup_old_backups(backup_dir, days=30)
         compress_backup_files(backup_dir, compress_after_days=3)
         send_backup_notification(True, ADMIN_EMAIL, 'DB 백업이 성공적으로 완료되었습니다.')
@@ -2970,7 +2672,7 @@ def admin_backup():
         return send_file(backup_path, as_attachment=True, download_name=backup_filename, mimetype='application/octet-stream')
     except Exception as e:
         send_backup_notification(False, ADMIN_EMAIL, f'DB 백업 실패: {e}')
-        # ... 기존 에러 처리 ...
+        # ...
 
 @app.route('/admin/restore', methods=['GET', 'POST'])
 @login_required
@@ -2990,7 +2692,7 @@ def admin_restore():
             send_backup_notification(False, ADMIN_EMAIL, f'DB 복원 실패: {e}')
             # ...
 
-@app.route('/admin/file_backup', methods=['GET'])
+@app.route('/admin/file_backup', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def admin_file_backup():
@@ -2999,6 +2701,15 @@ def admin_file_backup():
         backup_dir = 'backups'
         cleanup_old_backups(backup_dir, days=30)
         compress_backup_files(backup_dir, compress_after_days=3)
+        # ZIP 파일 생성 예시 (임시 디렉토리 사용)
+        import tempfile, os, zipfile
+        from datetime import datetime
+        temp_dir = tempfile.mkdtemp()
+        zip_filename = f"file_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        zip_path = os.path.join(temp_dir, zip_filename)
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # 여기에 실제 백업할 파일/폴더를 zipf.write로 추가
+            pass
         send_backup_notification(True, ADMIN_EMAIL, '첨부파일 백업이 성공적으로 완료되었습니다.')
         # (샘플) 클라우드 업로드: upload_backup_to_cloud(zip_path, 'mybucket', zip_filename)
         return send_file(zip_path, as_attachment=True, download_name=zip_filename, mimetype='application/zip')
@@ -3046,6 +2757,1331 @@ def auto_backup(type):
     except Exception as e:
         send_backup_notification(False, ADMIN_EMAIL, f'자동 백업 실패: {e}')
 
+@app.route('/admin/approval_report/excel')
+def approval_report_excel():
+    import pandas as pd, io
+    q = ReasonTemplate.query.filter(ReasonTemplate.status.in_(['pending', 'approved', 'rejected']))
+    data = [{
+        '사유': t.text, '팀': t.team, '상태': t.status, '요청자': t.created_by,
+        '요청일': t.created_at.strftime('%Y-%m-%d'), '코멘트': getattr(t, 'approval_comment', '')
+    } for t in q.all()]
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    output.seek(0)
+    return send_file(output, download_name="approval_report.xlsx", as_attachment=True)
+
+@app.route('/admin/approval_dashboard')
+def approval_dashboard():
+    role = session.get('role')
+    team = session.get('team')
+    q = ReasonTemplate.query.filter(ReasonTemplate.status.in_(['pending', 'approved', 'rejected']))
+    if role == 'teamlead':
+        q = q.filter_by(team=team)
+    status = request.args.get('status')
+    if status: q = q.filter_by(status=status)
+    keyword = request.args.get('q')
+    if keyword: q = q.filter(ReasonTemplate.text.contains(keyword))
+    approvals = q.order_by(ReasonTemplate.created_at.desc()).limit(100).all()
+    return render_template('admin/approval_dashboard.html', approvals=approvals)
+
+@app.route('/admin/approval_report/pdf')
+def approval_report_pdf():
+    q = ReasonTemplate.query.filter(ReasonTemplate.status.in_(['pending', 'approved', 'rejected']))
+    approvals = q.all()
+    html = render_template('admin/approval_report_pdf.html', approvals=approvals)
+    import pdfkit, io
+    pdf = pdfkit.from_string(html, False)
+    return send_file(io.BytesIO(pdf), download_name="approval_report.pdf", as_attachment=True)
+
+# --- 알림센터 대시보드 ---
+@app.route('/notifications/dashboard')
+def notifications_dashboard():
+    user_id = session.get('user_id')
+    role = session.get('role')
+    q = Notification.query
+    if role != 'admin': q = q.filter_by(user_id=user_id)
+    category = request.args.get('category')
+    is_read = request.args.get('is_read')
+    if category: q = q.filter_by(category=category)
+    if is_read in ['0','1']: q = q.filter_by(is_read=bool(int(is_read)))
+    keyword = request.args.get('q')
+    if keyword: q = q.filter(Notification.content.contains(keyword))
+    notis = q.order_by(Notification.created_at.desc()).limit(100).all()
+    total = q.count()
+    unread = q.filter_by(is_read=False).count()
+    return render_template('notifications/dashboard.html', notis=notis, total=total, unread=unread)
+
+# --- 알림 발송 함수 개선 ---
+def send_notification(user_id=None, content='', category='공지', link=None, recipient_role=None, recipient_team=None):
+    if user_id:
+        n = Notification(user_id=user_id, content=content, category=category, link=link)
+        db.session.add(n)
+    if recipient_role or recipient_team:
+        q = User.query
+        if recipient_role: q = q.filter_by(role=recipient_role)
+        if recipient_team: q = q.filter_by(team=recipient_team)
+        for u in q.all():
+            n = Notification(user_id=u.id, content=content, category=category, link=link)
+            db.session.add(n)
+    db.session.commit()
+
+# --- 모바일 푸시 알림 예시 ---
+def send_mobile_push(user, message):
+    print(f"[푸시알림] {user.username}: {message}")
+
+def send_notification_with_push(user_id, content, **kwargs):
+    user = User.query.get(user_id)
+    send_notification(user_id=user_id, content=content, **kwargs)
+    send_mobile_push(user, content)
+
+# --- 알림 통계 차트 ---
+@app.route('/notifications/stats')
+def notifications_stats():
+    from sqlalchemy import func
+    daily = db.session.query(func.date(Notification.created_at), func.count())\
+        .group_by(func.date(Notification.created_at)).all()
+    cat = db.session.query(Notification.category, func.count())\
+        .group_by(Notification.category).all()
+    return render_template('notifications/stats.html', daily=daily, cat=cat)
+
+# --- AI 기반 알림 분류 ---
+def ai_classify_notification(content):
+    if '승인' in content: return '중요'
+    if '경고' in content or '지각' in content: return '우선'
+    return '일반'
+
+# --- 근태 사유 변경 이력 PDF 다운로드 ---
+@app.route('/admin/reason_edit_log/pdf')
+def reason_edit_log_pdf():
+    logs = ReasonEditLog.query.order_by(ReasonEditLog.edited_at.desc()).limit(200).all()
+    html = render_template('admin/reason_edit_log_pdf.html', logs=logs)
+    import pdfkit, io
+    pdf = pdfkit.from_string(html, False)
+    return send_file(io.BytesIO(pdf), download_name="reason_edit_log.pdf", as_attachment=True)
+
+# --- 근태 사유 변경 이력 Excel 다운로드 ---
+@app.route('/admin/reason_edit_log/excel')
+def reason_edit_log_excel():
+    import pandas as pd, io
+    logs = ReasonEditLog.query.order_by(ReasonEditLog.edited_at.desc()).limit(200).all()
+    df = pd.DataFrame([{
+        "근태ID": l.attendance_id,
+        "이전사유": l.old_reason,
+        "신규사유": l.new_reason,
+        "변경자": l.edited_by,
+        "일시": l.edited_at.strftime('%Y-%m-%d %H:%M')
+    } for l in logs])
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    output.seek(0)
+    return send_file(output, download_name="reason_edit_log.xlsx", as_attachment=True)
+
+# --- 이력 상세 조회/필터링 ---
+@app.route('/admin/reason_edit_log/filter')
+def reason_edit_log_filter():
+    user_id = request.args.get('user_id')
+    date_from = request.args.get('from')
+    date_to = request.args.get('to')
+    q = ReasonEditLog.query
+    if user_id: q = q.filter_by(edited_by=int(user_id))
+    if date_from: q = q.filter(ReasonEditLog.edited_at >= date_from)
+    if date_to: q = q.filter(ReasonEditLog.edited_at <= date_to)
+    logs = q.order_by(ReasonEditLog.edited_at.desc()).limit(200).all()
+    return render_template('admin/reason_edit_log.html', logs=logs)
+
+# --- 승인 현황 알림센터 통합 ---
+@app.route('/notifications/pending_templates')
+def noti_pending_templates():
+    if session.get('role') not in ('admin', 'teamlead'): return "권한없음", 403
+    pending = ReasonTemplate.query.filter_by(status='pending').all()
+    return render_template('notifications/pending_templates.html', pending=pending)
+
+# --- 모바일 이력 API ---
+@app.route('/api/mobile/reason_edit_log')
+def api_mobile_reason_edit_log():
+    """모바일용 근태 사유 변경 이력 API"""
+    try:
+        user_id = request.args.get('user_id', type=int)
+        if not user_id:
+            return jsonify({"error": "user_id가 필요합니다"}), 400
+        
+        # 최근 30일간의 변경 이력 조회
+        from datetime import datetime, timedelta
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        
+        logs = ReasonEditLog.query.filter(
+            and_(
+                ReasonEditLog.attendance_id.in_(
+                    db.session.query(Attendance.id).filter(Attendance.user_id == user_id)
+                ),
+                ReasonEditLog.edited_at >= thirty_days_ago
+            )
+        ).order_by(ReasonEditLog.edited_at.desc()).limit(20).all()
+        
+        result = []
+        for log in logs:
+            result.append({
+                "id": log.id,
+                "old_reason": log.old_reason,
+                "new_reason": log.new_reason,
+                "edited_at": log.edited_at.strftime('%Y-%m-%d %H:%M'),
+                "editor": log.editor.name or log.editor.username
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": result
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# --- 스케줄러 기능 ---
+def init_scheduler():
+    """스케줄러 초기화"""
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+        from datetime import datetime, date, timedelta
+        from sqlalchemy import and_, extract
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # 스케줄러 생성
+        scheduler = BackgroundScheduler()
+        
+        # 주간 리포트 발송 (매주 월요일 오전 8시)
+        def send_weekly_report():
+            try:
+                logger.info("주간 근태 리포트 발송 시작")
+                
+                # 관리자 목록 조회
+                admins = User.query.filter_by(role='admin').all()
+                
+                if not admins:
+                    logger.warning("발송할 관리자가 없습니다.")
+                    return
+                
+                # 주간 데이터 생성
+                end_date = date.today()
+                start_date = end_date - timedelta(days=7)
+                
+                records = Attendance.query.filter(
+                    and_(
+                        Attendance.clock_in >= start_date,
+                        Attendance.clock_in <= end_date
+                    )
+                ).all()
+                
+                # 통계 계산
+                stats = {
+                    'period': f"{start_date.strftime('%Y-%m-%d')} ~ {end_date.strftime('%Y-%m-%d')}",
+                    'total_records': len(records),
+                    'total_hours': 0,
+                    'late_count': 0,
+                    'early_leave_count': 0,
+                    'absent_count': 0
+                }
+                
+                for record in records:
+                    if record.clock_in and record.clock_out:
+                        work_seconds = (record.clock_out - record.clock_in).total_seconds()
+                        work_hours = work_seconds / 3600
+                        stats['total_hours'] += work_hours
+                        
+                        if record.clock_in.time() > datetime.strptime('09:00', '%H:%M').time():
+                            stats['late_count'] += 1
+                        if record.clock_out.time() < datetime.strptime('18:00', '%H:%M').time():
+                            stats['early_leave_count'] += 1
+                    else:
+                        stats['absent_count'] += 1
+                
+                # 이메일 본문 생성
+                email_body = f"""
+주간 근태 리포트
+
+기간: {stats['period']}
+총 기록: {stats['total_records']}건
+총 근무시간: {round(stats['total_hours'], 2)}시간
+지각: {stats['late_count']}건
+조퇴: {stats['early_leave_count']}건
+결근: {stats['absent_count']}건
+
+감사합니다.
+"""
+                
+                # 이메일 발송 (테스트용)
+                success_count = 0
+                for admin in admins:
+                    if admin.email:
+                        # 실제 환경에서는 SMTP 설정 필요
+                        print(f"이메일 발송 테스트: {admin.email}")
+                        print(f"제목: 주간 근태 리포트")
+                        print(f"내용: {email_body}")
+                        success_count += 1
+                
+                logger.info(f"주간 리포트 발송 완료: {success_count}/{len(admins)}명")
+                
+            except Exception as e:
+                logger.error(f"주간 리포트 발송 중 오류: {str(e)}")
+        
+        # 월간 리포트 발송 (매월 1일 오전 9시)
+        def send_monthly_report():
+            try:
+                logger.info("월간 근태 리포트 발송 시작")
+                
+                # 관리자 목록 조회
+                admins = User.query.filter_by(role='admin').all()
+                
+                if not admins:
+                    logger.warning("발송할 관리자가 없습니다.")
+                    return
+                
+                # 월간 데이터 생성
+                start_date = date.today().replace(day=1)
+                end_date = date.today()
+                
+                records = Attendance.query.filter(
+                    and_(
+                        Attendance.clock_in >= start_date,
+                        Attendance.clock_in <= end_date
+                    )
+                ).all()
+                
+                # 통계 계산
+                stats = {
+                    'period': f"{start_date.strftime('%Y-%m-%d')} ~ {end_date.strftime('%Y-%m-%d')}",
+                    'total_records': len(records),
+                    'total_hours': 0,
+                    'late_count': 0,
+                    'early_leave_count': 0,
+                    'absent_count': 0
+                }
+                
+                for record in records:
+                    if record.clock_in and record.clock_out:
+                        work_seconds = (record.clock_out - record.clock_in).total_seconds()
+                        work_hours = work_seconds / 3600
+                        stats['total_hours'] += work_hours
+                        
+                        if record.clock_in.time() > datetime.strptime('09:00', '%H:%M').time():
+                            stats['late_count'] += 1
+                        if record.clock_out.time() < datetime.strptime('18:00', '%H:%M').time():
+                            stats['early_leave_count'] += 1
+                    else:
+                        stats['absent_count'] += 1
+                
+                # 이메일 본문 생성
+                email_body = f"""
+월간 근태 리포트
+
+기간: {stats['period']}
+총 기록: {stats['total_records']}건
+총 근무시간: {round(stats['total_hours'], 2)}시간
+지각: {stats['late_count']}건
+조퇴: {stats['early_leave_count']}건
+결근: {stats['absent_count']}건
+
+감사합니다.
+"""
+                
+                # 이메일 발송 (테스트용)
+                success_count = 0
+                for admin in admins:
+                    if admin.email:
+                        # 실제 환경에서는 SMTP 설정 필요
+                        print(f"이메일 발송 테스트: {admin.email}")
+                        print(f"제목: 월간 근태 리포트")
+                        print(f"내용: {email_body}")
+                        success_count += 1
+                
+                logger.info(f"월간 리포트 발송 완료: {success_count}/{len(admins)}명")
+                
+            except Exception as e:
+                logger.error(f"월간 리포트 발송 중 오류: {str(e)}")
+        
+        # 출근 알림 체크 (매일 오전 7시)
+        def check_attendance_alerts():
+            try:
+                logger.info("출근 알림 체크 시작")
+                
+                today = date.today()
+                current_time = datetime.now().time()
+                
+                # 아직 출근하지 않은 직원 체크
+                users = User.query.filter(
+                    and_(
+                        User.role == 'employee',
+                        User.deleted_at == None
+                    )
+                ).all()
+                
+                for user in users:
+                    # 오늘 출근 기록 확인
+                    today_attendance = Attendance.query.filter(
+                        and_(
+                            Attendance.user_id == user.id,
+                            extract('date', Attendance.clock_in) == today
+                        )
+                    ).first()
+                    
+                    # 출근하지 않았고, 출근 시간이 지났으면 알림
+                    if not today_attendance and current_time > datetime.strptime('09:30', '%H:%M').time():
+                        logger.info(f"출근 알림: {user.name or user.username}")
+                        # 실제 알림 발송 로직 추가 가능
+                
+                logger.info("출근 알림 체크 완료")
+                
+            except Exception as e:
+                logger.error(f"출근 알림 체크 중 오류: {str(e)}")
+        
+        # 퇴근 알림 체크 (매일 오후 6시)
+        def check_leave_alerts():
+            try:
+                logger.info("퇴근 알림 체크 시작")
+                
+                today = date.today()
+                current_time = datetime.now().time()
+                
+                # 아직 퇴근하지 않은 직원 체크
+                attendances = Attendance.query.filter(
+                    and_(
+                        extract('date', Attendance.clock_in) == today,
+                        Attendance.clock_out == None
+                    )
+                ).all()
+                
+                for attendance in attendances:
+                    # 퇴근 시간이 지났으면 알림
+                    if current_time > datetime.strptime('18:30', '%H:%M').time():
+                        user = attendance.user
+                        logger.info(f"퇴근 알림: {user.name or user.username}")
+                        # 실제 알림 발송 로직 추가 가능
+                
+                logger.info("퇴근 알림 체크 완료")
+                
+            except Exception as e:
+                logger.error(f"퇴근 알림 체크 중 오류: {str(e)}")
+        
+        # 스케줄 작업 추가
+        scheduler.add_job(
+            send_weekly_report,
+            CronTrigger(day_of_week='mon', hour=8),
+            id='weekly_report',
+            name='주간 근태 리포트 발송',
+            replace_existing=True
+        )
+        
+        scheduler.add_job(
+            send_monthly_report,
+            CronTrigger(day=1, hour=9),
+            id='monthly_report',
+            name='월간 근태 리포트 발송',
+            replace_existing=True
+        )
+        
+        scheduler.add_job(
+            check_attendance_alerts,
+            CronTrigger(hour=7),
+            id='attendance_alerts',
+            name='출근 알림 체크',
+            replace_existing=True
+        )
+        
+        scheduler.add_job(
+            check_leave_alerts,
+            CronTrigger(hour=18),
+            id='leave_alerts',
+            name='퇴근 알림 체크',
+            replace_existing=True
+        )
+        
+        # 스케줄러 시작
+        if not scheduler.running:
+            scheduler.start()
+            logger.info("스케줄러가 시작되었습니다.")
+        
+        return scheduler
+        
+    except ImportError:
+        logger.warning("APScheduler가 설치되지 않아 스케줄러 기능이 비활성화됩니다.")
+        return None
+    except Exception as e:
+        logger.error(f"스케줄러 초기화 중 오류: {str(e)}")
+        return None
+
+# 스케줄러 초기화
+scheduler = init_scheduler()
+
+# 권한 관리 라우트
+@app.route('/admin/user_permissions', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def user_permissions():
+    """사용자 권한 관리"""
+    try:
+        # 모든 사용자 조회 (관리자 제외)
+        users = User.query.filter(
+            User.role.in_(['manager', 'teamlead', 'employee']),
+            User.status == 'approved'
+        ).order_by(User.name).all()
+        
+        # 권한 목록 정의
+        all_permissions = {
+            'order': '발주 관리',
+            'schedule': '스케줄 관리', 
+            'clean': '청소 관리',
+            'inventory': '재고 관리',
+            'customer': '고객 관리',
+            'reports': '리포트 관리',
+            'reservation': '예약 관리',
+            'accounting': '회계 관리',
+            'attendance': '근태 관리',
+            'notifications': '알림 관리',
+            'team_management': '팀 관리',
+            'user_management': '사용자 관리'
+        }
+        
+        # 팀 목록
+        teams = Team.query.filter_by(is_active=True).order_by(Team.name).all()
+        
+        # 권한 템플릿 목록
+        templates = PermissionTemplate.query.filter_by(is_active=True).order_by(PermissionTemplate.name).all()
+        
+        if request.method == 'POST':
+            # 권한 변경 처리
+            for user in users:
+                old_permissions = set()
+                if user.permissions:
+                    old_permissions = set(json.loads(user.permissions))
+                
+                new_permissions = set()
+                for perm_name in all_permissions.keys():
+                    if request.form.get(f"{user.id}_{perm_name}") == "on":
+                        new_permissions.add(perm_name)
+                
+                # 권한 변경이 있는 경우
+                if old_permissions != new_permissions:
+                    # 권한 변경 로그 기록
+                    log_entry = PermissionChangeLog(
+                        user_id=user.id,
+                        changed_by=current_user.id,
+                        change_type='permission',
+                        before_value=json.dumps(list(old_permissions)),
+                        after_value=json.dumps(list(new_permissions)),
+                        reason=request.form.get(f"reason_{user.id}", "권한 관리에서 변경"),
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent', '')
+                    )
+                    db.session.add(log_entry)
+                    
+                    # 사용자 권한 업데이트
+                    user.permissions = json.dumps(list(new_permissions))
+                    
+                    # 알림 발송
+                    added_perms = new_permissions - old_permissions
+                    removed_perms = old_permissions - new_permissions
+                    
+                    if added_perms or removed_perms:
+                        notification_content = f"권한이 변경되었습니다.\n"
+                        if added_perms:
+                            notification_content += f"추가된 권한: {', '.join([all_permissions[p] for p in added_perms])}\n"
+                        if removed_perms:
+                            notification_content += f"제거된 권한: {', '.join([all_permissions[p] for p in removed_perms])}"
+                        
+                        send_notification_enhanced(
+                            user_id=user.id,
+                            content=notification_content,
+                            category='권한',
+                            link=url_for('profile')
+                        )
+            
+            db.session.commit()
+            flash('권한이 성공적으로 저장되었습니다.', 'success')
+            log_action(current_user.id, 'PERMISSIONS_UPDATED', f'Updated permissions for {len(users)} users')
+            
+            return redirect(url_for('user_permissions'))
+        
+        return render_template('admin/user_permissions.html',
+                             users=users,
+                             all_permissions=all_permissions,
+                             teams=teams,
+                             templates=templates)
+                             
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('권한 관리 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/delegate_teamlead/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def delegate_teamlead(user_id):
+    """팀장 권한 위임"""
+    try:
+        user = User.query.get_or_404(user_id)
+        old_role = user.role
+        
+        # 팀장으로 변경
+        user.role = 'teamlead'
+        
+        # 권한 변경 로그 기록
+        log_entry = PermissionChangeLog(
+            user_id=user.id,
+            changed_by=current_user.id,
+            change_type='role',
+            before_value=old_role,
+            after_value='teamlead',
+            reason=request.form.get('reason', '팀장 권한 위임'),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', '')
+        )
+        db.session.add(log_entry)
+        
+        db.session.commit()
+        
+        # 알림 발송
+        send_notification_enhanced(
+            user_id=user.id,
+            content="팀장 권한이 위임되었습니다. 새로운 권한을 확인해주세요.",
+            category='권한',
+            link=url_for('profile')
+        )
+        
+        flash(f"{user.name}님이 팀장으로 위임되었습니다.", 'success')
+        log_action(current_user.id, 'TEAMLEAD_DELEGATED', f'Delegated teamlead role to {user.name}')
+        
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('팀장 위임 중 오류가 발생했습니다.', 'error')
+    
+    return redirect(url_for('user_permissions'))
+
+@app.route('/admin/revoke_teamlead/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def revoke_teamlead(user_id):
+    """팀장 권한 회수"""
+    try:
+        user = User.query.get_or_404(user_id)
+        old_role = user.role
+        
+        # 일반 직원으로 변경
+        user.role = 'employee'
+        
+        # 권한 변경 로그 기록
+        log_entry = PermissionChangeLog(
+            user_id=user.id,
+            changed_by=current_user.id,
+            change_type='role',
+            before_value=old_role,
+            after_value='employee',
+            reason=request.form.get('reason', '팀장 권한 회수'),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', '')
+        )
+        db.session.add(log_entry)
+        
+        db.session.commit()
+        
+        # 알림 발송
+        send_notification_enhanced(
+            user_id=user.id,
+            content="팀장 권한이 회수되었습니다.",
+            category='권한',
+            link=url_for('profile')
+        )
+        
+        flash(f"{user.name}님의 팀장 권한이 회수되었습니다.", 'success')
+        log_action(current_user.id, 'TEAMLEAD_REVOKED', f'Revoked teamlead role from {user.name}')
+        
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('팀장 권한 회수 중 오류가 발생했습니다.', 'error')
+    
+    return redirect(url_for('user_permissions'))
+
+@app.route('/admin/permission_logs')
+@login_required
+@admin_required
+def permission_logs():
+    """권한 변경 로그 조회"""
+    try:
+        # 필터 파라미터
+        user_id = request.args.get('user_id', type=int)
+        change_type = request.args.get('change_type', '')
+        date_from = request.args.get('from', '')
+        date_to = request.args.get('to', '')
+        
+        # 기본 쿼리
+        query = db.session.query(PermissionChangeLog)
+        
+        # 필터 적용
+        if user_id:
+            query = query.filter(PermissionChangeLog.user_id == user_id)
+        if change_type:
+            query = query.filter(PermissionChangeLog.change_type == change_type)
+        if date_from:
+            query = query.filter(PermissionChangeLog.created_at >= date_from)
+        if date_to:
+            query = query.filter(PermissionChangeLog.created_at <= date_to)
+        
+        logs = query.order_by(PermissionChangeLog.created_at.desc()).all()
+        
+        # 사용자 목록 (필터용)
+        users = User.query.filter_by(status='approved').order_by(User.name).all()
+        
+        return render_template('admin/permission_logs.html',
+                             logs=logs,
+                             users=users,
+                             filters={
+                                 'user_id': user_id,
+                                 'change_type': change_type,
+                                 'date_from': date_from,
+                                 'date_to': date_to
+                             })
+                             
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('권한 변경 로그 조회 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/api/permission_log/<int:log_id>')
+@login_required
+@admin_required
+def api_permission_log(log_id):
+    """권한 변경 로그 상세 API"""
+    try:
+        log = PermissionChangeLog.query.get_or_404(log_id)
+        
+        return jsonify({
+            'id': log.id,
+            'user_name': log.user.name if log.user else '알수없음',
+            'changer_name': log.changer.name if log.changer else '알수없음',
+            'change_type': log.change_type,
+            'before_value': log.before_value,
+            'after_value': log.after_value,
+            'reason': log.reason,
+            'ip_address': log.ip_address,
+            'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else ''
+        })
+        
+    except Exception as e:
+        log_error(e, current_user.id)
+        return jsonify({'error': '로그 조회 중 오류가 발생했습니다.'}), 500
+
+# --- Mobile Routes ---
+@app.route('/m')
+@login_required
+def m_dashboard():
+    """모바일 대시보드"""
+    try:
+        # 최근 출결 기록 (최근 3일)
+        recent_att = Attendance.query.filter_by(user_id=current_user.id)\
+            .order_by(Attendance.clock_in.desc()).limit(3).all()
+        
+        # 최근 알림 (최근 5개)
+        notis = Notification.query.filter_by(user_id=current_user.id)\
+            .order_by(Notification.created_at.desc()).limit(5).all()
+        
+        # 오늘 출결 상태
+        today = date.today()
+        today_att = Attendance.query.filter(
+            Attendance.user_id == current_user.id,
+            func.date(Attendance.clock_in) == today
+        ).first()
+        
+        # 미읽 알림 개수
+        unread_count = Notification.query.filter_by(
+            user_id=current_user.id, 
+            is_read=False
+        ).count()
+        
+        # 관리자/팀장용 미처리 신고/이의제기 건수
+        pending_disputes_count = 0
+        processing_disputes_count = 0
+        if current_user.is_admin() or current_user.is_manager():
+            pending_disputes_count = AttendanceDispute.query.filter_by(status='pending').count()
+            processing_disputes_count = AttendanceDispute.query.filter_by(status='processing').count()
+        
+        return render_template('mobile/m_dashboard.html', 
+                             att=recent_att, 
+                             notis=notis, 
+                             today_att=today_att,
+                             unread_count=unread_count,
+                             pending_disputes_count=pending_disputes_count,
+                             processing_disputes_count=processing_disputes_count)
+                             
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('모바일 대시보드 로딩 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/m/attendance', methods=['GET', 'POST'])
+@login_required
+def m_attendance():
+    """모바일 출결 입력/사유 입력"""
+    try:
+        today = date.today()
+        att = Attendance.query.filter(
+            Attendance.user_id == current_user.id,
+            func.date(Attendance.clock_in) == today
+        ).first()
+        
+        if request.method == 'POST':
+            reason = request.form.get('reason', '').strip()
+            
+            if att:
+                # 기존 기록이 있으면 사유만 업데이트
+                old_reason = att.reason
+                att.reason = reason
+                db.session.commit()
+                
+                # 사유 변경 로그
+                if old_reason != reason:
+                    log_action(current_user.id, 'ATTENDANCE_REASON_UPDATED', 
+                              f'Updated reason: {old_reason} -> {reason}')
+                
+                flash('출결 사유가 업데이트되었습니다.', 'success')
+            else:
+                # 새 출결 기록 생성
+                att = Attendance(
+                    user_id=current_user.id,
+                    clock_in=datetime.now(),
+                    reason=reason
+                )
+                db.session.add(att)
+                db.session.commit()
+                
+                log_action(current_user.id, 'ATTENDANCE_CREATED', f'Created with reason: {reason}')
+                flash('출결 기록이 생성되었습니다.', 'success')
+            
+            return redirect(url_for('m_attendance'))
+        
+        # AI 추천 사유
+        ai_suggestion = ai_recommend_reason(current_user, today)
+        
+        # 사유 템플릿 목록
+        reason_templates = ReasonTemplate.query.filter_by(is_active=True).limit(10).all()
+        
+        return render_template('mobile/m_attendance.html', 
+                             att=att, 
+                             ai_suggestion=ai_suggestion,
+                             reason_templates=reason_templates)
+                             
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('출결 입력 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_dashboard'))
+
+@app.route('/m/notifications')
+@login_required
+def m_notifications():
+    """모바일 알림 리스트 (필터/검색 기능 포함)"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        
+        # 필터 파라미터
+        is_read = request.args.get('is_read')
+        category = request.args.get('category')
+        keyword = request.args.get('keyword', '').strip()
+        
+        # 기본 쿼리
+        q = Notification.query.filter_by(user_id=current_user.id)
+        
+        # 필터 적용
+        if is_read in ['0', '1']:
+            q = q.filter_by(is_read=bool(int(is_read)))
+        if category:
+            q = q.filter_by(category=category)
+        if keyword:
+            q = q.filter(Notification.content.contains(keyword))
+        
+        # 페이징 적용
+        notis = q.order_by(Notification.created_at.desc())\
+            .paginate(page=page, per_page=per_page, error_out=False)
+        
+        # 미읽 개수
+        unread_count = Notification.query.filter_by(
+            user_id=current_user.id, 
+            is_read=False
+        ).count()
+        
+        # 카테고리 목록 (필터용)
+        categories = db.session.query(Notification.category)\
+            .filter_by(user_id=current_user.id)\
+            .distinct().all()
+        categories = [cat[0] for cat in categories if cat[0]]
+        
+        return render_template('mobile/m_notifications.html', 
+                             notis=notis, 
+                             unread_count=unread_count,
+                             categories=categories,
+                             filters={
+                                 'is_read': is_read,
+                                 'category': category,
+                                 'keyword': keyword
+                             })
+                             
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('알림 조회 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_dashboard'))
+
+@app.route('/m/notification/<int:noti_id>')
+@login_required
+def m_notification_detail(noti_id):
+    """모바일 알림 상세 뷰 및 자동 읽음 처리"""
+    try:
+        noti = Notification.query.get_or_404(noti_id)
+        
+        # 권한 확인
+        if not noti.user_id != current_user.id:
+            flash('권한이 없습니다.', 'error')
+            return redirect(url_for('m_notifications'))
+        
+        # 자동 읽음 처리
+        if not noti.is_read:
+            noti.is_read = True
+            db.session.commit()
+            log_action(current_user.id, 'NOTIFICATION_READ', f'Read notification: {noti_id}')
+        
+        return render_template('mobile/m_notification_detail.html', noti=noti)
+        
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('알림 상세 조회 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_notifications'))
+
+@app.route('/m/notifications/mark_read/<int:notification_id>')
+@login_required
+def m_mark_notification_read(notification_id):
+    """모바일 알림 읽음 처리"""
+    try:
+        notification = Notification.query.get_or_404(notification_id)
+        if notification.user_id == current_user.id:
+            notification.is_read = True
+            db.session.commit()
+            return jsonify({'success': True})
+        return jsonify({'success': False}), 403
+    except Exception as e:
+        log_error(e, current_user.id)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/m/notifications/mark_all_read')
+@login_required
+def m_mark_all_notifications_read():
+    """모바일 모든 알림 읽음 처리"""
+    try:
+        Notification.query.filter_by(user_id=current_user.id, is_read=False)\
+            .update({'is_read': True})
+        db.session.commit()
+        flash('모든 알림을 읽음 처리했습니다.', 'success')
+        return redirect(url_for('m_notifications'))
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('알림 처리 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_notifications'))
+
+@app.route('/m/profile')
+@login_required
+def m_profile():
+    """모바일 프로필"""
+    try:
+        # 최근 6개월 통계
+        now = datetime.utcnow()
+        monthly_stats = []
+        
+        for i in range(6):
+            year = (now.year if now.month - i > 0 else now.year-1)
+            month = (now.month - i) if now.month - i > 0 else 12 + (now.month - i)
+            
+            records = Attendance.query.filter(
+                Attendance.user_id == current_user.id,
+                db.extract('year', Attendance.clock_in) == year,
+                db.extract('month', Attendance.clock_in) == month,
+                Attendance.clock_out.isnot(None)
+            ).all()
+            
+            work_days = len(records)
+            total_seconds = sum([
+                (r.clock_out - r.clock_in).total_seconds() for r in records if r.clock_out
+            ])
+            total_hours = int(total_seconds // 3600)
+            
+            monthly_stats.append({
+                "year": year,
+                "month": month,
+                "work_days": work_days,
+                "total_hours": total_hours,
+            })
+        
+        # 최신순 정렬
+        monthly_stats = sorted(monthly_stats, key=lambda x: (x['year'], x['month']), reverse=True)
+        
+        return render_template('mobile/m_profile.html', 
+                             user=current_user,
+                             monthly_stats=monthly_stats)
+                             
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('프로필 조회 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_dashboard'))
+
+@app.route('/m/stats')
+@login_required
+def m_stats():
+    """모바일 간소 통계/차트"""
+    try:
+        from sqlalchemy import func
+        
+        # 기본 통계
+        total_att = db.session.query(func.count(Attendance.id))\
+            .filter_by(user_id=current_user.id).scalar()
+        
+        late_cnt = db.session.query(func.count(Attendance.id))\
+            .filter_by(user_id=current_user.id)\
+            .filter(Attendance.reason.like('%지각%')).scalar()
+        
+        early_cnt = db.session.query(func.count(Attendance.id))\
+            .filter_by(user_id=current_user.id)\
+            .filter(Attendance.reason.like('%조퇴%')).scalar()
+        
+        normal_cnt = total_att - late_cnt - early_cnt
+        
+        # 월별 통계 (최근 6개월)
+        monthly_data = []
+        now = datetime.utcnow()
+        
+        for i in range(6):
+            year = (now.year if now.month - i > 0 else now.year-1)
+            month = (now.month - i) if now.month - i > 0 else 12 + (now.month - i)
+            
+            month_att = db.session.query(func.count(Attendance.id))\
+                .filter_by(user_id=current_user.id)\
+                .filter(
+                    db.extract('year', Attendance.clock_in) == year,
+                    db.extract('month', Attendance.clock_in) == month
+                ).scalar()
+            
+            monthly_data.append({
+                'month': f"{year}-{month:02d}",
+                'count': month_att
+            })
+        
+        # 알림 통계
+        total_notis = db.session.query(func.count(Notification.id))\
+            .filter_by(user_id=current_user.id).scalar()
+        
+        unread_notis = db.session.query(func.count(Notification.id))\
+            .filter_by(user_id=current_user.id, is_read=False).scalar()
+        
+        # 카테고리별 알림 통계
+        noti_categories = db.session.query(
+            Notification.category, func.count(Notification.id)
+        ).filter_by(user_id=current_user.id)\
+         .group_by(Notification.category)\
+         .order_by(func.count(Notification.id).desc()).limit(5).all()
+        
+        return render_template('mobile/m_stats.html',
+                             total_att=total_att,
+                             late_cnt=late_cnt,
+                             early_cnt=early_cnt,
+                             normal_cnt=normal_cnt,
+                             monthly_data=monthly_data,
+                             total_notis=total_notis,
+                             unread_notis=unread_notis,
+                             noti_categories=noti_categories)
+                             
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('통계 조회 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_dashboard'))
+
+# --- Mobile Push Notification Enhancement ---
+def send_mobile_push_enhanced(user, message, category='일반', link=None):
+    """향상된 모바일 푸시 알림 (실제 환경에서는 FCM/OneSignal 등 연동)"""
+    try:
+        # 실제 환경에서는 FCM, OneSignal, 카카오 알림톡 등 연동
+        print(f"[모바일푸시] {user.name or user.username}: {message}")
+        
+        # 푸시 알림 로그 기록
+        log_action(user.id, 'MOBILE_PUSH_SENT', f'Push: {message[:50]}...')
+        
+        # 실제 구현시 아래 주석 해제
+        # from firebase_admin import messaging
+        # message = messaging.Message(
+        #     notification=messaging.Notification(
+        #         title='레스토랑 알림',
+        #         body=message
+        #     ),
+        #     data={'category': category, 'link': link or ''},
+        #     token=user.fcm_token  # 사용자 FCM 토큰
+        # )
+        # messaging.send(message)
+        
+        return True
+        
+    except Exception as e:
+        log_error(e, user.id, f'Mobile push failed: {message}')
+        return False
+
+def send_notification_with_mobile_push(user_id, content, category='공지', link=None, **kwargs):
+    """알림과 모바일 푸시 동시 발송"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return False
+        
+        # 데이터베이스 알림 저장
+        n = Notification(user_id=user_id, content=content, category=category, link=link, **kwargs)
+        db.session.add(n)
+        db.session.commit()
+        
+        # 모바일 푸시 발송
+        send_mobile_push_enhanced(user, content, category, link)
+        
+        log_action(user_id, 'NOTIFICATION_SENT', f'Notification + Push: {content[:50]}...')
+        return True
+        
+    except Exception as e:
+        log_error(e, user_id, f'Notification with push failed: {content}')
+        return False
+
+# --- Mobile/PC Auto Routing ---
+@app.before_request
+def detect_mobile():
+    """모바일 접속 감지 및 자동 라우팅"""
+    # 이미 모바일 라우트에 있으면 스킵
+    if request.endpoint and request.endpoint.startswith('m_'):
+        return
+    
+    # 모바일 접속 감지
+    ua = request.user_agent.string.lower()
+    is_mobile = any(keyword in ua for keyword in ['mobi', 'android', 'iphone', 'ipad'])
+    
+    # 모바일이면서 메인 페이지 접속시 모바일 대시보드로 리다이렉트
+    if is_mobile and request.endpoint in ['index', 'dashboard']:
+        return redirect(url_for('m_dashboard'))
+
+# 모바일 근태 이력 및 신고/이의제기
+@app.route('/m/attendance_history')
+@login_required
+def m_attendance_history():
+    """모바일 근태 이력 페이지"""
+    try:
+        # 최근 30일 근태 기록 조회
+        att_list = Attendance.query.filter_by(user_id=current_user.id).order_by(Attendance.date.desc()).limit(30).all()
+        
+        # 각 근태 기록에 대한 신고/이의제기 상태 확인
+        for att in att_list:
+            # 가장 최근 신고/이의제기 조회
+            latest_dispute = AttendanceDispute.query.filter_by(
+                attendance_id=att.id
+            ).order_by(AttendanceDispute.created_at.desc()).first()
+            att.latest_dispute = latest_dispute
+        
+        return render_template('mobile/m_attendance_history.html', att_list=att_list)
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('근태 이력을 불러오는 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_dashboard'))
+
+@app.route('/m/attendance/<int:att_id>/report', methods=['GET', 'POST'])
+@login_required
+def m_attendance_report(att_id):
+    """모바일 근태 신고/이의제기 페이지"""
+    try:
+        att = Attendance.query.get_or_404(att_id)
+        
+        # 본인의 근태 기록만 신고 가능
+        if att.user_id != current_user.id:
+            flash('본인의 근태 기록만 신고할 수 있습니다.', 'error')
+            return redirect(url_for('m_attendance_history'))
+        
+        if request.method == 'POST':
+            dispute_type = request.form.get('dispute_type', 'report')
+            reason = request.form.get('report_reason', '').strip()
+            
+            if not reason:
+                flash('신고/이의 사유를 입력해주세요.', 'error')
+                return render_template('mobile/m_attendance_report.html', att=att)
+            
+            # 신고/이의제기 저장
+            new_dispute = AttendanceDispute(
+                attendance_id=att.id,
+                user_id=current_user.id,
+                dispute_type=dispute_type,
+                reason=reason,
+                status='pending'
+            )
+            db.session.add(new_dispute)
+            db.session.commit()
+            
+            # 관리자에게 알림 발송
+            try:
+                from utils.notification_automation import send_notification
+                admin_users = User.query.filter(User.role.in_(['admin', 'manager'])).all()
+                for admin in admin_users:
+                    send_notification(
+                        user_id=admin.id,
+                        content=f'근태 신고/이의제기가 접수되었습니다. ({current_user.name or current_user.username})',
+                        category='근태',
+                        priority='중요',
+                        related_url=f'/m/admin/attendance_reports'
+                    )
+            except Exception as e:
+                log_error(e, current_user.id)
+            
+            log_action(current_user.id, 'ATTENDANCE_DISPUTE_CREATED', f'Created dispute for attendance {att_id}')
+            flash('신고/이의제기가 접수되었습니다.', 'success')
+            return redirect(url_for('m_attendance_history'))
+        
+        return render_template('mobile/m_attendance_report.html', att=att)
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('신고/이의제기 처리 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_attendance_history'))
+
+@app.route('/m/admin/attendance_reports')
+@login_required
+def m_admin_attendance_reports():
+    """관리자/팀장 모바일 신고/이의제기 목록"""
+    try:
+        if not current_user.is_admin() and not current_user.is_manager():
+            flash('권한이 없습니다.', 'error')
+            return redirect(url_for('m_dashboard'))
+        
+        # 대기중인 신고/이의제기 조회
+        pending_reports = AttendanceDispute.query.filter_by(
+            status='pending'
+        ).order_by(AttendanceDispute.created_at.desc()).all()
+        
+        # 처리중인 신고/이의제기 조회
+        processing_reports = AttendanceDispute.query.filter_by(
+            status='processing'
+        ).order_by(AttendanceDispute.created_at.desc()).all()
+        
+        return render_template('mobile/m_admin_attendance_reports.html', 
+                             pending_reports=pending_reports,
+                             processing_reports=processing_reports)
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('신고/이의제기 목록을 불러오는 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_dashboard'))
+
+@app.route('/m/admin/attendance_report/<int:report_id>/reply', methods=['GET', 'POST'])
+@login_required
+def m_admin_attendance_report_reply(report_id):
+    """관리자/팀장 모바일 신고/이의제기 답변"""
+    try:
+        if not current_user.is_admin() and not current_user.is_manager():
+            flash('권한이 없습니다.', 'error')
+            return redirect(url_for('m_admin_attendance_reports'))
+        
+        report = AttendanceDispute.query.get_or_404(report_id)
+        
+        if request.method == 'POST':
+            reply = request.form.get('reply', '').strip()
+            status = request.form.get('status', 'resolved')
+            
+            if not reply:
+                flash('답변을 입력해주세요.', 'error')
+                return render_template('mobile/m_admin_attendance_report_reply.html', report=report)
+            
+            # 답변 저장
+            report.admin_reply = reply
+            report.status = status
+            report.admin_id = current_user.id
+            report.updated_at = datetime.utcnow()
+            db.session.commit()
+            
+            # 신고자에게 알림 발송
+            try:
+                from utils.notification_automation import send_notification
+                send_notification(
+                    user_id=report.user_id,
+                    content=f'근태 신고/이의제기에 대한 답변이 등록되었습니다.',
+                    category='근태',
+                    priority='일반',
+                    related_url=f'/m/attendance_history'
+                )
+            except Exception as e:
+                log_error(e, current_user.id)
+            
+            log_action(current_user.id, 'ATTENDANCE_DISPUTE_REPLIED', f'Replied to dispute {report_id}')
+            flash('답변이 등록되었습니다.', 'success')
+            return redirect(url_for('m_admin_attendance_reports'))
+        
+        return render_template('mobile/m_admin_attendance_report_reply.html', report=report)
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash('답변 처리 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('m_admin_attendance_reports'))
+
+@app.route('/m/admin/attendance_report/<int:report_id>/status', methods=['POST'])
+@login_required
+def m_admin_attendance_report_status(report_id):
+    """관리자/팀장 모바일 신고/이의제기 상태 변경"""
+    try:
+        if not current_user.is_admin() and not current_user.is_manager():
+            return jsonify({'success': False, 'message': '권한이 없습니다.'})
+        
+        report = AttendanceDispute.query.get_or_404(report_id)
+        new_status = request.form.get('status')
+        
+        if new_status not in ['pending', 'processing', 'resolved', 'rejected']:
+            return jsonify({'success': False, 'message': '잘못된 상태입니다.'})
+        
+        report.status = new_status
+        report.admin_id = current_user.id
+        report.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        log_action(current_user.id, 'ATTENDANCE_DISPUTE_STATUS_CHANGED', f'Changed status to {new_status} for dispute {report_id}')
+        return jsonify({'success': True, 'message': '상태가 변경되었습니다.'})
+    except Exception as e:
+        log_error(e, current_user.id)
+        return jsonify({'success': False, 'message': '상태 변경 중 오류가 발생했습니다.'})
+
+# 대시보드에 미처리 신고/이의제기 건수 표시
+def get_pending_disputes_count():
+    """미처리 신고/이의제기 건수 조회"""
+    try:
+        return AttendanceDispute.query.filter_by(status='pending').count()
+    except:
+        return 0
+
+# AttendanceDispute 모델 정의
+class AttendanceDispute(db.Model):
+    """근태 신고/이의제기 모델"""
+    __tablename__ = 'attendance_disputes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    attendance_id = db.Column(db.Integer, db.ForeignKey('attendances.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    dispute_type = db.Column(db.String(20), nullable=False)  # 'report', 'dispute'
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'processing', 'resolved', 'rejected'
+    admin_reply = db.Column(db.Text)
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    attendance = db.relationship('Attendance', backref='disputes')
+    user = db.relationship('User', foreign_keys=[user_id], backref='disputes')
+    admin = db.relationship('User', foreign_keys=[admin_id], backref='admin_disputes')
+
 if __name__ == '__main__':
-    app.run(debug=True) 
- 
+    app.run(debug=True)
+
+

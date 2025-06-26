@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.name or user.username }}님의 근태 리포트{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-line"></i>
+                        {{ user.name or user.username }}님의 근태 리포트
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- 사용자 정보 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>👤 사용자 정보</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th>이름:</th>
+                                    <td>{{ user.name or user.username }}</td>
+                                </tr>
+                                <tr>
+                                    <th>이메일:</th>
+                                    <td>{{ user.email or '미등록' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>역할:</th>
+                                    <td>
+                                        {% if user.role == 'admin' %}
+                                            <span class="badge badge-danger">관리자</span>
+                                        {% elif user.role == 'manager' %}
+                                            <span class="badge badge-warning">매니저</span>
+                                        {% else %}
+                                            <span class="badge badge-info">직원</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>📊 빠른 통계</h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="info-box bg-info">
+                                        <span class="info-box-icon"><i class="fas fa-calendar-check"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">이번 달 출근</span>
+                                            <span class="info-box-number" id="monthly-attendance">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="info-box bg-warning">
+                                        <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">지각</span>
+                                            <span class="info-box-number" id="late-count">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 최근 평가 -->
+                    {% if recent_reports %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5>📋 최근 평가 기록</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>평가 기간</th>
+                                            <th>점수</th>
+                                            <th>등급</th>
+                                            <th>평가자 코멘트</th>
+                                            <th>평가일</th>
+                                            <th>상태</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for report in recent_reports %}
+                                        <tr>
+                                            <td>{{ report.period_from.strftime('%Y-%m-%d') }} ~ {{ report.period_to.strftime('%Y-%m-%d') }}</td>
+                                            <td>
+                                                <span class="badge badge-{{ 'success' if report.score >= 90 else 'warning' if report.score >= 70 else 'danger' }}">
+                                                    {{ report.score }}점
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-{{ 'success' if report.grade in ['A+', 'A', 'B+'] else 'warning' if report.grade in ['B', 'C+'] else 'danger' }}">
+                                                    {{ report.grade }}
+                                                </span>
+                                            </td>
+                                            <td>{{ report.comment or '-' }}</td>
+                                            <td>{{ report.created_at.strftime('%Y-%m-%d') }}</td>
+                                            <td>
+                                                {% if report.grade in ['D', 'F'] or report.score < 70 %}
+                                                    <span class="badge badge-danger">경고</span>
+                                                {% else %}
+                                                    <span class="badge badge-success">정상</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 소명 요청 -->
+                    {% if pending_excuses %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5>⚠️ 대기 중인 소명 요청</h5>
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>주의:</strong> {{ pending_excuses|length }}개의 소명 요청이 대기 중입니다.
+                                <a href="{{ url_for('attendance.submit_excuse', user_id=user.id) }}" class="btn btn-sm btn-warning ml-2">
+                                    소명서 제출하기
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 액션 버튼 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5>🔧 액션</h5>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('attendance.submit_excuse', user_id=user.id) }}" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> 소명서 제출
+                                </a>
+                                <a href="{{ url_for('attendance.attendance_stats_simple', user_id=user.id) }}" class="btn btn-info">
+                                    <i class="fas fa-chart-bar"></i> 상세 통계
+                                </a>
+                                {% if current_user.is_admin or current_user.is_manager %}
+                                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#evaluationModal">
+                                    <i class="fas fa-star"></i> 평가 작성
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 평가 작성 모달 -->
+{% if current_user.is_admin or current_user.is_manager %}
+<div class="modal fade" id="evaluationModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">근태 평가 작성</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('attendance.eval_attendance', user_id=user.id) }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="period_from">평가 시작일</label>
+                                <input type="date" class="form-control" id="period_from" name="period_from" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="period_to">평가 종료일</label>
+                                <input type="date" class="form-control" id="period_to" name="period_to" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="score">점수 (0-100)</label>
+                                <input type="number" class="form-control" id="score" name="score" min="0" max="100" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="grade">등급</label>
+                                <select class="form-control" id="grade" name="grade" required>
+                                    <option value="">등급 선택</option>
+                                    <option value="A+">A+ (95-100점)</option>
+                                    <option value="A">A (90-94점)</option>
+                                    <option value="B+">B+ (85-89점)</option>
+                                    <option value="B">B (80-84점)</option>
+                                    <option value="C+">C+ (75-79점)</option>
+                                    <option value="C">C (70-74점)</option>
+                                    <option value="D">D (60-69점)</option>
+                                    <option value="F">F (0-59점)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="comment">평가 코멘트</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="평가에 대한 상세한 코멘트를 작성해주세요."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary">평가 저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 기본 날짜 설정
+    var today = new Date();
+    var weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    $('#period_from').val(weekAgo.toISOString().split('T')[0]);
+    $('#period_to').val(today.toISOString().split('T')[0]);
+    
+    // 점수에 따른 등급 자동 설정
+    $('#score').on('change', function() {
+        var score = parseInt($(this).val());
+        var grade = '';
+        
+        if (score >= 95) grade = 'A+';
+        else if (score >= 90) grade = 'A';
+        else if (score >= 85) grade = 'B+';
+        else if (score >= 80) grade = 'B';
+        else if (score >= 75) grade = 'C+';
+        else if (score >= 70) grade = 'C';
+        else if (score >= 60) grade = 'D';
+        else grade = 'F';
+        
+        $('#grade').val(grade);
+    });
+    
+    // 통계 데이터 로드
+    loadAttendanceStats();
+});
+
+function loadAttendanceStats() {
+    var year = new Date().getFullYear();
+    var month = new Date().getMonth() + 1;
+    
+    $.get('/api/attendance_summary', {
+        user_id: {{ user.id }},
+        year: year,
+        month: month
+    })
+    .done(function(response) {
+        if (response.success) {
+            $('#monthly-attendance').text(response.summary.total_days + '일');
+            $('#late-count').text(response.summary.late_count + '회');
+        }
+    })
+    .fail(function() {
+        console.log('통계 로드 실패');
+    });
+}
+</script>
+{% endblock %} 

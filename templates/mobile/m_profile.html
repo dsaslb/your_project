@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모바일 프로필</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            border: 3px solid rgba(255,255,255,0.3);
+        }
+        
+        .container {
+            padding: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card h3::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .profile-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .info-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .monthly-stats {
+            margin-top: 15px;
+        }
+        
+        .monthly-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .monthly-item:last-child {
+            border-bottom: none;
+        }
+        
+        .monthly-label {
+            font-weight: 500;
+        }
+        
+        .monthly-details {
+            text-align: right;
+        }
+        
+        .monthly-work-days {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .monthly-hours {
+            font-size: 0.8em;
+            color: #666;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: 500;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .nav-buttons .btn {
+            flex: 1;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin-top: 5px;
+        }
+        
+        .role-admin {
+            background: #ff4757;
+            color: white;
+        }
+        
+        .role-teamlead {
+            background: #ffa502;
+            color: white;
+        }
+        
+        .role-employee {
+            background: #2ed573;
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+        
+        .empty-state .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        .stats-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .summary-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .summary-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .summary-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="profile-avatar">
+            {{ (user.name or user.username)[0].upper() }}
+        </div>
+        <h1>{{ user.name or user.username }}</h1>
+        <div class="role-badge 
+            {% if user.role == 'admin' %}role-admin
+            {% elif user.role == 'teamlead' %}role-teamlead
+            {% else %}role-employee{% endif %}">
+            {% if user.role == 'admin' %}관리자
+            {% elif user.role == 'teamlead' %}팀장
+            {% else %}직원{% endif %}
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- 기본 정보 -->
+        <div class="card">
+            <h3>👤 기본 정보</h3>
+            <div class="profile-info">
+                <div class="info-item">
+                    <div class="info-label">이름</div>
+                    <div class="info-value">{{ user.name or '미설정' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">아이디</div>
+                    <div class="info-value">{{ user.username }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">팀</div>
+                    <div class="info-value">{{ user.team or '미설정' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">역할</div>
+                    <div class="info-value">
+                        {% if user.role == 'admin' %}관리자
+                        {% elif user.role == 'teamlead' %}팀장
+                        {% else %}직원{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 통계 요약 -->
+        {% if monthly_stats %}
+            <div class="card">
+                <h3>📊 통계 요약</h3>
+                <div class="stats-summary">
+                    {% set total_work_days = monthly_stats|sum(attribute='work_days') %}
+                    {% set total_hours = monthly_stats|sum(attribute='total_hours') %}
+                    <div class="summary-item">
+                        <div class="summary-number">{{ total_work_days }}</div>
+                        <div class="summary-label">총 근무일</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number">{{ total_hours }}</div>
+                        <div class="summary-label">총 근무시간</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- 월별 통계 -->
+        {% if monthly_stats %}
+            <div class="card">
+                <h3>📈 월별 근무 통계</h3>
+                <div class="monthly-stats">
+                    {% for stat in monthly_stats %}
+                        <div class="monthly-item">
+                            <span class="monthly-label">{{ stat.year }}-{{ "%02d"|format(stat.month) }}</span>
+                            <div class="monthly-details">
+                                <div class="monthly-work-days">{{ stat.work_days }}일</div>
+                                <div class="monthly-hours">{{ stat.total_hours }}시간</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="empty-state">
+                    <div class="icon">📊</div>
+                    <p>아직 근무 통계가 없습니다.</p>
+                    <p style="font-size: 0.9em; margin-top: 10px;">
+                        출결 기록을 시작하면 통계가 표시됩니다.
+                    </p>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- 권한 정보 -->
+        {% if user.permissions %}
+            <div class="card">
+                <h3>🔐 권한 정보</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    {% for perm_name, has_perm in user.permissions.items() %}
+                        <div class="info-item">
+                            <div class="info-label">{{ perm_name }}</div>
+                            <div class="info-value">
+                                {% if has_perm %}✅{% else %}❌{% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- 네비게이션 -->
+        <div class="nav-buttons">
+            <a href="{{ url_for('m_dashboard') }}" class="btn btn-secondary">홈으로</a>
+            <a href="{{ url_for('m_stats') }}" class="btn btn-secondary">통계</a>
+        </div>
+    </div>
+    
+    <script>
+        // 터치 피드백
+        document.querySelectorAll('.btn, .info-item, .monthly-item').forEach(element => {
+            element.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.95)';
+            });
+            element.addEventListener('touchend', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+        
+        // 애니메이션 효과
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 150);
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,35 @@
+<h2>사유 템플릿 승인 대시보드</h2>
+<form method="get">
+  <select name="status">
+    <option value="">전체상태</option>
+    <option value="pending">대기중</option>
+    <option value="approved">승인</option>
+    <option value="rejected">거절</option>
+  </select>
+  <input type="text" name="q" placeholder="사유 검색">
+  <button>검색</button>
+</form>
+<table>
+  <tr><th>사유</th><th>팀</th><th>상태</th><th>요청자</th><th>요청일</th><th>관리</th></tr>
+  {% for t in approvals %}
+    <tr>
+      <td>{{t.text}}</td>
+      <td>{{t.team}}</td>
+      <td>{{t.status}}</td>
+      <td>{{t.created_by}}</td>
+      <td>{{t.created_at.strftime('%Y-%m-%d')}}</td>
+      <td>
+        {% if t.status == 'pending' %}
+        <form method="post" action="{{ url_for('approve_reason_template', tid=t.id) }}" style="display:inline;">
+          <input type="text" name="comment" placeholder="승인 코멘트">
+          <button>승인</button>
+        </form>
+        <form method="post" action="{{ url_for('reject_reason_template', tid=t.id) }}" style="display:inline;">
+          <input type="text" name="comment" placeholder="거절 사유">
+          <button style="color:red;">거절</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+</table> 

@@ -1,0 +1,337 @@
+{% extends "mobile/m_base.html" %}
+
+{% block title %}신고/이의제기 답변{% endblock %}
+
+{% block content %}
+<div class="mobile-container">
+    <div class="header">
+        <h1><i class="fas fa-reply"></i> 신고/이의제기 답변</h1>
+        <a href="{{ url_for('m_admin_attendance_reports') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+    </div>
+
+    <div class="content">
+        <!-- 신고/이의제기 정보 -->
+        <div class="dispute-info">
+            <h3>신고/이의제기 정보</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>신고자</label>
+                    <span>{{ report.user.name or report.user.username }}</span>
+                </div>
+                <div class="info-item">
+                    <label>유형</label>
+                    <span class="type-badge">{{ report.type_display }}</span>
+                </div>
+                <div class="info-item">
+                    <label>근태일자</label>
+                    <span>{{ report.attendance.date.strftime('%Y년 %m월 %d일') }}</span>
+                </div>
+                <div class="info-item">
+                    <label>근태시간</label>
+                    <span>
+                        {{ report.attendance.clock_in.strftime('%H:%M') if report.attendance.clock_in else '-' }}
+                        ~
+                        {{ report.attendance.clock_out.strftime('%H:%M') if report.attendance.clock_out else '-' }}
+                    </span>
+                </div>
+                <div class="info-item full-width">
+                    <label>신고/이의 사유</label>
+                    <div class="reason-text">{{ report.reason }}</div>
+                </div>
+                <div class="info-item">
+                    <label>신고일시</label>
+                    <span>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <div class="info-item">
+                    <label>현재상태</label>
+                    <span class="status-badge status-{{ report.status }}">{{ report.status_display }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 답변 폼 -->
+        <form method="post" class="reply-form">
+            <div class="form-group">
+                <label for="status">처리 상태</label>
+                <select name="status" id="status" required>
+                    <option value="resolved" {% if report.status == 'resolved' %}selected{% endif %}>해결됨</option>
+                    <option value="rejected" {% if report.status == 'rejected' %}selected{% endif %}>거부됨</option>
+                    <option value="processing" {% if report.status == 'processing' %}selected{% endif %}>처리중</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="reply">답변 내용</label>
+                <textarea 
+                    name="reply" 
+                    id="reply" 
+                    rows="8" 
+                    placeholder="신고/이의제기에 대한 답변을 입력해주세요..."
+                    required
+                >{{ report.admin_reply or '' }}</textarea>
+                <div class="char-count">
+                    <span id="char-count">{{ (report.admin_reply or '')|length }}</span>/1000자
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-paper-plane"></i>
+                    답변 등록
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.mobile-container {
+    padding: 15px;
+    background: #f5f5f5;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.btn-back {
+    color: #666;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.dispute-info {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.dispute-info h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.info-item label {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.info-item span {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+}
+
+.type-badge {
+    background: #007bff;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-processing {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.status-resolved {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.reason-text {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #333;
+    border-left: 3px solid #007bff;
+}
+
+.reply-form {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 150px;
+    font-family: inherit;
+}
+
+.form-group textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.char-count {
+    text-align: right;
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+}
+
+.form-actions {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.btn-submit {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.3s;
+}
+
+.btn-submit:hover {
+    background: #0056b3;
+}
+
+.btn-submit:active {
+    transform: translateY(1px);
+}
+
+@media (max-width: 480px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .mobile-container {
+        padding: 10px;
+    }
+    
+    .dispute-info,
+    .reply-form {
+        padding: 15px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('reply');
+    const charCount = document.getElementById('char-count');
+    
+    textarea.addEventListener('input', function() {
+        const length = this.value.length;
+        charCount.textContent = length;
+        
+        if (length > 900) {
+            charCount.style.color = '#dc3545';
+        } else if (length > 800) {
+            charCount.style.color = '#ffc107';
+        } else {
+            charCount.style.color = '#666';
+        }
+    });
+    
+    // 폼 제출 시 확인
+    document.querySelector('.reply-form').addEventListener('submit', function(e) {
+        const reply = textarea.value.trim();
+        if (reply.length < 10) {
+            e.preventDefault();
+            alert('답변을 10자 이상 입력해주세요.');
+            textarea.focus();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %} 

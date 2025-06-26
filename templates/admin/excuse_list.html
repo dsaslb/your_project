@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}소명 관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        소명 관리
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- 통계 카드 -->
+                    <div class="row mb-4">
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-info">
+                                <div class="inner">
+                                    <h3>{{ stats.total }}</h3>
+                                    <p>전체 소명</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-clipboard-list"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-warning">
+                                <div class="inner">
+                                    <h3>{{ stats.pending }}</h3>
+                                    <p>대기 중</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-success">
+                                <div class="inner">
+                                    <h3>{{ stats.accepted }}</h3>
+                                    <p>승인</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-danger">
+                                <div class="inner">
+                                    <h3>{{ stats.rejected }}</h3>
+                                    <p>거절</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-times"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 필터 -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <form method="GET" class="form-inline">
+                                <div class="form-group mr-2">
+                                    <label for="status" class="mr-1">상태:</label>
+                                    <select class="form-control form-control-sm" id="status" name="status">
+                                        <option value="all" {{ 'selected' if current_status == 'all' }}>전체</option>
+                                        <option value="pending" {{ 'selected' if current_status == 'pending' }}>대기 중</option>
+                                        <option value="reviewed" {{ 'selected' if current_status == 'reviewed' }}>검토 중</option>
+                                        <option value="accepted" {{ 'selected' if current_status == 'accepted' }}>승인</option>
+                                        <option value="rejected" {{ 'selected' if current_status == 'rejected' }}>거절</option>
+                                    </select>
+                                </div>
+                                <div class="form-group mr-2">
+                                    <label for="priority" class="mr-1">우선순위:</label>
+                                    <select class="form-control form-control-sm" id="priority" name="priority">
+                                        <option value="all" {{ 'selected' if current_priority == 'all' }}>전체</option>
+                                        <option value="일반" {{ 'selected' if current_priority == '일반' }}>일반</option>
+                                        <option value="중요" {{ 'selected' if current_priority == '중요' }}>중요</option>
+                                        <option value="긴급" {{ 'selected' if current_priority == '긴급' }}>긴급</option>
+                                    </select>
+                                </div>
+                                <div class="form-group mr-2">
+                                    <label for="category" class="mr-1">카테고리:</label>
+                                    <select class="form-control form-control-sm" id="category" name="category">
+                                        <option value="all" {{ 'selected' if current_category == 'all' }}>전체</option>
+                                        <option value="근태평가" {{ 'selected' if current_category == '근태평가' }}>근태평가</option>
+                                        <option value="지각/조퇴" {{ 'selected' if current_category == '지각/조퇴' }}>지각/조퇴</option>
+                                        <option value="결근" {{ 'selected' if current_category == '결근' }}>결근</option>
+                                        <option value="야근" {{ 'selected' if current_category == '야근' }}>야근</option>
+                                        <option value="기타" {{ 'selected' if current_category == '기타' }}>기타</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-filter"></i> 필터
+                                </button>
+                                <a href="{{ url_for('attendance.admin_excuse_list') }}" class="btn btn-secondary btn-sm ml-1">
+                                    <i class="fas fa-redo"></i> 초기화
+                                </a>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 소명 목록 -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>제출자</th>
+                                    <th>제목</th>
+                                    <th>카테고리</th>
+                                    <th>우선순위</th>
+                                    <th>상태</th>
+                                    <th>제출일</th>
+                                    <th>검토일</th>
+                                    <th>액션</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for excuse in excuses %}
+                                <tr>
+                                    <td>{{ excuse.id }}</td>
+                                    <td>
+                                        <strong>{{ excuse.user.name or excuse.user.username }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ excuse.user.email or '이메일 없음' }}</small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('attendance.admin_excuse_detail', excuse_id=excuse.id) }}" 
+                                           class="text-primary font-weight-bold">
+                                            {{ excuse.title }}
+                                        </a>
+                                        {% if excuse.content|length > 50 %}
+                                            <br>
+                                            <small class="text-muted">{{ excuse.content[:50] }}...</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ excuse.category }}</span>
+                                    </td>
+                                    <td>
+                                        {% if excuse.priority == '긴급' %}
+                                            <span class="badge badge-danger">{{ excuse.priority }}</span>
+                                        {% elif excuse.priority == '중요' %}
+                                            <span class="badge badge-warning">{{ excuse.priority }}</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">{{ excuse.priority }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if excuse.status == 'pending' %}
+                                            <span class="badge badge-warning">대기 중</span>
+                                        {% elif excuse.status == 'reviewed' %}
+                                            <span class="badge badge-info">검토 중</span>
+                                        {% elif excuse.status == 'accepted' %}
+                                            <span class="badge badge-success">승인</span>
+                                        {% elif excuse.status == 'rejected' %}
+                                            <span class="badge badge-danger">거절</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ excuse.created_at.strftime('%Y-%m-%d') }}
+                                        <br>
+                                        <small class="text-muted">{{ excuse.created_at.strftime('%H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        {% if excuse.reviewed_at %}
+                                            {{ excuse.reviewed_at.strftime('%Y-%m-%d') }}
+                                            <br>
+                                            <small class="text-muted">{{ excuse.reviewed_at.strftime('%H:%M') }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('attendance.admin_excuse_detail', excuse_id=excuse.id) }}" 
+                                               class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i> 보기
+                                            </a>
+                                            {% if excuse.status == 'pending' %}
+                                            <button type="button" class="btn btn-sm btn-success" 
+                                                    onclick="reviewExcuse({{ excuse.id }}, 'accept')">
+                                                <i class="fas fa-check"></i> 승인
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                    onclick="reviewExcuse({{ excuse.id }}, 'reject')">
+                                                <i class="fas fa-times"></i> 거절
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <br>
+                                        소명 요청이 없습니다.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 빠른 검토 모달 -->
+<div class="modal fade" id="quickReviewModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">빠른 검토</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="quickReviewForm" method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="action">처리 결과</label>
+                        <select class="form-control" id="action" name="action" required>
+                            <option value="accept">승인</option>
+                            <option value="reject">거절</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin_comment">관리자 코멘트</label>
+                        <textarea class="form-control" id="admin_comment" name="admin_comment" rows="3" 
+                                  placeholder="처리 사유나 추가 코멘트를 입력하세요."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="response_content">답변 내용</label>
+                        <textarea class="form-control" id="response_content" name="response_content" rows="3" 
+                                  placeholder="사용자에게 전달할 답변을 입력하세요."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary">처리 완료</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function reviewExcuse(excuseId, action) {
+    $('#action').val(action);
+    $('#quickReviewForm').attr('action', '/admin/excuse/' + excuseId + '/review');
+    $('#quickReviewModal').modal('show');
+}
+
+$(document).ready(function() {
+    // 필터 자동 적용
+    $('select[name="status"], select[name="priority"], select[name="category"]').on('change', function() {
+        $(this).closest('form').submit();
+    });
+    
+    // 상태별 색상 강조
+    $('tbody tr').each(function() {
+        var status = $(this).find('td:nth-child(6) .badge').text().trim();
+        if (status === '대기 중') {
+            $(this).addClass('table-warning');
+        } else if (status === '거절') {
+            $(this).addClass('table-danger');
+        } else if (status === '승인') {
+            $(this).addClass('table-success');
+        }
+    });
+});
+</script>
+{% endblock %} 

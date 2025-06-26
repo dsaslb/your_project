@@ -1,0 +1,26 @@
+    <!-- 네비게이션 버튼 -->
+    <div class="nav-buttons">
+        <a href="{{ url_for('m_attendance') }}" class="btn nav-btn">출결 입력</a>
+        <a href="{{ url_for('m_dashboard') }}" class="btn nav-btn btn-secondary">대시보드</a>
+        <a href="{{ url_for('m_stats') }}" class="btn nav-btn btn-secondary">통계</a>
+    </div>
+    
+    <!-- PC 버전 링크 -->
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="{{ url_for('dashboard') }}" style="color: #667eea; text-decoration: none; font-size: 0.9em;">
+            PC 버전으로 보기
+        </a>
+    </div>
+</div>
+
+<script>
+    // 터치 피드백
+    document.querySelectorAll('.btn').forEach(btn => {
+        btn.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+        btn.addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+</script> 

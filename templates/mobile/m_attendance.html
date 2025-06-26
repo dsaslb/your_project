@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모바일 출결 입력</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .container {
+            padding: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card h3::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .ai-suggestion {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .ai-suggestion h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        
+        .ai-suggestion .suggestion-text {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: 500;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-apply {
+            background: #28a745;
+            padding: 8px 16px;
+            font-size: 14px;
+            width: auto;
+        }
+        
+        .btn-apply:hover {
+            background: #218838;
+        }
+        
+        .template-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .template-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .template-btn:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        .template-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .current-status {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .current-status h4 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .nav-buttons .btn {
+            flex: 1;
+        }
+        
+        .flash-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .flash-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 출결 입력</h1>
+        <div style="opacity: 0.9; font-size: 0.9em;">오늘의 출결 상태를 입력하세요</div>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {% if category == 'error' %}flash-error{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- 현재 출결 상태 -->
+        {% if att %}
+            <div class="current-status">
+                <h4>📅 현재 출결 상태</h4>
+                <p><strong>출근시간:</strong> {{ att.clock_in.strftime('%H:%M') if att.clock_in else '미출근' }}</p>
+                <p><strong>사유:</strong> {{ att.reason or '정상' }}</p>
+            </div>
+        {% endif %}
+        
+        <!-- 출결 입력 폼 -->
+        <div class="card">
+            <h3>✏️ 출결 사유 입력</h3>
+            <form method="post">
+                <div class="form-group">
+                    <label for="reason">사유:</label>
+                    <input type="text" 
+                           id="reason" 
+                           name="reason" 
+                           class="form-control" 
+                           value="{{ att.reason if att else '' }}" 
+                           placeholder="사유를 입력하세요 (예: 정상, 지각, 조퇴 등)"
+                           required>
+                </div>
+                
+                <!-- AI 추천 -->
+                {% if ai_suggestion %}
+                    <div class="ai-suggestion">
+                        <h4>🤖 AI 추천 사유</h4>
+                        <div class="suggestion-text">{{ ai_suggestion }}</div>
+                        <button type="button" class="btn btn-apply" onclick="applySuggestion('{{ ai_suggestion }}')">
+                            추천 사유 적용
+                        </button>
+                    </div>
+                {% endif %}
+                
+                <!-- 사유 템플릿 -->
+                {% if reason_templates %}
+                    <div class="form-group">
+                        <label>📋 자주 사용하는 사유:</label>
+                        <div class="template-grid">
+                            {% for template in reason_templates %}
+                                <div class="template-btn" onclick="applyTemplate('{{ template.text }}')">
+                                    {{ template.text }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <button type="submit" class="btn">저장하기</button>
+            </form>
+        </div>
+        
+        <!-- 네비게이션 -->
+        <div class="nav-buttons">
+            <a href="{{ url_for('m_dashboard') }}" class="btn btn-secondary">홈으로</a>
+            <a href="{{ url_for('m_notifications') }}" class="btn btn-secondary">알림</a>
+        </div>
+    </div>
+    
+    <script>
+        function applySuggestion(suggestion) {
+            document.getElementById('reason').value = suggestion;
+            document.getElementById('reason').focus();
+        }
+        
+        function applyTemplate(template) {
+            document.getElementById('reason').value = template;
+            document.getElementById('reason').focus();
+        }
+        
+        // 템플릿 버튼 클릭 효과
+        document.querySelectorAll('.template-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // 선택 효과
+                document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                // 1초 후 선택 효과 제거
+                setTimeout(() => {
+                    this.classList.remove('selected');
+                }, 1000);
+            });
+        });
+        
+        // 터치 피드백
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.95)';
+            });
+            btn.addEventListener('touchend', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+        
+        // 폼 제출 시 로딩 표시
+        document.querySelector('form').addEventListener('submit', function() {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.textContent = '저장 중...';
+            submitBtn.disabled = true;
+        });
+    </script>
+</body>
+</html> 

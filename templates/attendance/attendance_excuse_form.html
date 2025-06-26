@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}소명서 제출{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-edit"></i>
+                        소명서 제출
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>안내:</strong> 근태 평가나 기타 사유에 대한 소명서를 제출할 수 있습니다.
+                        관리자가 검토 후 답변을 드립니다.
+                    </div>
+
+                    <form method="POST">
+                        <div class="form-group">
+                            <label for="title">제목 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   placeholder="소명서 제목을 입력하세요" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="category">카테고리</label>
+                            <select class="form-control" id="category" name="category">
+                                <option value="근태평가">근태평가</option>
+                                <option value="지각/조퇴">지각/조퇴</option>
+                                <option value="결근">결근</option>
+                                <option value="야근">야근</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="priority">우선순위</label>
+                            <select class="form-control" id="priority" name="priority">
+                                <option value="일반">일반</option>
+                                <option value="중요">중요</option>
+                                <option value="긴급">긴급</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="content">소명 내용 <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="content" name="content" rows="8" 
+                                      placeholder="소명 내용을 상세히 작성해주세요.&#10;&#10;예시:&#10;- 사유: [구체적인 사유]&#10;- 기간: [해당 기간]&#10;- 개선 방안: [향후 개선 계획]" required></textarea>
+                            <small class="form-text text-muted">
+                                구체적이고 명확한 내용으로 작성해주시면 검토에 도움이 됩니다.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="confirm" required>
+                                <label class="custom-control-label" for="confirm">
+                                    위 내용이 사실임을 확인합니다.
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                                소명서 제출
+                            </button>
+                            <a href="{{ url_for('attendance.staff_attendance_report', user_id=user.id) }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i>
+                                돌아가기
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 소명서 작성 가이드 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="fas fa-question-circle"></i>
+                        소명서 작성 가이드
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>✅ 좋은 소명서의 예시</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success"></i> 구체적인 사유와 증빙자료 포함</li>
+                                <li><i class="fas fa-check text-success"></i> 정확한 날짜와 시간 명시</li>
+                                <li><i class="fas fa-check text-success"></i> 향후 개선 방안 제시</li>
+                                <li><i class="fas fa-check text-success"></i> 정중하고 진지한 어조 사용</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>❌ 피해야 할 내용</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-times text-danger"></i> 모호하거나 추상적인 설명</li>
+                                <li><i class="fas fa-times text-danger"></i> 타인을 비방하는 내용</li>
+                                <li><i class="fas fa-times text-danger"></i> 핑계나 변명성 내용</li>
+                                <li><i class="fas fa-times text-danger"></i> 부적절한 언어 사용</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 우선순위에 따른 색상 변경
+    $('#priority').on('change', function() {
+        var priority = $(this).val();
+        var color = '';
+        
+        switch(priority) {
+            case '긴급':
+                color = 'danger';
+                break;
+            case '중요':
+                color = 'warning';
+                break;
+            default:
+                color = 'info';
+        }
+        
+        $(this).removeClass('border-danger border-warning border-info')
+               .addClass('border-' + color);
+    });
+    
+    // 글자 수 카운터
+    $('#content').on('input', function() {
+        var length = $(this).val().length;
+        var minLength = 50;
+        
+        if (length < minLength) {
+            $(this).addClass('border-warning');
+            $('.form-text').html(`최소 ${minLength}자 이상 작성해주세요. (현재: ${length}자)`);
+        } else {
+            $(this).removeClass('border-warning');
+            $('.form-text').html(`구체적이고 명확한 내용으로 작성해주시면 검토에 도움이 됩니다. (${length}자)`);
+        }
+    });
+    
+    // 폼 제출 전 확인
+    $('form').on('submit', function(e) {
+        var title = $('#title').val().trim();
+        var content = $('#content').val().trim();
+        
+        if (title.length < 5) {
+            alert('제목은 5자 이상 입력해주세요.');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (content.length < 50) {
+            alert('소명 내용은 50자 이상 입력해주세요.');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!confirm('소명서를 제출하시겠습니까?')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알림 상세</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .container {
+            padding: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .notification-category {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .notification-time {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .notification-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            word-wrap: break-word;
+        }
+        
+        .notification-meta {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .meta-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .meta-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .meta-label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .meta-value {
+            color: #333;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: 500;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .read-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+        
+        .status-read {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-unread {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .nav-buttons .btn {
+            flex: 1;
+        }
+        
+        .link-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .link-section h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .link-item {
+            display: block;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #667eea;
+            margin-bottom: 8px;
+            transition: background 0.3s;
+        }
+        
+        .link-item:hover {
+            background: #e9ecef;
+        }
+        
+        .empty-content {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+        
+        .empty-content .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 알림 상세</h1>
+        <div style="opacity: 0.9; font-size: 0.9em;">알림 내용을 확인하세요</div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <!-- 읽음 상태 -->
+            <div class="read-status {% if noti.is_read %}status-read{% else %}status-unread{% endif %}">
+                {% if noti.is_read %}
+                    ✅ 읽음
+                {% else %}
+                    🔔 미읽
+                {% endif %}
+            </div>
+            
+            <!-- 알림 헤더 -->
+            <div class="notification-header">
+                <div class="notification-category">{{ noti.category }}</div>
+                <div class="notification-time">{{ noti.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </div>
+            
+            <!-- 알림 내용 -->
+            <div class="notification-content">
+                {{ noti.content }}
+            </div>
+            
+            <!-- 알림 메타 정보 -->
+            <div class="notification-meta">
+                <div class="meta-item">
+                    <span class="meta-label">분류:</span>
+                    <span class="meta-value">{{ noti.category }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">생성일시:</span>
+                    <span class="meta-value">{{ noti.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                </div>
+                {% if noti.link %}
+                    <div class="meta-item">
+                        <span class="meta-label">링크:</span>
+                        <span class="meta-value">{{ noti.link }}</span>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- 링크 섹션 -->
+            {% if noti.link %}
+                <div class="link-section">
+                    <h4>🔗 관련 링크</h4>
+                    <a href="{{ noti.link }}" class="link-item" target="_blank">
+                        관련 페이지로 이동 →
+                    </a>
+                </div>
+            {% endif %}
+            
+            <!-- 액션 버튼 -->
+            {% if not noti.is_read %}
+                <button class="btn btn-secondary" onclick="markAsRead({{ noti.id }})">
+                    읽음 처리
+                </button>
+            {% endif %}
+        </div>
+        
+        <!-- 네비게이션 -->
+        <div class="nav-buttons">
+            <a href="{{ url_for('m_notifications') }}" class="btn btn-secondary">목록으로</a>
+            <a href="{{ url_for('m_dashboard') }}" class="btn btn-secondary">홈으로</a>
+        </div>
+    </div>
+    
+    <script>
+        function markAsRead(notiId) {
+            fetch(`/m/notifications/mark_read/${notiId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('읽음 처리 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('읽음 처리 중 오류가 발생했습니다.');
+                });
+        }
+        
+        // 터치 피드백
+        document.querySelectorAll('.btn, .link-item').forEach(element => {
+            element.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.95)';
+            });
+            element.addEventListener('touchend', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+        
+        // 뒤로가기 버튼 처리
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.history && window.history.pushState) {
+                window.addEventListener('popstate', function() {
+                    window.location.href = '{{ url_for("m_notifications") }}';
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,348 @@
+{% extends "mobile/m_base.html" %}
+
+{% block title %}신고/이의제기 관리{% endblock %}
+
+{% block content %}
+<div class="mobile-container">
+    <div class="header">
+        <h1><i class="fas fa-tasks"></i> 신고/이의제기 관리</h1>
+        <a href="{{ url_for('m_dashboard') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+    </div>
+
+    <div class="content">
+        <!-- 대기중인 신고/이의제기 -->
+        {% if pending_reports %}
+        <div class="section">
+            <h3 class="section-title">
+                <i class="fas fa-clock"></i>
+                대기중 ({{ pending_reports|length }}건)
+            </h3>
+            <div class="reports-list">
+                {% for report in pending_reports %}
+                <div class="report-item pending">
+                    <div class="report-header">
+                        <div class="user-info">
+                            <span class="user-name">{{ report.user.name or report.user.username }}</span>
+                            <span class="report-type">{{ report.type_display }}</span>
+                        </div>
+                        <div class="report-date">
+                            {{ report.created_at.strftime('%m/%d %H:%M') }}
+                        </div>
+                    </div>
+                    
+                    <div class="attendance-info">
+                        <span class="date">{{ report.attendance.date.strftime('%m월 %d일') }}</span>
+                        <span class="time">
+                            {{ report.attendance.clock_in.strftime('%H:%M') if report.attendance.clock_in else '-' }}
+                            ~
+                            {{ report.attendance.clock_out.strftime('%H:%M') if report.attendance.clock_out else '-' }}
+                        </span>
+                    </div>
+                    
+                    <div class="report-reason">
+                        {{ report.reason[:100] }}{% if report.reason|length > 100 %}...{% endif %}
+                    </div>
+                    
+                    <div class="report-actions">
+                        <button class="btn-status" onclick="changeStatus({{ report.id }}, 'processing')">
+                            처리중
+                        </button>
+                        <a href="{{ url_for('m_admin_attendance_report_reply', report_id=report.id) }}" class="btn-reply">
+                            답변하기
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 처리중인 신고/이의제기 -->
+        {% if processing_reports %}
+        <div class="section">
+            <h3 class="section-title">
+                <i class="fas fa-cog"></i>
+                처리중 ({{ processing_reports|length }}건)
+            </h3>
+            <div class="reports-list">
+                {% for report in processing_reports %}
+                <div class="report-item processing">
+                    <div class="report-header">
+                        <div class="user-info">
+                            <span class="user-name">{{ report.user.name or report.user.username }}</span>
+                            <span class="report-type">{{ report.type_display }}</span>
+                        </div>
+                        <div class="report-date">
+                            {{ report.created_at.strftime('%m/%d %H:%M') }}
+                        </div>
+                    </div>
+                    
+                    <div class="attendance-info">
+                        <span class="date">{{ report.attendance.date.strftime('%m월 %d일') }}</span>
+                        <span class="time">
+                            {{ report.attendance.clock_in.strftime('%H:%M') if report.attendance.clock_in else '-' }}
+                            ~
+                            {{ report.attendance.clock_out.strftime('%H:%M') if report.attendance.clock_out else '-' }}
+                        </span>
+                    </div>
+                    
+                    <div class="report-reason">
+                        {{ report.reason[:100] }}{% if report.reason|length > 100 %}...{% endif %}
+                    </div>
+                    
+                    <div class="report-actions">
+                        <button class="btn-status" onclick="changeStatus({{ report.id }}, 'resolved')">
+                            해결
+                        </button>
+                        <button class="btn-status" onclick="changeStatus({{ report.id }}, 'rejected')">
+                            거부
+                        </button>
+                        <a href="{{ url_for('m_admin_attendance_report_reply', report_id=report.id) }}" class="btn-reply">
+                            답변하기
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 신고/이의제기가 없는 경우 -->
+        {% if not pending_reports and not processing_reports %}
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <p>처리할 신고/이의제기가 없습니다.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.mobile-container {
+    padding: 15px;
+    background: #f5f5f5;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.btn-back {
+    color: #666;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.section {
+    margin-bottom: 25px;
+}
+
+.section-title {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reports-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.report-item {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-left: 4px solid #ffc107;
+}
+
+.report-item.pending {
+    border-left-color: #ffc107;
+}
+
+.report-item.processing {
+    border-left-color: #007bff;
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.report-type {
+    font-size: 11px;
+    color: #666;
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+.report-date {
+    font-size: 12px;
+    color: #666;
+}
+
+.attendance-info {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #666;
+}
+
+.report-reason {
+    font-size: 13px;
+    color: #333;
+    line-height: 1.4;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.report-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-status {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-status:hover {
+    transform: translateY(-1px);
+}
+
+.btn-status:active {
+    transform: translateY(0);
+}
+
+.btn-reply {
+    padding: 6px 12px;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.btn-reply:hover {
+    background: #0056b3;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: #28a745;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 16px;
+}
+
+@media (max-width: 480px) {
+    .mobile-container {
+        padding: 10px;
+    }
+    
+    .report-item {
+        padding: 12px;
+    }
+    
+    .report-actions {
+        flex-direction: column;
+    }
+    
+    .btn-status,
+    .btn-reply {
+        text-align: center;
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+function changeStatus(reportId, status) {
+    if (!confirm('상태를 변경하시겠습니까?')) {
+        return;
+    }
+    
+    fetch(`/m/admin/attendance_report/${reportId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `status=${status}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('상태 변경 중 오류가 발생했습니다.');
+    });
+}
+</script>
+{% endblock %} 

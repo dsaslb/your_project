@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .stats-section {
+            margin-bottom: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-box {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+        .stat-box h3 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        .stat-box .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .records-section {
+            margin-top: 20px;
+        }
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .records-table th,
+        .records-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 11px;
+        }
+        .records-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .records-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status-normal {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-late {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .status-early {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .status-absent {
+            color: #6c757d;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        @media print {
+            body {
+                margin: 0;
+                padding: 15px;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ title }}</h1>
+        <p>기간: {{ from_date.strftime('%Y년 %m월 %d일') }} ~ {{ to_date.strftime('%Y년 %m월 %d일') }}</p>
+        <p>생성일시: {{ moment().format('YYYY년 MM월 DD일 HH:mm') }}</p>
+    </div>
+
+    <div class="stats-section">
+        <h2>📊 전체 통계</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>총 기록</h3>
+                <div class="value">{{ stats.total_days }}건</div>
+            </div>
+            <div class="stat-box">
+                <h3>총 근무시간</h3>
+                <div class="value">{{ "%.1f"|format(stats.total_hours) }}시간</div>
+            </div>
+            <div class="stat-box">
+                <h3>지각</h3>
+                <div class="value">{{ stats.late_count }}건</div>
+            </div>
+            <div class="stat-box">
+                <h3>조퇴</h3>
+                <div class="value">{{ stats.early_leave_count }}건</div>
+            </div>
+            <div class="stat-box">
+                <h3>결근</h3>
+                <div class="value">{{ stats.absent_count }}건</div>
+            </div>
+            <div class="stat-box">
+                <h3>정상출근</h3>
+                <div class="value">{{ stats.normal_count }}건</div>
+            </div>
+            <div class="stat-box">
+                <h3>야근시간</h3>
+                <div class="value">{{ "%.1f"|format(stats.overtime_hours) }}시간</div>
+            </div>
+            <div class="stat-box">
+                <h3>평균 근무시간</h3>
+                <div class="value">{{ "%.1f"|format(stats.total_hours / stats.total_days if stats.total_days > 0 else 0) }}시간</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="records-section">
+        <h2>📋 상세 기록</h2>
+        <table class="records-table">
+            <thead>
+                <tr>
+                    <th>날짜</th>
+                    <th>직원명</th>
+                    <th>출근시간</th>
+                    <th>퇴근시간</th>
+                    <th>근무시간</th>
+                    <th>상태</th>
+                    <th>비고</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ record.clock_in.strftime('%m/%d') if record.clock_in else '-' }}</td>
+                    <td>{{ record.user.name or record.user.username }}</td>
+                    <td>{{ record.clock_in.strftime('%H:%M') if record.clock_in else '-' }}</td>
+                    <td>{{ record.clock_out.strftime('%H:%M') if record.clock_out else '-' }}</td>
+                    <td>
+                        {% if record.clock_in and record.clock_out %}
+                            {{ "%.1f"|format((record.clock_out - record.clock_in).total_seconds() / 3600) }}시간
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not record.clock_in and not record.clock_out %}
+                            <span class="status-absent">결근</span>
+                        {% elif record.clock_in and not record.clock_out %}
+                            <span class="status-early">미완료</span>
+                        {% elif record.is_late and record.is_early_leave %}
+                            <span class="status-late">지각/조퇴</span>
+                        {% elif record.is_late %}
+                            <span class="status-late">지각</span>
+                        {% elif record.is_early_leave %}
+                            <span class="status-early">조퇴</span>
+                        {% else %}
+                            <span class="status-normal">정상</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ record.reason or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if stats.users %}
+    <div class="page-break"></div>
+    <div class="records-section">
+        <h2>👥 사용자별 통계</h2>
+        <table class="records-table">
+            <thead>
+                <tr>
+                    <th>직원명</th>
+                    <th>근무일수</th>
+                    <th>총 근무시간</th>
+                    <th>평균 근무시간</th>
+                    <th>지각</th>
+                    <th>조퇴</th>
+                    <th>야근시간</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_id, user_data in stats.users.items() %}
+                <tr>
+                    <td>{{ user_data.name }}</td>
+                    <td>{{ user_data.total_days }}일</td>
+                    <td>{{ "%.1f"|format(user_data.total_hours) }}시간</td>
+                    <td>{{ "%.1f"|format(user_data.total_hours / user_data.total_days if user_data.total_days > 0 else 0) }}시간</td>
+                    <td>{{ user_data.late_count }}회</td>
+                    <td>{{ user_data.early_leave_count }}회</td>
+                    <td>{{ "%.1f"|format(user_data.overtime_hours) }}시간</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p>본 리포트는 시스템에서 자동으로 생성되었습니다.</p>
+        <p>문의사항이 있으시면 관리자에게 연락해주세요.</p>
+    </div>
+</body>
+</html> 

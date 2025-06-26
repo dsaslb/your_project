@@ -50,24 +50,27 @@
       <td>{% if r.is_overtime %}✔️{% endif %}</td>
       <td>
         {% if session.get('role') in ('admin', 'manager', 'teamlead') %}
-        <!-- 사유 템플릿 드롭다운 -->
-        <select class="reason-template-select" data-rid="{{r.id}}" style="width:120px; margin-bottom:2px;">
-          <option value="">템플릿 선택</option>
-          {% for t in reason_templates %}
-            <option value="{{t.text}}">{{t.text}}</option>
+        <form method="POST" action="{{ url_for('update_attendance_reason', rid=r.id) }}">
+          <input type="text" name="reason" value="{{ r.reason or '' }}" placeholder="사유를 입력하세요" list="reason_suggestions" data-rid="{{ r.id }}">
+          <datalist id="reason_suggestions">
+            {% for t in reason_templates %}
+            <option value="{{ t.text }}">
+            {% endfor %}
+            {% if ai_suggestion %}
+                {% for sugg in ai_suggestion %}
+                <option value="{{ sugg }}">
+                {% endfor %}
+            {% endif %}
+          </datalist>
+          <button type="submit">저장</button>
+        </form>
+
+        {% if ai_suggestion %}
+        <div style="color:#888; margin-top:2px;">
+          AI 추천 사유:
+          {% for sugg in ai_suggestion %}
+            <button type='button' onclick='setReason("{{ sugg|escapejs }}", "{{ r.id }}")'>{{ sugg }}</button>
           {% endfor %}
-        </select>
-        <!-- 실시간 편집 필드 -->
-        <input type="text" value="{{r.reason or ''}}" data-rid="{{r.id}}" class="reason-input" style="width:130px;" placeholder="사유 입력">
-        <span class="reason-save-status" id="rs-{{r.id}}"></span>
-        <!-- AI 추천 사유 -->
-        {% set ai_reason = ai_recommend_reason_template(user, r.clock_in.date()) if r.clock_in else "" %}
-        {% if ai_reason %}
-        <div style="font-size:0.85em; color:#888; margin-top:2px;">
-          AI 추천: <b>{{ai_reason}}</b>
-          <button type="button" class="btn btn-sm btn-outline-primary" onclick="applyAIRecommend('{{ai_reason}}', {{r.id}})">
-            적용
-          </button>
         </div>
         {% endif %}
         {% else %}
@@ -76,7 +79,7 @@
       </td>
       {% if session.get('role') in ('admin', 'manager', 'teamlead') %}
       <td>
-        <button type="button" class="btn btn-success btn-sm" onclick="saveReason({{r.id}})">
+        <button type='button' class='btn btn-success btn-sm' onclick='saveReason("{{ r.id|escapejs }}")'>
           <i class="fas fa-save"></i> 저장
         </button>
       </td>
@@ -147,6 +150,10 @@
 
 <!-- 실시간 편집 JavaScript -->
 <script>
+function setReason(val, rid) {
+  document.querySelector(`input[name=reason][data-rid='${rid}']`).value = val;
+}
+
 // 템플릿 선택 시 자동 입력
 document.querySelectorAll('.reason-template-select').forEach(function(select) {
     select.onchange = function() {

@@ -1,87 +1,85 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import re
 import hashlib
+import secrets
+from datetime import datetime, timedelta
+from flask import request, session, current_app
+from extensions import db
+from models import User, ActionLog
 import os
 import uuid
-from datetime import datetime, timedelta
-from functools import wraps
-from flask import request, flash, redirect, url_for
+import bleach
 from werkzeug.utils import secure_filename
-
-try:
-    import bleach
-except ImportError:
-    bleach = None
-
-# 필요한 모델들 import
-try:
-    from models import User, ActionLog
-    from extensions import db
-except ImportError:
-    # 모델이 아직 로드되지 않은 경우를 위한 더미 클래스
-    class DummyModel:
-        pass
-    User = ActionLog = DummyModel
-    db = None
+import time
+from functools import wraps
+from flask import redirect, url_for, flash
 
 def password_strong(password):
-    """비밀번호 강도 검사"""
+    """비밀번호 강도 체크"""
     if len(password) < 8:
         return False, "비밀번호는 최소 8자 이상이어야 합니다."
     
-    has_upper = any(c.isupper() for c in password)
-    has_lower = any(c.islower() for c in password)
-    has_digit = any(c.isdigit() for c in password)
-    has_special = any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in password)
+    if not re.search(r"[A-Z]", password):
+        return False, "비밀번호는 대문자를 포함해야 합니다."
     
-    score = sum([has_upper, has_lower, has_digit, has_special])
+    if not re.search(r"[a-z]", password):
+        return False, "비밀번호는 소문자를 포함해야 합니다."
     
-    if score < 3:
-        return False, "비밀번호는 대문자, 소문자, 숫자, 특수문자 중 3가지 이상을 포함해야 합니다."
+    if not re.search(r"\d", password):
+        return False, "비밀번호는 숫자를 포함해야 합니다."
     
-    return True, "강력한 비밀번호입니다."
+    if not re.search(r"[^A-Za-z0-9]", password):
+        return False, "비밀번호는 특수문자를 포함해야 합니다."
+    
+    return True, "비밀번호가 안전합니다."
 
 def validate_password_strength(password):
-    """비밀번호 유효성 검사"""
-    return password_strong(password)[0]
+    """비밀번호 강도 검증 (기존 호환성)"""
+    return password_strong(password)
 
 def validate_username(username):
-    """사용자명 유효성 검사"""
-    if not username or len(username) < 3:
+    """사용자명 유효성 검증"""
+    if len(username) < 3:
         return False, "사용자명은 최소 3자 이상이어야 합니다."
     
     if len(username) > 20:
         return False, "사용자명은 최대 20자까지 가능합니다."
     
-    # 특수문자 제한
-    allowed_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-')
-    if not all(c in allowed_chars for c in username):
-        return False, "사용자명에는 영문, 숫자, 언더스코어(_), 하이픈(-)만 사용 가능합니다."
+    if not re.match(r'^[a-zA-Z0-9_]+$', username):
+        return False, "사용자명은 영문자, 숫자, 언더스코어만 사용 가능합니다."
     
-    return True, "유효한 사용자명입니다."
+    # 예약어 체크
+    reserved_words = ['admin', 'root', 'system', 'test', 'guest', 'user']
+    if username.lower() in reserved_words:
+        return False, "사용할 수 없는 사용자명입니다."
+    
+    return True, "사용자명이 유효합니다."
 
 def validate_email(email):
-    """이메일 유효성 검사"""
-    import re
+    """이메일 형식 검증"""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, email))
+    return re.match(pattern, email) is not None
 
 def generate_secure_token():
     """보안 토큰 생성"""
-    return hashlib.sha256(os.urandom(32)).hexdigest()
+    return secrets.token_urlsafe(32)
 
 def hash_sensitive_data(data):
     """민감한 데이터 해시화"""
-    return hashlib.sha256(str(data).encode()).hexdigest()
+    return hashlib.sha256(data.encode()).hexdigest()
 
 def check_rate_limit(user_id, action, limit=5, window=300):
-    """속도 제한 확인"""
+    """사용자별 요청 제한 확인"""
     try:
         from datetime import datetime, timedelta
-        recent_window = datetime.utcnow() - timedelta(seconds=window)
+        window_start = datetime.utcnow() - timedelta(seconds=window)
         
         recent_actions = ActionLog.query.filter(
             ActionLog.user_id == user_id,
             ActionLog.action == action,
-            ActionLog.created_at >= recent_window
+            ActionLog.created_at >= window_start
         ).count()
         
         return recent_actions < limit
@@ -281,117 +279,107 @@ def clean_comment(content):
     }
     
     # Bleach 라이브러리를 사용하여 HTML 정제
-    if bleach:
-        cleaned_content = bleach.clean(
-            content,
-            tags=allowed_tags,
-            attributes=allowed_attrs,
-            strip=True  # 허용되지 않은 태그를 제거
-        )
-    else:
-        # Bleach가 없는 경우 기본 정제
-        cleaned_content = sanitize_input(content)
+    cleaned_content = bleach.clean(
+        content,
+        tags=allowed_tags,
+        attributes=allowed_attrs,
+        strip=True  # 허용되지 않은 태그를 제거
+    )
     
     return cleaned_content
 
 def sanitize_filename(filename):
-    """파일명 정제"""
     return secure_filename(filename)
 
 def safe_remove(file_path):
-    """파일 안전 삭제"""
+    """파일을 안전하게 삭제"""
     try:
-        if os.path.exists(file_path):
+        if file_path and os.path.exists(file_path):
             os.remove(file_path)
             return True
     except Exception:
-        pass
+        # 로깅 추가 가능
+        return False
     return False
 
 def validate_file_size(file, max_size_mb=10):
-    """파일 크기 검증"""
-    if not file:
-        return False, "파일이 없습니다."
-    
-    # 파일 크기 확인 (바이트 단위)
-    file.seek(0, 2)  # 파일 끝으로 이동
-    file_size = file.tell()
-    file.seek(0)  # 파일 시작으로 복귀
-    
+    """업로드 파일 크기 검증"""
     max_size_bytes = max_size_mb * 1024 * 1024
     
-    if file_size > max_size_bytes:
-        return False, f"파일 크기가 {max_size_mb}MB를 초과합니다."
+    # 파일 크기 확인을 위해 파일 포인터 이동
+    file.seek(0, os.SEEK_END)
+    file_length = file.tell()
+    file.seek(0, os.SEEK_SET)  # 포인터 원위치
     
-    return True, "파일 크기가 적절합니다."
+    if file_length > max_size_bytes:
+        return False, f"파일 크기는 {max_size_mb}MB를 초과할 수 없습니다."
+        
+    return True, ""
 
 def escape_html(text):
-    """HTML 이스케이프"""
+    """HTML 이스케이프 처리"""
     if not text:
         return ""
-    
-    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#x27;')
+    import html
+    return html.escape(text) 
 
 def admin_required(f):
     """관리자 권한 데코레이터"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        from flask_login import current_user
-        if not current_user.is_authenticated:
+        if not session.get('user_id'):
             flash('로그인이 필요합니다.', 'error')
-            return redirect(url_for('auth.login'))
-        if not current_user.is_admin():
-            flash('관리자 권한이 필요합니다.', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('login'))
+        
+        from models import User
+        user = User.query.get(session['user_id'])
+        if not user or user.role != 'admin':
+            flash('관리자만 접근 가능합니다.', 'error')
+            return redirect(url_for('dashboard'))
+        
         return f(*args, **kwargs)
     return decorated_function
 
 def rate_limit_exceeded(identifier, limit=5, window=300):
-    """속도 제한 초과 확인"""
-    try:
-        from datetime import datetime, timedelta
-        recent_window = datetime.utcnow() - timedelta(seconds=window)
-        
-        recent_actions = ActionLog.query.filter(
-            ActionLog.ip_address == identifier,
-            ActionLog.created_at >= recent_window
-        ).count()
-        
-        return recent_actions >= limit
-    except Exception:
-        return False
+    """요청 제한 체크"""
+    from extensions import cache
+    
+    key = f"rate_limit:{identifier}"
+    current_count = cache.get(key, 0)
+    
+    if current_count >= limit:
+        return True
+    
+    cache.set(key, current_count + 1, timeout=window)
+    return False
 
 def increment_failed_attempts(user_id):
-    """실패 시도 횟수 증가"""
-    # 구현은 필요에 따라 추가
+    """로그인 실패 횟수 증가 (간소화 버전)"""
+    # 실제로는 데이터베이스에 저장해야 함
     pass
 
 def reset_failed_attempts(user_id):
-    """실패 시도 횟수 초기화"""
-    # 구현은 필요에 따라 추가
+    """로그인 실패 횟수 초기화 (간소화 버전)"""
+    # 실제로는 데이터베이스에서 초기화해야 함
     pass
 
 def validate_phone(phone):
-    """전화번호 유효성 검사"""
-    import re
-    pattern = r'^[0-9-+\s()]+$'
-    return bool(re.match(pattern, phone)) if phone else True
+    """전화번호 형식 검증"""
+    pattern = r'^[0-9-+\s()]{10,15}$'
+    return re.match(pattern, phone) is not None
 
 def is_suspicious_request():
     """의심스러운 요청 감지"""
-    if not request:
-        return False
-    
-    # User-Agent 체크
     user_agent = request.headers.get('User-Agent', '')
-    suspicious_agents = ['bot', 'crawler', 'spider', 'scraper']
     
-    if any(agent in user_agent.lower() for agent in suspicious_agents):
-        return True
+    # 봇이나 스크래퍼 감지
+    suspicious_patterns = [
+        'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget',
+        'python-requests', 'java', 'perl', 'ruby'
+    ]
     
-    # 요청 빈도 체크
-    client_ip = get_client_ip()
-    if rate_limit_exceeded(client_ip, limit=10, window=60):
-        return True
+    for pattern in suspicious_patterns:
+        if pattern.lower() in user_agent.lower():
+            return True
     
     return False 

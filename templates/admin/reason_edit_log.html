@@ -15,37 +15,13 @@
                 </div>
                 <div class="card-body">
                     <!-- 필터 -->
-                    <form method="GET" class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <label class="form-label">수정자</label>
-                            <select name="user_id" class="form-select">
-                                <option value="">전체</option>
-                                {% for user in users %}
-                                <option value="{{ user.id }}" {% if user_id == user.id %}selected{% endif %}>
-                                    {{ user.username }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">시작일</label>
-                            <input type="date" name="from" class="form-control" value="{{ date_from or '' }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">종료일</label>
-                            <input type="date" name="to" class="form-control" value="{{ date_to or '' }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">&nbsp;</label>
-                            <div>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-search"></i> 검색
-                                </button>
-                                <a href="{{ url_for('admin_reason_edit_log') }}" class="btn btn-secondary">
-                                    <i class="fas fa-undo"></i> 초기화
-                                </a>
-                            </div>
-                        </div>
+                    <h2>근태 사유 변경 이력</h2>
+                    <form method="get">
+                        <input type="number" name="user_id" placeholder="변경자ID">
+                        <input type="date" name="from"> ~ <input type="date" name="to">
+                        <button>필터</button>
+                        <a href="/admin/reason_edit_log/pdf">PDF 다운로드</a>
+                        <a href="/admin/reason_edit_log/excel">Excel 다운로드</a>
                     </form>
 
                     {% if logs %}

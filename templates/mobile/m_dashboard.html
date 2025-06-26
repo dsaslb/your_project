@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모바일 대시보드</title>
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="레스토랑">
+    <link rel="apple-touch-icon" href="/static/icons/icon-152x152.png">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .header .subtitle {
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+        
+        .container {
+            padding: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card h3::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .attendance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .attendance-item:last-child {
+            border-bottom: none;
+        }
+        
+        .attendance-date {
+            font-weight: 500;
+        }
+        
+        .attendance-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .status-normal {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        
+        .status-late {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .status-early {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+        
+        .notification-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        
+        .notification-content {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        
+        .notification-time {
+            color: #888;
+            font-size: 0.8em;
+        }
+        
+        .unread-badge {
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            width: 8px;
+            height: 8px;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: 500;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            flex: 1;
+            min-width: 120px;
+            margin: 5px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ current_user.name or current_user.username }}님</h1>
+        <div class="subtitle">모바일 대시보드</div>
+    </div>
+    
+    <div class="container">
+        <!-- 오늘 출결 상태 -->
+        <div class="card">
+            <h3>📅 오늘 출결</h3>
+            {% if today_att %}
+                <div class="attendance-item">
+                    <span class="attendance-date">{{ today_att.clock_in.strftime('%H:%M') if today_att.clock_in else '미출근' }}</span>
+                    <span class="attendance-status status-normal">
+                        {% if today_att.reason %}
+                            {{ today_att.reason }}
+                        {% else %}
+                            정상
+                        {% endif %}
+                    </span>
+                </div>
+            {% else %}
+                <div class="attendance-item">
+                    <span class="attendance-date">아직 출결 기록이 없습니다</span>
+                    <a href="{{ url_for('m_attendance') }}" class="btn">출결 입력</a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- 최근 출결 기록 -->
+        <div class="card">
+            <h3>📊 최근 출결</h3>
+            {% if att %}
+                {% for a in att %}
+                    <div class="attendance-item">
+                        <span class="attendance-date">{{ a.clock_in.strftime('%m-%d') if a.clock_in else 'N/A' }}</span>
+                        <span class="attendance-status 
+                            {% if a.reason and '지각' in a.reason %}status-late
+                            {% elif a.reason and '조퇴' in a.reason %}status-early
+                            {% else %}status-normal{% endif %}">
+                            {% if a.reason %}
+                                {{ a.reason }}
+                            {% else %}
+                                정상
+                            {% endif %}
+                        </span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #888; text-align: center;">출결 기록이 없습니다</p>
+            {% endif %}
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="{{ url_for('m_attendance') }}" class="btn">출결 관리</a>
+            </div>
+        </div>
+        
+        <!-- 최근 알림 -->
+        <div class="card">
+            <h3>🔔 최근 알림 {% if unread_count > 0 %}<span style="background: #ff4757; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7em;">{{ unread_count }}</span>{% endif %}</h3>
+            {% if notis %}
+                {% for n in notis %}
+                    <div class="notification-item">
+                        <div class="notification-content">
+                            {% if not n.is_read %}<span class="unread-badge"></span>{% endif %}
+                            {{ n.content[:50] }}{% if n.content|length > 50 %}...{% endif %}
+                        </div>
+                        <div class="notification-time">{{ n.created_at.strftime('%m-%d %H:%M') }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #888; text-align: center;">새로운 알림이 없습니다</p>
+            {% endif %}
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="{{ url_for('m_notifications') }}" class="btn">알림 전체보기</a>
+            </div>
+        </div>
+        
+        <!-- 빠른 통계 -->
+        <div class="card">
+            <h3>📈 빠른 통계</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{{ unread_count }}</div>
+                    <div class="stat-label">미읽 알림</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ att|length }}</div>
+                    <div class="stat-label">최근 출결</div>
+                </div>
+                {% if current_user.is_admin() or current_user.is_manager() %}
+                <div class="stat-item">
+                    <div class="stat-number">{{ pending_disputes_count }}</div>
+                    <div class="stat-label">미처리 신고</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ processing_disputes_count }}</div>
+                    <div class="stat-label">처리중 신고</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 관리자/팀장 전용 신고/이의제기 알림 -->
+        {% if current_user.is_admin() or current_user.is_manager() %}
+        {% if pending_disputes_count > 0 %}
+        <div class="card" style="border-left: 4px solid #ffc107;">
+            <h3>⚠️ 처리 대기 신고/이의제기</h3>
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 0; color: #856404; font-weight: 500;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    처리 대기 중인 신고/이의제기가 <strong>{{ pending_disputes_count }}건</strong> 있습니다.
+                </p>
+            </div>
+            <div style="text-align: center;">
+                <a href="{{ url_for('m_admin_attendance_reports') }}" class="btn" style="background: #ffc107; color: #333;">
+                    신고/이의제기 관리
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+        
+        <!-- 네비게이션 버튼 -->
+        <div class="nav-buttons">
+            <a href="{{ url_for('m_attendance') }}" class="btn nav-btn">출결 입력</a>
+            <a href="{{ url_for('m_attendance_history') }}" class="btn nav-btn">근태 이력</a>
+            <a href="{{ url_for('m_notifications') }}" class="btn nav-btn">알림센터</a>
+            <a href="{{ url_for('m_stats') }}" class="btn nav-btn btn-secondary">통계</a>
+            <a href="{{ url_for('m_profile') }}" class="btn nav-btn btn-secondary">프로필</a>
+        </div>
+        
+        <!-- PC 버전 링크 -->
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="{{ url_for('dashboard') }}" style="color: #667eea; text-decoration: none; font-size: 0.9em;">
+                PC 버전으로 보기
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        // PWA Service Worker 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(function(err) {
+                        console.log('ServiceWorker registration failed');
+                    });
+            });
+        }
+        
+        // PWA 설치 프롬프트
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // 설치 버튼 표시 (선택사항)
+            const installBtn = document.createElement('button');
+            installBtn.textContent = '홈 화면에 추가';
+            installBtn.className = 'btn';
+            installBtn.style.position = 'fixed';
+            installBtn.style.bottom = '20px';
+            installBtn.style.right = '20px';
+            installBtn.style.zIndex = '1000';
+            installBtn.onclick = () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    }
+                    deferredPrompt = null;
+                    installBtn.remove();
+                });
+            };
+            document.body.appendChild(installBtn);
+        });
+        
+        // 새 알림 실시간 업데이트 (5분마다)
+        setInterval(function() {
+            fetch('/api/new_notifications')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.count > 0) {
+                        location.reload();
+                    }
+                });
+        }, 300000);
+        
+        // 터치 피드백
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.95)';
+            });
+            btn.addEventListener('touchend', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body>
+</html> 

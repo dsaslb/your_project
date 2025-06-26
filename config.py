@@ -119,4 +119,7 @@ config_by_name = {
     'production': ProductionConfig,
     'test': TestConfig,
     'default': DevelopmentConfig
-} 
+}
+
+# COOKIE_SECURE 설정 (app.py에서 import용)
+COOKIE_SECURE = os.getenv('COOKIE_SECURE', 'False').lower() == 'true' 

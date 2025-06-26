@@ -27,6 +27,7 @@ class User(db.Model, UserMixin):
     status = db.Column(db.String(20), default='pending', index=True)  # 'approved', 'pending', 'rejected'
     role = db.Column(db.String(20), default='employee', index=True)   # 'admin', 'manager', 'employee'
     branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), index=True)
+    team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), index=True)  # 팀 ID 추가
     deleted_at = db.Column(db.DateTime, nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -38,6 +39,7 @@ class User(db.Model, UserMixin):
     login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, index=True)
     failed_login = db.Column(db.Integer, default=0)    # 로그인 실패 횟수
+    permissions = db.Column(db.JSON, default=dict)  # 동적 권한 필드 추가
     
     # is_locked는 프로퍼티로 관리하는 것이 더 효율적
     # is_locked = db.Column(db.Boolean, default=False)   # 계정 잠금 여부
@@ -60,6 +62,31 @@ class User(db.Model, UserMixin):
     
     def is_employee(self):
         return self.role == "employee"
+    
+    def has_permission(self, permission_name):
+        """특정 권한이 있는지 확인"""
+        if not self.permissions:
+            return False
+        return self.permissions.get(permission_name, False)
+    
+    def get_permissions(self):
+        """현재 사용자의 모든 권한 반환"""
+        return self.permissions or {}
+    
+    def set_permissions(self, permissions_dict):
+        """권한 설정"""
+        self.permissions = permissions_dict
+    
+    def add_permission(self, permission_name):
+        """권한 추가"""
+        if not self.permissions:
+            self.permissions = {}
+        self.permissions[permission_name] = True
+    
+    def remove_permission(self, permission_name):
+        """권한 제거"""
+        if self.permissions and permission_name in self.permissions:
+            self.permissions[permission_name] = False
     
     @property
     def is_locked(self):
@@ -240,8 +267,8 @@ class Notification(db.Model):
     is_admin_only = db.Column(db.Boolean, default=False, index=True)  # 관리자만 볼 수 있는 알림
     
     # 새로운 필드들 추가
-    recipient_role = db.Column(db.String(20), index=True)  # ex. 'admin', 'manager', 'employee'
-    recipient_team = db.Column(db.String(20), index=True)  # ex. '주방', '홀'
+    recipient_role = db.Column(db.String(20))  # ex. 'admin', 'manager', 'employee'
+    recipient_team = db.Column(db.String(20))  # ex. '주방', '홀'
     priority = db.Column(db.String(10), default='일반', index=True)  # '긴급', '중요', '일반'
     ai_priority = db.Column(db.String(10), index=True)  # AI가 추천한 우선순위
     
@@ -536,6 +563,7 @@ class AttendanceReport(db.Model):
     comment = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    warning = db.Column(db.Boolean, default=False)  # 경고 여부 추가
     
     # 관계
     user = db.relationship('User', foreign_keys=[user_id], backref='attendance_reports')
@@ -558,6 +586,7 @@ class ReasonTemplate(db.Model):
     approved_at = db.Column(db.DateTime, comment='승인일시')
     created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    approval_comment = db.Column(db.String(200))  # 승인/거절 코멘트
     
     # 관계
     creator = db.relationship('User', foreign_keys=[created_by], backref='created_templates')
@@ -585,9 +614,2894 @@ class ReasonEditLog(db.Model):
     
     # 복합 인덱스
     __table_args__ = (
-        db.Index('idx_reasonedit_attendance_date', 'attendance_id', 'edited_at'),
-        db.Index('idx_reasonedit_editor_date', 'edited_by', 'edited_at'),
+        db.Index('idx_reason_edit_attendance', 'attendance_id'),
+        db.Index('idx_reason_edit_editor', 'edited_by'),
+        db.Index('idx_reason_edit_date', 'edited_at'),
     )
     
     def __repr__(self):
-        return f'<ReasonEditLog {self.attendance_id} {self.edited_at}>' 
+        return f'<ReasonEditLog {self.attendance_id} {self.edited_at}>'
+
+class Excuse(db.Model):
+    """소명(이의제기) 모델"""
+    __tablename__ = 'excuses'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    attendance_report_id = db.Column(db.Integer, db.ForeignKey('attendance_reports.id'), nullable=True, index=True)
+    attendance_evaluation_id = db.Column(db.Integer, db.ForeignKey('attendance_evaluations.id'), nullable=True, index=True)
+    title = db.Column(db.String(200), nullable=False, comment='소명 제목')
+    content = db.Column(db.Text, nullable=False, comment='소명 내용')
+    status = db.Column(db.String(20), default='pending', index=True, comment='상태: pending/reviewed/accepted/rejected')
+    priority = db.Column(db.String(10), default='일반', index=True, comment='우선순위: 긴급/중요/일반')
+    category = db.Column(db.String(50), default='근태평가', comment='소명 카테고리')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    reviewed_at = db.Column(db.DateTime, index=True)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    admin_comment = db.Column(db.Text, comment='관리자 답변')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='excuses')
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by], backref='reviewed_excuses')
+    attendance_report = db.relationship('AttendanceReport', backref='excuses')
+    attendance_evaluation = db.relationship('AttendanceEvaluation', backref='excuses')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_excuse_user_status', 'user_id', 'status'),
+        db.Index('idx_excuse_status_date', 'status', 'created_at'),
+        db.Index('idx_excuse_reviewer_date', 'reviewed_by', 'reviewed_at'),
+    )
+    
+    def __repr__(self):
+        return f'<Excuse {self.user_id} {self.title}>'
+
+class ExcuseResponse(db.Model):
+    """소명 답변 모델"""
+    __tablename__ = 'excuse_responses'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    excuse_id = db.Column(db.Integer, db.ForeignKey('excuses.id'), nullable=False, index=True)
+    responder_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    content = db.Column(db.Text, nullable=False, comment='답변 내용')
+    response_type = db.Column(db.String(20), default='comment', index=True, comment='답변 유형: comment/decision/request')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    excuse = db.relationship('Excuse', backref='responses')
+    responder = db.relationship('User', backref='excuse_responses')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_excuseresponse_excuse_date', 'excuse_id', 'created_at'),
+        db.Index('idx_excuseresponse_responder_date', 'responder_id', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<ExcuseResponse {self.excuse_id} {self.responder_id}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), comment='팀장 ID')
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), comment='소속 지점')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_teams')
+    branch = db.relationship('Branch', backref='teams')
+    members = db.relationship('User', backref='team', foreign_keys='User.team_id')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+class PermissionChangeLog(db.Model):
+    """권한 변경 로그 모델"""
+    __tablename__ = 'permission_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경 대상')
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 변경자')
+    change_type = db.Column(db.String(20), nullable=False, index=True, comment='변경 유형: role/permission/delegation')
+    before_value = db.Column(db.String(500), comment='변경 전 값')
+    after_value = db.Column(db.String(500), comment='변경 후 값')
+    reason = db.Column(db.String(200), comment='변경 사유')
+    ip_address = db.Column(db.String(45), comment='IP 주소')
+    user_agent = db.Column(db.String(500), comment='사용자 에이전트')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True, comment='변경일시')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permission_changes')
+    changer = db.relationship('User', foreign_keys=[changed_by], backref='permission_changes_made')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_permissionlog_user_date', 'user_id', 'created_at'),
+        db.Index('idx_permissionlog_changer_date', 'changed_by', 'created_at'),
+        db.Index('idx_permissionlog_type_date', 'change_type', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PermissionChangeLog {self.user_id} {self.change_type}>'
+
+class UserPermission(db.Model):
+    """사용자 권한 모델"""
+    __tablename__ = 'user_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='사용자 ID')
+    permission_name = db.Column(db.String(50), nullable=False, index=True, comment='권한명')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='권한 부여자')
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow, comment='권한 부여일시')
+    expires_at = db.Column(db.DateTime, nullable=True, comment='권한 만료일시')
+    reason = db.Column(db.String(200), comment='권한 부여 사유')
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='permissions')
+    granter = db.relationship('User', foreign_keys=[granted_by], backref='granted_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_userpermission_user_name', 'user_id', 'permission_name'),
+        db.Index('idx_userpermission_granter_date', 'granted_by', 'granted_at'),
+        db.Index('idx_userpermission_active_expires', 'is_active', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPermission {self.user_id} {self.permission_name}>'
+
+class PermissionTemplate(db.Model):
+    """권한 템플릿 모델"""
+    __tablename__ = 'permission_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False, comment='템플릿명')
+    description = db.Column(db.String(200), comment='템플릿 설명')
+    permissions = db.Column(db.String(500), comment='권한 목록 (JSON)')
+    role_type = db.Column(db.String(20), index=True, comment='역할 유형: manager/teamlead/employee')
+    is_active = db.Column(db.Boolean, default=True, comment='활성화 여부')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True, comment='생성자')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='생성일시')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='수정일시')
+    
+    # 관계
+    creator = db.relationship('User', backref='created_permission_templates')
+    
+    def __repr__(self):
+        return f'<PermissionTemplate {self.name}>'
+
+class Team(db.Model):
+    """팀 모델"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
+    description = db.Column(db.String(200), comment='팀 설명')
+   p e r m i s s i o n s   =   d b . C o l u m n ( d b . J S O N ,   d e f a u l t = d i c t ) 
+ 
+ 
