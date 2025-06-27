@@ -1,0 +1,324 @@
+"""
+자동 담당자 배정 및 SLA 관리 시스템
+"""
+
+from datetime import datetime, timedelta
+from sqlalchemy import and_, or_, func
+from extensions import db
+from models import User, AttendanceDispute, Attendance
+from utils.notification_automation import send_notification
+from utils.logger import log_action, log_error
+from utils.email_utils import email_service
+
+class AssigneeManager:
+    """담당자 배정 관리 클래스"""
+    
+    @staticmethod
+    def auto_assign_dispute(dispute):
+        """신고/이의제기 자동 담당자 배정"""
+        try:
+            # 1. 해당 사용자의 팀장 찾기
+            team_lead = None
+            if hasattr(dispute.user, 'team') and dispute.user.team:
+                team_lead = User.query.filter(
+                    and_(
+                        User.team == dispute.user.team,
+                        User.role.in_(['teamlead', 'manager'])
+                    )
+                ).first()
+            
+            # 2. 팀장이 없으면 관리자 중에서 선택
+            if not team_lead:
+                admin_users = User.query.filter(
+                    User.role.in_(['admin', 'manager'])
+                ).all()
+                
+                if admin_users:
+                    # 현재 담당 건수가 가장 적은 관리자 선택
+                    admin_workloads = []
+                    for admin in admin_users:
+                        pending_count = AttendanceDispute.query.filter(
+                            and_(
+                                AttendanceDispute.assignee_id == admin.id,
+                                AttendanceDispute.status.in_(['pending', 'processing'])
+                            )
+                        ).count()
+                        admin_workloads.append((admin, pending_count))
+                    
+                    # 담당 건수가 적은 순으로 정렬
+                    admin_workloads.sort(key=lambda x: x[1])
+                    team_lead = admin_workloads[0][0]
+            
+            # 3. 담당자 배정
+            if team_lead:
+                dispute.assignee_id = team_lead.id
+                # SLA 기한 설정 (3일 후)
+                dispute.sla_due = datetime.utcnow() + timedelta(days=3)
+                
+                # 담당자에게 알림 발송
+                send_notification(
+                    user_id=team_lead.id,
+                    content=f"신규 신고/이의제기가 배정되었습니다. (신고자: {dispute.user.name or dispute.user.username})",
+                    category="신고/이의제기",
+                    link=f"/admin_dashboard/my_reports"
+                )
+                
+                log_action(
+                    user_id=team_lead.id,
+                    action="DISPUTE_ASSIGNED",
+                    details=f"신고/이의제기 {dispute.id} 배정됨"
+                )
+                
+                return team_lead
+            else:
+                log_error(Exception("담당자를 찾을 수 없습니다."), None)
+                return None
+                
+        except Exception as e:
+            log_error(e, None)
+            return None
+    
+    @staticmethod
+    def reassign_dispute(dispute_id, new_assignee_id, reason=""):
+        """담당자 재배정"""
+        try:
+            dispute = AttendanceDispute.query.get(dispute_id)
+            if not dispute:
+                return False, "신고/이의제기를 찾을 수 없습니다."
+            
+            new_assignee = User.query.get(new_assignee_id)
+            if not new_assignee:
+                return False, "새 담당자를 찾을 수 없습니다."
+            
+            old_assignee_id = dispute.assignee_id
+            dispute.assignee_id = new_assignee_id
+            dispute.sla_due = datetime.utcnow() + timedelta(days=3)  # SLA 재설정
+            dispute.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            
+            # 새 담당자에게 알림
+            send_notification(
+                user_id=new_assignee_id,
+                content=f"신고/이의제기 담당자로 배정되었습니다. (신고자: {dispute.user.name or dispute.user.username})",
+                category="신고/이의제기",
+                link=f"/admin_dashboard/my_reports"
+            )
+            
+            # 기존 담당자에게 알림 (변경된 경우)
+            if old_assignee_id and old_assignee_id != new_assignee_id:
+                send_notification(
+                    user_id=old_assignee_id,
+                    content=f"담당 신고/이의제기가 다른 담당자로 이관되었습니다.",
+                    category="신고/이의제기"
+                )
+            
+            log_action(
+                user_id=new_assignee_id,
+                action="DISPUTE_REASSIGNED",
+                details=f"신고/이의제기 {dispute_id} 재배정됨 (사유: {reason})"
+            )
+            
+            return True, "담당자가 성공적으로 변경되었습니다."
+            
+        except Exception as e:
+            log_error(e, None)
+            return False, "담당자 변경 중 오류가 발생했습니다."
+    
+    @staticmethod
+    def check_sla_overdue():
+        """SLA 기한 초과 확인 및 알림"""
+        try:
+            now = datetime.utcnow()
+            overdue_disputes = AttendanceDispute.query.filter(
+                and_(
+                    AttendanceDispute.status.in_(['pending', 'processing']),
+                    AttendanceDispute.sla_due < now,
+                    AttendanceDispute.assignee_id.isnot(None)
+                )
+            ).all()
+            
+            for dispute in overdue_disputes:
+                # 담당자에게 SLA 초과 알림
+                send_notification(
+                    user_id=dispute.assignee_id,
+                    content=f"⚠️ SLA 초과: 신고/이의제기 처리 기한이 초과되었습니다! (신고자: {dispute.user.name or dispute.user.username})",
+                    category="SLA경고",
+                    priority="긴급"
+                )
+                
+                # 관리자에게도 알림
+                admin_users = User.query.filter(User.role == 'admin').all()
+                for admin in admin_users:
+                    if admin.id != dispute.assignee_id:  # 담당자 본인 제외
+                        send_notification(
+                            user_id=admin.id,
+                            content=f"SLA 초과 알림: {dispute.assignee.name or dispute.assignee.username} 담당 신고/이의제기 기한 초과",
+                            category="SLA경고"
+                        )
+                
+                log_action(
+                    user_id=dispute.assignee_id,
+                    action="SLA_OVERDUE",
+                    details=f"신고/이의제기 {dispute.id} SLA 초과"
+                )
+            
+            return len(overdue_disputes)
+            
+        except Exception as e:
+            log_error(e, None)
+            return 0
+    
+    @staticmethod
+    def get_assignee_workload(assignee_id):
+        """담당자별 업무량 조회"""
+        try:
+            # 대기중인 건수
+            pending_count = AttendanceDispute.query.filter(
+                and_(
+                    AttendanceDispute.assignee_id == assignee_id,
+                    AttendanceDispute.status == 'pending'
+                )
+            ).count()
+            
+            # 처리중인 건수
+            processing_count = AttendanceDispute.query.filter(
+                and_(
+                    AttendanceDispute.assignee_id == assignee_id,
+                    AttendanceDispute.status == 'processing'
+                )
+            ).count()
+            
+            # SLA 임박 건수 (24시간 이내)
+            sla_urgent = AttendanceDispute.query.filter(
+                and_(
+                    AttendanceDispute.assignee_id == assignee_id,
+                    AttendanceDispute.status.in_(['pending', 'processing']),
+                    AttendanceDispute.sla_due <= datetime.utcnow() + timedelta(hours=24),
+                    AttendanceDispute.sla_due > datetime.utcnow()
+                )
+            ).count()
+            
+            # SLA 초과 건수
+            sla_overdue = AttendanceDispute.query.filter(
+                and_(
+                    AttendanceDispute.assignee_id == assignee_id,
+                    AttendanceDispute.status.in_(['pending', 'processing']),
+                    AttendanceDispute.sla_due < datetime.utcnow()
+                )
+            ).count()
+            
+            return {
+                'pending': pending_count,
+                'processing': processing_count,
+                'sla_urgent': sla_urgent,
+                'sla_overdue': sla_overdue,
+                'total_active': pending_count + processing_count
+            }
+            
+        except Exception as e:
+            log_error(e, None)
+            return {'pending': 0, 'processing': 0, 'sla_urgent': 0, 'sla_overdue': 0, 'total_active': 0}
+    
+    @staticmethod
+    def get_assignee_stats():
+        """전체 담당자 통계"""
+        try:
+            # 담당자별 통계
+            assignee_stats = db.session.query(
+                User.name,
+                User.id,
+                func.count(AttendanceDispute.id).label('total'),
+                func.sum(func.case([(AttendanceDispute.status == 'pending', 1)], else_=0)).label('pending'),
+                func.sum(func.case([(AttendanceDispute.status == 'processing', 1)], else_=0)).label('processing'),
+                func.sum(func.case([(AttendanceDispute.status == 'resolved', 1)], else_=0)).label('resolved')
+            ).join(AttendanceDispute, User.id == AttendanceDispute.assignee_id)\
+             .group_by(User.id, User.name)\
+             .order_by(func.count(AttendanceDispute.id).desc()).all()
+            
+            # SLA 통계
+            sla_overdue_count = AttendanceDispute.query.filter(
+                and_(
+                    AttendanceDispute.status.in_(['pending', 'processing']),
+                    AttendanceDispute.sla_due < datetime.utcnow()
+                )
+            ).count()
+            
+            sla_urgent_count = AttendanceDispute.query.filter(
+                and_(
+                    AttendanceDispute.status.in_(['pending', 'processing']),
+                    AttendanceDispute.sla_due <= datetime.utcnow() + timedelta(hours=24),
+                    AttendanceDispute.sla_due > datetime.utcnow()
+                )
+            ).count()
+            
+            return {
+                'assignee_stats': assignee_stats,
+                'sla_overdue': sla_overdue_count,
+                'sla_urgent': sla_urgent_count
+            }
+            
+        except Exception as e:
+            log_error(e, None)
+            return {'assignee_stats': [], 'sla_overdue': 0, 'sla_urgent': 0}
+
+def assign_dispute(dispute_id, assignee_id=None, reason=None):
+    """신고/이의제기 담당자 배정"""
+    try:
+        dispute = AttendanceDispute.query.get(dispute_id)
+        if not dispute:
+            return False, "신고/이의제기를 찾을 수 없습니다."
+        
+        # 담당자 자동 배정 (지정되지 않은 경우)
+        if not assignee_id:
+            assignee_id = auto_assign_dispute(dispute)
+        
+        # 기존 담당자와 다른 경우에만 업데이트
+        if dispute.assignee_id != assignee_id:
+            old_assignee_id = dispute.assignee_id
+            dispute.assignee_id = assignee_id
+            dispute.sla_due = datetime.utcnow() + timedelta(days=3)  # 3일 SLA
+            dispute.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            
+            # 새 담당자에게 알림
+            if assignee_id:
+                send_notification(
+                    user_id=assignee_id,
+                    content=f"신고/이의제기 담당자로 배정되었습니다. (신고 #{dispute.id})",
+                    category="담당자 배정",
+                    link=f"/admin_dashboard/my_reports"
+                )
+                
+                # 이메일 알림 발송
+                try:
+                    email_service.send_dispute_notification(dispute.id, 'assigned')
+                except Exception as e:
+                    log_error(e, None, f'Email notification failed for dispute {dispute.id}')
+            
+            # 기존 담당자에게 배정 해제 알림
+            if old_assignee_id and old_assignee_id != assignee_id:
+                send_notification(
+                    user_id=old_assignee_id,
+                    content=f"신고/이의제기 담당자 배정이 해제되었습니다. (신고 #{dispute.id})",
+                    category="담당자 배정",
+                    link=f"/admin_dashboard/my_reports"
+                )
+            
+            log_action(
+                user_id=assignee_id,
+                action="담당자 배정",
+                details=f"신고 #{dispute.id} -> 담당자 {assignee_id}"
+            )
+            
+            return True, "담당자 배정이 완료되었습니다."
+        else:
+            return True, "이미 배정된 담당자입니다."
+            
+    except Exception as e:
+        log_error(e, None, f'Assignee assignment failed for dispute {dispute_id}')
+        return False, f"담당자 배정 실패: {str(e)}"
+
+# 전역 인스턴스
+assignee_manager = AssigneeManager() 

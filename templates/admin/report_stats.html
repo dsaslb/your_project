@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}신고/이의제기 AI 분석 - 관리자 대시보드{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- 헤더 -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">신고/이의제기 AI 분석</h1>
+        <div class="flex space-x-2">
+            <a href="{{ url_for('admin_reports.export_report_stats_excel') }}" 
+               class="btn btn-primary">
+                <i class="fas fa-file-excel mr-2"></i>엑셀 내보내기
+            </a>
+            <a href="{{ url_for('admin_reports.export_report_stats_pdf') }}" 
+               class="btn btn-secondary">
+                <i class="fas fa-file-pdf mr-2"></i>PDF 내보내기
+            </a>
+        </div>
+    </div>
+
+    <!-- AI 경고 섹션 -->
+    {% if ai_analysis.high_risk_users %}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-exclamation-triangle text-red-600 text-xl mr-3"></i>
+            <div>
+                <h3 class="text-lg font-semibold text-red-800">⚠️ AI 분석 경고</h3>
+                <p class="text-red-700 mt-1">
+                    반복 신고/이의제기 패턴이 감지된 직원이 있습니다.
+                </p>
+            </div>
+        </div>
+        <div class="mt-3">
+            <strong class="text-red-800">경고 대상자:</strong>
+            {% for user in ai_analysis.high_risk_users %}
+            <span class="inline-block bg-red-100 text-red-800 px-2 py-1 rounded text-sm mr-2 mb-1">
+                {{ user.name }} ({{ user.count }}건)
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 통계 카드 -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center">
+                <div class="p-2 bg-blue-100 rounded-lg">
+                    <i class="fas fa-chart-bar text-blue-600"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-gray-500">총 신고건수</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ total_reports }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center">
+                <div class="p-2 bg-green-100 rounded-lg">
+                    <i class="fas fa-users text-green-600"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-gray-500">신고자 수</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ unique_users }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center">
+                <div class="p-2 bg-yellow-100 rounded-lg">
+                    <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-gray-500">반복 신고자</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ ai_analysis.high_risk_users|length }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center">
+                <div class="p-2 bg-purple-100 rounded-lg">
+                    <i class="fas fa-chart-line text-purple-600"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-gray-500">트렌드</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ ai_analysis.trend_analysis }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 콘텐츠 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 직원별 신고 통계 -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">직원별 신고 통계</h3>
+            </div>
+            <div class="p-4">
+                <div class="space-y-3">
+                    {% for name, user_id, count in report_counts %}
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center">
+                            <span class="font-medium text-gray-900">{{ name }}</span>
+                            {% if name in [user.name for user in ai_analysis.high_risk_users] %}
+                            <span class="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                                AI 경고
+                            </span>
+                            {% endif %}
+                        </div>
+                        <span class="text-lg font-bold text-gray-900">{{ count }}건</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 사유별 통계 -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">사유별 신고 통계</h3>
+            </div>
+            <div class="p-4">
+                <div class="space-y-3">
+                    {% for reason, count in reason_counts %}
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span class="text-gray-900">{{ reason }}</span>
+                        <span class="text-lg font-bold text-gray-900">{{ count }}건</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 권장사항 -->
+    {% if ai_analysis.recommendations %}
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="text-lg font-semibold text-blue-800 mb-3">
+            <i class="fas fa-robot mr-2"></i>AI 권장사항
+        </h3>
+        <ul class="space-y-2">
+            {% for recommendation in ai_analysis.recommendations %}
+            <li class="flex items-start">
+                <i class="fas fa-lightbulb text-blue-600 mt-1 mr-2"></i>
+                <span class="text-blue-700">{{ recommendation }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- 월별 트렌드 -->
+    {% if monthly_stats %}
+    <div class="mt-6 bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">월별 트렌드</h3>
+        </div>
+        <div class="p-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {% for month, count in monthly_stats %}
+                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-500">{{ month }}</p>
+                    <p class="text-lg font-bold text-gray-900">{{ count }}건</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 팀별 통계 (팀 정보가 있는 경우) -->
+    {% if team_stats %}
+    <div class="mt-6 bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">팀별 통계</h3>
+        </div>
+        <div class="p-4">
+            <div class="space-y-3">
+                {% for team, count in team_stats %}
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span class="font-medium text-gray-900">{{ team or '팀 미지정' }}</span>
+                    <span class="text-lg font-bold text-gray-900">{{ count }}건</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 차트 스크립트 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 직원별 신고 차트
+    const userCtx = document.getElementById('userChart');
+    if (userCtx) {
+        const userData = {{ report_counts|tojson }};
+        new Chart(userCtx, {
+            type: 'bar',
+            data: {
+                labels: userData.map(item => item[0]),
+                datasets: [{
+                    label: '신고건수',
+                    data: userData.map(item => item[2]),
+                    backgroundColor: userData.map(item => 
+                        item[2] >= 3 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.8)'
+                    ),
+                    borderColor: userData.map(item => 
+                        item[2] >= 3 ? 'rgb(239, 68, 68)' : 'rgb(59, 130, 246)'
+                    ),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    // 사유별 차트
+    const reasonCtx = document.getElementById('reasonChart');
+    if (reasonCtx) {
+        const reasonData = {{ reason_counts|tojson }};
+        new Chart(reasonCtx, {
+            type: 'doughnut',
+            data: {
+                labels: reasonData.map(item => item[0]),
+                datasets: [{
+                    data: reasonData.map(item => item[1]),
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(245, 158, 11, 0.8)',
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(139, 92, 246, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %} 

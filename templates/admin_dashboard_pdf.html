@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>관리자 대시보드 리포트</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .stats { margin-bottom: 20px; }
+        .stats table { width: 100%; border-collapse: collapse; }
+        .stats th, .stats td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        .stats th { background-color: #f2f2f2; }
+        .records { margin-top: 30px; }
+        .records table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .records th, .records td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        .records th { background-color: #f2f2f2; }
+        .filter-info { margin-bottom: 20px; padding: 10px; background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>관리자 대시보드 리포트</h1>
+        <p>생성일시: {{ datetime.now().strftime('%Y-%m-%d %H:%M:%S') }}</p>
+    </div>
+
+    <div class="filter-info">
+        <h3>필터 조건</h3>
+        <p>
+            {% if team %}팀: {{ team }} | {% endif %}
+            {% if user_id %}직원 ID: {{ user_id }} | {% endif %}
+            {% if date_from %}시작일: {{ date_from }} | {% endif %}
+            {% if date_to %}종료일: {{ date_to }}{% endif %}
+        </p>
+    </div>
+
+    {% if stats %}
+    <div class="stats">
+        <h3>통계 요약</h3>
+        <table>
+            <tr>
+                <th>구분</th>
+                <th>수량</th>
+            </tr>
+            <tr>
+                <td>총 기록수</td>
+                <td>{{ stats.total_records }}</td>
+            </tr>
+            <tr>
+                <td>지각</td>
+                <td>{{ stats.late_count }}</td>
+            </tr>
+            <tr>
+                <td>결근</td>
+                <td>{{ stats.absent_count }}</td>
+            </tr>
+            <tr>
+                <td>정상출근</td>
+                <td>{{ stats.normal_count }}</td>
+            </tr>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if records %}
+    <div class="records">
+        <h3>근태 상세 내역</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>일자</th>
+                    <th>직원</th>
+                    <th>팀</th>
+                    <th>사유</th>
+                    <th>출근시간</th>
+                    <th>퇴근시간</th>
+                    <th>상태</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ record.date }}</td>
+                    <td>{{ record.user.name or record.user.username }}</td>
+                    <td>{{ record.user.team or '' }}</td>
+                    <td>{{ record.reason or '' }}</td>
+                    <td>{{ record.clock_in.strftime('%H:%M') if record.clock_in else '' }}</td>
+                    <td>{{ record.clock_out.strftime('%H:%M') if record.clock_out else '' }}</td>
+                    <td>{{ record.status or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="records">
+        <h3>근태 상세 내역</h3>
+        <p>조회 조건에 맞는 데이터가 없습니다.</p>
+    </div>
+    {% endif %}
+</body>
+</html> 

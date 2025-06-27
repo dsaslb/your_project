@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+
+{% block title %}내 담당 신고/이의제기{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-clipboard-list"></i> 내 담당 신고/이의제기</h2>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i> 새로고침
+                    </button>
+                    <button class="btn btn-primary" onclick="exportData()">
+                        <i class="fas fa-download"></i> 내보내기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 실시간 알림 배지 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div id="realtime-notifications" class="alert alert-info d-none">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-bell"></i>
+                        <span id="notification-count">0</span>개의 새로운 신고/이의제기가 있습니다.
+                    </div>
+                    <button type="button" class="btn-close" onclick="hideNotifications()"></button>
+                </div>
+                <div id="notification-list" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 통계 카드 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ workload.total }}</h4>
+                            <p class="card-text">전체 담당</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clipboard-list fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ sla_urgent }}</h4>
+                            <p class="card-text">SLA 임박</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ sla_overdue }}</h4>
+                            <p class="card-text">SLA 초과</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ workload.resolved }}</h4>
+                            <p class="card-text">처리 완료</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 차트 섹션 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line"></i> 일별 신고/이의제기 현황
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie"></i> 상태별 분포
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 필터 -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">상태</label>
+                            <select name="status" id="status" class="form-select">
+                                <option value="">전체</option>
+                                <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>대기중</option>
+                                <option value="processing" {% if filters.status == 'processing' %}selected{% endif %}>처리중</option>
+                                <option value="resolved" {% if filters.status == 'resolved' %}selected{% endif %}>해결됨</option>
+                                <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>거부됨</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dispute_type" class="form-label">유형</label>
+                            <select name="dispute_type" id="dispute_type" class="form-select">
+                                <option value="">전체</option>
+                                <option value="report" {% if filters.dispute_type == 'report' %}selected{% endif %}>신고</option>
+                                <option value="dispute" {% if filters.dispute_type == 'dispute' %}selected{% endif %}>이의제기</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="sla_filter" class="form-label">SLA</label>
+                            <select name="sla_filter" id="sla_filter" class="form-select">
+                                <option value="">전체</option>
+                                <option value="urgent" {% if filters.sla_filter == 'urgent' %}selected{% endif %}>임박 (24시간)</option>
+                                <option value="overdue" {% if filters.sla_filter == 'overdue' %}selected{% endif %}>초과</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> 필터
+                                </button>
+                                <a href="{{ url_for('my_reports.my_reports') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> 초기화
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 신고/이의제기 목록 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list"></i> 신고/이의제기 목록 ({{ reports|length }}건)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if reports %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>유형</th>
+                                    <th>신고자</th>
+                                    <th>사유</th>
+                                    <th>상태</th>
+                                    <th>SLA</th>
+                                    <th>등록일</th>
+                                    <th>작업</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in reports %}
+                                <tr>
+                                    <td>{{ report.id }}</td>
+                                    <td>
+                                        <span class="badge {% if report.dispute_type == 'report' %}bg-danger{% else %}bg-warning{% endif %}">
+                                            {{ '신고' if report.dispute_type == 'report' else '이의제기' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ report.user.name or report.user.username }}</td>
+                                    <td>
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ report.reason }}">
+                                            {{ report.reason }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if report.status == 'pending' %}bg-warning
+                                            {% elif report.status == 'processing' %}bg-info
+                                            {% elif report.status == 'resolved' %}bg-success
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ report.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if report.sla_due %}
+                                            {% set time_left = (report.sla_due - now).total_seconds() %}
+                                            {% if time_left < 0 %}
+                                                <span class="badge bg-danger">초과</span>
+                                            {% elif time_left < 86400 %}
+                                                <span class="badge bg-warning">임박</span>
+                                            {% else %}
+                                                <span class="badge bg-success">정상</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">미설정</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ report.created_at.strftime('%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="viewReport({{ report.id }})">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-success" onclick="replyReport({{ report.id }})">
+                                                <i class="fas fa-reply"></i>
+                                            </button>
+                                            <button class="btn btn-outline-warning" onclick="reassignReport({{ report.id }})">
+                                                <i class="fas fa-exchange-alt"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">담당 신고/이의제기가 없습니다.</h5>
+                        <p class="text-muted">필터를 조정해보세요.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 답변 모달 -->
+<div class="modal fade" id="replyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">신고/이의제기 답변</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="replyForm" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="reply_status" class="form-label">상태 변경</label>
+                        <select name="status" id="reply_status" class="form-select" required>
+                            <option value="resolved">해결됨</option>
+                            <option value="rejected">거부됨</option>
+                            <option value="processing">처리중</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reply_content" class="form-label">답변 내용</label>
+                        <textarea name="reply" id="reply_content" class="form-control" rows="5" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary">답변 등록</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 재배정 모달 -->
+<div class="modal fade" id="reassignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">담당자 재배정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="reassignForm" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="new_assignee" class="form-label">새 담당자</label>
+                        <select name="assignee_id" id="new_assignee" class="form-select" required>
+                            <option value="">담당자 선택</option>
+                            {% for user in admins_and_teamleads %}
+                            <option value="{{ user.id }}">{{ user.name or user.username }} ({{ user.role }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reassign_reason" class="form-label">재배정 사유</label>
+                        <textarea name="reason" id="reassign_reason" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-warning">재배정</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let dailyChart, statusChart;
+let currentReportId = null;
+
+// 페이지 로드 시 차트 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    loadChartData();
+    startRealtimeNotifications();
+});
+
+// 차트 데이터 로드
+function loadChartData() {
+    fetch("{{ url_for('my_reports.report_chart_data') }}")
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                createDailyChart(data.daily_data);
+                createStatusChart(data.status_stats);
+            }
+        })
+        .catch(error => console.error('차트 데이터 로드 실패:', error));
+}
+
+// 일별 차트 생성
+function createDailyChart(data) {
+    const ctx = document.getElementById('dailyChart').getContext('2d');
+    dailyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: '신고/이의제기 수',
+                data: data.counts,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// 상태별 차트 생성
+function createStatusChart(data) {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    const colors = ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56'];
+    
+    statusChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.counts,
+                backgroundColor: colors.slice(0, data.labels.length),
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            }
+        }
+    });
+}
+
+// 실시간 알림 시작
+function startRealtimeNotifications() {
+    checkNewNotifications();
+    setInterval(checkNewNotifications, 30000); // 30초마다 체크
+}
+
+// 새 알림 확인
+function checkNewNotifications() {
+    fetch("{{ url_for('my_reports.report_realtime_notifications') }}")
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.count > 0) {
+                showNotifications(data.notifications);
+            }
+        })
+        .catch(error => console.error('알림 확인 실패:', error));
+}
+
+// 알림 표시
+function showNotifications(notifications) {
+    const container = document.getElementById('realtime-notifications');
+    const count = document.getElementById('notification-count');
+    const list = document.getElementById('notification-list');
+    
+    count.textContent = notifications.length;
+    
+    list.innerHTML = notifications.map(notification => `
+        <div class="notification-item d-flex justify-content-between align-items-center p-2 border-bottom">
+            <div>
+                <strong>${notification.user_name}</strong> - ${notification.reason}
+                <br><small class="text-muted">${notification.time_ago}</small>
+            </div>
+            <span class="badge ${notification.type === 'report' ? 'bg-danger' : 'bg-warning'}">${notification.type === 'report' ? '신고' : '이의제기'}</span>
+        </div>
+    `).join('');
+    
+    container.classList.remove('d-none');
+    
+    // 알림음 재생 (선택사항)
+    playNotificationSound();
+}
+
+// 알림 숨기기
+function hideNotifications() {
+    document.getElementById('realtime-notifications').classList.add('d-none');
+}
+
+// 알림음 재생
+function playNotificationSound() {
+    // 브라우저 지원 시 알림음 재생
+    try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+        audio.play();
+    } catch (e) {
+        console.log('알림음 재생 실패');
+    }
+}
+
+// 신고/이의제기 상세보기
+function viewReport(reportId) {
+    window.open(`/admin_dashboard/report/${reportId}`, '_blank');
+}
+
+// 답변 모달 열기
+function replyReport(reportId) {
+    currentReportId = reportId;
+    document.getElementById('replyForm').action = `{{ url_for('my_reports.my_reports') }}${reportId}/reply`;
+    new bootstrap.Modal(document.getElementById('replyModal')).show();
+}
+
+// 재배정 모달 열기
+function reassignReport(reportId) {
+    currentReportId = reportId;
+    document.getElementById('reassignForm').action = `{{ url_for('my_reports.my_reports') }}${reportId}/reassign`;
+    new bootstrap.Modal(document.getElementById('reassignModal')).show();
+}
+
+// 데이터 새로고침
+function refreshData() {
+    location.reload();
+}
+
+// 데이터 내보내기
+function exportData() {
+    const params = new URLSearchParams(window.location.search);
+    window.open(`{{ url_for('my_reports.my_reports') }}?export=excel&${params.toString()}`, '_blank');
+}
+</script>
+{% endblock %} 

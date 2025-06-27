@@ -3,7 +3,38 @@
 {% block title %}관리자 대시보드{% endblock %}
 
 {% block content %}
-<h3>관리자 대시보드</h3>
+<h2>관리자/팀장 대시보드</h2>
+<div class="row mb-3">
+  <div class="col-md-3">
+    <div class="card text-bg-light mb-3">
+      <div class="card-body">
+        <b>직원 수:</b> {{total_staff}}<br>
+        <b>오늘 출근:</b> {{today_att}}명
+        <span style="color:red;">(지각: {{late_cnt}} / 결근: {{abs_cnt}})</span><br>
+        <b>미처리 신고/이의:</b> <span style="color:orange;">{{pending_reports}}</span><br>
+        <b>경고 직원 수:</b> <span style="color:red;">{{warning_users}}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="card text-bg-light mb-3">
+      <div class="card-body">
+        <h5 class="card-title">최근 사유 TOP5</h5>
+        <ul class="mb-0">
+        {% for reason, cnt in top_reasons %}
+          <li>{{ reason }} ({{ cnt }}회)</li>
+        {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 d-flex align-items-center">
+    <div>
+      <a href="{{ url_for('admin_excuse_list') }}" class="btn btn-warning mb-2">신고/이의 처리 바로가기</a>
+      <a href="{{ url_for('attendance_stats') }}" class="btn btn-info mb-2">출결 통계 차트</a>
+    </div>
+  </div>
+</div>
 
 <!-- 기간 필터 -->
 <form class="row g-3 mb-3">
@@ -17,6 +48,50 @@
     <button type="submit" class="btn btn-secondary">기간검색</button>
   </div>
 </form>
+
+<!-- 팀/직원별 필터링 폼 -->
+<form method="get" class="row g-3 mb-3">
+  <div class="col-md-2">
+    <select name="team" class="form-select">
+      <option value="">전체팀</option>
+      {% for t in all_teams %}
+      <option value="{{t}}" {% if request.args.get('team')==t %}selected{% endif %}>{{t}}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <select name="user_id" class="form-select">
+      <option value="">전체직원</option>
+      {% for u in users %}
+      <option value="{{u.id}}" {% if request.args.get('user_id')==u.id|string %}selected{% endif %}>{{u.name or u.username}}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <input type="date" name="from" class="form-control" value="{{request.args.get('from') or ''}}">
+  </div>
+  <div class="col-md-2">
+    <input type="date" name="to" class="form-control" value="{{request.args.get('to') or ''}}">
+  </div>
+  <div class="col-md-3">
+    <button type="submit" class="btn btn-primary">필터</button>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">초기화</a>
+  </div>
+</form>
+
+<!-- 내보내기 버튼 -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="btn-group" role="group">
+      <a href="{{ url_for('export_admin_dashboard_excel', **request.args) }}" class="btn btn-success">
+        <i class="fas fa-file-excel"></i> 엑셀 다운로드
+      </a>
+      <a href="{{ url_for('export_admin_dashboard_pdf', **request.args) }}" class="btn btn-danger">
+        <i class="fas fa-file-pdf"></i> PDF 다운로드
+      </a>
+    </div>
+  </div>
+</div>
 
 <!-- 빠른 링크 -->
 <div class="row mb-3">
@@ -131,32 +206,72 @@
       <div class="card-body">
         <div class="row">
           <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-warning w-100">
+            <a href="{{ url_for('admin_backup') }}" class="btn btn-outline-primary w-100">
+              <i class="fas fa-download"></i> DB 백업
+            </a>
+          </div>
+          <div class="col-md-3 mb-2">
+            <a href="{{ url_for('admin_restore') }}" class="btn btn-outline-warning w-100">
               <i class="fas fa-upload"></i> DB 복원
             </a>
           </div>
           <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-secondary w-100">
-              <i class="fas fa-file-archive"></i> 첨부파일 백업
+            <a href="{{ url_for('admin_file_backup') }}" class="btn btn-outline-info w-100">
+              <i class="fas fa-folder-open"></i> 파일 백업
             </a>
           </div>
           <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-warning w-100">
-              <i class="fas fa-file-upload"></i> 첨부파일 복원
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-info w-100">
-              <i class="fas fa-history"></i> 작업 로그
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="{{ url_for('admin_data_backup') }}" class="btn btn-outline-warning w-100" 
-               onclick="return confirm('전체 데이터를 백업하시겠습니까?\\n\\n포함 내용:\\n- 사용자 정보\\n- 알림 내역\\n- 스케줄 데이터\\n- 청소 계획\\n- 발주 내역\\n- 공지사항\\n- 보고서\\n\\nZIP 파일로 다운로드됩니다.')">
-              <i class="fas fa-download"></i> 전체 데이터 백업
+            <a href="{{ url_for('admin_file_restore') }}" class="btn btn-outline-secondary w-100">
+              <i class="fas fa-folder-plus"></i> 파일 복원
             </a>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 출결 통계 차트 섹션 -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-bar"></i> 출결 통계 차트</h5>
+        <div class="mt-2">
+          <button onclick="exportChart()" class="btn btn-sm btn-success">
+            <i class="fas fa-download"></i> 차트 이미지 저장
+          </button>
+          <button onclick="refreshChart()" class="btn btn-sm btn-primary">
+            <i class="fas fa-sync"></i> 새로고침
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <canvas id="attendanceChart" width="700" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 팀별 통계 차트 -->
+<div class="row mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-pie"></i> 팀별 출결 통계</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="teamChart" width="400" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-doughnut"></i> 사유별 통계</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="reasonChart" width="400" height="200"></canvas>
       </div>
     </div>
   </div>
@@ -467,6 +582,123 @@ new Chart(document.getElementById('pieChart'), {
     labels: {{ dist_labels|tojson }},
     datasets: [{ data: {{ dist_data|tojson }} }]
   }
+});
+
+// 출결 통계 차트
+let attendanceChart = null;
+
+function loadAttendanceChart() {
+  // 임시 데이터 (실제로는 API 호출)
+  const mockData = {
+    labels: ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07'],
+    late: [2, 1, 3, 0, 1, 2, 1],
+    absent: [0, 1, 0, 1, 0, 0, 1],
+    total: [15, 14, 15, 14, 15, 15, 14]
+  };
+  
+  if (attendanceChart) attendanceChart.destroy();
+  
+  const ctx = document.getElementById('attendanceChart');
+  if (ctx) {
+    attendanceChart = new Chart(ctx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: mockData.labels,
+        datasets: [
+          {label: '지각', data: mockData.late, backgroundColor: '#ffe082'},
+          {label: '결근', data: mockData.absent, backgroundColor: '#ef9a9a'},
+          {label: '전체', data: mockData.total, backgroundColor: '#90caf9', type: 'line', order: 0}
+        ]
+      },
+      options: {responsive: true, scales: {y: {beginAtZero: true}}}
+    });
+  }
+}
+
+function exportChart() {
+  if (attendanceChart) {
+    const url = attendanceChart.toBase64Image();
+    const a = document.createElement('a');
+    a.href = url; a.download = 'attendance_chart.png'; a.click();
+  }
+}
+
+function refreshChart() {
+  loadAttendanceChart();
+}
+
+// 팀별 차트
+function loadTeamChart() {
+  const mockTeamData = {
+    labels: ['팀A', '팀B', '팀C', '미지정'],
+    total: [25, 30, 20, 5]
+  };
+  
+  const ctx = document.getElementById('teamChart');
+  if (ctx) {
+    new Chart(ctx.getContext('2d'), {
+      type: 'pie',
+      data: {
+        labels: mockTeamData.labels,
+        datasets: [{
+          data: mockTeamData.total,
+          backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {display: true, text: '팀별 출결 현황'},
+          legend: {position: 'bottom'}
+        }
+      }
+    });
+  }
+}
+
+// 사유별 차트
+function loadReasonChart() {
+  const mockReasonData = {
+    labels: ['정상출근', '지각', '결근', '병가', '기타'],
+    data: [120, 15, 8, 5, 12]
+  };
+  
+  const ctx = document.getElementById('reasonChart');
+  if (ctx) {
+    new Chart(ctx.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: mockReasonData.labels,
+        datasets: [{
+          data: mockReasonData.data,
+          backgroundColor: ['#4bc0c0', '#ff6384', '#36a2eb', '#cc65fe', '#ffce56']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {display: true, text: '사유별 출결 분포'},
+          legend: {position: 'bottom'}
+        }
+      }
+    });
+  }
+}
+
+// 페이지 로드 시 차트 초기화
+document.addEventListener('DOMContentLoaded', function() {
+  loadAttendanceChart();
+  loadTeamChart();
+  loadReasonChart();
+});
+
+// 필터 폼 제출 시 차트 새로고침
+document.querySelectorAll('form').forEach(form => {
+  form.addEventListener('submit', function() {
+    setTimeout(() => {
+      refreshChart();
+    }, 100);
+  });
 });
 </script>
 {% endblock %} 

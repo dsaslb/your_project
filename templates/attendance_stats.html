@@ -1,0 +1,12 @@
+<h3>최근 7일 출결 통계</h3>
+<table class="table table-bordered">
+<tr><th>일자</th><th>전체</th><th>지각</th><th>결근</th></tr>
+{% for d, all_cnt, late_cnt, absent_cnt in stats %}
+  <tr>
+    <td>{{d}}</td>
+    <td>{{all_cnt}}</td>
+    <td style="color:orange;">{{late_cnt}}</td>
+    <td style="color:red;">{{absent_cnt}}</td>
+  </tr>
+{% endfor %}
+</table> 

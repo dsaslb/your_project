@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}출결 통계 차트{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <h2 class="mb-4">출결 통계 차트</h2>
+  
+  <!-- 필터 폼 -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-filter"></i> 필터 설정</h5>
+        </div>
+        <div class="card-body">
+          <form method="get" class="row g-3">
+            <div class="col-md-2">
+              <label class="form-label">팀</label>
+              <select name="team" class="form-select">
+                <option value="">전체팀</option>
+                {% for team in teams %}
+                <option value="{{ team }}" {% if request.args.get('team') == team %}selected{% endif %}>{{ team }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">직원</label>
+              <select name="user_id" class="form-select">
+                <option value="">전체직원</option>
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if request.args.get('user_id') == user.id|string %}selected{% endif %}>{{ user.name or user.username }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">시작일</label>
+              <input type="date" name="from" class="form-control" value="{{ request.args.get('from') or '' }}">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">종료일</label>
+              <input type="date" name="to" class="form-control" value="{{ request.args.get('to') or '' }}">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary me-2">필터 적용</button>
+              <a href="{{ url_for('attendance_charts') }}" class="btn btn-secondary">초기화</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 차트 컨트롤 -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="btn-group" role="group">
+        <button onclick="exportChart()" class="btn btn-success">
+          <i class="fas fa-download"></i> 차트 이미지 저장
+        </button>
+        <button onclick="refreshCharts()" class="btn btn-primary">
+          <i class="fas fa-sync"></i> 새로고침
+        </button>
+        <button onclick="exportPDF()" class="btn btn-danger">
+          <i class="fas fa-file-pdf"></i> PDF 내보내기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 메인 출결 통계 차트 -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-chart-bar"></i> 일별 출결 통계</h5>
+        </div>
+        <div class="card-body">
+          <canvas id="attendanceChart" width="800" height="300"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 팀별 및 사유별 차트 -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-chart-pie"></i> 팀별 출결 통계</h5>
+        </div>
+        <div class="card-body">
+          <canvas id="teamChart" width="400" height="250"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-chart-doughnut"></i> 사유별 통계</h5>
+        </div>
+        <div class="card-body">
+          <canvas id="reasonChart" width="400" height="250"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 통계 요약 -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-info-circle"></i> 통계 요약</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3 text-center">
+              <h3 class="text-primary" id="totalCount">-</h3>
+              <small class="text-muted">총 출결 기록</small>
+            </div>
+            <div class="col-md-3 text-center">
+              <h3 class="text-warning" id="lateCount">-</h3>
+              <small class="text-muted">지각</small>
+            </div>
+            <div class="col-md-3 text-center">
+              <h3 class="text-danger" id="absentCount">-</h3>
+              <small class="text-muted">결근</small>
+            </div>
+            <div class="col-md-3 text-center">
+              <h3 class="text-success" id="normalCount">-</h3>
+              <small class="text-muted">정상 출근</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let attendanceChart = null;
+let teamChart = null;
+let reasonChart = null;
+
+// 출결 통계 차트 로드
+function loadAttendanceChart() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  fetch(`/charts/admin_dashboard/stats_data?${urlParams.toString()}`)
+    .then(response => response.json())
+    .then(data => {
+      if (attendanceChart) {
+        attendanceChart.destroy();
+      }
+      
+      const ctx = document.getElementById('attendanceChart').getContext('2d');
+      attendanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: '지각',
+              data: data.late,
+              backgroundColor: '#ffe082',
+              borderColor: '#ffb300',
+              borderWidth: 1
+            },
+            {
+              label: '결근',
+              data: data.absent,
+              backgroundColor: '#ef9a9a',
+              borderColor: '#e57373',
+              borderWidth: 1
+            },
+            {
+              label: '전체',
+              data: data.total,
+              backgroundColor: '#90caf9',
+              borderColor: '#42a5f5',
+              borderWidth: 1,
+              type: 'line',
+              order: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: '일별 출결 통계'
+            },
+            legend: {
+              position: 'top'
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: '인원 수'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: '날짜'
+              }
+            }
+          }
+        }
+      });
+      
+      // 통계 요약 업데이트
+      updateSummary(data);
+    })
+    .catch(error => {
+      console.error('출결 차트 로드 실패:', error);
+    });
+}
+
+// 팀별 통계 차트 로드
+function loadTeamChart() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  fetch(`/charts/admin_dashboard/team_stats?${urlParams.toString()}`)
+    .then(response => response.json())
+    .then(data => {
+      if (teamChart) {
+        teamChart.destroy();
+      }
+      
+      const ctx = document.getElementById('teamChart').getContext('2d');
+      teamChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.total,
+            backgroundColor: [
+              '#ff6384',
+              '#36a2eb',
+              '#cc65fe',
+              '#ffce56',
+              '#4bc0c0',
+              '#9966ff'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: '팀별 출결 현황'
+            },
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+    })
+    .catch(error => {
+      console.error('팀별 차트 로드 실패:', error);
+    });
+}
+
+// 사유별 통계 차트 로드
+function loadReasonChart() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  fetch(`/charts/admin_dashboard/reason_stats?${urlParams.toString()}`)
+    .then(response => response.json())
+    .then(data => {
+      if (reasonChart) {
+        reasonChart.destroy();
+      }
+      
+      const ctx = document.getElementById('reasonChart').getContext('2d');
+      reasonChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.data,
+            backgroundColor: [
+              '#ff6384',
+              '#36a2eb',
+              '#cc65fe',
+              '#ffce56',
+              '#4bc0c0',
+              '#9966ff',
+              '#ff9f40',
+              '#ff6384',
+              '#c9cbcf',
+              '#4bc0c0'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: '사유별 출결 분포'
+            },
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+    })
+    .catch(error => {
+      console.error('사유별 차트 로드 실패:', error);
+    });
+}
+
+// 통계 요약 업데이트
+function updateSummary(data) {
+  const total = data.total.reduce((a, b) => a + b, 0);
+  const late = data.late.reduce((a, b) => a + b, 0);
+  const absent = data.absent.reduce((a, b) => a + b, 0);
+  const normal = total - late - absent;
+  
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('lateCount').textContent = late;
+  document.getElementById('absentCount').textContent = absent;
+  document.getElementById('normalCount').textContent = normal;
+}
+
+// 차트 내보내기
+function exportChart() {
+  if (attendanceChart) {
+    const url = attendanceChart.toBase64Image();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'attendance_chart.png';
+    a.click();
+  }
+}
+
+// PDF 내보내기
+function exportPDF() {
+  // html2pdf.js 또는 jsPDF를 사용하여 PDF 생성
+  window.print();
+}
+
+// 모든 차트 새로고침
+function refreshCharts() {
+  loadAttendanceChart();
+  loadTeamChart();
+  loadReasonChart();
+}
+
+// 페이지 로드 시 차트 초기화
+document.addEventListener('DOMContentLoaded', function() {
+  loadAttendanceChart();
+  loadTeamChart();
+  loadReasonChart();
+});
+
+// 필터 폼 제출 시 차트 새로고침
+document.querySelector('form').addEventListener('submit', function() {
+  setTimeout(() => {
+    refreshCharts();
+  }, 100);
+});
+</script>
+{% endblock %} 
