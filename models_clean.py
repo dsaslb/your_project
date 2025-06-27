@@ -3502,6 +3502,5 @@ class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False, comment='팀명')
     description = db.Column(db.String(200), comment='팀 설명')
-   p e r m i s s i o n s   =   d b . C o l u m n ( d b . J S O N ,   d e f a u l t = d i c t ) 
- 
- 
+   permissions = db.Column(db.JSON, default=dict)
+

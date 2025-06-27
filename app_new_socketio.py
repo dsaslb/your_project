@@ -77,6 +77,9 @@ login_manager.init_app(app)
 limiter.init_app(app)
 cache.init_app(app)
 
+# Initialize SocketIO for real-time notifications
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
 # Login manager setup
 login_manager.login_view = 'auth.login'
 login_manager.login_message = '로그인이 필요합니다.'
@@ -499,10 +502,43 @@ def mark_notification_read(notification_id):
 @app.route('/notifications/mark_all_read')
 @login_required
 def mark_all_notifications_read():
-    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
-    db.session.commit()
-    flash('모든 알림을 읽음 처리했습니다.', 'success')
+    """모든 알림 읽음 처리"""
+    try:
+        Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+        db.session.commit()
+        flash('모든 알림을 읽음 처리했습니다.', 'success')
+    except Exception as e:
+        flash(f'알림 처리 중 오류가 발생했습니다: {str(e)}', 'error')
+    
     return redirect(url_for('notifications'))
+
+@app.route('/notifications/count')
+@login_required
+def get_notification_count():
+    """읽지 않은 알림 개수 조회 (API)"""
+    try:
+        count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+        return jsonify({'count': count})
+    except Exception as e:
+        return jsonify({'count': 0, 'error': str(e)})
+
+@app.route('/test_notification')
+@login_required
+def test_notification():
+    """실시간 알림 테스트"""
+    try:
+        # 현재 사용자에게 테스트 알림 전송
+        send_realtime_notification(
+            user_id=current_user.id,
+            content="이것은 실시간 알림 테스트입니다! 🎉",
+            category="테스트",
+            url=url_for('dashboard')
+        )
+        flash('테스트 알림이 전송되었습니다. 실시간 알림을 확인해보세요!', 'success')
+    except Exception as e:
+        flash(f'테스트 알림 전송 실패: {str(e)}', 'error')
+    
+    return redirect(url_for('dashboard'))
 
 # --- CLI Commands ---
 @app.cli.command('create-admin')
@@ -1025,11 +1061,88 @@ def attendance_stats():
         flash(f'통계 로딩 중 오류가 발생했습니다: {str(e)}', 'error')
         return redirect(url_for('dashboard'))
 
+# --- Real-time Notification Functions ---
+def send_realtime_notification(user_id, content, category="신고", url=None):
+    """실시간 SocketIO 알림 전송"""
+    try:
+        # DB에 알림 저장
+        notification = Notification(
+            user_id=user_id,
+            content=content,
+            category=category
+        )
+        db.session.add(notification)
+        db.session.commit()
+        
+        # SocketIO 실시간 알림 전송
+        socketio.emit('notify', {
+            'user_id': user_id,
+            'content': content,
+            'category': category,
+            'url': url,
+            'notification_id': notification.id,
+            'created_at': notification.created_at.isoformat()
+        }, room=f"user_{user_id}")
+        
+        # 이메일 알림도 함께 전송
+        user = User.query.get(user_id)
+        if user and user.email:
+            send_email(user.email, f"[알림] {category}", content)
+            
+        return True
+    except Exception as e:
+        log_error(f"실시간 알림 전송 실패: {e}")
+        return False
+
+def send_admin_notification(content, category="관리자 알림", url=None):
+    """관리자들에게 실시간 알림 전송"""
+    try:
+        admins = User.query.filter_by(is_admin=True, status='approved').all()
+        for admin in admins:
+            send_realtime_notification(admin.id, content, category, url)
+        return True
+    except Exception as e:
+        log_error(f"관리자 알림 전송 실패: {e}")
+        return False
+
+# --- SocketIO Event Handlers ---
+@socketio.on('connect')
+def handle_connect():
+    """클라이언트 연결 시 호출"""
+    print(f"클라이언트 연결됨: {request.sid}")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """클라이언트 연결 해제 시 호출"""
+    print(f"클라이언트 연결 해제됨: {request.sid}")
+
+@socketio.on('join')
+def on_join(data):
+    """사용자 룸 입장"""
+    try:
+        room = data.get('room')
+        if room:
+            join_room(room)
+            print(f"사용자가 룸에 입장: {room}")
+    except Exception as e:
+        print(f"룸 입장 실패: {e}")
+
+@socketio.on('leave')
+def on_leave(data):
+    """사용자 룸 퇴장"""
+    try:
+        room = data.get('room')
+        if room:
+            leave_room(room)
+            print(f"사용자가 룸에서 퇴장: {room}")
+    except Exception as e:
+        print(f"룸 퇴장 실패: {e}")
+
 if __name__ == '__main__':
     # 스케줄러 초기화
     scheduler = init_scheduler()
     
-    # 개발 모드에서 실행
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # 개발 모드에서 실행 (SocketIO)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
 
 

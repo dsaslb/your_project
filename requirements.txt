@@ -8,6 +8,8 @@ Flask-Caching==2.1.0
 Flask-Talisman==1.1.0
 Flask-Bcrypt==1.0.1
 Flask-Mail==0.9.1
+Flask-SocketIO==5.3.6
+python-socketio==5.9.0
 Werkzeug==2.3.7
 python-dateutil==2.8.2
 pandas==2.3.0

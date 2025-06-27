@@ -19,6 +19,9 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
+    <!-- SocketIO Client -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    
     <!-- Theme Provider -->
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     
@@ -53,6 +56,14 @@
 
     <!-- Main Layout -->
     <div class="flex h-full">
+        <!-- Real-time Notification Badge -->
+        <div id="realtime-notification-badge" class="fixed top-4 right-4 z-50 hidden">
+            <div class="bg-red-500 text-white rounded-full px-3 py-1 text-sm font-medium animate-pulse">
+                <i class="fas fa-bell mr-1"></i>
+                <span id="notification-count">N</span>
+            </div>
+        </div>
+        
         <!-- Sidebar -->
         <aside class="sidebar bg-card border-r border-border">
             <div class="sidebar-header">
@@ -67,12 +78,9 @@
                         대시보드
                     </a>
                     
-                    <a href="{{ url_for('m_attendance') }}" class="nav-link {% if request.endpoint == 'm_attendance' %}active{% endif %}">
-                        <i class="fas fa-clock mr-2"></i>
-                        출결 관리
-                    </a>
+                    {# <a href="{{ url_for('m_attendance') }}">모바일 근태</a> #}
                     
-                    <a href="{{ url_for('m_notifications') }}" class="nav-link {% if request.endpoint == 'm_notifications' %}active{% endif %}">
+                    <a href="{{ url_for('notifications') }}" class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
                         <i class="fas fa-bell mr-2"></i>
                         알림센터
                         {% if unread_notification_count > 0 %}
@@ -80,10 +88,7 @@
                         {% endif %}
                     </a>
                     
-                    <a href="{{ url_for('m_stats') }}" class="nav-link {% if request.endpoint == 'm_stats' %}active{% endif %}">
-                        <i class="fas fa-chart-bar mr-2"></i>
-                        통계
-                    </a>
+                    {# <a href="{{ url_for('m_stats') }}" class="nav-link {% if request.endpoint == 'm_stats' %}active{% endif %}"> #}
                     
                     <a href="{{ url_for('m_profile') }}" class="nav-link {% if request.endpoint == 'm_profile' %}active{% endif %}">
                         <i class="fas fa-user mr-2"></i>
@@ -136,6 +141,92 @@
 
     <!-- JavaScript -->
     <script>
+        // SocketIO 실시간 알림 시스템
+        {% if current_user.is_authenticated %}
+        let socket = io();
+        
+        // 연결 시 사용자 룸 입장
+        socket.on('connect', function() {
+            console.log('SocketIO 연결됨');
+            socket.emit('join', {room: 'user_{{ current_user.id }}'});
+        });
+        
+        // 실시간 알림 수신
+        socket.on('notify', function(data) {
+            if (data.user_id == {{ current_user.id }}) {
+                // 알림 배지 표시
+                showNotificationBadge(data.content);
+                
+                // 토스트 알림 표시
+                showToastNotification(data.content, data.category, data.url);
+                
+                // 알림 카운트 업데이트
+                updateNotificationCount();
+            }
+        });
+        
+        // 알림 배지 표시
+        function showNotificationBadge(content) {
+            const badge = document.getElementById('realtime-notification-badge');
+            const count = document.getElementById('notification-count');
+            
+            badge.classList.remove('hidden');
+            count.textContent = 'N';
+            
+            // 5초 후 숨김
+            setTimeout(() => {
+                badge.classList.add('hidden');
+            }, 5000);
+        }
+        
+        // 토스트 알림 표시
+        function showToastNotification(content, category, url) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50 max-w-sm';
+            toast.innerHTML = `
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-bell text-blue-500"></i>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <p class="text-sm font-medium text-gray-900">${category}</p>
+                        <p class="text-sm text-gray-500 mt-1">${content}</p>
+                        ${url ? `<a href="${url}" class="text-blue-600 text-sm hover:underline mt-2 inline-block">확인하기</a>` : ''}
+                    </div>
+                    <div class="ml-4 flex-shrink-0">
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // 5초 후 자동 제거
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+        
+        // 알림 카운트 업데이트
+        function updateNotificationCount() {
+            fetch('/notifications/count')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.querySelector('.badge-destructive');
+                    if (badge && data.count > 0) {
+                        badge.textContent = data.count;
+                    } else if (badge && data.count === 0) {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('알림 카운트 업데이트 실패:', error));
+        }
+        {% endif %}
+        
         // Sidebar group toggle
         function toggleGroup(groupName) {
             const group = document.getElementById(groupName + '-group');
