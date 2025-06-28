@@ -17,65 +17,42 @@ class AssigneeManager:
     def auto_assign_dispute(dispute):
         """신고/이의제기 자동 담당자 배정"""
         try:
-            # 1. 해당 사용자의 팀장 찾기
-            team_lead = None
-            if hasattr(dispute.user, 'team') and dispute.user.team:
-                team_lead = User.query.filter(
-                    and_(
-                        User.team == dispute.user.team,
-                        User.role.in_(['teamlead', 'manager'])
-                    )
-                ).first()
-            
-            # 2. 팀장이 없으면 관리자 중에서 선택
-            if not team_lead:
-                admin_users = User.query.filter(
-                    User.role.in_(['admin', 'manager'])
-                ).all()
-                
-                if admin_users:
-                    # 현재 담당 건수가 가장 적은 관리자 선택
-                    admin_workloads = []
-                    for admin in admin_users:
-                        pending_count = AttendanceDispute.query.filter(
-                            and_(
-                                AttendanceDispute.assignee_id == admin.id,
-                                AttendanceDispute.status.in_(['pending', 'processing'])
-                            )
-                        ).count()
-                        admin_workloads.append((admin, pending_count))
-                    
-                    # 담당 건수가 적은 순으로 정렬
-                    admin_workloads.sort(key=lambda x: x[1])
-                    team_lead = admin_workloads[0][0]
-            
-            # 3. 담당자 배정
-            if team_lead:
-                dispute.assignee_id = team_lead.id
-                # SLA 기한 설정 (3일 후)
-                dispute.sla_due = datetime.utcnow() + timedelta(days=3)
-                
-                # 담당자에게 알림 발송
-                send_notification(
-                    user_id=team_lead.id,
-                    content=f"신규 신고/이의제기가 배정되었습니다. (신고자: {dispute.user.name or dispute.user.username})",
-                    category="신고/이의제기",
-                    link=f"/admin_dashboard/my_reports"
+            # 현재 업무량이 가장 적은 담당자 찾기
+            assignees = User.query.filter(
+                and_(
+                    User.role.in_(['admin', 'manager']),
+                    User.status == 'approved',
+                    User.deleted_at.is_(None)
                 )
-                
-                log_action(
-                    user_id=team_lead.id,
-                    action="DISPUTE_ASSIGNED",
-                    details=f"신고/이의제기 {dispute.id} 배정됨"
-                )
-                
-                return team_lead
-            else:
-                log_error(Exception("담당자를 찾을 수 없습니다."), None)
+            ).all()
+            
+            if not assignees:
                 return None
+            
+            # 담당자별 업무량 계산
+            assignee_workloads = []
+            for assignee in assignees:
+                workload = AssigneeManager.get_assignee_workload(assignee.id)
+                assignee_workloads.append({
+                    'assignee_id': assignee.id,
+                    'total_active': workload['total_active'],
+                    'sla_overdue': workload['sla_overdue']
+                })
+            
+            # SLA 초과가 없는 담당자 중에서 업무량이 가장 적은 담당자 선택
+            available_assignees = [a for a in assignee_workloads if a['sla_overdue'] == 0]
+            
+            if available_assignees:
+                # 업무량이 가장 적은 담당자 선택
+                selected = min(available_assignees, key=lambda x: x['total_active'])
+                return selected['assignee_id']
+            else:
+                # 모든 담당자가 SLA 초과인 경우, 업무량이 가장 적은 담당자 선택
+                selected = min(assignee_workloads, key=lambda x: x['total_active'])
+                return selected['assignee_id']
                 
         except Exception as e:
-            log_error(e, None)
+            log_error(e, None, 'Auto assign dispute failed')
             return None
     
     @staticmethod

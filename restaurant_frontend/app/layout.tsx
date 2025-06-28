@@ -20,7 +20,7 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+        {children}
         </ThemeProvider>
       </body>
     </html>

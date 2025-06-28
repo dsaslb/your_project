@@ -6,6 +6,7 @@ from dateutil import parser as date_parser
 import os
 import click
 from collections import defaultdict
+from flask_migrate import Migrate
 
 from config import config_by_name
 from extensions import db, migrate, login_manager, csrf, limiter, cache
@@ -40,7 +41,7 @@ app.config.from_object(config_by_name[config_name])
 # Initialize extensions
 csrf.init_app(app)
 db.init_app(app)
-migrate.init_app(app, db)
+migrate = Migrate(app, db)
 login_manager.init_app(app)
 limiter.init_app(app)
 cache.init_app(app)

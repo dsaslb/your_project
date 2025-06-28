@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+:root {
     --background: #fff;
     --foreground: #222;
     /* ...기타 디자인 토큰 */
