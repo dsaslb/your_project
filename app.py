@@ -102,8 +102,9 @@ def inject_notifications():
 
 # --- Basic Routes ---
 @app.route('/')
-@login_required
 def index():
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login'))
     if current_user.is_admin():
         return redirect(url_for('admin_dashboard'))
     return redirect(url_for('dashboard'))
@@ -271,6 +272,11 @@ def create_admin(username, password):
 @app.route('/m/notifications')
 def m_notifications():
     return render_template('mobile/m_notifications.html')
+
+@app.route('/m/profile')
+@login_required
+def m_profile():
+    return render_template('mobile/m_profile.html', user=current_user)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

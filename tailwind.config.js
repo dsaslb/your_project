@@ -5,6 +5,8 @@ module.exports = {
     './templates/**/*.html',
     './static/**/*.js',
     './app.py',
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     container: {

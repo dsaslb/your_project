@@ -13,7 +13,7 @@
                 <span class="navbar-text me-3">
                     안녕하세요, {{ current_user.name or current_user.username }}님
                 </span>
-                <a class="nav-link" href="{{ url_for('logout') }}">로그아웃</a>
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">로그아웃</a>
             </div>
         </div>
     </nav>

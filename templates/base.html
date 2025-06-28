@@ -90,10 +90,10 @@
                     
                     {# <a href="{{ url_for('m_stats') }}" class="nav-link {% if request.endpoint == 'm_stats' %}active{% endif %}"> #}
                     
-                    <a href="{{ url_for('m_profile') }}" class="nav-link {% if request.endpoint == 'm_profile' %}active{% endif %}">
+                    {# <a href="{{ url_for('m_profile') }}" class="nav-link {% if request.endpoint == 'm_profile' %}active{% endif %}">
                         <i class="fas fa-user mr-2"></i>
                         프로필
-                    </a>
+                    </a> #}
                 </div>
                 
                 {% if current_user.is_admin() or current_user.is_manager() %}
@@ -108,14 +108,14 @@
                             <i class="fas fa-chart-line mr-2"></i>
                             관리자 대시보드
                         </a>
-                        <a href="{{ url_for('m_admin_attendance_reports') }}" class="nav-link">
+                        {# <a href="{{ url_for('m_admin_attendance_reports') }}" class="nav-link">
                             <i class="fas fa-flag mr-2"></i>
                             신고/이의제기 관리
-                        </a>
-                        <a href="{{ url_for('admin_users') }}" class="nav-link">
+                        </a> #}
+                        {# <a href="{{ url_for('admin_users') }}" class="nav-link">
                             <i class="fas fa-users mr-2"></i>
                             사용자 관리
-                        </a>
+                        </a> #}
                     </div>
                 </div>
                 {% endif %}
@@ -126,7 +126,7 @@
                     <i class="fas fa-user-circle"></i>
                     {{ current_user.name or current_user.username }}
                 </div>
-                <a href="{{ url_for('logout') }}" class="sidebar-logout-btn">
+                <a href="{{ url_for('auth.logout') }}" class="sidebar-logout-btn">
                     <i class="fas fa-sign-out-alt mr-1"></i>
                     로그아웃
                 </a>
