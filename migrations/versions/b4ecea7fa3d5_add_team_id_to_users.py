@@ -22,195 +22,195 @@ def upgrade():
     bind = op.get_bind()
     inspector = inspect(bind)
     if 'teams' not in inspector.get_table_names():
-    op.create_table('teams',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=50), nullable=False, comment='팀명'),
-    sa.Column('description', sa.String(length=200), nullable=True, comment='팀 설명'),
-    sa.Column('manager_id', sa.Integer(), nullable=True, comment='팀장 ID'),
-    sa.Column('branch_id', sa.Integer(), nullable=True, comment='소속 지점'),
-    sa.Column('is_active', sa.Boolean(), nullable=True, comment='활성화 여부'),
-    sa.Column('created_at', sa.DateTime(), nullable=True, comment='생성일시'),
-    sa.Column('updated_at', sa.DateTime(), nullable=True, comment='수정일시'),
-    sa.Column('permissions', sa.JSON(), nullable=True),
-    sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], ),
-    sa.ForeignKeyConstraint(['manager_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
-    )
+        op.create_table('teams',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('name', sa.String(length=50), nullable=False, comment='팀명'),
+        sa.Column('description', sa.String(length=200), nullable=True, comment='팀 설명'),
+        sa.Column('manager_id', sa.Integer(), nullable=True, comment='팀장 ID'),
+        sa.Column('branch_id', sa.Integer(), nullable=True, comment='소속 지점'),
+        sa.Column('is_active', sa.Boolean(), nullable=True, comment='활성화 여부'),
+        sa.Column('created_at', sa.DateTime(), nullable=True, comment='생성일시'),
+        sa.Column('updated_at', sa.DateTime(), nullable=True, comment='수정일시'),
+        sa.Column('permissions', sa.JSON(), nullable=True),
+        sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], ),
+        sa.ForeignKeyConstraint(['manager_id'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('name')
+        )
     if 'permission_change_logs' not in inspector.get_table_names():
-    op.create_table('permission_change_logs',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False, comment='권한 변경 대상'),
-    sa.Column('changed_by', sa.Integer(), nullable=False, comment='권한 변경자'),
-    sa.Column('change_type', sa.String(length=20), nullable=False, comment='변경 유형: role/permission/delegation'),
-    sa.Column('before_value', sa.String(length=500), nullable=True, comment='변경 전 값'),
-    sa.Column('after_value', sa.String(length=500), nullable=True, comment='변경 후 값'),
-    sa.Column('reason', sa.String(length=200), nullable=True, comment='변경 사유'),
-    sa.Column('ip_address', sa.String(length=45), nullable=True, comment='IP 주소'),
-    sa.Column('user_agent', sa.String(length=500), nullable=True, comment='사용자 에이전트'),
-    sa.Column('created_at', sa.DateTime(), nullable=True, comment='변경일시'),
-    sa.ForeignKeyConstraint(['changed_by'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    existing_indexes = [ix['name'] for ix in inspector.get_indexes('permission_change_logs')]
+        op.create_table('permission_change_logs',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False, comment='권한 변경 대상'),
+        sa.Column('changed_by', sa.Integer(), nullable=False, comment='권한 변경자'),
+        sa.Column('change_type', sa.String(length=20), nullable=False, comment='변경 유형: role/permission/delegation'),
+        sa.Column('before_value', sa.String(length=500), nullable=True, comment='변경 전 값'),
+        sa.Column('after_value', sa.String(length=500), nullable=True, comment='변경 후 값'),
+        sa.Column('reason', sa.String(length=200), nullable=True, comment='변경 사유'),
+        sa.Column('ip_address', sa.String(length=45), nullable=True, comment='IP 주소'),
+        sa.Column('user_agent', sa.String(length=500), nullable=True, comment='사용자 에이전트'),
+        sa.Column('created_at', sa.DateTime(), nullable=True, comment='변경일시'),
+        sa.ForeignKeyConstraint(['changed_by'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id')
+        )
+        existing_indexes = [ix['name'] for ix in inspector.get_indexes('permission_change_logs')]
 
-    with op.batch_alter_table('permission_change_logs', schema=None) as batch_op:
-        if 'idx_permissionlog_changer_date' not in existing_indexes:
-        batch_op.create_index('idx_permissionlog_changer_date', ['changed_by', 'created_at'], unique=False)
-        if 'idx_permissionlog_type_date' not in existing_indexes:
-        batch_op.create_index('idx_permissionlog_type_date', ['change_type', 'created_at'], unique=False)
-        if 'idx_permissionlog_user_date' not in existing_indexes:
-        batch_op.create_index('idx_permissionlog_user_date', ['user_id', 'created_at'], unique=False)
-        if 'ix_permission_change_logs_change_type' not in existing_indexes:
-        batch_op.create_index(batch_op.f('ix_permission_change_logs_change_type'), ['change_type'], unique=False)
-        if 'ix_permission_change_logs_changed_by' not in existing_indexes:
-        batch_op.create_index(batch_op.f('ix_permission_change_logs_changed_by'), ['changed_by'], unique=False)
-        if 'ix_permission_change_logs_created_at' not in existing_indexes:
-        batch_op.create_index(batch_op.f('ix_permission_change_logs_created_at'), ['created_at'], unique=False)
-        if 'ix_permission_change_logs_user_id' not in existing_indexes:
-        batch_op.create_index(batch_op.f('ix_permission_change_logs_user_id'), ['user_id'], unique=False)
+        with op.batch_alter_table('permission_change_logs', schema=None) as batch_op:
+            if 'idx_permissionlog_changer_date' not in existing_indexes:
+                batch_op.create_index('idx_permissionlog_changer_date', ['changed_by', 'created_at'], unique=False)
+            if 'idx_permissionlog_type_date' not in existing_indexes:
+                batch_op.create_index('idx_permissionlog_type_date', ['change_type', 'created_at'], unique=False)
+            if 'idx_permissionlog_user_date' not in existing_indexes:
+                batch_op.create_index('idx_permissionlog_user_date', ['user_id', 'created_at'], unique=False)
+            if 'ix_permission_change_logs_change_type' not in existing_indexes:
+                batch_op.create_index(batch_op.f('ix_permission_change_logs_change_type'), ['change_type'], unique=False)
+            if 'ix_permission_change_logs_changed_by' not in existing_indexes:
+                batch_op.create_index(batch_op.f('ix_permission_change_logs_changed_by'), ['changed_by'], unique=False)
+            if 'ix_permission_change_logs_created_at' not in existing_indexes:
+                batch_op.create_index(batch_op.f('ix_permission_change_logs_created_at'), ['created_at'], unique=False)
+            if 'ix_permission_change_logs_user_id' not in existing_indexes:
+                batch_op.create_index(batch_op.f('ix_permission_change_logs_user_id'), ['user_id'], unique=False)
 
     if 'permission_templates' not in inspector.get_table_names():
-    op.create_table('permission_templates',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=100), nullable=False, comment='템플릿명'),
-    sa.Column('description', sa.String(length=200), nullable=True, comment='템플릿 설명'),
-    sa.Column('permissions', sa.String(length=500), nullable=True, comment='권한 목록 (JSON)'),
-    sa.Column('role_type', sa.String(length=20), nullable=True, comment='역할 유형: manager/teamlead/employee'),
-    sa.Column('is_active', sa.Boolean(), nullable=True, comment='활성화 여부'),
-    sa.Column('created_by', sa.Integer(), nullable=False, comment='생성자'),
-    sa.Column('created_at', sa.DateTime(), nullable=True, comment='생성일시'),
-    sa.Column('updated_at', sa.DateTime(), nullable=True, comment='수정일시'),
-    sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
-    )
-    existing_indexes = [ix['name'] for ix in inspector.get_indexes('permission_templates')]
+        op.create_table('permission_templates',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('name', sa.String(length=100), nullable=False, comment='템플릿명'),
+        sa.Column('description', sa.String(length=200), nullable=True, comment='템플릿 설명'),
+        sa.Column('permissions', sa.String(length=500), nullable=True, comment='권한 목록 (JSON)'),
+        sa.Column('role_type', sa.String(length=20), nullable=True, comment='역할 유형: manager/teamlead/employee'),
+        sa.Column('is_active', sa.Boolean(), nullable=True, comment='활성화 여부'),
+        sa.Column('created_by', sa.Integer(), nullable=False, comment='생성자'),
+        sa.Column('created_at', sa.DateTime(), nullable=True, comment='생성일시'),
+        sa.Column('updated_at', sa.DateTime(), nullable=True, comment='수정일시'),
+        sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('name')
+        )
+        existing_indexes = [ix['name'] for ix in inspector.get_indexes('permission_templates')]
 
-    with op.batch_alter_table('permission_templates', schema=None) as batch_op:
-        if 'ix_permission_templates_created_by' not in existing_indexes:
-            batch_op.create_index('ix_permission_templates_created_by', ['created_by'], unique=False)
-        if 'ix_permission_templates_role_type' not in existing_indexes:
-            batch_op.create_index('ix_permission_templates_role_type', ['role_type'], unique=False)
+        with op.batch_alter_table('permission_templates', schema=None) as batch_op:
+            if 'ix_permission_templates_created_by' not in existing_indexes:
+                batch_op.create_index('ix_permission_templates_created_by', ['created_by'], unique=False)
+            if 'ix_permission_templates_role_type' not in existing_indexes:
+                batch_op.create_index('ix_permission_templates_role_type', ['role_type'], unique=False)
 
     if 'user_permissions' not in inspector.get_table_names():
-    op.create_table('user_permissions',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False, comment='사용자 ID'),
-    sa.Column('permission_name', sa.String(length=50), nullable=False, comment='권한명'),
-    sa.Column('is_active', sa.Boolean(), nullable=True, comment='활성화 여부'),
-    sa.Column('granted_by', sa.Integer(), nullable=False, comment='권한 부여자'),
-    sa.Column('granted_at', sa.DateTime(), nullable=True, comment='권한 부여일시'),
-    sa.Column('expires_at', sa.DateTime(), nullable=True, comment='권한 만료일시'),
-    sa.Column('reason', sa.String(length=200), nullable=True, comment='권한 부여 사유'),
-    sa.ForeignKeyConstraint(['granted_by'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    existing_indexes = [ix['name'] for ix in inspector.get_indexes('user_permissions')]
+        op.create_table('user_permissions',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False, comment='사용자 ID'),
+        sa.Column('permission_name', sa.String(length=50), nullable=False, comment='권한명'),
+        sa.Column('is_active', sa.Boolean(), nullable=True, comment='활성화 여부'),
+        sa.Column('granted_by', sa.Integer(), nullable=False, comment='권한 부여자'),
+        sa.Column('granted_at', sa.DateTime(), nullable=True, comment='권한 부여일시'),
+        sa.Column('expires_at', sa.DateTime(), nullable=True, comment='권한 만료일시'),
+        sa.Column('reason', sa.String(length=200), nullable=True, comment='권한 부여 사유'),
+        sa.ForeignKeyConstraint(['granted_by'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id')
+        )
+        existing_indexes = [ix['name'] for ix in inspector.get_indexes('user_permissions')]
 
-    with op.batch_alter_table('user_permissions', schema=None) as batch_op:
-        if 'idx_userpermission_active_expires' not in existing_indexes:
-        batch_op.create_index('idx_userpermission_active_expires', ['is_active', 'expires_at'], unique=False)
-        if 'idx_userpermission_granter_date' not in existing_indexes:
-        batch_op.create_index('idx_userpermission_granter_date', ['granted_by', 'granted_at'], unique=False)
-        if 'idx_userpermission_user_name' not in existing_indexes:
-        batch_op.create_index('idx_userpermission_user_name', ['user_id', 'permission_name'], unique=False)
-        if 'ix_user_permissions_granted_by' not in existing_indexes:
-            batch_op.create_index('ix_user_permissions_granted_by', ['granted_by'], unique=False)
-        if 'ix_user_permissions_permission_name' not in existing_indexes:
-            batch_op.create_index('ix_user_permissions_permission_name', ['permission_name'], unique=False)
-        if 'ix_user_permissions_user_id' not in existing_indexes:
-            batch_op.create_index('ix_user_permissions_user_id', ['user_id'], unique=False)
+        with op.batch_alter_table('user_permissions', schema=None) as batch_op:
+            if 'idx_userpermission_active_expires' not in existing_indexes:
+                batch_op.create_index('idx_userpermission_active_expires', ['is_active', 'expires_at'], unique=False)
+            if 'idx_userpermission_granter_date' not in existing_indexes:
+                batch_op.create_index('idx_userpermission_granter_date', ['granted_by', 'granted_at'], unique=False)
+            if 'idx_userpermission_user_name' not in existing_indexes:
+                batch_op.create_index('idx_userpermission_user_name', ['user_id', 'permission_name'], unique=False)
+            if 'ix_user_permissions_granted_by' not in existing_indexes:
+                batch_op.create_index('ix_user_permissions_granted_by', ['granted_by'], unique=False)
+            if 'ix_user_permissions_permission_name' not in existing_indexes:
+                batch_op.create_index('ix_user_permissions_permission_name', ['permission_name'], unique=False)
+            if 'ix_user_permissions_user_id' not in existing_indexes:
+                batch_op.create_index('ix_user_permissions_user_id', ['user_id'], unique=False)
 
     if 'excuses' not in inspector.get_table_names():
-    op.create_table('excuses',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('attendance_report_id', sa.Integer(), nullable=True),
-    sa.Column('attendance_evaluation_id', sa.Integer(), nullable=True),
-    sa.Column('title', sa.String(length=200), nullable=False, comment='소명 제목'),
-    sa.Column('content', sa.Text(), nullable=False, comment='소명 내용'),
-    sa.Column('status', sa.String(length=20), nullable=True, comment='상태: pending/reviewed/accepted/rejected'),
-    sa.Column('priority', sa.String(length=10), nullable=True, comment='우선순위: 긴급/중요/일반'),
-    sa.Column('category', sa.String(length=50), nullable=True, comment='소명 카테고리'),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('reviewed_at', sa.DateTime(), nullable=True),
-    sa.Column('reviewed_by', sa.Integer(), nullable=True),
-    sa.Column('admin_comment', sa.Text(), nullable=True, comment='관리자 답변'),
-    sa.ForeignKeyConstraint(['attendance_evaluation_id'], ['attendance_evaluations.id'], ),
-    sa.ForeignKeyConstraint(['attendance_report_id'], ['attendance_reports.id'], ),
-    sa.ForeignKeyConstraint(['reviewed_by'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    existing_indexes = [ix['name'] for ix in inspector.get_indexes('excuses')]
+        op.create_table('excuses',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False),
+        sa.Column('attendance_report_id', sa.Integer(), nullable=True),
+        sa.Column('attendance_evaluation_id', sa.Integer(), nullable=True),
+        sa.Column('title', sa.String(length=200), nullable=False, comment='소명 제목'),
+        sa.Column('content', sa.Text(), nullable=False, comment='소명 내용'),
+        sa.Column('status', sa.String(length=20), nullable=True, comment='상태: pending/reviewed/accepted/rejected'),
+        sa.Column('priority', sa.String(length=10), nullable=True, comment='우선순위: 긴급/중요/일반'),
+        sa.Column('category', sa.String(length=50), nullable=True, comment='소명 카테고리'),
+        sa.Column('created_at', sa.DateTime(), nullable=True),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.Column('reviewed_at', sa.DateTime(), nullable=True),
+        sa.Column('reviewed_by', sa.Integer(), nullable=True),
+        sa.Column('admin_comment', sa.Text(), nullable=True, comment='관리자 답변'),
+        sa.ForeignKeyConstraint(['attendance_evaluation_id'], ['attendance_evaluations.id'], ),
+        sa.ForeignKeyConstraint(['attendance_report_id'], ['attendance_reports.id'], ),
+        sa.ForeignKeyConstraint(['reviewed_by'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id')
+        )
+        existing_indexes = [ix['name'] for ix in inspector.get_indexes('excuses')]
 
-    with op.batch_alter_table('excuses', schema=None) as batch_op:
-        if 'idx_excuse_reviewer_date' not in existing_indexes:
-        batch_op.create_index('idx_excuse_reviewer_date', ['reviewed_by', 'reviewed_at'], unique=False)
-        if 'idx_excuse_status_date' not in existing_indexes:
-        batch_op.create_index('idx_excuse_status_date', ['status', 'created_at'], unique=False)
-        if 'idx_excuse_user_status' not in existing_indexes:
-        batch_op.create_index('idx_excuse_user_status', ['user_id', 'status'], unique=False)
-        if 'ix_excuses_attendance_evaluation_id' not in existing_indexes:
-            batch_op.create_index('ix_excuses_attendance_evaluation_id', ['attendance_evaluation_id'], unique=False)
-        if 'ix_excuses_attendance_report_id' not in existing_indexes:
-            batch_op.create_index('ix_excuses_attendance_report_id', ['attendance_report_id'], unique=False)
-        if 'ix_excuses_created_at' not in existing_indexes:
-            batch_op.create_index('ix_excuses_created_at', ['created_at'], unique=False)
-        if 'ix_excuses_priority' not in existing_indexes:
-            batch_op.create_index('ix_excuses_priority', ['priority'], unique=False)
-        if 'ix_excuses_reviewed_at' not in existing_indexes:
-            batch_op.create_index('ix_excuses_reviewed_at', ['reviewed_at'], unique=False)
-        if 'ix_excuses_reviewed_by' not in existing_indexes:
-            batch_op.create_index('ix_excuses_reviewed_by', ['reviewed_by'], unique=False)
-        if 'ix_excuses_status' not in existing_indexes:
-            batch_op.create_index('ix_excuses_status', ['status'], unique=False)
-        if 'ix_excuses_user_id' not in existing_indexes:
-            batch_op.create_index('ix_excuses_user_id', ['user_id'], unique=False)
+        with op.batch_alter_table('excuses', schema=None) as batch_op:
+            if 'idx_excuse_reviewer_date' not in existing_indexes:
+                batch_op.create_index('idx_excuse_reviewer_date', ['reviewed_by', 'reviewed_at'], unique=False)
+            if 'idx_excuse_status_date' not in existing_indexes:
+                batch_op.create_index('idx_excuse_status_date', ['status', 'created_at'], unique=False)
+            if 'idx_excuse_user_status' not in existing_indexes:
+                batch_op.create_index('idx_excuse_user_status', ['user_id', 'status'], unique=False)
+            if 'ix_excuses_attendance_evaluation_id' not in existing_indexes:
+                batch_op.create_index('ix_excuses_attendance_evaluation_id', ['attendance_evaluation_id'], unique=False)
+            if 'ix_excuses_attendance_report_id' not in existing_indexes:
+                batch_op.create_index('ix_excuses_attendance_report_id', ['attendance_report_id'], unique=False)
+            if 'ix_excuses_created_at' not in existing_indexes:
+                batch_op.create_index('ix_excuses_created_at', ['created_at'], unique=False)
+            if 'ix_excuses_priority' not in existing_indexes:
+                batch_op.create_index('ix_excuses_priority', ['priority'], unique=False)
+            if 'ix_excuses_reviewed_at' not in existing_indexes:
+                batch_op.create_index('ix_excuses_reviewed_at', ['reviewed_at'], unique=False)
+            if 'ix_excuses_reviewed_by' not in existing_indexes:
+                batch_op.create_index('ix_excuses_reviewed_by', ['reviewed_by'], unique=False)
+            if 'ix_excuses_status' not in existing_indexes:
+                batch_op.create_index('ix_excuses_status', ['status'], unique=False)
+            if 'ix_excuses_user_id' not in existing_indexes:
+                batch_op.create_index('ix_excuses_user_id', ['user_id'], unique=False)
 
     if 'reason_edit_logs' not in inspector.get_table_names():
-    op.create_table('reason_edit_logs',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('attendance_id', sa.Integer(), nullable=False, comment='근태 기록 ID'),
-    sa.Column('old_reason', sa.String(length=200), nullable=True, comment='이전 사유'),
-    sa.Column('new_reason', sa.String(length=200), nullable=True, comment='새 사유'),
-    sa.Column('edited_by', sa.Integer(), nullable=False, comment='수정자'),
-    sa.Column('edited_at', sa.DateTime(), nullable=True, comment='수정일시'),
-    sa.Column('ip_address', sa.String(length=45), nullable=True, comment='IP 주소'),
-    sa.Column('user_agent', sa.String(length=500), nullable=True, comment='사용자 에이전트'),
-    sa.ForeignKeyConstraint(['attendance_id'], ['attendances.id'], ),
-    sa.ForeignKeyConstraint(['edited_by'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    with op.batch_alter_table('reason_edit_logs', schema=None) as batch_op:
-        batch_op.create_index('idx_reason_edit_attendance', ['attendance_id'], unique=False)
-        batch_op.create_index('idx_reason_edit_date', ['edited_at'], unique=False)
-        batch_op.create_index('idx_reason_edit_editor', ['edited_by'], unique=False)
+        op.create_table('reason_edit_logs',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('attendance_id', sa.Integer(), nullable=False, comment='근태 기록 ID'),
+        sa.Column('old_reason', sa.String(length=200), nullable=True, comment='이전 사유'),
+        sa.Column('new_reason', sa.String(length=200), nullable=True, comment='새 사유'),
+        sa.Column('edited_by', sa.Integer(), nullable=False, comment='수정자'),
+        sa.Column('edited_at', sa.DateTime(), nullable=True, comment='수정일시'),
+        sa.Column('ip_address', sa.String(length=45), nullable=True, comment='IP 주소'),
+        sa.Column('user_agent', sa.String(length=500), nullable=True, comment='사용자 에이전트'),
+        sa.ForeignKeyConstraint(['attendance_id'], ['attendances.id'], ),
+        sa.ForeignKeyConstraint(['edited_by'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id')
+        )
+        with op.batch_alter_table('reason_edit_logs', schema=None) as batch_op:
+            batch_op.create_index('idx_reason_edit_attendance', ['attendance_id'], unique=False)
+            batch_op.create_index('idx_reason_edit_date', ['edited_at'], unique=False)
+            batch_op.create_index('idx_reason_edit_editor', ['edited_by'], unique=False)
 
     if 'excuse_responses' not in inspector.get_table_names():
-    op.create_table('excuse_responses',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('excuse_id', sa.Integer(), nullable=False),
-    sa.Column('responder_id', sa.Integer(), nullable=False),
-    sa.Column('content', sa.Text(), nullable=False, comment='답변 내용'),
-    sa.Column('response_type', sa.String(length=20), nullable=True, comment='답변 유형: comment/decision/request'),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['excuse_id'], ['excuses.id'], ),
-    sa.ForeignKeyConstraint(['responder_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    with op.batch_alter_table('excuse_responses', schema=None) as batch_op:
-        batch_op.create_index('idx_excuseresponse_excuse_date', ['excuse_id', 'created_at'], unique=False)
-        batch_op.create_index('idx_excuseresponse_responder_date', ['responder_id', 'created_at'], unique=False)
-        batch_op.create_index(batch_op.f('ix_excuse_responses_created_at'), ['created_at'], unique=False)
-        batch_op.create_index(batch_op.f('ix_excuse_responses_excuse_id'), ['excuse_id'], unique=False)
-        batch_op.create_index(batch_op.f('ix_excuse_responses_responder_id'), ['responder_id'], unique=False)
-        batch_op.create_index(batch_op.f('ix_excuse_responses_response_type'), ['response_type'], unique=False)
+        op.create_table('excuse_responses',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('excuse_id', sa.Integer(), nullable=False),
+        sa.Column('responder_id', sa.Integer(), nullable=False),
+        sa.Column('content', sa.Text(), nullable=False, comment='답변 내용'),
+        sa.Column('response_type', sa.String(length=20), nullable=True, comment='답변 유형: comment/decision/request'),
+        sa.Column('created_at', sa.DateTime(), nullable=True),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(['excuse_id'], ['excuses.id'], ),
+        sa.ForeignKeyConstraint(['responder_id'], ['users.id'], ),
+        sa.PrimaryKeyConstraint('id')
+        )
+        with op.batch_alter_table('excuse_responses', schema=None) as batch_op:
+            batch_op.create_index('idx_excuseresponse_excuse_date', ['excuse_id', 'created_at'], unique=False)
+            batch_op.create_index('idx_excuseresponse_responder_date', ['responder_id', 'created_at'], unique=False)
+            batch_op.create_index(batch_op.f('ix_excuse_responses_created_at'), ['created_at'], unique=False)
+            batch_op.create_index(batch_op.f('ix_excuse_responses_excuse_id'), ['excuse_id'], unique=False)
+            batch_op.create_index(batch_op.f('ix_excuse_responses_responder_id'), ['responder_id'], unique=False)
+            batch_op.create_index(batch_op.f('ix_excuse_responses_response_type'), ['response_type'], unique=False)
 
     with op.batch_alter_table('attendance_disputes', schema=None) as batch_op:
         batch_op.drop_index('ix_attendance_disputes_assignee_id')

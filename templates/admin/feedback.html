@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>개선·문의사항 관리</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>제목</th><th>내용</th><th>작성자</th><th>매장</th><th>상태</th><th>처리</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fb in feedbacks %}
+    <tr>
+      <td>{{ fb.title }}</td>
+      <td>{{ fb.content }}</td>
+      <td>{{ fb.user.username if fb.user else '-' }}</td>
+      <td>{{ fb.branch.name if fb.branch else '-' }}</td>
+      <td>{{ fb.status }}</td>
+      <td>
+        {% if fb.status != 'resolved' %}
+        <a href="{{ url_for('resolve_feedback', feedback_id=fb.id) }}" class="btn btn-success btn-sm">처리완료</a>
+        {% else %}
+        <span class="text-success">완료</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %} 

@@ -8,9 +8,10 @@ import re
 class Branch(db.Model):
     __tablename__ = "branches"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    name = db.Column(db.String(128))
     address = db.Column(db.String(200))
     phone = db.Column(db.String(20))
+    processing_time_standard = db.Column(db.Integer, default=15)  # 기준 주문 처리 시간(분)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     users = db.relationship("User", backref="branch", lazy=True)
@@ -259,6 +260,7 @@ class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     content = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(100), nullable=True)  # 알림 제목 필드 추가
     category = db.Column(db.String(50), nullable=False, default='일반', index=True)  # 발주/청소/근무/교대/공지/일반
     related_url = db.Column(db.String(255), nullable=True) # 알림 클릭 시 이동할 URL
     link = db.Column(db.String(255), nullable=True) # 상세 페이지 링크 (별칭)
@@ -505,6 +507,10 @@ class Order(db.Model):
     memo = db.Column(db.String(500))  # 메모
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    processing_minutes = db.Column(db.Integer)
+    employee_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 직원
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'))  # 매장
     
     # 관계 설정
     user = db.relationship('User', backref='orders')
@@ -779,6 +785,97 @@ class PermissionTemplate(db.Model):
     
     def __repr__(self):
         return f'<PermissionTemplate {self.name}>'
+
+class FeedbackIssue(db.Model):
+    __tablename__ = "feedback_issues"
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(128), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'))
+    status = db.Column(db.String(32), default='pending')  # 'pending', 'in_progress', 'resolved'
+
+    user = db.relationship('User', backref='feedback_issues')
+    branch = db.relationship('Branch', backref='feedback_issues')
+
+    def __repr__(self):
+        return f'<FeedbackIssue {self.title}>'
+
+class RestaurantOrder(db.Model):
+    """레스토랑 주문 처리 시간 측정 모델"""
+    __tablename__ = "restaurant_orders"
+    id = db.Column(db.Integer, primary_key=True)
+    order_number = db.Column(db.String(50), unique=True, nullable=False, index=True)  # 주문번호
+    customer_name = db.Column(db.String(100))  # 고객명
+    order_items = db.Column(db.Text, nullable=False)  # 주문 메뉴 (JSON 형태)
+    total_amount = db.Column(db.Integer, nullable=False)  # 총 금액
+    status = db.Column(db.String(20), default='pending', index=True)  # pending/processing/completed/cancelled
+    
+    # 처리 시간 관련 필드
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)  # 주문 생성 시간
+    completed_at = db.Column(db.DateTime, index=True)  # 처리 완료 시간
+    processing_minutes = db.Column(db.Integer, index=True)  # 처리 소요 시간(분)
+    
+    # 매장/직원 정보
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False, index=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)  # 처리 직원
+    
+    # 추가 정보
+    notes = db.Column(db.Text)  # 메모
+    payment_method = db.Column(db.String(20), default='cash')  # 결제 방법
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='restaurant_orders')
+    employee = db.relationship('User', backref='processed_orders')
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_restaurant_order_store_status', 'store_id', 'status'),
+        db.Index('idx_restaurant_order_employee_date', 'employee_id', 'created_at'),
+        db.Index('idx_restaurant_order_processing_time', 'processing_minutes'),
+        db.Index('idx_restaurant_order_created_completed', 'created_at', 'completed_at'),
+    )
+    
+    def __repr__(self):
+        return f'<RestaurantOrder {self.order_number} {self.status}>'
+    
+    @property
+    def is_over_standard(self):
+        """기준 시간 초과 여부 확인"""
+        if not self.processing_minutes or not self.store:
+            return False
+        return self.processing_minutes > self.store.processing_time_standard
+    
+    @property
+    def standard_time(self):
+        """매장별 기준 시간 반환"""
+        return self.store.processing_time_standard if self.store else 15
+
+class OrderFeedback(db.Model):
+    """주문 처리 경고/칭찬 피드백 모델"""
+    __tablename__ = "order_feedbacks"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False, index=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    type = db.Column(db.String(16), nullable=False, index=True)  # 'warn', 'praise'
+    message = db.Column(db.String(256), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # 관계 설정
+    order = db.relationship('Order', backref='feedbacks')
+    employee = db.relationship('User', backref='order_feedbacks')
+    
+    # 복합 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_orderfeedback_employee_type', 'employee_id', 'type'),
+        db.Index('idx_orderfeedback_created', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<OrderFeedback {self.id} {self.type} for Order {self.order_id}>'
 
 
 

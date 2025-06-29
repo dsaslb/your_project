@@ -125,6 +125,77 @@
   </div>
 </div>
 
+<!-- 매장 관리자·직원 업무 페이지 바로가기 -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-store"></i> 매장 관리자·직원 업무 페이지 바로가기</h5>
+      </div>
+      <div class="card-body">
+        {% if branch_list %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>매장명</th>
+                <th>관리자</th>
+                <th>직원 수</th>
+                <th>업무 바로가기</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for branch in branch_list %}
+              <tr>
+                <td><strong>{{ branch.name }}</strong></td>
+                <td>{{ branch.manager_name }}</td>
+                <td>{{ branch.num_employees }}명</td>
+                <td>
+                  <div class="btn-group-vertical" role="group">
+                    <!-- 매장 관리자 업무 대시보드 바로가기 -->
+                    <a href="{{ url_for('manager_dashboard', branch_id=branch.id) }}" 
+                       class="btn btn-sm btn-primary mb-1">
+                      <i class="fas fa-user-tie"></i> 관리자 대시보드
+                    </a>
+                    <!-- 직원 업무 바로가기(직원별) -->
+                    {% if branch.employees %}
+                      <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                type="button" data-bs-toggle="dropdown">
+                          <i class="fas fa-users"></i> 직원별 업무
+                        </button>
+                        <ul class="dropdown-menu">
+                          {% for emp in branch.employees %}
+                          <li>
+                            <a class="dropdown-item" 
+                               href="{{ url_for('employee_dashboard', employee_id=emp.id) }}">
+                              <i class="fas fa-user"></i> {{ emp.name or emp.username }} 업무
+                            </a>
+                          </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                    {% else %}
+                      <span class="text-muted small">등록된 직원 없음</span>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i> 등록된 매장이 없습니다. 
+          <a href="{{ url_for('admin_users') }}" class="alert-link">매장 및 직원을 먼저 등록해주세요.</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 새로운 관리 기능 메뉴 -->
 <div class="row mb-3">
   <div class="col-12">
@@ -437,16 +508,20 @@
   </tbody>
 </table>
 
+<p>직원 평균 주문 처리 시간: {{ avg_processing|round(1) }}분</p>
+<p>기준 초과 주문 건수: {{ exceed_count }}건</p>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // 월별 변화 추이 차트
-let monthlyLabels = [
-  {% for stat in noti_stats %}'{{ stat.month }}',{% endfor %}
-];
-let notiData = [{% for stat in noti_stats %}{{ stat.count }},{% endfor %}];
-let workData = [{% for stat in work_stats %}{{ stat.count }},{% endfor %}];
-let orderData = [{% for stat in order_stats %}{{ stat.count }},{% endfor %}];
-let cleanData = [{% for stat in clean_stats %}{{ stat.count }},{% endfor %}];
+let monthlyLabels = {{ noti_stats|map(attribute='month')|list|tojson }};
+let notiData = {{ noti_stats|map(attribute='count')|list|tojson }};
+let workData = {{ work_stats|map(attribute='count')|list|tojson }};
+let orderData = {{ order_stats|map(attribute='count')|list|tojson }};
+let cleanData = {{ clean_stats|map(attribute='count')|list|tojson }};
+
+let categories = {{ noti_category_stats|map(attribute='category')|list|tojson }};
+let categoryCounts = {{ noti_category_stats|map(attribute='count')|list|tojson }};
 
 let monthlyCtx = document.getElementById('monthlyStatsChart').getContext('2d');
 let monthlyChart = new Chart(monthlyCtx, {
@@ -516,9 +591,6 @@ let monthlyChart = new Chart(monthlyCtx, {
 });
 
 // 알림 카테고리별 파이 차트
-let categories = [{% for stat in noti_category_stats %}'{{ stat.category }}',{% endfor %}];
-let categoryCounts = [{% for stat in noti_category_stats %}{{ stat.count }},{% endfor %}];
-
 let pieCtx = document.getElementById('categoryPieChart').getContext('2d');
 let pieChart = new Chart(pieCtx, {
   type: 'pie',

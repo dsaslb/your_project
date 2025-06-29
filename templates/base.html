@@ -96,7 +96,7 @@
                     </a> #}
                 </div>
                 
-                {% if current_user.is_admin() or current_user.is_manager() %}
+                {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_manager()) %}
                 <div class="sidebar-group mt-6">
                     <button class="sidebar-group-toggle" onclick="toggleGroup('admin')">
                         <i class="fas fa-cog mr-2"></i>
@@ -116,12 +116,23 @@
                             <i class="fas fa-users mr-2"></i>
                             사용자 관리
                         </a> #}
+                        {% if current_user.is_authenticated and current_user.is_admin() %}
+                        <a href="{{ url_for('admin_feedback') }}" class="nav-link">
+                            <i class="fas fa-tools mr-2"></i>
+                            개선·문의사항 관리
+                        </a>
+                        <a href="{{ url_for('admin_notify_send') }}" class="nav-link">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            알림 발송
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
             </nav>
             
             <div class="sidebar-bottom">
+                {% if current_user.is_authenticated %}
                 <div class="sidebar-user-info">
                     <i class="fas fa-user-circle"></i>
                     {{ current_user.name or current_user.username }}
@@ -130,6 +141,7 @@
                     <i class="fas fa-sign-out-alt mr-1"></i>
                     로그아웃
                 </a>
+                {% endif %}
             </div>
         </aside>
 

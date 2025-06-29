@@ -19,7 +19,7 @@ class AssigneeManager:
         try:
             # 현재 업무량이 가장 적은 담당자 찾기
             assignees = User.query.filter(
-                and_(
+                    and_(
                     User.role.in_(['admin', 'manager']),
                     User.status == 'approved',
                     User.deleted_at.is_(None)
