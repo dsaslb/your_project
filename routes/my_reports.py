@@ -10,7 +10,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import and_, func, or_
 
 from extensions import db
-from models import Attendance, AttendanceDispute, User
+from models import Attendance, AttendanceReport, User
 from utils.assignee_manager import assignee_manager
 from utils.decorators import admin_required, team_lead_required
 from utils.email_utils import email_service
@@ -32,51 +32,51 @@ def my_reports():
         sla_filter = request.args.get("sla_filter", "")
 
         # 자신이 담당자로 배정된 신고/이의만 조회
-        query = AttendanceDispute.query.filter_by(assignee_id=current_user.id)
+        query = AttendanceReport.query.filter_by(assignee_id=current_user.id)
 
         if status:
-            query = query.filter(AttendanceDispute.status == status)
+            query = query.filter(AttendanceReport.status == status)
         if dispute_type:
-            query = query.filter(AttendanceDispute.dispute_type == dispute_type)
+            query = query.filter(AttendanceReport.dispute_type == dispute_type)
 
         # SLA 필터
         now = datetime.utcnow()
         if sla_filter == "overdue":
             query = query.filter(
                 and_(
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due < now,
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due < now,
                 )
             )
         elif sla_filter == "urgent":
             query = query.filter(
                 and_(
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due <= now + timedelta(hours=24),
-                    AttendanceDispute.sla_due > now,
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due <= now + timedelta(hours=24),
+                    AttendanceReport.sla_due > now,
                 )
             )
 
-        reports = query.order_by(AttendanceDispute.created_at.desc()).all()
+        reports = query.order_by(AttendanceReport.created_at.desc()).all()
 
         # 업무량 통계
         workload = assignee_manager.get_assignee_workload(current_user.id)
 
         # SLA 임박/초과 건수
-        sla_urgent = AttendanceDispute.query.filter(
+        sla_urgent = AttendanceReport.query.filter(
             and_(
-                AttendanceDispute.assignee_id == current_user.id,
-                AttendanceDispute.status.in_(["pending", "processing"]),
-                AttendanceDispute.sla_due <= now + timedelta(hours=24),
-                AttendanceDispute.sla_due > now,
+                AttendanceReport.assignee_id == current_user.id,
+                AttendanceReport.status.in_(["pending", "processing"]),
+                AttendanceReport.sla_due <= now + timedelta(hours=24),
+                AttendanceReport.sla_due > now,
             )
         ).count()
 
-        sla_overdue = AttendanceDispute.query.filter(
+        sla_overdue = AttendanceReport.query.filter(
             and_(
-                AttendanceDispute.assignee_id == current_user.id,
-                AttendanceDispute.status.in_(["pending", "processing"]),
-                AttendanceDispute.sla_due < now,
+                AttendanceReport.assignee_id == current_user.id,
+                AttendanceReport.status.in_(["pending", "processing"]),
+                AttendanceReport.sla_due < now,
             )
         ).count()
 
@@ -108,7 +108,7 @@ def my_reports():
 def my_report_reply(report_id):
     """담당 신고/이의제기 답변 처리"""
     try:
-        dispute = AttendanceDispute.query.get_or_404(report_id)
+        dispute = AttendanceReport.query.get_or_404(report_id)
 
         # 본인이 담당자인지 확인
         if dispute.assignee_id != current_user.id:
@@ -173,7 +173,7 @@ def my_report_reply(report_id):
 def my_report_reassign(report_id):
     """담당 신고/이의제기 재배정"""
     try:
-        dispute = AttendanceDispute.query.get_or_404(report_id)
+        dispute = AttendanceReport.query.get_or_404(report_id)
 
         # 본인이 담당자인지 확인
         if dispute.assignee_id != current_user.id:
@@ -223,12 +223,12 @@ def my_reports_stats():
             start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
             end_date = date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-            resolved_count = AttendanceDispute.query.filter(
+            resolved_count = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.assignee_id == current_user.id,
-                    AttendanceDispute.status == "resolved",
-                    AttendanceDispute.updated_at >= start_date,
-                    AttendanceDispute.updated_at <= end_date,
+                    AttendanceReport.assignee_id == current_user.id,
+                    AttendanceReport.status == "resolved",
+                    AttendanceReport.updated_at >= start_date,
+                    AttendanceReport.updated_at <= end_date,
                 )
             ).count()
 
@@ -240,20 +240,20 @@ def my_reports_stats():
 
         # SLA 통계
         now = datetime.utcnow()
-        sla_urgent = AttendanceDispute.query.filter(
+        sla_urgent = AttendanceReport.query.filter(
             and_(
-                AttendanceDispute.assignee_id == current_user.id,
-                AttendanceDispute.status.in_(["pending", "processing"]),
-                AttendanceDispute.sla_due <= now + timedelta(hours=24),
-                AttendanceDispute.sla_due > now,
+                AttendanceReport.assignee_id == current_user.id,
+                AttendanceReport.status.in_(["pending", "processing"]),
+                AttendanceReport.sla_due <= now + timedelta(hours=24),
+                AttendanceReport.sla_due > now,
             )
         ).count()
 
-        sla_overdue = AttendanceDispute.query.filter(
+        sla_overdue = AttendanceReport.query.filter(
             and_(
-                AttendanceDispute.assignee_id == current_user.id,
-                AttendanceDispute.status.in_(["pending", "processing"]),
-                AttendanceDispute.sla_due < now,
+                AttendanceReport.assignee_id == current_user.id,
+                AttendanceReport.status.in_(["pending", "processing"]),
+                AttendanceReport.sla_due < now,
             )
         ).count()
 
@@ -312,7 +312,7 @@ def assignee_stats():
 def report_reassign(report_id):
     """신고/이의제기 재배정 (관리자용)"""
     try:
-        dispute = AttendanceDispute.query.get_or_404(report_id)
+        dispute = AttendanceReport.query.get_or_404(report_id)
 
         new_assignee_id = request.form.get("assignee_id")
         reason = request.form.get("reason", "").strip()
@@ -350,27 +350,27 @@ def report_chart_data():
         # 날짜별 신고/이의제기 통계
         data = (
             db.session.query(
-                func.strftime("%Y-%m-%d", AttendanceDispute.created_at).label("date"),
+                func.strftime("%Y-%m-%d", AttendanceReport.created_at).label("date"),
                 func.count().label("count"),
             )
-            .group_by(func.strftime("%Y-%m-%d", AttendanceDispute.created_at))
+            .group_by(func.strftime("%Y-%m-%d", AttendanceReport.created_at))
             .order_by("date")
             .all()
         )
 
         # 상태별 통계
         status_stats = (
-            db.session.query(AttendanceDispute.status, func.count().label("count"))
-            .group_by(AttendanceDispute.status)
+            db.session.query(AttendanceReport.status, func.count().label("count"))
+            .group_by(AttendanceReport.status)
             .all()
         )
 
         # 유형별 통계
         type_stats = (
             db.session.query(
-                AttendanceDispute.dispute_type, func.count().label("count")
+                AttendanceReport.dispute_type, func.count().label("count")
             )
-            .group_by(AttendanceDispute.dispute_type)
+            .group_by(AttendanceReport.dispute_type)
             .all()
         )
 
@@ -408,8 +408,8 @@ def report_realtime_notifications():
 
         recent_time = datetime.utcnow() - timedelta(hours=1)
         recent_disputes = (
-            AttendanceDispute.query.filter(AttendanceDispute.created_at >= recent_time)
-            .order_by(AttendanceDispute.created_at.desc())
+            AttendanceReport.query.filter(AttendanceReport.created_at >= recent_time)
+            .order_by(AttendanceReport.created_at.desc())
             .limit(10)
             .all()
         )

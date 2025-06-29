@@ -71,64 +71,106 @@
                 <p class="text-sm text-muted-foreground mt-1">현대적인 관리 솔루션</p>
             </div>
             
-            <nav class="sidebar-main">
-                <div class="space-y-1">
-                    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                        <i class="fas fa-tachometer-alt mr-2"></i>
-                        대시보드
-                    </a>
-                    
-                    {# <a href="{{ url_for('m_attendance') }}">모바일 근태</a> #}
-                    
-                    <a href="{{ url_for('notifications') }}" class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
-                        <i class="fas fa-bell mr-2"></i>
-                        알림센터
-                        {% if unread_notification_count > 0 %}
-                            <span class="badge badge-destructive ml-auto">{{ unread_notification_count }}</span>
-                        {% endif %}
-                    </a>
-                    
-                    {# <a href="{{ url_for('m_stats') }}" class="nav-link {% if request.endpoint == 'm_stats' %}active{% endif %}"> #}
-                    
-                    {# <a href="{{ url_for('m_profile') }}" class="nav-link {% if request.endpoint == 'm_profile' %}active{% endif %}">
-                        <i class="fas fa-user mr-2"></i>
-                        프로필
-                    </a> #}
-                </div>
+            <nav class="sidebar-nav">
+                <!-- 공통 메뉴 -->
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    대시보드
+                </a>
                 
-                {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_manager()) %}
-                <div class="sidebar-group mt-6">
-                    <button class="sidebar-group-toggle" onclick="toggleGroup('admin')">
-                        <i class="fas fa-cog mr-2"></i>
-                        관리자 메뉴
-                        <i class="fas fa-chevron-down ml-auto transition-transform" id="admin-chevron"></i>
-                    </button>
-                    <div class="sidebar-group-items" id="admin-group" style="display: none;">
-                        <a href="{{ url_for('admin_dashboard') }}" class="nav-link">
-                            <i class="fas fa-chart-line mr-2"></i>
-                            관리자 대시보드
-                        </a>
-                        {# <a href="{{ url_for('m_admin_attendance_reports') }}" class="nav-link">
-                            <i class="fas fa-flag mr-2"></i>
-                            신고/이의제기 관리
-                        </a> #}
-                        {# <a href="{{ url_for('admin_users') }}" class="nav-link">
-                            <i class="fas fa-users mr-2"></i>
-                            사용자 관리
-                        </a> #}
-                        {% if current_user.is_authenticated and current_user.is_admin() %}
-                        <a href="{{ url_for('admin_feedback') }}" class="nav-link">
-                            <i class="fas fa-tools mr-2"></i>
-                            개선·문의사항 관리
-                        </a>
-                        <a href="{{ url_for('admin_notify_send') }}" class="nav-link">
-                            <i class="fas fa-paper-plane mr-2"></i>
-                            알림 발송
-                        </a>
-                        {% endif %}
-                    </div>
-                </div>
+                <!-- 권한별 메뉴 분기 -->
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <!-- 최고관리자 메뉴 -->
+                    <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        관리자 대시보드
+                    </a>
+                    <a href="{{ url_for('admin_user_permissions') }}" class="nav-link {% if request.endpoint == 'admin_user_permissions' %}active{% endif %}">
+                        <i class="fas fa-user-shield mr-2"></i>
+                        권한 관리
+                    </a>
+                    <a href="{{ url_for('admin_notify_send') }}" class="nav-link {% if request.endpoint == 'admin_notify_send' %}active{% endif %}">
+                        <i class="fas fa-bullhorn mr-2"></i>
+                        전체 알림 발송
+                    </a>
+                    <a href="{{ url_for('admin_reports') }}" class="nav-link {% if request.endpoint == 'admin_reports' %}active{% endif %}">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        통합 보고서
+                    </a>
+                    <a href="{{ url_for('admin_system_monitor') }}" class="nav-link {% if request.endpoint == 'admin_system_monitor' %}active{% endif %}">
+                        <i class="fas fa-server mr-2"></i>
+                        시스템 모니터링
+                    </a>
+                    <a href="{{ url_for('admin_backup_management') }}" class="nav-link {% if request.endpoint == 'admin_backup_management' %}active{% endif %}">
+                        <i class="fas fa-database mr-2"></i>
+                        백업 관리
+                    </a>
+                    
+                {% elif current_user.is_authenticated and current_user.role == 'manager' %}
+                    <!-- 매장관리자 메뉴 -->
+                    {% if current_user.has_permission('employee_management', 'view') %}
+                    <a href="{{ url_for('admin_users') }}" class="nav-link {% if request.endpoint == 'admin_users' %}active{% endif %}">
+                        <i class="fas fa-users mr-2"></i>
+                        직원 관리
+                    </a>
+                    {% endif %}
+                    
+                    {% if current_user.has_permission('schedule_management', 'view') %}
+                    <a href="{{ url_for('schedule') }}" class="nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
+                        <i class="fas fa-calendar-alt mr-2"></i>
+                        근무표 관리
+                    </a>
+                    {% endif %}
+                    
+                    {% if current_user.has_permission('order_management', 'view') %}
+                    <a href="{{ url_for('order_list') }}" class="nav-link {% if request.endpoint == 'order_list' %}active{% endif %}">
+                        <i class="fas fa-shopping-cart mr-2"></i>
+                        발주 관리
+                    </a>
+                    {% endif %}
+                    
+                    {% if current_user.has_permission('reports', 'view') %}
+                    <a href="{{ url_for('admin_reports') }}" class="nav-link {% if request.endpoint == 'admin_reports' %}active{% endif %}">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        매장 보고서
+                    </a>
+                    {% endif %}
+                    
+                {% elif current_user.is_authenticated %}
+                    <!-- 직원 메뉴 -->
+                    {% if current_user.has_permission('schedule_management', 'view') %}
+                    <a href="{{ url_for('schedule') }}" class="nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
+                        <i class="fas fa-calendar-alt mr-2"></i>
+                        내 근무표
+                    </a>
+                    {% endif %}
+                    
+                    {% if current_user.has_permission('order_management', 'view') %}
+                    <a href="{{ url_for('order_new') }}" class="nav-link {% if request.endpoint == 'order_new' %}active{% endif %}">
+                        <i class="fas fa-shopping-cart mr-2"></i>
+                        발주 신청
+                    </a>
+                    {% endif %}
                 {% endif %}
+                
+                <!-- 공통 메뉴 (모든 권한에서 표시) -->
+                <a href="{{ url_for('notifications') }}" class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
+                    <i class="fas fa-bell mr-2"></i>
+                    알림
+                    {% if unread_notification_count > 0 %}
+                        <span class="badge bg-danger ml-auto">{{ unread_notification_count }}</span>
+                    {% endif %}
+                </a>
+                
+                <a href="{{ url_for('profile') }}" class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}">
+                    <i class="fas fa-user mr-2"></i>
+                    내 정보
+                </a>
+                
+                <a href="{{ url_for('change_password') }}" class="nav-link {% if request.endpoint == 'change_password' %}active{% endif %}">
+                    <i class="fas fa-key mr-2"></i>
+                    비밀번호 변경
+                </a>
             </nav>
             
             <div class="sidebar-bottom">

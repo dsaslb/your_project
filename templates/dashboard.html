@@ -311,95 +311,119 @@
         </div>
         
         <div class="dashboard-menu-row">
-            {# {% set perms = user.get_permissions() %} #}
+            {% set perms = current_user.get_permissions() %}
             
-            <!-- 1인 사장님 모드: 모든 메뉴 표시 -->
-            {% if DASHBOARD_MODE == 'solo' and user.role == 'admin' %}
-                <!-- 기본 업무 메뉴 -->
+            <!-- 최고관리자(admin) 메뉴 -->
+            {% if current_user.role == 'admin' %}
+                <!-- 최고관리자 전용 관리 메뉴 -->
+                <a class="menu-card admin-card" href="/admin/approve_users">
+                    <span class="menu-icon">✅</span><br>직원 승인 관리
+                </a>
+                <a class="menu-card admin-card" href="/admin/user_permissions">
+                    <span class="menu-icon">🛠️</span><br>권한 관리
+                </a>
+                <a class="menu-card admin-card" href="/admin/notify_send">
+                    <span class="menu-icon">🔔</span><br>전체 알림 발송
+                </a>
+                <a class="menu-card admin-card" href="/admin/reports">
+                    <span class="menu-icon">📊</span><br>통합 보고서
+                </a>
+                <a class="menu-card admin-card" href="/admin/system_monitor">
+                    <span class="menu-icon">⚙️</span><br>시스템 모니터링
+                </a>
+                <a class="menu-card admin-card" href="/admin/backup_management">
+                    <span class="menu-icon">💾</span><br>백업 관리
+                </a>
+                
+                <!-- 최고관리자도 기본 업무 메뉴 접근 가능 -->
+                {% if current_user.has_permission('order_management', 'view') %}
                 <a class="menu-card main-card" href="/order">
                     <span class="menu-icon">📦</span><br>발주 관리
                 </a>
+                {% endif %}
+                
+                {% if current_user.has_permission('schedule_management', 'view') %}
                 <a class="menu-card main-card" href="/schedule">
                     <span class="menu-icon">📆</span><br>스케줄 관리
                 </a>
+                {% endif %}
                 
-                <!-- 확장 업무 메뉴 -->
+            <!-- 매장관리자(manager) 메뉴 -->
+            {% elif current_user.role == 'manager' %}
+                <!-- 매장관리자 업무 메뉴 -->
+                {% if current_user.has_permission('employee_management', 'view') %}
+                <a class="menu-card main-card" href="/admin/users">
+                    <span class="menu-icon">👥</span><br>직원 관리
+                </a>
+                {% endif %}
+                
+                {% if current_user.has_permission('schedule_management', 'view') %}
+                <a class="menu-card main-card" href="/schedule">
+                    <span class="menu-icon">📆</span><br>근무표 관리
+                </a>
+                {% endif %}
+                
+                {% if current_user.has_permission('order_management', 'view') %}
+                <a class="menu-card main-card" href="/order">
+                    <span class="menu-icon">📦</span><br>발주 관리
+                </a>
+                {% endif %}
+                
+                {% if current_user.has_permission('inventory_management', 'view') %}
                 <a class="menu-card" href="/inventory">
                     <span class="menu-icon">📦</span><br>재고 관리
                 </a>
-                <a class="menu-card" href="/reservation">
-                    <span class="menu-icon">📋</span><br>예약 관리
-                </a>
-                <a class="menu-card" href="/accounting">
-                    <span class="menu-icon">💰</span><br>정산 관리
-                </a>
-                <a class="menu-card" href="/customer">
-                    <span class="menu-icon">👥</span><br>고객 관리
-                </a>
+                {% endif %}
+                
+                {% if current_user.has_permission('reports', 'view') %}
                 <a class="menu-card" href="/reports">
-                    <span class="menu-icon">📊</span><br>보고서
+                    <span class="menu-icon">📊</span><br>매장 보고서
                 </a>
+                {% endif %}
                 
-                <!-- 관리 메뉴 -->
-                <a class="menu-card admin-card" href="/admin/approve_users">
-                    <span class="menu-icon">✅</span><br>가입 승인 관리
-                </a>
-                <a class="menu-card admin-card" href="/admin/user_permissions">
-                    <span class="menu-icon">🛠️</span><br>직원 권한 관리
-                </a>
-                <a class="menu-card admin-card" href="/admin/approval_logs">
-                    <span class="menu-icon">📋</span><br>권한 변경 이력
-                </a>
-                
-            <!-- 그룹/프랜차이즈 모드: 최고관리자 메뉴만 표시 -->
-            {% elif DASHBOARD_MODE == 'franchise' and user.role == 'admin' %}
-                <!-- 최고관리자 전용 메뉴 -->
-                <a class="menu-card main-card" href="/admin/approve_users">
-                    <span class="menu-icon">✅</span><br>직원 승인
-                </a>
-                <a class="menu-card main-card" href="/admin/user_permissions">
-                    <span class="menu-icon">🛠️</span><br>권한 관리
-                </a>
-                <a class="menu-card main-card" href="/admin/notify_send">
-                    <span class="menu-icon">🔔</span><br>알림 발송
-                </a>
-                <a class="menu-card main-card" href="/admin/notices">
-                    <span class="menu-icon">📢</span><br>공지/운영방침
-                </a>
-                <a class="menu-card main-card" href="/admin/reports">
-                    <span class="menu-icon">📊</span><br>통합 리포트
-                </a>
-                <a class="menu-card main-card" href="/admin/system">
-                    <span class="menu-icon">⚙️</span><br>시스템/오류 보고
-                </a>
-                <a class="menu-card main-card" href="/admin/backend">
-                    <span class="menu-icon">🔧</span><br>백엔드 관리
-                </a>
-                
-            <!-- 일반 직원 모드 -->
+            <!-- 직원(employee) 메뉴 -->
             {% else %}
-                <!-- 기본 권한 메뉴 -->
-                {% if user.role == 'admin' %}
-                    <a class="menu-card main-card" href="/order">
-                        <span class="menu-icon">📦</span><br>발주 관리
-                    </a>
-                    <a class="menu-card main-card" href="/schedule">
-                        <span class="menu-icon">📆</span><br>스케줄 관리
-                    </a>
+                <!-- 직원 기본 업무 메뉴 -->
+                {% if current_user.has_permission('schedule_management', 'view') %}
+                <a class="menu-card main-card" href="/schedule">
+                    <span class="menu-icon">📆</span><br>내 근무표
+                </a>
+                {% endif %}
+                
+                {% if current_user.has_permission('order_management', 'view') %}
+                <a class="menu-card main-card" href="/order">
+                    <span class="menu-icon">📦</span><br>발주 신청
+                </a>
+                {% endif %}
+                
+                {% if current_user.has_permission('inventory_management', 'view') %}
+                <a class="menu-card" href="/inventory">
+                    <span class="menu-icon">📦</span><br>재고 확인
+                </a>
                 {% endif %}
             {% endif %}
             
-            <!-- 공통 메뉴 (모든 모드에서 표시) -->
-            <a class="menu-card" href="/change_password">
-                <span class="menu-icon">🔐</span><br>비밀번호 변경
-            </a>
+            <!-- 공통 메뉴 (모든 권한에서 표시) -->
             <a class="menu-card" href="/notifications">
                 <span class="menu-icon">🔔</span><br>알림
                 <span class="notification-badge" id="notification-count" style="display: none;">0</span>
             </a>
-            <a class="menu-card" href="/test_notification">
-                <span class="menu-icon">🧪</span><br>알림 테스트
+            <a class="menu-card" href="/change_password">
+                <span class="menu-icon">🔐</span><br>비밀번호 변경
             </a>
+            <a class="menu-card" href="/profile">
+                <span class="menu-icon">👤</span><br>내 정보
+            </a>
+            
+            <!-- 개발/테스트용 메뉴 (관리자만) -->
+            {% if current_user.role == 'admin' %}
+                <a class="menu-card admin-card" href="/test_notification">
+                    <span class="menu-icon">🧪</span><br>알림 테스트
+                </a>
+                <a class="menu-card admin-card" href="/admin/dashboard_mode">
+                    <span class="menu-icon">⚙️</span><br>대시보드 모드 설정
+                </a>
+            {% endif %}
         </div>
         
         <div class="notice-section">
@@ -441,4 +465,5 @@
         });
     </script>
 </body>
+</html> 
 </html> 

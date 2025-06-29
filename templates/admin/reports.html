@@ -1,118 +1,154 @@
 {% extends "base.html" %}
 
-{% block title %}신고 내역 관리{% endblock %}
+{% block title %}통합 보고서{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">신고 내역 관리</h4>
-                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">돌아가기</a>
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-chart-line"></i> 통합 보고서
+                    </h4>
                 </div>
                 <div class="card-body">
-                    {% if reports %}
+                    <!-- 전체 통계 요약 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-users fa-2x mb-2"></i>
+                                    <h3>{{ total_stats.total_users }}</h3>
+                                    <p class="mb-0">전체 사용자</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                    <h3>{{ total_stats.approved_users }}</h3>
+                                    <p class="mb-0">승인된 사용자</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-clock fa-2x mb-2"></i>
+                                    <h3>{{ total_stats.pending_users }}</h3>
+                                    <p class="mb-0">승인 대기</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                    <h3>{{ total_stats.total_orders }}</h3>
+                                    <p class="mb-0">전체 주문</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 매장별 상세 통계 -->
+                    <h5 class="mb-3">
+                        <i class="fas fa-store"></i> 매장별 통계
+                    </h5>
                     <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
+                        <table class="table table-hover">
+                            <thead class="table-dark">
                                 <tr>
-                                    <th>신고일시</th>
-                                    <th>신고자</th>
-                                    <th>대상</th>
-                                    <th>사유</th>
-                                    <th>상태</th>
-                                    <th>처리</th>
+                                    <th>매장명</th>
+                                    <th>직원 수</th>
+                                    <th>주문 수</th>
+                                    <th>스케줄 수</th>
+                                    <th>상세보기</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for report in reports %}
+                                {% for stat in branch_stats %}
                                 <tr>
-                                    <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                    <td>{{ report.reporter.name or report.reporter.username }}</td>
                                     <td>
-                                        {% if report.target_type == 'notice' %}
-                                            공지사항 #{{ report.target_id }}
-                                        {% else %}
-                                            댓글 #{{ report.target_id }}
-                                        {% endif %}
+                                        <i class="fas fa-store text-primary"></i>
+                                        {{ stat.branch.name }}
                                     </td>
                                     <td>
-                                        <strong>{{ report.reason }}</strong>
-                                        {% if report.detail %}
-                                        <br><small class="text-muted">{{ report.detail[:50] }}{% if report.detail|length > 50 %}...{% endif %}</small>
-                                        {% endif %}
+                                        <span class="badge bg-primary">{{ stat.users }}</span>
                                     </td>
                                     <td>
-                                        {% if report.status == 'pending' %}
-                                            <span class="badge bg-warning">대기중</span>
-                                        {% elif report.status == 'resolved' %}
-                                            <span class="badge bg-success">해결됨</span>
-                                        {% elif report.status == 'dismissed' %}
-                                            <span class="badge bg-secondary">기각됨</span>
-                                        {% endif %}
+                                        <span class="badge bg-success">{{ stat.orders }}</span>
                                     </td>
-                                    <td class="text-center">
-                                        {% if report.status == 'pending' %}
-                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#reviewModal{{ report.id }}">
-                                            검토
-                                        </button>
-                                        {% else %}
-                                        <small class="text-muted">
-                                            {% if report.reviewed_by %}
-                                            {{ report.reviewer.name or report.reviewer.username }}가 처리
-                                            {% endif %}
-                                            <br>{{ report.reviewed_at.strftime('%Y-%m-%d %H:%M') if report.reviewed_at }}
-                                        </small>
-                                        {% endif %}
+                                    <td>
+                                        <span class="badge bg-info">{{ stat.schedules }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('manager_dashboard', branch_id=stat.branch.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> 보기
+                                        </a>
                                     </td>
                                 </tr>
-                                
-                                <!-- 검토 모달 -->
-                                {% if report.status == 'pending' %}
-                                <div class="modal fade" id="reviewModal{{ report.id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">신고 검토</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <form method="POST" action="{{ url_for('admin_report_review', report_id=report.id) }}">
-                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <div class="modal-body">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">신고 내용</label>
-                                                        <div class="alert alert-info">
-                                                            <strong>사유:</strong> {{ report.reason }}<br>
-                                                            {% if report.detail %}
-                                                            <strong>상세:</strong> {{ report.detail }}
-                                                            {% endif %}
-                                                        </div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="admin_comment" class="form-label">처리 코멘트</label>
-                                                        <textarea class="form-control" id="admin_comment" name="admin_comment" rows="3" placeholder="처리 사유를 입력하세요"></textarea>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                                                    <button type="submit" name="action" value="dismiss" class="btn btn-warning">기각</button>
-                                                    <button type="submit" name="action" value="resolve" class="btn btn-success">해결</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <p class="text-muted">신고 내역이 없습니다.</p>
+
+                    <!-- 추가 보고서 링크 -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-chart-bar"></i> 상세 보고서
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        <a href="{{ url_for('admin_attendance_monthly_stats') }}" class="list-group-item list-group-item-action">
+                                            <i class="fas fa-calendar-alt"></i> 월별 출근 통계
+                                        </a>
+                                        <a href="{{ url_for('admin_attendance_reason_stats') }}" class="list-group-item list-group-item-action">
+                                            <i class="fas fa-clipboard-list"></i> 사유별 출근 통계
+                                        </a>
+                                        <a href="{{ url_for('admin_reason_templates') }}" class="list-group-item list-group-item-action">
+                                            <i class="fas fa-tags"></i> 사유 템플릿 관리
+                                        </a>
+                                        <a href="{{ url_for('admin_attendance_warnings') }}" class="list-group-item list-group-item-action">
+                                            <i class="fas fa-exclamation-triangle"></i> 출근 경고 관리
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-download"></i> 내보내기
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        <a href="{{ url_for('admin_attendance_monthly_stats_excel') }}" class="list-group-item list-group-item-action">
+                                            <i class="fas fa-file-excel"></i> Excel 내보내기
+                                        </a>
+                                        <a href="{{ url_for('admin_attendance_monthly_stats_pdf') }}" class="list-group-item list-group-item-action">
+                                            <i class="fas fa-file-pdf"></i> PDF 내보내기
+                                        </a>
+                                        <a href="{{ url_for('admin_approval_report_excel') }}" class="list-group-item list-group-item-action">
+                                            <i class="fas fa-file-excel"></i> 승인 보고서 Excel
+                                        </a>
+                                        <a href="{{ url_for('admin_approval_report_pdf') }}" class="list-group-item list-group-item-action">
+                                            <i class="fas fa-file-pdf"></i> 승인 보고서 PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </div>

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 모드 설정{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cog"></i> 대시보드 모드 설정
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>현재 모드:</strong>
+                        {% if current_mode == 'solo' %}
+                            <span class="badge bg-success">1인 사장님 모드</span>
+                        {% else %}
+                            <span class="badge bg-primary">그룹/프랜차이즈 모드</span>
+                        {% endif %}
+                    </div>
+
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card border-success h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-store fa-3x text-success mb-3"></i>
+                                        <h5>1인 사장님 모드</h5>
+                                        <p class="text-muted">모든 업무 메뉴에 접근 가능</p>
+                                        <ul class="text-start">
+                                            <li>발주, 스케줄, 재고 관리</li>
+                                            <li>예약, 정산, 고객 관리</li>
+                                            <li>직원 승인, 권한 관리</li>
+                                            <li>매장별 바로가기</li>
+                                        </ul>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="dashboard_mode" 
+                                                   id="solo" value="solo" 
+                                                   {% if current_mode == 'solo' %}checked{% endif %}>
+                                            <label class="form-check-label" for="solo">
+                                                <strong>1인 사장님 모드 선택</strong>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-primary h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-building fa-3x text-primary mb-3"></i>
+                                        <h5>그룹/프랜차이즈 모드</h5>
+                                        <p class="text-muted">최고관리자 전용 메뉴만 표시</p>
+                                        <ul class="text-start">
+                                            <li>직원 승인, 권한 관리</li>
+                                            <li>알림 발송, 공지사항</li>
+                                            <li>통합 리포트, 시스템 관리</li>
+                                            <li>백엔드 관리</li>
+                                        </ul>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="dashboard_mode" 
+                                                   id="franchise" value="franchise" 
+                                                   {% if current_mode == 'franchise' %}checked{% endif %}>
+                                            <label class="form-check-label" for="franchise">
+                                                <strong>그룹/프랜차이즈 모드 선택</strong>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save"></i> 모드 변경 저장
+                            </button>
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-lg ms-2">
+                                <i class="fas fa-arrow-left"></i> 대시보드로 돌아가기
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 모드별 상세 설명 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-question-circle"></i> 모드별 상세 설명
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success">1인 사장님 모드 특징</h6>
+                            <ul>
+                                <li>모든 업무 기능에 직접 접근</li>
+                                <li>매장 운영에 필요한 모든 메뉴 표시</li>
+                                <li>직원과 함께 업무 수행 가능</li>
+                                <li>간단하고 직관적인 인터페이스</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary">그룹/프랜차이즈 모드 특징</h6>
+                            <ul>
+                                <li>최고관리자 전용 기능만 표시</li>
+                                <li>전체 매장 통합 관리</li>
+                                <li>시스템 설정 및 모니터링</li>
+                                <li>보고서 및 분석 중심</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.form-check-input:checked + .form-check-label {
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.border-success .form-check-input:checked + .form-check-label {
+    color: #198754;
+}
+
+.border-primary .form-check-input:checked + .form-check-label {
+    color: #0d6efd;
+}
+</style>
+{% endblock %} 

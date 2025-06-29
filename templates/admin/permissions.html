@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}권한 관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-shield"></i> 권한 관리
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('admin_reports.permission_templates') }}" class="btn btn-info btn-sm">
+                            <i class="fas fa-layer-group"></i> 권한 템플릿
+                        </a>
+                        <a href="{{ url_for('admin_reports.permission_logs') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-history"></i> 변경 로그
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>사용자</th>
+                                    <th>역할</th>
+                                    <th>상태</th>
+                                    <th>권한 요약</th>
+                                    <th>마지막 로그인</th>
+                                    <th>작업</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                <span class="text-white fw-bold">{{ user.username[0].upper() }}</span>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ user.username }}</div>
+                                                <small class="text-muted">{{ user.email }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if user.role == 'admin' else 'warning' if user.role == 'manager' else 'info' }}">
+                                            {{ '최고관리자' if user.role == 'admin' else '매장관리자' if user.role == 'manager' else '직원' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if user.status == 'approved' else 'warning' if user.status == 'pending' else 'danger' }}">
+                                            {{ '승인됨' if user.status == 'approved' else '대기중' if user.status == 'pending' else '거절됨' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% set perms = user.get_permission_summary() %}
+                                        <div class="small">
+                                            {% for module, actions in perms.modules.items() %}
+                                                {% if actions.can_access %}
+                                                    <span class="badge bg-success me-1">{{ permission_modules.get(module, module) }}</span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if user.last_login %}
+                                            <small>{{ user.last_login.strftime('%Y-%m-%d %H:%M') }}</small>
+                                        {% else %}
+                                            <small class="text-muted">로그인 기록 없음</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('admin_reports.user_permissions', user_id=user.id) }}" 
+                                               class="btn btn-primary">
+                                                <i class="fas fa-edit"></i> 권한 설정
+                                            </a>
+                                            <button type="button" class="btn btn-info dropdown-toggle dropdown-toggle-split" 
+                                                    data-bs-toggle="dropdown">
+                                                <span class="visually-hidden">Toggle Dropdown</span>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                {% for template in permission_templates %}
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ url_for('admin_reports.apply_permission_template', user_id=user.id, template_id=template.id) }}"
+                                                       onclick="return confirm('{{ template.name }} 템플릿을 적용하시겠습니까?')">
+                                                        <i class="fas fa-layer-group"></i> {{ template.name }} 적용
+                                                    </a>
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 권한 체크 API 테스트 모달 -->
+<div class="modal fade" id="permissionTestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">권한 체크 테스트</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">모듈</label>
+                    <select class="form-select" id="testModule">
+                        {% for key, value in permission_modules.items() %}
+                        <option value="{{ key }}">{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">액션</label>
+                    <select class="form-select" id="testAction">
+                        {% for key, value in permission_actions.items() %}
+                        <option value="{{ key }}">{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="testResult" class="alert" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <button type="button" class="btn btn-primary" onclick="testPermission()">권한 체크</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function testPermission() {
+    const module = document.getElementById('testModule').value;
+    const action = document.getElementById('testAction').value;
+    const resultDiv = document.getElementById('testResult');
+    
+    fetch(`/api/permissions/check?module=${module}&action=${action}`)
+        .then(response => response.json())
+        .then(data => {
+            resultDiv.style.display = 'block';
+            if (data.has_permission) {
+                resultDiv.className = 'alert alert-success';
+                resultDiv.innerHTML = `<i class="fas fa-check"></i> 권한이 있습니다. (${data.user_role})`;
+            } else {
+                resultDiv.className = 'alert alert-danger';
+                resultDiv.innerHTML = `<i class="fas fa-times"></i> 권한이 없습니다. (${data.user_role})`;
+            }
+        })
+        .catch(error => {
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'alert alert-danger';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> 오류: ${error.message}`;
+        });
+}
+
+// 페이지 로드 시 권한 요약 정보 가져오기
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/permissions/summary')
+        .then(response => response.json())
+        .then(data => {
+            console.log('현재 사용자 권한 요약:', data);
+        });
+});
+</script>
+{% endblock %} 

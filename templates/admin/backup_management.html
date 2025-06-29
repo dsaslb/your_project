@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}백업 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-database"></i> 백업 관리
+                    </h4>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBackupModal">
+                        <i class="fas fa-plus"></i> 새 백업 생성
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>백업 관리 안내:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>자동 백업은 24시간마다 생성됩니다</li>
+                            <li>최대 10개의 백업 파일을 유지합니다</li>
+                            <li>백업에는 데이터베이스, 설정 파일, 로그가 포함됩니다</li>
+                            <li>복원 시 현재 데이터가 백업됩니다</li>
+                        </ul>
+                    </div>
+
+                    {% if backups %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>백업 파일명</th>
+                                        <th>생성일시</th>
+                                        <th>크기</th>
+                                        <th>타입</th>
+                                        <th>작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for backup in backups %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-file-archive text-primary"></i>
+                                            {{ backup.filename }}
+                                        </td>
+                                        <td>{{ backup.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        <td>{{ backup.size_mb }} MB</td>
+                                        <td>
+                                            {% if backup.backup_type == 'auto' %}
+                                                <span class="badge bg-info">자동</span>
+                                            {% else %}
+                                                <span class="badge bg-success">수동</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        data-bs-toggle="modal" data-bs-target="#restoreBackupModal"
+                                                        data-backup-file="{{ backup.path }}"
+                                                        data-backup-name="{{ backup.filename }}">
+                                                    <i class="fas fa-undo"></i> 복원
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal" data-bs-target="#deleteBackupModal"
+                                                        data-backup-file="{{ backup.path }}"
+                                                        data-backup-name="{{ backup.filename }}">
+                                                    <i class="fas fa-trash"></i> 삭제
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-database fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">백업 파일이 없습니다</h5>
+                            <p class="text-muted">첫 번째 백업을 생성해보세요.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 새 백업 생성 모달 -->
+<div class="modal fade" id="createBackupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus"></i> 새 백업 생성
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <p>현재 시스템 상태를 백업하시겠습니까?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>주의:</strong> 백업 생성 중에는 시스템이 일시적으로 느려질 수 있습니다.
+                    </div>
+                    <input type="hidden" name="action" value="create_backup">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 백업 생성
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 백업 복원 모달 -->
+<div class="modal fade" id="restoreBackupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-undo"></i> 백업 복원
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <p>선택한 백업으로 시스템을 복원하시겠습니까?</p>
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>경고:</strong> 현재 데이터가 백업으로 대체됩니다. 이 작업은 되돌릴 수 없습니다.
+                    </div>
+                    <input type="hidden" name="action" value="restore_backup">
+                    <input type="hidden" name="backup_file" id="restoreBackupFile">
+                    <p><strong>복원할 백업:</strong> <span id="restoreBackupName"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-undo"></i> 복원 실행
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 백업 삭제 모달 -->
+<div class="modal fade" id="deleteBackupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-trash"></i> 백업 삭제
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <p>선택한 백업 파일을 삭제하시겠습니까?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>주의:</strong> 이 작업은 되돌릴 수 없습니다.
+                    </div>
+                    <input type="hidden" name="action" value="delete_backup">
+                    <input type="hidden" name="backup_file" id="deleteBackupFile">
+                    <p><strong>삭제할 백업:</strong> <span id="deleteBackupName"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> 삭제
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// 모달 데이터 설정
+document.addEventListener('DOMContentLoaded', function() {
+    // 복원 모달
+    const restoreModal = document.getElementById('restoreBackupModal');
+    if (restoreModal) {
+        restoreModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const backupFile = button.getAttribute('data-backup-file');
+            const backupName = button.getAttribute('data-backup-name');
+            
+            document.getElementById('restoreBackupFile').value = backupFile;
+            document.getElementById('restoreBackupName').textContent = backupName;
+        });
+    }
+    
+    // 삭제 모달
+    const deleteModal = document.getElementById('deleteBackupModal');
+    if (deleteModal) {
+        deleteModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const backupFile = button.getAttribute('data-backup-file');
+            const backupName = button.getAttribute('data-backup-name');
+            
+            document.getElementById('deleteBackupFile').value = backupFile;
+            document.getElementById('deleteBackupName').textContent = backupName;
+        });
+    }
+});
+</script>
+{% endblock %} 

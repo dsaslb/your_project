@@ -1,0 +1,1213 @@
+import os
+from collections import defaultdict
+from datetime import date, datetime, timedelta
+import json
+
+import click
+from dateutil import parser as date_parser
+from flask import (Flask, flash, jsonify, redirect, render_template, request,
+                   session, url_for, current_app)
+from flask_login import (UserMixin, current_user, login_required, login_user,
+                         logout_user)
+from flask_migrate import Migrate
+from sqlalchemy import func, text
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from api.admin_log import admin_log_bp
+from api.admin_report import admin_report_bp
+from api.admin_report_stat import admin_report_stat_bp
+# Import API Blueprints
+from api.auth import api_auth_bp, auth_bp
+from api.comment import api_comment_bp
+from api.comment_report import comment_report_bp
+from api.notice import api_notice_bp
+from api.report import api_report_bp
+from config import config_by_name
+from extensions import cache, csrf, db, limiter, login_manager, migrate
+from models import (Branch, CleaningPlan, FeedbackIssue, Notice, Notification,
+                    Order, OrderRequest, Report, Schedule, User, SystemLog)
+from routes.notifications import notifications_bp
+# Import Route Blueprints
+from routes.payroll import payroll_bp
+# Import notification functions
+from utils.notify import (send_admin_only_notification,
+                          send_notification_enhanced,
+                          send_notification_to_role)
+from utils.backup_manager import BackupManager
+from utils.decorators import require_permission, admin_required
+from scheduler import backup_scheduler
+from routes.admin_reports import admin_reports_bp
+
+config_name = os.getenv("FLASK_ENV", "default")
+
+app = Flask(__name__)
+app.config.from_object(config_by_name[config_name])
+
+# 백업 설정 추가
+app.config['BACKUP_DIR'] = 'backups'
+app.config['MAX_BACKUPS'] = 30
+app.config['BACKUP_INTERVAL'] = 24
+
+# Initialize extensions
+csrf.init_app(app)
+db.init_app(app)
+migrate = Migrate(app, db)
+login_manager.init_app(app)
+limiter.init_app(app)
+cache.init_app(app)
+
+# 백업 매니저 및 스케줄러 초기화
+backup_manager = BackupManager()
+backup_manager.init_app(app)
+backup_scheduler.init_app(app)
+
+# Exempt all API blueprints from CSRF protection
+csrf.exempt(api_auth_bp)
+csrf.exempt(api_notice_bp)
+csrf.exempt(api_comment_bp)
+csrf.exempt(api_report_bp)
+csrf.exempt(admin_report_bp)
+csrf.exempt(admin_log_bp)
+csrf.exempt(admin_report_stat_bp)
+csrf.exempt(comment_report_bp)
+
+# Register API Blueprints
+app.register_blueprint(api_auth_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(api_notice_bp)
+app.register_blueprint(api_comment_bp)
+app.register_blueprint(api_report_bp)
+app.register_blueprint(admin_report_bp)
+app.register_blueprint(admin_log_bp)
+app.register_blueprint(admin_report_stat_bp)
+app.register_blueprint(comment_report_bp)
+
+# Register Route Blueprints
+app.register_blueprint(payroll_bp)
+app.register_blueprint(notifications_bp)
+app.register_blueprint(admin_reports_bp)
+
+# Login manager setup
+login_manager.login_view = "auth.login"
+login_manager.login_message = "로그인이 필요합니다."
+login_manager.login_message_category = "info"
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+# --- Error Handlers ---
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("errors/404.html"), 404
+
+
+@app.errorhandler(500)
+def server_error(e):
+    return render_template("errors/500.html"), 500
+
+
+# --- Context Processor ---
+@app.context_processor
+def inject_notifications():
+    """템플릿에서 사용할 전역 변수 주입"""
+    if current_user.is_authenticated:
+        unread_count = Notification.query.filter_by(
+            user_id=current_user.id, is_read=False
+        ).count()
+        return {"unread_notification_count": unread_count}
+    return {"unread_notification_count": 0}
+
+
+# --- Basic Routes ---
+@app.route("/")
+def index():
+    if not current_user.is_authenticated:
+        return redirect(url_for("auth.login"))
+    if current_user.is_admin():
+        return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    # 대시보드 모드 설정 전달
+    dashboard_mode = current_app.config.get('DASHBOARD_MODE', 'solo')
+    return render_template("dashboard.html", user=current_user, DASHBOARD_MODE=dashboard_mode)
+
+
+@app.route("/profile")
+@login_required
+def profile():
+    return render_template("profile.html", user=current_user)
+
+
+@app.route("/admin_dashboard")
+@login_required
+def admin_dashboard():
+    if not current_user.is_admin():
+        flash("관리자 권한이 필요합니다.")
+        return redirect(url_for("dashboard"))
+
+    # 대시보드 모드 설정 전달
+    dashboard_mode = current_app.config.get('DASHBOARD_MODE', 'solo')
+    
+    # 최고관리자 전용 통계 데이터
+    stats = {
+        "pending_users": User.query.filter_by(status="pending").count(),
+        "unread_notifications": Notification.query.filter_by(is_read=False).count(),
+        "pending_feedback": FeedbackIssue.query.filter_by(status="pending").count(),
+        "total_branches": Branch.query.count(),
+        "total_users": User.query.count(),
+        "active_users": User.query.filter_by(status="approved").count(),
+        "total_orders": Order.query.count(),
+        "total_schedules": Schedule.query.count(),
+        # 추가 통계 데이터
+        "total_managers": User.query.filter_by(role="manager").count(),
+        "total_employees": User.query.filter_by(role="employee").count(),
+        "rejected_users": User.query.filter_by(status="rejected").count(),
+        "today_orders": Order.query.filter(
+            Order.created_at >= datetime.now().date()
+        ).count(),
+        "today_schedules": Schedule.query.filter(
+            Schedule.date >= datetime.now().date()
+        ).count(),
+    }
+    
+    # 시스템 상태 정보
+    system_status = {
+        "uptime": "24시간+",  # 실제로는 서버 시작 시간 계산
+        "dashboard_mode": dashboard_mode,
+        "last_backup": "2024-01-15 14:30",  # 실제로는 백업 매니저에서 가져옴
+        "db_status": "정상",
+        "server_version": "Flask 2.0+",
+        "db_version": "SQLite 3.x",
+        # 추가 시스템 정보
+        "memory_usage": "45%",
+        "disk_usage": "32%",
+        "active_sessions": len([u for u in User.query.filter_by(status='approved').all()]),
+        "system_load": "정상",
+    }
+    
+    # 매장 목록 데이터 생성 (실제로는 DB에서 불러옴)
+    branch_list = []
+    try:
+        # 모든 사용자 중 매장 관리자와 직원들을 매장별로 그룹화
+        managers = User.query.filter_by(role="manager").all()
+        employees = User.query.filter_by(role="employee").all()
+
+        # 임시 매장 데이터 (실제로는 Branch 모델에서 가져와야 함)
+        temp_branches = [
+            {"id": 1, "name": "본점", "manager_id": None},
+            {"id": 2, "name": "강남점", "manager_id": None},
+            {"id": 3, "name": "홍대점", "manager_id": None},
+        ]
+
+        for branch in temp_branches:
+            # 해당 매장의 관리자 찾기
+            manager = next((m for m in managers if m.branch_id == branch["id"]), None)
+            # 해당 매장의 직원들 찾기
+            branch_employees = [e for e in employees if e.branch_id == branch["id"]]
+
+            branch_list.append(
+                {
+                    "id": branch["id"],
+                    "name": branch["name"],
+                    "manager_name": manager.username if manager else "-",
+                    "num_employees": len(branch_employees),
+                    "employees": branch_employees,
+                }
+            )
+    except Exception as e:
+        # 오류 발생 시 빈 리스트로 설정
+        branch_list = []
+
+    # 기본 통계 데이터
+    avg_processing = db.session.query(func.avg(Order.processing_minutes)).scalar()
+    exceed_count = (
+        db.session.query(Order)
+        .join(Branch)
+        .filter(Order.processing_minutes > Branch.processing_time_standard)
+        .count()
+    )
+
+    # 매장별 주문/피드백/알림 요약
+    branch_stats = []
+    for branch in Branch.query.all():
+        orders = Order.query.filter_by(store_id=branch.id).count()
+        feedbacks = FeedbackIssue.query.filter_by(branch_id=branch.id).count()
+        branch_stats.append(
+            {
+                "branch": branch,
+                "orders": orders,
+                "feedbacks": feedbacks,
+            }
+        )
+
+    # 최근 주문/알림/피드백 (5개)
+    recent_orders = Order.query.order_by(Order.created_at.desc()).limit(5).all()
+    recent_notifications = (
+        Notification.query.order_by(Notification.created_at.desc()).limit(5).all()
+    )
+    recent_feedbacks = (
+        FeedbackIssue.query.order_by(FeedbackIssue.created_at.desc()).limit(5).all()
+    )
+
+    context = {
+        "num_users": User.query.count(),
+        "num_attendance": 0,
+        "warn_users": [],
+        "result": [],
+        "branch_names": [],
+        "chart_labels": [],
+        "chart_data": [],
+        "trend_dates": [],
+        "trend_data": [],
+        "dist_labels": [],
+        "dist_data": [],
+        "top_late": [],
+        "top_absent": [],
+        "recent": [],
+        "branch_list": branch_list,
+        "avg_processing": avg_processing or 0,
+        "exceed_count": exceed_count,
+        "branch_stats": branch_stats,
+        "recent_orders": recent_orders,
+        "recent_notifications": recent_notifications,
+        "recent_feedbacks": recent_feedbacks,
+        "DASHBOARD_MODE": dashboard_mode,
+        # 최고관리자 전용 데이터 추가
+        "stats": stats,
+        "system_status": system_status,
+    }
+    return render_template("admin_dashboard.html", **context)
+
+
+@app.route("/manager_dashboard/<int:branch_id>")
+@login_required
+def manager_dashboard(branch_id):
+    """매장 관리자 전용 대시보드"""
+    if not current_user.is_admin():
+        flash("매장 관리자 권한이 필요합니다.")
+        return redirect(url_for("dashboard"))
+
+    # 실제 매장 정보, 직원 리스트 등 context에 추가
+    try:
+        # 해당 매장의 직원들 찾기
+        employees = User.query.filter_by(branch_id=branch_id, role="employee").all()
+        manager = User.query.filter_by(branch_id=branch_id, role="manager").first()
+
+        context = {
+            "branch_id": branch_id,
+            "branch_name": f"매장 {branch_id}",
+            "manager": manager,
+            "employees": employees,
+            "num_employees": len(employees),
+        }
+    except Exception as e:
+        flash("매장 정보를 불러오는 중 오류가 발생했습니다.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    return render_template("manager_dashboard.html", **context)
+
+
+@app.route("/employee_dashboard/<int:employee_id>")
+@login_required
+def employee_dashboard(employee_id):
+    """직원 전용 업무 페이지"""
+    try:
+        emp = User.query.get_or_404(employee_id)
+
+        # 권한 체크: 관리자 or 자기 자신만 접근
+        if not (current_user.is_admin() or current_user.id == emp.id):
+            flash("해당 직원 업무 접근 권한이 없습니다.")
+            return redirect(url_for("dashboard"))
+
+        context = {
+            "employee": emp,
+            "branch_name": f"매장 {emp.branch_id}" if emp.branch_id else "미지정",
+        }
+    except Exception as e:
+        flash("직원 정보를 불러오는 중 오류가 발생했습니다.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    return render_template("employee_dashboard.html", **context)
+
+
+# --- Schedule Routes ---
+@app.route("/schedule", methods=["GET"])
+@login_required
+@require_permission('schedule_management', 'view')
+def schedule():
+    """스케줄 관리 페이지"""
+    branch_id = current_user.branch_id
+    # 근무 스케줄
+    work_schedules = Schedule.query.filter_by(branch_id=branch_id, type="work").all()
+    # 청소 스케줄
+    clean_schedules = Schedule.query.filter_by(branch_id=branch_id, type="clean").all()
+    return render_template(
+        "schedule.html", work_schedules=work_schedules, clean_schedules=clean_schedules
+    )
+
+
+@app.route("/clean")
+@login_required
+@require_permission('schedule_management', 'view')
+def clean():
+    """청소 관리 페이지"""
+    plans = CleaningPlan.query.order_by(CleaningPlan.date.desc()).all()
+    return render_template("clean.html", plans=plans)
+
+
+# --- Notification Routes ---
+@app.route("/notifications")
+@login_required
+@require_permission('notification_management', 'view')
+def notifications():
+    """알림 페이지"""
+    user_notifications = Notification.query.filter_by(
+        user_id=current_user.id
+    ).order_by(Notification.created_at.desc()).limit(50).all()
+    
+    return render_template("notifications.html", 
+                         notifications=user_notifications,
+                         user=current_user)
+
+
+@app.route("/notifications/mark_read/<int:notification_id>")
+@login_required
+def mark_notification_read(notification_id):
+    """개별 알림 읽음 처리"""
+    notification = Notification.query.filter_by(
+        id=notification_id, user_id=current_user.id
+    ).first()
+
+    if notification:
+        notification.is_read = True
+        db.session.commit()
+        flash("알림을 읽음 처리했습니다.", "success")
+    else:
+        flash("알림을 찾을 수 없습니다.", "error")
+
+    return redirect(url_for("notifications"))
+
+
+@app.route("/notifications/mark_all_read")
+@login_required
+def mark_all_notifications_read():
+    """모든 알림 읽음 처리"""
+    try:
+        Notification.query.filter_by(user_id=current_user.id, is_read=False).update(
+            {"is_read": True}
+        )
+        db.session.commit()
+        flash("모든 알림을 읽음 처리했습니다.", "success")
+    except Exception as e:
+        flash("알림 처리 중 오류가 발생했습니다.", "error")
+
+    return redirect(url_for("notifications"))
+
+
+# --- API Routes for Notifications ---
+@app.route("/api/new_notifications")
+@login_required
+def api_new_notifications():
+    """새로운 알림 수 API"""
+    try:
+        count = Notification.query.filter_by(
+            user_id=current_user.id, is_read=False
+        ).count()
+        return jsonify({"count": count})
+    except Exception as e:
+        return jsonify({"count": 0, "error": str(e)})
+
+
+@app.route("/notifications/count")
+@login_required
+def notifications_count():
+    count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+    return jsonify({"count": count})
+
+
+# --- CLI Commands ---
+@app.cli.command("create-admin")
+@click.argument("username")
+@click.argument("password")
+def create_admin(username, password):
+    """관리자 계정 생성"""
+    user = User(
+        username=username, 
+        email=f"{username}@admin.com",  # 기본 이메일 설정
+        role="admin", 
+        status="approved"
+    )
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    click.echo(f"관리자 계정 {username}이 생성되었습니다.")
+
+
+@app.route("/m/notifications")
+def m_notifications():
+    return render_template("mobile/m_notifications.html")
+
+
+@app.route("/m/profile")
+@login_required
+def m_profile():
+    return render_template("mobile/m_profile.html", user=current_user)
+
+
+@app.route("/feedback/new", methods=["GET", "POST"])
+@login_required
+def new_feedback():
+    if request.method == "POST":
+        title = request.form["title"]
+        content = request.form["content"]
+        fb = FeedbackIssue(
+            title=title,
+            content=content,
+            user_id=current_user.id,
+            branch_id=getattr(current_user, "branch_id", None),
+        )
+        db.session.add(fb)
+        db.session.commit()
+        # 관리자에게 알림 전송
+        try:
+            send_admin_only_notification("새로운 개선/문의사항 등록", content)
+        except Exception:
+            pass
+        flash("개선/문의사항이 등록되었습니다.")
+        return redirect(url_for("dashboard"))
+    return render_template("feedback_new.html")
+
+
+@app.route("/admin/feedback")
+@login_required
+@require_permission('employee_management', 'view')
+def admin_feedback():
+    """개선/문의사항 관리 페이지"""
+    feedbacks = FeedbackIssue.query.order_by(FeedbackIssue.created_at.desc()).all()
+    return render_template("admin/feedback.html", feedbacks=feedbacks)
+
+
+@app.route("/admin/feedback/<int:feedback_id>/resolve")
+@login_required
+@require_permission('employee_management', 'approve')
+def resolve_feedback(feedback_id):
+    """문의사항 처리"""
+    fb = FeedbackIssue.query.get_or_404(feedback_id)
+    fb.status = "resolved"
+    db.session.commit()
+    flash("해당 문의가 처리되었습니다.")
+    return redirect(url_for("admin_feedback"))
+
+
+@app.route("/admin/notify_send", methods=["GET", "POST"])
+@login_required
+@require_permission('notification_management', 'send')
+def admin_notify_send():
+    """전체 알림 발송 페이지"""
+    if request.method == "POST":
+        # 알림 발송 로직
+        pass
+    return render_template("admin/notify_send.html", user=current_user)
+
+
+@app.route("/api/order/new", methods=["POST"])
+@login_required
+@require_permission('order_management', 'create')
+def create_order():
+    """새 발주 생성 API"""
+    data = request.json or request.form
+    order = Order(
+        employee_id=current_user.id,
+        store_id=current_user.branch_id,
+        created_at=datetime.utcnow(),
+    )
+    db.session.add(order)
+    db.session.commit()
+    return jsonify({"result": "ok", "order_id": order.id})
+
+
+@app.route("/api/order/complete/<int:order_id>", methods=["POST"])
+@login_required
+@require_permission('order_management', 'approve')
+def complete_order(order_id):
+    """발주 완료 처리 API"""
+    order = Order.query.get_or_404(order_id)
+    if order.completed_at:
+        return jsonify({"error": "이미 완료된 발주입니다."}), 400
+    
+    order.completed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"result": "ok"})
+
+
+@app.route("/admin/order_setting", methods=["GET", "POST"])
+@login_required
+@require_permission('order_management', 'edit')
+def admin_order_setting():
+    """발주 설정 관리 페이지"""
+    if request.method == "POST":
+        # 발주 설정 업데이트 로직
+        pass
+    return render_template("admin/order_setting.html", user=current_user)
+
+
+@app.route("/orders")
+@login_required
+@require_permission('order_management', 'view')
+def order_list():
+    """발주 목록 페이지"""
+    # 권한에 따라 다른 쿼리 실행
+    if current_user.has_permission('order_management', 'approve'):
+        # 승인 권한이 있으면 모든 발주 조회
+        orders = Order.query.order_by(Order.created_at.desc()).all()
+    else:
+        # 일반 사용자는 본인 발주만 조회
+        orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).all()
+    
+    return render_template("order.html", orders=orders, user=current_user)
+
+
+@app.route("/orders/new", methods=["GET", "POST"])
+@login_required
+@require_permission('order_management', 'create')
+def order_new():
+    """새 발주 생성 페이지"""
+    if request.method == "POST":
+        # 발주 생성 로직
+        pass
+    return render_template("order_new.html", user=current_user)
+
+
+@app.route("/admin/dashboard_mode", methods=["GET", "POST"])
+@login_required
+@require_permission('system_management', 'settings')
+def admin_dashboard_mode():
+    """대시보드 모드 설정 페이지"""
+    if request.method == "POST":
+        # 대시보드 모드 업데이트 로직
+        pass
+    return render_template("admin/dashboard_mode.html", user=current_user)
+
+
+@app.route("/admin/backup_management", methods=["GET", "POST"])
+@login_required
+@require_permission('system_management', 'backup')
+def admin_backup_management():
+    """백업 관리 페이지"""
+    if request.method == "POST":
+        # 백업 생성 로직
+        pass
+    return render_template("admin/backup_management.html", user=current_user)
+
+
+@app.route("/api/system/status")
+@login_required
+def api_system_status():
+    """시스템 상태 API"""
+    if not current_user.is_admin():
+        return jsonify({"error": "권한이 없습니다."}), 403
+    
+    try:
+        # 활성 사용자 수 (세션 기반)
+        active_users = len([u for u in User.query.filter_by(status='approved').all()])
+        
+        # 미읽 알림 수
+        unread_notifications = Notification.query.filter_by(is_read=False).count()
+        
+        # 데이터베이스 상태 확인
+        try:
+            db.session.execute(text('SELECT 1'))
+            db_status = "정상"
+        except:
+            db_status = "오류"
+        
+        # 서버 업타임 (간단한 구현)
+        uptime = "24시간+"
+        
+        return jsonify({
+            "active_users": active_users,
+            "unread_notifications": unread_notifications,
+            "db_status": db_status,
+            "uptime": uptime,
+            "dashboard_mode": current_app.config.get("DASHBOARD_MODE", "solo"),
+            "server_time": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin/system_monitor")
+@login_required
+@require_permission('system_management', 'monitoring')
+def admin_system_monitor():
+    """시스템 모니터링 페이지"""
+    return render_template("admin/system_monitor.html", user=current_user)
+
+
+@app.route("/admin/reports")
+@login_required
+@require_permission('reports', 'view')
+def admin_reports():
+    """보고서 페이지"""
+    # 권한에 따라 다른 보고서 표시
+    if current_user.has_permission('reports', 'admin_only'):
+        # 최고관리자용 전체 보고서
+        return render_template("admin/reports.html", user=current_user, report_type="admin")
+    else:
+        # 매장관리자용 매장별 보고서
+        return render_template("admin/reports.html", user=current_user, report_type="manager")
+
+
+@app.route("/admin/user_permissions")
+@login_required
+@require_permission('employee_management', 'assign_roles')
+def admin_user_permissions():
+    """사용자 권한 관리 페이지"""
+    users = User.query.filter_by(status='approved').order_by(User.username).all()
+    
+    # 권한 모듈 정의
+    permission_modules = {
+        'dashboard': {
+            'name': '대시보드',
+            'actions': ['view', 'edit', 'admin_only']
+        },
+        'employee_management': {
+            'name': '직원 관리',
+            'actions': ['view', 'create', 'edit', 'delete', 'approve', 'assign_roles']
+        },
+        'schedule_management': {
+            'name': '스케줄 관리',
+            'actions': ['view', 'create', 'edit', 'delete', 'approve']
+        },
+        'order_management': {
+            'name': '발주 관리',
+            'actions': ['view', 'create', 'edit', 'delete', 'approve']
+        },
+        'inventory_management': {
+            'name': '재고 관리',
+            'actions': ['view', 'create', 'edit', 'delete']
+        },
+        'notification_management': {
+            'name': '알림 관리',
+            'actions': ['view', 'send', 'delete']
+        },
+        'system_management': {
+            'name': '시스템 관리',
+            'actions': ['view', 'backup', 'restore', 'settings', 'monitoring']
+        },
+        'reports': {
+            'name': '보고서',
+            'actions': ['view', 'export', 'admin_only']
+        }
+    }
+    
+    return render_template(
+        "admin/user_permissions.html",
+        users=users,
+        permission_modules=permission_modules
+    )
+
+
+@app.route("/admin/user_permissions/<int:user_id>", methods=["GET", "POST"])
+@login_required
+@require_permission('employee_management', 'assign_roles')
+def admin_user_permission_edit(user_id):
+    """개별 사용자 권한 수정"""
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == "POST":
+        try:
+            # 폼 데이터에서 권한 정보 추출
+            permissions = {}
+            for module in request.form.getlist('modules'):
+                module_perms = {}
+                for action in request.form.getlist(f'{module}_actions'):
+                    module_perms[action] = True
+                permissions[module] = module_perms
+            
+            # 사용자 권한 업데이트
+            user.permissions = permissions
+            db.session.commit()
+            
+            flash(f"{user.username}의 권한이 업데이트되었습니다.", "success")
+            return redirect(url_for("admin_user_permissions"))
+            
+        except Exception as e:
+            flash(f"권한 업데이트 중 오류가 발생했습니다: {str(e)}", "error")
+            db.session.rollback()
+    
+    # 권한 모듈 정의
+    permission_modules = {
+        'dashboard': {
+            'name': '대시보드',
+            'actions': ['view', 'edit', 'admin_only']
+        },
+        'employee_management': {
+            'name': '직원 관리',
+            'actions': ['view', 'create', 'edit', 'delete', 'approve', 'assign_roles']
+        },
+        'schedule_management': {
+            'name': '스케줄 관리',
+            'actions': ['view', 'create', 'edit', 'delete', 'approve']
+        },
+        'order_management': {
+            'name': '발주 관리',
+            'actions': ['view', 'create', 'edit', 'delete', 'approve']
+        },
+        'inventory_management': {
+            'name': '재고 관리',
+            'actions': ['view', 'create', 'edit', 'delete']
+        },
+        'notification_management': {
+            'name': '알림 관리',
+            'actions': ['view', 'send', 'delete']
+        },
+        'system_management': {
+            'name': '시스템 관리',
+            'actions': ['view', 'backup', 'restore', 'settings', 'monitoring']
+        },
+        'reports': {
+            'name': '보고서',
+            'actions': ['view', 'export', 'admin_only']
+        }
+    }
+    
+    return render_template(
+        "admin/user_permission_edit.html",
+        user=user,
+        permission_modules=permission_modules
+    )
+
+
+@app.route("/api/dashboard/stats")
+@login_required
+@require_permission('system_management', 'monitoring')
+def api_dashboard_stats():
+    """관리자 대시보드 실시간 통계 API"""
+    try:
+        period = request.args.get('period', '30')  # 7, 30, 365
+        period = int(period)
+        
+        # 날짜 범위 계산
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=period)
+        
+        # 1. 알림 통계 (일별)
+        notification_stats = db.session.execute(text("""
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM notifications 
+            WHERE created_at >= :start_date AND created_at <= :end_date
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        """), {'start_date': start_date, 'end_date': end_date}).fetchall()
+        
+        # 2. 출근 통계 (일별)
+        attendance_stats = db.session.execute(text("""
+            SELECT DATE(clock_in) as date, COUNT(*) as count
+            FROM attendances 
+            WHERE clock_in >= :start_date AND clock_in <= :end_date
+            GROUP BY DATE(clock_in)
+            ORDER BY date
+        """), {'start_date': start_date, 'end_date': end_date}).fetchall()
+        
+        # 3. 시스템 로그 통계 (일별)
+        system_log_stats = db.session.execute(text("""
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM system_logs 
+            WHERE created_at >= :start_date AND created_at <= :end_date
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        """), {'start_date': start_date, 'end_date': end_date}).fetchall()
+        
+        # 4. 발주 통계 (일별)
+        order_stats = db.session.execute(text("""
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM order_requests 
+            WHERE created_at >= :start_date AND created_at <= :end_date
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        """), {'start_date': start_date, 'end_date': end_date}).fetchall()
+        
+        # 5. 실시간 시스템 상태
+        current_stats = {
+            'active_users': User.query.filter_by(status='approved').count(),
+            'unread_notifications': Notification.query.filter_by(is_read=False).count(),
+            'pending_orders': OrderRequest.query.filter_by(status='pending').count(),
+            'today_attendance': Attendance.query.filter(
+                Attendance.clock_in >= datetime.now().date()
+            ).count(),
+            'system_errors': SystemLog.query.filter(
+                SystemLog.action.like('%error%'),
+                SystemLog.created_at >= datetime.now() - timedelta(hours=24)
+            ).count()
+        }
+        
+        # 날짜별 데이터 정규화 (빈 날짜는 0으로 채움)
+        def normalize_data(data, start_date, end_date):
+            date_dict = {}
+            current_date = start_date.date()
+            end_date = end_date.date()
+            
+            while current_date <= end_date:
+                date_dict[current_date.isoformat()] = 0
+                current_date += timedelta(days=1)
+            
+            for row in data:
+                date_dict[row.date.isoformat()] = row.count
+            
+            return list(date_dict.values())
+        
+        # 응답 데이터 구성
+        response_data = {
+            'period': period,
+            'labels': [d.isoformat() for d in [start_date.date() + timedelta(days=i) for i in range(period)]],
+            'datasets': {
+                'notifications': normalize_data(notification_stats, start_date, end_date),
+                'attendance': normalize_data(attendance_stats, start_date, end_date),
+                'system_logs': normalize_data(system_log_stats, start_date, end_date),
+                'orders': normalize_data(order_stats, start_date, end_date)
+            },
+            'current_stats': current_stats,
+            'last_updated': datetime.now().isoformat()
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/dashboard/realtime")
+@login_required
+@require_permission('system_management', 'monitoring')
+def api_dashboard_realtime():
+    """실시간 활동 피드 API"""
+    try:
+        # 최근 활동 로그 (최근 50개)
+        recent_activities = db.session.execute(text("""
+            SELECT 
+                'system_log' as type,
+                sl.action as action,
+                sl.detail as detail,
+                u.username as username,
+                sl.created_at as timestamp
+            FROM system_logs sl
+            LEFT JOIN users u ON sl.user_id = u.id
+            WHERE sl.created_at >= :start_time
+            ORDER BY sl.created_at DESC
+            LIMIT 50
+        """), {'start_time': datetime.now() - timedelta(hours=24)}).fetchall()
+        
+        # 최근 알림
+        recent_notifications = db.session.execute(text("""
+            SELECT 
+                'notification' as type,
+                content as action,
+                category as detail,
+                'System' as username,
+                created_at as timestamp
+            FROM notifications
+            WHERE created_at >= :start_time
+            ORDER BY created_at DESC
+            LIMIT 20
+        """), {'start_time': datetime.now() - timedelta(hours=24)}).fetchall()
+        
+        # 데이터 병합 및 정렬
+        all_activities = list(recent_activities) + list(recent_notifications)
+        all_activities.sort(key=lambda x: x.timestamp, reverse=True)
+        
+        activities = []
+        for activity in all_activities[:30]:  # 최근 30개만
+            activities.append({
+                'type': activity.type,
+                'action': activity.action,
+                'detail': activity.detail,
+                'username': activity.username or 'System',
+                'timestamp': activity.timestamp.isoformat(),
+                'time_ago': get_time_ago(activity.timestamp)
+            })
+        
+        return jsonify({
+            'activities': activities,
+            'last_updated': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def get_time_ago(timestamp):
+    """시간 경과 표시"""
+    now = datetime.now()
+    diff = now - timestamp
+    
+    if diff.days > 0:
+        return f"{diff.days}일 전"
+    elif diff.seconds > 3600:
+        hours = diff.seconds // 3600
+        return f"{hours}시간 전"
+    elif diff.seconds > 60:
+        minutes = diff.seconds // 60
+        return f"{minutes}분 전"
+    else:
+        return "방금 전"
+
+
+@app.route("/admin/logs")
+@login_required
+@require_permission('system_management', 'monitoring')
+def admin_logs():
+    """시스템 로그 뷰어"""
+    return render_template("admin/logs.html")
+
+
+@app.route("/api/logs")
+@login_required
+@require_permission('system_management', 'monitoring')
+def api_logs():
+    """시스템 로그 API"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        level = request.args.get('level', 'all')
+        hours = request.args.get('hours', 24, type=int)
+        
+        # 시간 범위 계산
+        start_time = datetime.now() - timedelta(hours=hours)
+        
+        # 쿼리 구성
+        query = SystemLog.query.filter(SystemLog.created_at >= start_time)
+        
+        # 레벨 필터링
+        if level != 'all':
+            query = query.filter(SystemLog.action.like(f'%{level}%'))
+        
+        # 페이지네이션
+        logs = query.order_by(SystemLog.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # 로그 데이터 변환
+        log_data = []
+        for log in logs.items:
+            log_data.append({
+                'id': log.id,
+                'action': log.action,
+                'detail': log.detail,
+                'username': log.user.username if log.user else 'System',
+                'ip_address': log.ip_address,
+                'created_at': log.created_at.isoformat(),
+                'time_ago': get_time_ago(log.created_at)
+            })
+        
+        return jsonify({
+            'logs': log_data,
+            'total': logs.total,
+            'pages': logs.pages,
+            'current_page': page,
+            'has_next': logs.has_next,
+            'has_prev': logs.has_prev
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/logs/realtime")
+@login_required
+@require_permission('system_management', 'monitoring')
+def api_logs_realtime():
+    """실시간 로그 스트리밍"""
+    try:
+        # 최근 10분간의 새로운 로그만 조회
+        start_time = datetime.now() - timedelta(minutes=10)
+        
+        logs = SystemLog.query.filter(
+            SystemLog.created_at >= start_time
+        ).order_by(SystemLog.created_at.desc()).limit(20).all()
+        
+        log_data = []
+        for log in logs:
+            log_data.append({
+                'id': log.id,
+                'action': log.action,
+                'detail': log.detail,
+                'username': log.user.username if log.user else 'System',
+                'ip_address': log.ip_address,
+                'created_at': log.created_at.isoformat(),
+                'time_ago': get_time_ago(log.created_at)
+            })
+        
+        return jsonify({
+            'logs': log_data,
+            'last_updated': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/permissions/check")
+@login_required
+def check_permissions():
+    """권한 체크 API"""
+    module = request.args.get('module')
+    action = request.args.get('action', 'view')
+    
+    if not module:
+        return jsonify({"error": "모듈이 지정되지 않았습니다."}), 400
+    
+    has_perm = current_user.has_permission(module, action)
+    return jsonify({
+        "module": module,
+        "action": action,
+        "has_permission": has_perm,
+        "user_role": current_user.role
+    })
+
+
+@app.route("/api/permissions/user/<int:user_id>")
+@login_required
+@require_permission('employee_management', 'assign_roles')
+def get_user_permissions(user_id):
+    """사용자별 권한 조회 API"""
+    user = User.query.get_or_404(user_id)
+    
+    return jsonify({
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "status": user.status
+        },
+        "permissions": user.get_permissions()
+    })
+
+
+@app.route("/api/permissions/reset/<int:user_id>", methods=["POST"])
+@login_required
+@require_permission('employee_management', 'assign_roles')
+def reset_user_permissions(user_id):
+    """사용자 권한 초기화 API"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # 기본 권한으로 초기화
+        user.permissions = user._get_default_permissions()
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "권한이 초기화되었습니다."})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/permissions/export")
+@login_required
+@require_permission('employee_management', 'assign_roles')
+def export_permissions():
+    """권한 설정 내보내기 API"""
+    try:
+        users = User.query.filter_by(status='approved').all()
+        export_data = {
+            "exported_at": datetime.now().isoformat(),
+            "users": []
+        }
+        
+        for user in users:
+            export_data["users"].append({
+                "id": user.id,
+                "username": user.username,
+                "role": user.role,
+                "permissions": user.get_permissions()
+            })
+        
+        from flask import make_response
+        response = make_response(json.dumps(export_data, ensure_ascii=False, indent=2))
+        response.headers['Content-Type'] = 'application/json'
+        response.headers['Content-Disposition'] = 'attachment; filename=permissions_export.json'
+        return response
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/permissions/import", methods=["POST"])
+@login_required
+@require_permission('employee_management', 'assign_roles')
+def import_permissions():
+    """권한 설정 가져오기 API"""
+    try:
+        data = request.get_json()
+        if not data or 'users' not in data:
+            return jsonify({"error": "올바르지 않은 파일 형식입니다."}), 400
+        
+        success_count = 0
+        error_count = 0
+        
+        for user_data in data['users']:
+            try:
+                user = User.query.get(user_data['id'])
+                if user:
+                    user.permissions = user_data['permissions']
+                    success_count += 1
+                else:
+                    error_count += 1
+            except Exception as e:
+                error_count += 1
+                continue
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"권한 가져오기 완료: {success_count}개 성공, {error_count}개 실패"
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/permissions/summary")
+@login_required
+def get_permission_summary():
+    """현재 사용자 권한 요약 API"""
+    return jsonify(current_user.get_permission_summary())
+
+
+@app.route("/admin/users")
+@login_required
+@require_permission('employee_management', 'view')
+def admin_users():
+    """직원 관리 페이지"""
+    # 권한에 따라 다른 쿼리 실행
+    if current_user.has_permission('employee_management', 'approve'):
+        # 승인 권한이 있으면 모든 사용자 조회
+        users = User.query.filter(User.role != 'admin').order_by(User.created_at.desc()).all()
+    else:
+        # 일반 관리자는 본인 매장 직원만 조회
+        users = User.query.filter_by(role='employee').order_by(User.created_at.desc()).all()
+    
+    return render_template("admin/users.html", users=users, user=current_user)
+
+
+@app.route("/admin/approve_users")
+@login_required
+@require_permission('employee_management', 'approve')
+def admin_approve_users():
+    """직원 승인 관리 페이지"""
+    pending_users = User.query.filter_by(status='pending').order_by(User.created_at.desc()).all()
+    return render_template("admin/approve_users.html", users=pending_users, user=current_user)
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)

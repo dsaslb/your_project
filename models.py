@@ -1,10 +1,27 @@
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
-from flask_login import UserMixin
+from flask_login import UserMixin, AnonymousUserMixin as BaseAnonymousUserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from extensions import db
+
+
+# AnonymousUserMixin에 has_permission 메서드 추가
+class AnonymousUserMixin(BaseAnonymousUserMixin):
+    """익명 사용자용 권한 체크 메서드"""
+    def has_permission(self, module, action="view"):
+        return False
+    
+    def get_permissions(self):
+        return {}
+    
+    def get_permission_summary(self):
+        return {
+            "role": "anonymous",
+            "grade": "none",
+            "modules": {}
+        }
 
 
 # 지점 모델
@@ -21,7 +38,6 @@ class Branch(db.Model):
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
-    users = db.relationship("User", backref="branch", lazy=True)
 
     def __repr__(self):
         return f"<Branch {self.name}>"
@@ -32,13 +48,17 @@ class User(db.Model, UserMixin):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    password = db.Column(db.String(128), nullable=False)
-    status = db.Column(
-        db.String(20), default="pending", index=True
-    )  # 'approved', 'pending', 'rejected'
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(120), nullable=False)
     role = db.Column(
         db.String(20), default="employee", index=True
     )  # 'admin', 'manager', 'employee'
+    grade = db.Column(
+        db.String(20), default="staff", index=True
+    )  # 'ceo', 'director', 'manager', 'staff'
+    status = db.Column(
+        db.String(20), default="pending", index=True
+    )  # 'approved', 'pending', 'rejected'
     branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), index=True)
     team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), index=True)  # 팀 ID 추가
     deleted_at = db.Column(db.DateTime, nullable=True, index=True)
@@ -51,25 +71,248 @@ class User(db.Model, UserMixin):
     )
     name = db.Column(db.String(50))
     phone = db.Column(db.String(20))
-    email = db.Column(db.String(120), unique=True, index=True)
     last_login = db.Column(db.DateTime, index=True)
-    login_attempts = db.Column(db.Integer, default=0)
-    locked_until = db.Column(db.DateTime, index=True)
-    failed_login = db.Column(db.Integer, default=0)  # 로그인 실패 횟수
-    permissions = db.Column(db.JSON, default=dict)  # 동적 권한 필드 추가
-
-    # is_locked는 프로퍼티로 관리하는 것이 더 효율적
-    # is_locked = db.Column(db.Boolean, default=False)   # 계정 잠금 여부
+    
+    # JSON 기반 세밀한 권한 관리
+    permissions = db.Column(db.JSON, default=lambda: {
+        # 대시보드 접근 권한
+        "dashboard": {
+            "view": True,
+            "edit": False,
+            "admin_only": False
+        },
+        # 직원 관리 권한
+        "employee_management": {
+            "view": False,
+            "create": False,
+            "edit": False,
+            "delete": False,
+            "approve": False,
+            "assign_roles": False
+        },
+        # 스케줄 관리 권한
+        "schedule_management": {
+            "view": False,
+            "create": False,
+            "edit": False,
+            "delete": False,
+            "approve": False
+        },
+        # 발주 관리 권한
+        "order_management": {
+            "view": False,
+            "create": False,
+            "edit": False,
+            "delete": False,
+            "approve": False
+        },
+        # 재고 관리 권한
+        "inventory_management": {
+            "view": False,
+            "create": False,
+            "edit": False,
+            "delete": False
+        },
+        # 알림 관리 권한
+        "notification_management": {
+            "view": False,
+            "send": False,
+            "delete": False
+        },
+        # 시스템 관리 권한
+        "system_management": {
+            "view": False,
+            "backup": False,
+            "restore": False,
+            "settings": False,
+            "monitoring": False
+        },
+        # 보고서 권한
+        "reports": {
+            "view": False,
+            "export": False,
+            "admin_only": False
+        }
+    })
+    
+    # 권한 위임 정보 (최고관리자가 매장관리자에게, 매장관리자가 직원에게)
+    delegated_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    delegated_at = db.Column(db.DateTime, nullable=True)
+    delegation_expires = db.Column(db.DateTime, nullable=True)
+    
+    # 관계 설정
+    branch = db.relationship("Branch", backref="users")
+    notifications = db.relationship("Notification", lazy="dynamic")
+    delegated_users = db.relationship("User", backref=db.backref("delegator", remote_side=[id]), foreign_keys=[delegated_by])
+    
+    def __init__(self, **kwargs):
+        super(User, self).__init__(**kwargs)
+        if self.permissions is None:
+            self.permissions = self._get_default_permissions()
+    
+    def _get_default_permissions(self):
+        """역할별 기본 권한 설정"""
+        base_permissions = {
+            "dashboard": {"view": True, "edit": False, "admin_only": False},
+            "employee_management": {"view": False, "create": False, "edit": False, "delete": False, "approve": False, "assign_roles": False},
+            "schedule_management": {"view": False, "create": False, "edit": False, "delete": False, "approve": False},
+            "order_management": {"view": False, "create": False, "edit": False, "delete": False, "approve": False},
+            "inventory_management": {"view": False, "create": False, "edit": False, "delete": False},
+            "notification_management": {"view": False, "send": False, "delete": False},
+            "system_management": {"view": False, "backup": False, "restore": False, "settings": False, "monitoring": False},
+            "reports": {"view": False, "export": False, "admin_only": False}
+        }
+        
+        if self.role == "admin":
+            # 최고관리자: 모든 권한
+            for module in base_permissions:
+                for action in base_permissions[module]:
+                    base_permissions[module][action] = True
+        elif self.role == "manager":
+            # 매장관리자: 제한된 관리 권한
+            base_permissions["dashboard"]["view"] = True
+            base_permissions["schedule_management"]["view"] = True
+            base_permissions["schedule_management"]["create"] = True
+            base_permissions["schedule_management"]["edit"] = True
+            base_permissions["order_management"]["view"] = True
+            base_permissions["order_management"]["create"] = True
+            base_permissions["order_management"]["approve"] = True
+            base_permissions["inventory_management"]["view"] = True
+            base_permissions["inventory_management"]["create"] = True
+            base_permissions["inventory_management"]["edit"] = True
+            base_permissions["notification_management"]["view"] = True
+            base_permissions["reports"]["view"] = True
+        else:
+            # 직원: 기본 업무 권한
+            base_permissions["dashboard"]["view"] = True
+            base_permissions["schedule_management"]["view"] = True
+            base_permissions["order_management"]["view"] = True
+            base_permissions["order_management"]["create"] = True
+            base_permissions["inventory_management"]["view"] = True
+        
+        return base_permissions
+    
+    def has_permission(self, module, action):
+        """특정 모듈의 특정 액션에 대한 권한 확인"""
+        if not self.permissions:
+            return False
+        
+        module_perms = self.permissions.get(module, {})
+        
+        # admin_only 체크
+        if module_perms.get("admin_only", False) and self.role != "admin":
+            return False
+        
+        # 특정 액션 권한 확인
+        return module_perms.get(action, False)
+    
+    def can_access_module(self, module):
+        """모듈 접근 권한 확인"""
+        return self.has_permission(module, "view")
+    
+    def can_edit_module(self, module):
+        """모듈 편집 권한 확인"""
+        return self.has_permission(module, "edit")
+    
+    def can_create_in_module(self, module):
+        """모듈 내 생성 권한 확인"""
+        return self.has_permission(module, "create")
+    
+    def can_delete_in_module(self, module):
+        """모듈 내 삭제 권한 확인"""
+        return self.has_permission(module, "delete")
+    
+    def can_approve_in_module(self, module):
+        """모듈 내 승인 권한 확인"""
+        return self.has_permission(module, "approve")
+    
+    def delegate_permissions(self, target_user, permissions, expires_in_days=30):
+        """권한 위임"""
+        if not self.has_permission("employee_management", "assign_roles"):
+            raise PermissionError("권한 위임 권한이 없습니다.")
+        
+        # 위임된 권한 설정
+        target_user.permissions.update(permissions)
+        target_user.delegated_by = self.id
+        target_user.delegated_at = datetime.utcnow()
+        target_user.delegation_expires = datetime.utcnow() + timedelta(days=expires_in_days)
+        
+        db.session.commit()
+        
+        # 위임 알림 발송
+        from utils.notify import send_notification_enhanced
+        send_notification_enhanced(
+            user_id=target_user.id,
+            title="권한이 위임되었습니다",
+            content=f"{self.username}님이 {expires_in_days}일간 권한을 위임했습니다."
+        )
+    
+    def revoke_delegated_permissions(self, target_user):
+        """위임된 권한 회수"""
+        if target_user.delegated_by != self.id:
+            raise PermissionError("해당 사용자의 권한을 회수할 수 없습니다.")
+        
+        # 기본 권한으로 복원
+        target_user.permissions = target_user._get_default_permissions()
+        target_user.delegated_by = None
+        target_user.delegated_at = None
+        target_user.delegation_expires = None
+        
+        db.session.commit()
+        
+        # 회수 알림 발송
+        from utils.notify import send_notification_enhanced
+        send_notification_enhanced(
+            user_id=target_user.id,
+            title="위임된 권한이 회수되었습니다",
+            content=f"{self.username}님이 위임된 권한을 회수했습니다."
+        )
+    
+    def get_delegated_users(self):
+        """위임받은 사용자 목록"""
+        return User.query.filter_by(delegated_by=self.id).all()
+    
+    def is_delegation_expired(self):
+        """위임 권한 만료 확인"""
+        if not self.delegation_expires:
+            return False
+        return datetime.utcnow() > self.delegation_expires
+    
+    def get_effective_permissions(self):
+        """실제 적용되는 권한 (만료 체크 포함)"""
+        if self.is_delegation_expired():
+            return self._get_default_permissions()
+        return self.permissions
+    
+    def get_permission_summary(self):
+        """권한 요약 정보"""
+        perms = self.get_effective_permissions()
+        summary = {
+            "role": self.role,
+            "grade": self.grade,
+            "modules": {}
+        }
+        
+        for module, actions in perms.items():
+            summary["modules"][module] = {
+                "can_access": actions.get("view", False),
+                "can_edit": actions.get("edit", False),
+                "can_create": actions.get("create", False),
+                "can_delete": actions.get("delete", False),
+                "can_approve": actions.get("approve", False)
+            }
+        
+        return summary
 
     def set_password(self, pw):
         if len(pw) < 8:
             raise ValueError("비밀번호는 최소 8자 이상이어야 합니다.")
         if not re.search(r"[A-Za-z]", pw) or not re.search(r"\d", pw):
             raise ValueError("비밀번호는 영문자와 숫자를 포함해야 합니다.")
-        self.password = generate_password_hash(pw, method="pbkdf2:sha256")
+        self.password_hash = generate_password_hash(pw, method="pbkdf2:sha256")
 
     def check_password(self, pw):
-        return check_password_hash(self.password, pw)
+        return check_password_hash(self.password_hash, pw)
 
     def is_admin(self):
         return self.role == "admin"
@@ -113,12 +356,6 @@ class User(db.Model, UserMixin):
         else:
             return 'employee'  # 일반 직원 모드
 
-    def has_permission(self, permission_name):
-        """특정 권한이 있는지 확인"""
-        if not self.permissions:
-            return False
-        return self.permissions.get(permission_name, False)
-
     def get_permissions(self):
         """현재 사용자의 모든 권한 반환"""
         return self.permissions or {}
@@ -140,7 +377,7 @@ class User(db.Model, UserMixin):
 
     @property
     def is_locked(self):
-        if self.locked_until and self.locked_until > datetime.utcnow():
+        if self.delegation_expires and self.delegation_expires > datetime.utcnow():
             return True
         return False
 
@@ -149,12 +386,12 @@ class User(db.Model, UserMixin):
         if self.login_attempts >= 5:
             from datetime import timedelta
 
-            self.locked_until = datetime.utcnow() + timedelta(minutes=30)
+            self.delegation_expires = datetime.utcnow() + timedelta(minutes=30)
         db.session.commit()
 
     def reset_login_attempts(self):
         self.login_attempts = 0
-        self.locked_until = None
+        self.delegation_expires = None
         self.last_login = datetime.utcnow()
         db.session.commit()
 
@@ -362,7 +599,7 @@ class Notification(db.Model):
     ai_priority = db.Column(db.String(10), index=True)  # AI가 추천한 우선순위
 
     # 관계 설정
-    user = db.relationship("User", backref="notifications")
+    user = db.relationship("User")
 
     # 복합 인덱스 추가
     __table_args__ = (

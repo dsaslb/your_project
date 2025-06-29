@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 from sqlalchemy import and_, func, or_
 
 from extensions import db
-from models import AttendanceDispute, Notification, User
+from models import AttendanceReport, Notification, User
 from utils.assignee_manager import assignee_manager
 from utils.logger import log_action, log_error
-from utils.notification_automation import send_notification
+from utils.notify import send_notification_enhanced
 
 
 class AutoProcessor:
@@ -73,11 +73,11 @@ class AutoProcessor:
             )
 
             # SLA 임박 신고/이의제기 조회
-            urgent_disputes = AttendanceDispute.query.filter(
+            urgent_disputes = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due <= warning_time,
-                    AttendanceDispute.sla_due > now,
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due <= warning_time,
+                    AttendanceReport.sla_due > now,
                 )
             ).all()
 
@@ -85,7 +85,7 @@ class AutoProcessor:
             for dispute in urgent_disputes:
                 if dispute.assignee_id:
                     # 담당자에게 경고 알림
-                    send_notification(
+                    send_notification_enhanced(
                         user_id=dispute.assignee_id,
                         content=f"{self.rules['sla_warning']['message']}: 신고 #{dispute.id} (SLA: {dispute.sla_due.strftime('%m-%d %H:%M')})",
                         category="SLA",
@@ -111,10 +111,10 @@ class AutoProcessor:
             now = datetime.utcnow()
 
             # SLA 초과 신고/이의제기 조회
-            overdue_disputes = AttendanceDispute.query.filter(
+            overdue_disputes = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due < now,
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due < now,
                 )
             ).all()
 
@@ -122,7 +122,7 @@ class AutoProcessor:
             for dispute in overdue_disputes:
                 if dispute.assignee_id:
                     # 담당자에게 초과 경고
-                    send_notification(
+                    send_notification_enhanced(
                         user_id=dispute.assignee_id,
                         content=f"{self.rules['sla_overdue']['message']}: 신고 #{dispute.id} (초과: {(now - dispute.sla_due).days}일)",
                         category="SLA",
@@ -133,7 +133,7 @@ class AutoProcessor:
                     admins = User.query.filter_by(role="admin").all()
                     for admin in admins:
                         if admin.id != dispute.assignee_id:
-                            send_notification(
+                            send_notification_enhanced(
                                 user_id=admin.id,
                                 content=f"SLA 초과 신고/이의제기: #{dispute.id} (담당자: {dispute.assignee.name or dispute.assignee.username})",
                                 category="SLA",
@@ -164,10 +164,10 @@ class AutoProcessor:
 
             repeated_users = (
                 db.session.query(
-                    AttendanceDispute.user_id, func.count().label("report_count")
+                    AttendanceReport.user_id, func.count().label("report_count")
                 )
-                .filter(AttendanceDispute.created_at >= thirty_days_ago)
-                .group_by(AttendanceDispute.user_id)
+                .filter(AttendanceReport.created_at >= thirty_days_ago)
+                .group_by(AttendanceReport.user_id)
                 .having(func.count() >= threshold)
                 .all()
             )
@@ -175,7 +175,7 @@ class AutoProcessor:
             processed = 0
             for user_id, count in repeated_users:
                 # 반복 신고자에게 경고
-                send_notification(
+                send_notification_enhanced(
                     user_id=user_id,
                     content=f"반복 신고자 경고: 최근 30일 내 {count}회 신고/이의제기 접수",
                     category="경고",
@@ -186,7 +186,7 @@ class AutoProcessor:
                 admins = User.query.filter_by(role="admin").all()
                 for admin in admins:
                     user = User.query.get(user_id)
-                    send_notification(
+                    send_notification_enhanced(
                         user_id=admin.id,
                         content=f"반복 신고자 감지: {user.name or user.username} (최근 30일 {count}회)",
                         category="모니터링",
@@ -213,12 +213,12 @@ class AutoProcessor:
             keywords = self.rules["auto_approval"]["keywords"]
 
             # 경미한 신고 조회 (키워드 포함)
-            minor_disputes = AttendanceDispute.query.filter(
+            minor_disputes = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.status == "pending",
+                    AttendanceReport.status == "pending",
                     or_(
                         *[
-                            AttendanceDispute.reason.contains(keyword)
+                            AttendanceReport.reason.contains(keyword)
                             for keyword in keywords
                         ]
                     ),
@@ -236,7 +236,7 @@ class AutoProcessor:
                 dispute.updated_at = datetime.utcnow()
 
                 # 신고자에게 알림
-                send_notification(
+                send_notification_enhanced(
                     user_id=dispute.user_id,
                     content=f"신고/이의제기 자동 승인: {dispute.admin_reply}",
                     category="신고/이의제기",

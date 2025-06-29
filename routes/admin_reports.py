@@ -16,10 +16,11 @@ from reportlab.pdfgen import canvas
 from sqlalchemy import and_, func, or_
 
 from extensions import db
-from models import Attendance, AttendanceDispute, User
-from utils.decorators import admin_required
+from models import Attendance, AttendanceReport, User, PermissionChangeLog, PermissionTemplate, Notification, SystemLog, Order
+from utils.decorators import admin_required, require_permission
 from utils.logger import log_action, log_error
-from utils.notification_automation import send_notification
+from utils.notify import send_notification_enhanced
+import json
 
 admin_reports_bp = Blueprint("admin_reports", __name__)
 
@@ -38,42 +39,42 @@ def admin_reports():
         date_to = request.args.get("date_to", "")
 
         # 쿼리 구성
-        query = AttendanceDispute.query
+        query = AttendanceReport.query
 
         if status:
-            query = query.filter(AttendanceDispute.status == status)
+            query = query.filter(AttendanceReport.status == status)
         if user_id:
-            query = query.filter(AttendanceDispute.user_id == int(user_id))
+            query = query.filter(AttendanceReport.user_id == int(user_id))
         if dispute_type:
-            query = query.filter(AttendanceDispute.dispute_type == dispute_type)
+            query = query.filter(AttendanceReport.dispute_type == dispute_type)
         if date_from:
             query = query.filter(
-                AttendanceDispute.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
+                AttendanceReport.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
             )
         if date_to:
             query = query.filter(
-                AttendanceDispute.created_at
+                AttendanceReport.created_at
                 <= datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
             )
 
         # 정렬 및 제한
-        reports = query.order_by(AttendanceDispute.created_at.desc()).limit(100).all()
+        reports = query.order_by(AttendanceReport.created_at.desc()).limit(100).all()
 
         # 통계 계산
-        total_count = AttendanceDispute.query.count()
-        pending_count = AttendanceDispute.query.filter_by(status="pending").count()
-        processing_count = AttendanceDispute.query.filter_by(
+        total_count = AttendanceReport.query.count()
+        pending_count = AttendanceReport.query.filter_by(status="pending").count()
+        processing_count = AttendanceReport.query.filter_by(
             status="processing"
         ).count()
-        resolved_count = AttendanceDispute.query.filter_by(status="resolved").count()
+        resolved_count = AttendanceReport.query.filter_by(status="resolved").count()
 
         # 사용자 목록 (필터용)
         users = User.query.filter_by(is_active=True).order_by(User.name).all()
 
         # 상태별 통계
         status_stats = (
-            db.session.query(AttendanceDispute.status, func.count(AttendanceDispute.id))
-            .group_by(AttendanceDispute.status)
+            db.session.query(AttendanceReport.status, func.count(AttendanceReport.id))
+            .group_by(AttendanceReport.status)
             .all()
         )
 
@@ -116,32 +117,32 @@ def report_timeline():
         keyword = request.args.get("q", "")
 
         # 쿼리 구성
-        query = AttendanceDispute.query
+        query = AttendanceReport.query
 
         if user_id:
-            query = query.filter(AttendanceDispute.user_id == int(user_id))
+            query = query.filter(AttendanceReport.user_id == int(user_id))
         if status:
-            query = query.filter(AttendanceDispute.status == status)
+            query = query.filter(AttendanceReport.status == status)
         if date_from:
             query = query.filter(
-                AttendanceDispute.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
+                AttendanceReport.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
             )
         if date_to:
             query = query.filter(
-                AttendanceDispute.created_at
+                AttendanceReport.created_at
                 <= datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
             )
         if keyword:
             query = query.filter(
                 or_(
-                    AttendanceDispute.reason.contains(keyword),
-                    AttendanceDispute.admin_reply.contains(keyword),
+                    AttendanceReport.reason.contains(keyword),
+                    AttendanceReport.admin_reply.contains(keyword),
                     User.name.contains(keyword),
                 )
-            ).join(User, AttendanceDispute.user_id == User.id)
+            ).join(User, AttendanceReport.user_id == User.id)
 
         # 정렬 및 제한
-        reports = query.order_by(AttendanceDispute.created_at.desc()).limit(200).all()
+        reports = query.order_by(AttendanceReport.created_at.desc()).limit(200).all()
 
         # 사용자 목록 (필터용)
         users = User.query.filter_by(is_active=True).order_by(User.name).all()
@@ -248,31 +249,31 @@ def report_timeline_export_pdf():
         keyword = request.args.get("q", "")
 
         # 쿼리 구성
-        query = AttendanceDispute.query
+        query = AttendanceReport.query
 
         if user_id:
-            query = query.filter(AttendanceDispute.user_id == int(user_id))
+            query = query.filter(AttendanceReport.user_id == int(user_id))
         if status:
-            query = query.filter(AttendanceDispute.status == status)
+            query = query.filter(AttendanceReport.status == status)
         if date_from:
             query = query.filter(
-                AttendanceDispute.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
+                AttendanceReport.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
             )
         if date_to:
             query = query.filter(
-                AttendanceDispute.created_at
+                AttendanceReport.created_at
                 <= datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
             )
         if keyword:
             query = query.filter(
                 or_(
-                    AttendanceDispute.reason.contains(keyword),
-                    AttendanceDispute.admin_reply.contains(keyword),
+                    AttendanceReport.reason.contains(keyword),
+                    AttendanceReport.admin_reply.contains(keyword),
                     User.name.contains(keyword),
                 )
-            ).join(User, AttendanceDispute.user_id == User.id)
+            ).join(User, AttendanceReport.user_id == User.id)
 
-        reports = query.order_by(AttendanceDispute.created_at.desc()).limit(200).all()
+        reports = query.order_by(AttendanceReport.created_at.desc()).limit(200).all()
 
         # AI 요약
         summary = ai_summarize_reports(reports)
@@ -394,7 +395,7 @@ def report_timeline_export_pdf():
 def admin_report_reply(report_id):
     """신고/이의제기 답변 처리"""
     try:
-        dispute = AttendanceDispute.query.get_or_404(report_id)
+        dispute = AttendanceReport.query.get_or_404(report_id)
 
         # 답변 내용
         reply = request.form.get("reply", "").strip()
@@ -413,7 +414,7 @@ def admin_report_reply(report_id):
         db.session.commit()
 
         # 사용자에게 알림 발송
-        send_notification(
+        send_notification_enhanced(
             user_id=dispute.user_id,
             content=f"신고/이의제기에 답변이 등록되었습니다. (상태: {new_status})",
             category="신고/이의제기",
@@ -450,25 +451,25 @@ def export_reports_excel():
         date_to = request.args.get("date_to", "")
 
         # 쿼리 구성
-        query = AttendanceDispute.query
+        query = AttendanceReport.query
 
         if status:
-            query = query.filter(AttendanceDispute.status == status)
+            query = query.filter(AttendanceReport.status == status)
         if user_id:
-            query = query.filter(AttendanceDispute.user_id == int(user_id))
+            query = query.filter(AttendanceReport.user_id == int(user_id))
         if dispute_type:
-            query = query.filter(AttendanceDispute.dispute_type == dispute_type)
+            query = query.filter(AttendanceReport.dispute_type == dispute_type)
         if date_from:
             query = query.filter(
-                AttendanceDispute.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
+                AttendanceReport.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
             )
         if date_to:
             query = query.filter(
-                AttendanceDispute.created_at
+                AttendanceReport.created_at
                 <= datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
             )
 
-        reports = query.order_by(AttendanceDispute.created_at.desc()).all()
+        reports = query.order_by(AttendanceReport.created_at.desc()).all()
 
         # 엑셀 데이터 구성
         data = []
@@ -541,25 +542,25 @@ def export_reports_pdf():
         date_to = request.args.get("date_to", "")
 
         # 쿼리 구성
-        query = AttendanceDispute.query
+        query = AttendanceReport.query
 
         if status:
-            query = query.filter(AttendanceDispute.status == status)
+            query = query.filter(AttendanceReport.status == status)
         if user_id:
-            query = query.filter(AttendanceDispute.user_id == int(user_id))
+            query = query.filter(AttendanceReport.user_id == int(user_id))
         if dispute_type:
-            query = query.filter(AttendanceDispute.dispute_type == dispute_type)
+            query = query.filter(AttendanceReport.dispute_type == dispute_type)
         if date_from:
             query = query.filter(
-                AttendanceDispute.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
+                AttendanceReport.created_at >= datetime.strptime(date_from, "%Y-%m-%d")
             )
         if date_to:
             query = query.filter(
-                AttendanceDispute.created_at
+                AttendanceReport.created_at
                 <= datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
             )
 
-        reports = query.order_by(AttendanceDispute.created_at.desc()).all()
+        reports = query.order_by(AttendanceReport.created_at.desc()).all()
 
         # PDF 생성
         output = io.BytesIO()
@@ -642,36 +643,36 @@ def reports_stats():
         month_ago = today - timedelta(days=30)
 
         # 전체 통계
-        total_reports = AttendanceDispute.query.count()
-        pending_reports = AttendanceDispute.query.filter_by(status="pending").count()
-        processing_reports = AttendanceDispute.query.filter_by(
+        total_reports = AttendanceReport.query.count()
+        pending_reports = AttendanceReport.query.filter_by(status="pending").count()
+        processing_reports = AttendanceReport.query.filter_by(
             status="processing"
         ).count()
-        resolved_reports = AttendanceDispute.query.filter_by(status="resolved").count()
+        resolved_reports = AttendanceReport.query.filter_by(status="resolved").count()
 
         # 최근 7일 통계
-        recent_week = AttendanceDispute.query.filter(
-            AttendanceDispute.created_at >= week_ago
+        recent_week = AttendanceReport.query.filter(
+            AttendanceReport.created_at >= week_ago
         ).count()
 
         # 최근 30일 통계
-        recent_month = AttendanceDispute.query.filter(
-            AttendanceDispute.created_at >= month_ago
+        recent_month = AttendanceReport.query.filter(
+            AttendanceReport.created_at >= month_ago
         ).count()
 
         # 유형별 통계
         report_type_stats = (
             db.session.query(
-                AttendanceDispute.dispute_type, func.count(AttendanceDispute.id)
+                AttendanceReport.dispute_type, func.count(AttendanceReport.id)
             )
-            .group_by(AttendanceDispute.dispute_type)
+            .group_by(AttendanceReport.dispute_type)
             .all()
         )
 
         # 상태별 통계
         status_stats = (
-            db.session.query(AttendanceDispute.status, func.count(AttendanceDispute.id))
-            .group_by(AttendanceDispute.status)
+            db.session.query(AttendanceReport.status, func.count(AttendanceReport.id))
+            .group_by(AttendanceReport.status)
             .all()
         )
 
@@ -679,8 +680,8 @@ def reports_stats():
         daily_stats = []
         for i in range(7):
             date = today - timedelta(days=i)
-            count = AttendanceDispute.query.filter(
-                func.date(AttendanceDispute.created_at) == date
+            count = AttendanceReport.query.filter(
+                func.date(AttendanceReport.created_at) == date
             ).count()
             daily_stats.append({"date": date.strftime("%m-%d"), "count": count})
 
@@ -717,22 +718,22 @@ def report_stats():
         # 1. 직원별/팀별 누적 신고/이의 건수
         report_counts = (
             db.session.query(
-                User.name, User.id, func.count(AttendanceDispute.id).label("count")
+                User.name, User.id, func.count(AttendanceReport.id).label("count")
             )
-            .join(AttendanceDispute, AttendanceDispute.user_id == User.id)
+            .join(AttendanceReport, AttendanceReport.user_id == User.id)
             .group_by(User.id, User.name)
-            .order_by(func.count(AttendanceDispute.id).desc())
+            .order_by(func.count(AttendanceReport.id).desc())
             .all()
         )
 
         # 2. 사유별(패턴) 건수
         reason_counts = (
             db.session.query(
-                AttendanceDispute.reason,
-                func.count(AttendanceDispute.id).label("count"),
+                AttendanceReport.reason,
+                func.count(AttendanceReport.id).label("count"),
             )
-            .group_by(AttendanceDispute.reason)
-            .order_by(func.count(AttendanceDispute.id).desc())
+            .group_by(AttendanceReport.reason)
+            .order_by(func.count(AttendanceReport.id).desc())
             .all()
         )
 
@@ -745,11 +746,11 @@ def report_stats():
         # 4. 월별/주별 트렌드
         monthly_stats = (
             db.session.query(
-                func.date_format(AttendanceDispute.created_at, "%Y-%m").label("month"),
-                func.count(AttendanceDispute.id).label("count"),
+                func.date_format(AttendanceReport.created_at, "%Y-%m").label("month"),
+                func.count(AttendanceReport.id).label("count"),
             )
-            .group_by(func.date_format(AttendanceDispute.created_at, "%Y-%m"))
-            .order_by(func.date_format(AttendanceDispute.created_at, "%Y-%m").desc())
+            .group_by(func.date_format(AttendanceReport.created_at, "%Y-%m"))
+            .order_by(func.date_format(AttendanceReport.created_at, "%Y-%m").desc())
             .limit(12)
             .all()
         )
@@ -759,12 +760,12 @@ def report_stats():
         try:
             team_stats = (
                 db.session.query(
-                    User.team, func.count(AttendanceDispute.id).label("count")
+                    User.team, func.count(AttendanceReport.id).label("count")
                 )
-                .join(AttendanceDispute, AttendanceDispute.user_id == User.id)
+                .join(AttendanceReport, AttendanceReport.user_id == User.id)
                 .filter(User.team.isnot(None))
                 .group_by(User.team)
-                .order_by(func.count(AttendanceDispute.id).desc())
+                .order_by(func.count(AttendanceReport.id).desc())
                 .all()
             )
         except:
@@ -799,12 +800,12 @@ def report_stats():
         for flagged_user in flagged_users:
             # 이미 경고를 받았는지 확인 (간단한 로직)
             recent_warnings = (
-                db.session.query(AttendanceDispute)
+                db.session.query(AttendanceReport)
                 .filter(
                     and_(
-                        AttendanceDispute.user_id == flagged_user["user_id"],
-                        AttendanceDispute.reason.like("%AI 경고%"),
-                        AttendanceDispute.created_at
+                        AttendanceReport.user_id == flagged_user["user_id"],
+                        AttendanceReport.reason.like("%AI 경고%"),
+                        AttendanceReport.created_at
                         >= datetime.now() - timedelta(days=7),
                     )
                 )
@@ -813,7 +814,7 @@ def report_stats():
 
             if recent_warnings == 0:
                 # 새로운 AI 경고 생성
-                ai_warning = AttendanceDispute(
+                ai_warning = AttendanceReport(
                     attendance_id=None,  # 특정 출결에 대한 것이 아님
                     user_id=flagged_user["user_id"],
                     dispute_type="ai_warning",
@@ -825,7 +826,7 @@ def report_stats():
                 db.session.add(ai_warning)
 
                 # 사용자에게 알림
-                send_notification(
+                send_notification_enhanced(
                     user_id=flagged_user["user_id"],
                     content=f"반복 신고/이의제기 패턴이 감지되어 관리자에게 자동 경고가 발송되었습니다.",
                     category="AI경고",
@@ -860,20 +861,20 @@ def export_report_stats_pdf():
     try:
         # AI 분석 데이터 조회 (위와 동일)
         report_counts = (
-            db.session.query(User.name, func.count(AttendanceDispute.id).label("count"))
-            .join(AttendanceDispute, AttendanceDispute.user_id == User.id)
+            db.session.query(User.name, func.count(AttendanceReport.id).label("count"))
+            .join(AttendanceReport, AttendanceReport.user_id == User.id)
             .group_by(User.id, User.name)
-            .order_by(func.count(AttendanceDispute.id).desc())
+            .order_by(func.count(AttendanceReport.id).desc())
             .all()
         )
 
         reason_counts = (
             db.session.query(
-                AttendanceDispute.reason,
-                func.count(AttendanceDispute.id).label("count"),
+                AttendanceReport.reason,
+                func.count(AttendanceReport.id).label("count"),
             )
-            .group_by(AttendanceDispute.reason)
-            .order_by(func.count(AttendanceDispute.id).desc())
+            .group_by(AttendanceReport.reason)
+            .order_by(func.count(AttendanceReport.id).desc())
             .all()
         )
 
@@ -968,20 +969,20 @@ def export_report_stats_excel():
     try:
         # AI 분석 데이터 조회
         report_counts = (
-            db.session.query(User.name, func.count(AttendanceDispute.id).label("count"))
-            .join(AttendanceDispute, AttendanceDispute.user_id == User.id)
+            db.session.query(User.name, func.count(AttendanceReport.id).label("count"))
+            .join(AttendanceReport, AttendanceReport.user_id == User.id)
             .group_by(User.id, User.name)
-            .order_by(func.count(AttendanceDispute.id).desc())
+            .order_by(func.count(AttendanceReport.id).desc())
             .all()
         )
 
         reason_counts = (
             db.session.query(
-                AttendanceDispute.reason,
-                func.count(AttendanceDispute.id).label("count"),
+                AttendanceReport.reason,
+                func.count(AttendanceReport.id).label("count"),
             )
-            .group_by(AttendanceDispute.reason)
-            .order_by(func.count(AttendanceDispute.id).desc())
+            .group_by(AttendanceReport.reason)
+            .order_by(func.count(AttendanceReport.id).desc())
             .all()
         )
 
@@ -1073,3 +1074,560 @@ def export_report_stats_excel():
         log_error(e, current_user.id)
         flash("엑셀 내보내기 중 오류가 발생했습니다.", "error")
         return redirect(url_for("admin_reports.report_stats"))
+
+
+@admin_reports_bp.route('/admin/permissions')
+@login_required
+@require_permission("employee_management", "assign_roles")
+def manage_permissions():
+    """권한 관리 페이지"""
+    users = User.query.filter(User.deleted_at.is_(None)).all()
+    permission_templates = PermissionTemplate.query.filter_by(is_active=True).all()
+    
+    # 권한 모듈 정의
+    permission_modules = {
+        "dashboard": "대시보드",
+        "employee_management": "직원 관리",
+        "schedule_management": "스케줄 관리", 
+        "order_management": "발주 관리",
+        "inventory_management": "재고 관리",
+        "notification_management": "알림 관리",
+        "system_management": "시스템 관리",
+        "reports": "보고서"
+    }
+    
+    permission_actions = {
+        "view": "조회",
+        "create": "생성",
+        "edit": "편집",
+        "delete": "삭제",
+        "approve": "승인",
+        "assign_roles": "권한 부여"
+    }
+    
+    return render_template('admin/permissions.html',
+                         users=users,
+                         permission_templates=permission_templates,
+                         permission_modules=permission_modules,
+                         permission_actions=permission_actions)
+
+
+@admin_reports_bp.route('/admin/permissions/user/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+@require_permission("employee_management", "assign_roles")
+def user_permissions(user_id):
+    """사용자별 권한 관리"""
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        try:
+            # 기존 권한 백업
+            old_permissions = user.permissions.copy() if user.permissions else {}
+            
+            # 새로운 권한 설정
+            new_permissions = {}
+            for module in request.form.getlist('modules'):
+                actions = request.form.getlist(f'actions_{module}')
+                new_permissions[module] = {
+                    "view": "view" in actions,
+                    "create": "create" in actions,
+                    "edit": "edit" in actions,
+                    "delete": "delete" in actions,
+                    "approve": "approve" in actions,
+                    "assign_roles": "assign_roles" in actions,
+                    "admin_only": request.form.get(f'admin_only_{module}') == 'on'
+                }
+            
+            # 권한 변경 로그 기록
+            change_log = PermissionChangeLog(
+                user_id=user.id,
+                changed_by=current_user.id,
+                change_type="permission",
+                before_value=json.dumps(old_permissions, ensure_ascii=False),
+                after_value=json.dumps(new_permissions, ensure_ascii=False),
+                reason=request.form.get('reason', ''),
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string
+            )
+            
+            # 권한 업데이트
+            user.permissions = new_permissions
+            db.session.add(change_log)
+            db.session.commit()
+            
+            flash(f"{user.username}의 권한이 성공적으로 업데이트되었습니다.", "success")
+            return redirect(url_for('admin_reports.manage_permissions'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"권한 업데이트 중 오류가 발생했습니다: {str(e)}", "error")
+    
+    return render_template('admin/user_permissions.html', user=user)
+
+
+@admin_reports_bp.route('/admin/permissions/template', methods=['GET', 'POST'])
+@login_required
+@require_permission("employee_management", "assign_roles")
+def permission_templates():
+    """권한 템플릿 관리"""
+    if request.method == 'POST':
+        try:
+            template = PermissionTemplate(
+                name=request.form['name'],
+                description=request.form['description'],
+                permissions=request.form['permissions'],
+                role_type=request.form['role_type'],
+                created_by=current_user.id
+            )
+            db.session.add(template)
+            db.session.commit()
+            flash("권한 템플릿이 생성되었습니다.", "success")
+            return redirect(url_for('admin_reports.permission_templates'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"템플릿 생성 중 오류가 발생했습니다: {str(e)}", "error")
+    
+    templates = PermissionTemplate.query.all()
+    return render_template('admin/permission_templates.html', templates=templates)
+
+
+@admin_reports_bp.route('/admin/permissions/apply_template/<int:user_id>/<int:template_id>')
+@login_required
+@require_permission("employee_management", "assign_roles")
+def apply_permission_template(user_id, template_id):
+    """권한 템플릿 적용"""
+    user = User.query.get_or_404(user_id)
+    template = PermissionTemplate.query.get_or_404(template_id)
+    
+    try:
+        # 기존 권한 백업
+        old_permissions = user.permissions.copy() if user.permissions else {}
+        
+        # 템플릿 권한 적용
+        new_permissions = json.loads(template.permissions)
+        user.permissions = new_permissions
+        
+        # 권한 변경 로그 기록
+        change_log = PermissionChangeLog(
+            user_id=user.id,
+            changed_by=current_user.id,
+            change_type="template_apply",
+            before_value=json.dumps(old_permissions, ensure_ascii=False),
+            after_value=json.dumps(new_permissions, ensure_ascii=False),
+            reason=f"템플릿 '{template.name}' 적용",
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
+        
+        db.session.add(change_log)
+        db.session.commit()
+        
+        flash(f"{user.username}에게 '{template.name}' 템플릿이 적용되었습니다.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"템플릿 적용 중 오류가 발생했습니다: {str(e)}", "error")
+    
+    return redirect(url_for('admin_reports.manage_permissions'))
+
+
+@admin_reports_bp.route('/admin/permissions/logs')
+@login_required
+@require_permission("employee_management", "view")
+def permission_logs():
+    """권한 변경 로그"""
+    page = request.args.get('page', 1, type=int)
+    logs = PermissionChangeLog.query.order_by(
+        PermissionChangeLog.created_at.desc()
+    ).paginate(
+        page=page, per_page=50, error_out=False
+    )
+    
+    return render_template('admin/permission_logs.html', logs=logs)
+
+
+@admin_reports_bp.route('/api/permissions/check')
+@login_required
+def check_permissions():
+    """권한 체크 API"""
+    module = request.args.get('module')
+    action = request.args.get('action', 'view')
+    
+    if not module:
+        return jsonify({"error": "모듈이 지정되지 않았습니다."}), 400
+    
+    has_perm = current_user.has_permission(module, action)
+    return jsonify({
+        "module": module,
+        "action": action,
+        "has_permission": has_perm,
+        "user_role": current_user.role
+    })
+
+
+@admin_reports_bp.route('/api/permissions/summary')
+@login_required
+def permission_summary():
+    """권한 요약 정보 API"""
+    summary = current_user.get_permission_summary()
+    return jsonify(summary)
+
+
+@admin_reports_bp.route('/admin/dashboard/charts')
+@login_required
+@require_permission("dashboard", "view")
+def dashboard_charts():
+    """관리자 대시보드 차트 데이터"""
+    # 기간 설정
+    days = request.args.get('days', 30, type=int)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days)
+    
+    # 출근 데이터 (일별)
+    attendance_data = db.session.query(
+        func.date(Attendance.clock_in).label('date'),
+        func.count(Attendance.id).label('count')
+    ).filter(
+        and_(
+            Attendance.clock_in >= start_date,
+            Attendance.clock_in <= end_date
+        )
+    ).group_by(func.date(Attendance.clock_in)).all()
+    
+    # 알림 데이터 (일별)
+    notification_data = db.session.query(
+        func.date(Notification.created_at).label('date'),
+        func.count(Notification.id).label('count')
+    ).filter(
+        and_(
+            Notification.created_at >= start_date,
+            Notification.created_at <= end_date
+        )
+    ).group_by(func.date(Notification.created_at)).all()
+    
+    # 발주 데이터 (일별)
+    order_data = db.session.query(
+        func.date(Order.created_at).label('date'),
+        func.count(Order.id).label('count')
+    ).filter(
+        and_(
+            Order.created_at >= start_date,
+            Order.created_at <= end_date
+        )
+    ).group_by(func.date(Order.created_at)).all()
+    
+    # 시스템 로그 데이터 (일별)
+    system_log_data = db.session.query(
+        func.date(SystemLog.created_at).label('date'),
+        func.count(SystemLog.id).label('count')
+    ).filter(
+        and_(
+            SystemLog.created_at >= start_date,
+            SystemLog.created_at <= end_date
+        )
+    ).group_by(func.date(SystemLog.created_at)).all()
+    
+    # 데이터 포맷팅
+    def format_chart_data(data, label):
+        dates = []
+        counts = []
+        for item in data:
+            dates.append(item.date.strftime('%Y-%m-%d'))
+            counts.append(item.count)
+        return {
+            'labels': dates,
+            'datasets': [{
+                'label': label,
+                'data': counts,
+                'borderColor': 'rgb(75, 192, 192)',
+                'backgroundColor': 'rgba(75, 192, 192, 0.2)',
+                'tension': 0.1
+            }]
+        }
+    
+    return jsonify({
+        'attendance': format_chart_data(attendance_data, '출근'),
+        'notifications': format_chart_data(notification_data, '알림'),
+        'orders': format_chart_data(order_data, '발주'),
+        'system_logs': format_chart_data(system_log_data, '시스템 로그')
+    })
+
+
+@admin_reports_bp.route('/admin/dashboard/stats')
+@login_required
+@require_permission("dashboard", "view")
+def dashboard_stats():
+    """관리자 대시보드 통계 데이터"""
+    today = datetime.now().date()
+    this_month = datetime.now().replace(day=1)
+    
+    # 오늘 통계
+    today_stats = {
+        'attendance': Attendance.query.filter(
+            func.date(Attendance.clock_in) == today
+        ).count(),
+        'notifications': Notification.query.filter(
+            func.date(Notification.created_at) == today
+        ).count(),
+        'orders': Order.query.filter(
+            func.date(Order.created_at) == today
+        ).count(),
+        'system_logs': SystemLog.query.filter(
+            func.date(SystemLog.created_at) == today
+        ).count()
+    }
+    
+    # 이번 달 통계
+    month_stats = {
+        'attendance': Attendance.query.filter(
+            Attendance.clock_in >= this_month
+        ).count(),
+        'notifications': Notification.query.filter(
+            Notification.created_at >= this_month
+        ).count(),
+        'orders': Order.query.filter(
+            Order.created_at >= this_month
+        ).count(),
+        'system_logs': SystemLog.query.filter(
+            SystemLog.created_at >= this_month
+        ).count()
+    }
+    
+    # 사용자 통계
+    user_stats = {
+        'total_users': User.query.filter(User.deleted_at.is_(None)).count(),
+        'active_users': User.query.filter(
+            and_(User.deleted_at.is_(None), User.status == 'approved')
+        ).count(),
+        'pending_users': User.query.filter(
+            and_(User.deleted_at.is_(None), User.status == 'pending')
+        ).count(),
+        'admin_users': User.query.filter(
+            and_(User.deleted_at.is_(None), User.role == 'admin')
+        ).count()
+    }
+    
+    return jsonify({
+        'today': today_stats,
+        'month': month_stats,
+        'users': user_stats
+    })
+
+
+@admin_reports_bp.route('/admin/dashboard/realtime')
+@login_required
+@require_permission("dashboard", "view")
+def realtime_dashboard():
+    """실시간 대시보드"""
+    # 최근 1시간 데이터
+    one_hour_ago = datetime.now() - timedelta(hours=1)
+    
+    # 실시간 통계
+    realtime_stats = {
+        'recent_attendance': Attendance.query.filter(
+            Attendance.clock_in >= one_hour_ago
+        ).count(),
+        'recent_notifications': Notification.query.filter(
+            Notification.created_at >= one_hour_ago
+        ).count(),
+        'recent_orders': Order.query.filter(
+            Order.created_at >= one_hour_ago
+        ).count(),
+        'recent_logs': SystemLog.query.filter(
+            SystemLog.created_at >= one_hour_ago
+        ).count()
+    }
+    
+    # 최근 활동
+    recent_activities = []
+    
+    # 최근 출근
+    recent_attendance = Attendance.query.filter(
+        Attendance.clock_in >= one_hour_ago
+    ).order_by(Attendance.clock_in.desc()).limit(5).all()
+    
+    for attendance in recent_attendance:
+        recent_activities.append({
+            'type': 'attendance',
+            'user': attendance.user.username,
+            'action': '출근',
+            'time': attendance.clock_in.strftime('%H:%M'),
+            'icon': 'fas fa-sign-in-alt'
+        })
+    
+    # 최근 알림
+    recent_notifications = Notification.query.filter(
+        Notification.created_at >= one_hour_ago
+    ).order_by(Notification.created_at.desc()).limit(5).all()
+    
+    for notification in recent_notifications:
+        recent_activities.append({
+            'type': 'notification',
+            'user': notification.user.username,
+            'action': notification.title or '알림',
+            'time': notification.created_at.strftime('%H:%M'),
+            'icon': 'fas fa-bell'
+        })
+    
+    # 시간순 정렬
+    recent_activities.sort(key=lambda x: x['time'], reverse=True)
+    
+    return jsonify({
+        'stats': realtime_stats,
+        'activities': recent_activities[:10]  # 최대 10개
+    })
+
+
+@admin_reports_bp.route('/admin/logs')
+@login_required
+@require_permission("system_management", "monitoring")
+def system_logs():
+    """시스템 로그 뷰어"""
+    # 로그 레벨 필터
+    level = request.args.get('level', 'all')
+    # 페이지네이션
+    page = request.args.get('page', 1, type=int)
+    
+    # 로그 쿼리
+    query = SystemLog.query
+    
+    if level != 'all':
+        query = query.filter(SystemLog.action.contains(level.upper()))
+    
+    logs = query.order_by(SystemLog.created_at.desc()).paginate(
+        page=page, per_page=100, error_out=False
+    )
+    
+    return render_template('admin/system_logs.html', logs=logs, level=level)
+
+
+@admin_reports_bp.route('/admin/logs/realtime')
+@login_required
+@require_permission("system_management", "monitoring")
+def realtime_logs():
+    """실시간 로그 스트리밍"""
+    return render_template('admin/realtime_logs.html')
+
+
+@admin_reports_bp.route('/api/logs/stream')
+@login_required
+@require_permission("system_management", "monitoring")
+def log_stream():
+    """로그 스트림 API"""
+    from flask import Response, stream_with_context
+    import time
+    
+    def generate():
+        last_id = 0
+        
+        while True:
+            try:
+                # 새로운 로그 조회
+                new_logs = SystemLog.query.filter(
+                    SystemLog.id > last_id
+                ).order_by(SystemLog.created_at.desc()).limit(10).all()
+                
+                if new_logs:
+                    for log in new_logs:
+                        last_id = max(last_id, log.id)
+                        
+                        log_data = {
+                            'id': log.id,
+                            'action': log.action,
+                            'detail': log.detail,
+                            'user': log.user.username if log.user else '시스템',
+                            'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                            'ip_address': log.ip_address
+                        }
+                        
+                        yield f"data: {json.dumps(log_data, ensure_ascii=False)}\n\n"
+                
+                time.sleep(2)  # 2초마다 체크
+                
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+                time.sleep(5)
+    
+    return Response(stream_with_context(generate()), 
+                   mimetype='text/event-stream')
+
+
+@admin_reports_bp.route('/api/logs/recent')
+@login_required
+@require_permission("system_management", "monitoring")
+def recent_logs():
+    """최근 로그 조회 API"""
+    limit = request.args.get('limit', 50, type=int)
+    level = request.args.get('level', 'all')
+    
+    query = SystemLog.query
+    
+    if level != 'all':
+        query = query.filter(SystemLog.action.contains(level.upper()))
+    
+    logs = query.order_by(SystemLog.created_at.desc()).limit(limit).all()
+    
+    log_list = []
+    for log in logs:
+        log_list.append({
+            'id': log.id,
+            'action': log.action,
+            'detail': log.detail,
+            'user': log.user.username if log.user else '시스템',
+            'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'ip_address': log.ip_address
+        })
+    
+    return jsonify(log_list)
+
+
+@admin_reports_bp.route('/admin/logs/export')
+@login_required
+@require_permission("system_management", "monitoring")
+def export_logs():
+    """로그 내보내기"""
+    from datetime import datetime, timedelta
+    
+    # 기간 설정
+    days = request.args.get('days', 7, type=int)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days)
+    
+    # 로그 조회
+    logs = SystemLog.query.filter(
+        and_(
+            SystemLog.created_at >= start_date,
+            SystemLog.created_at <= end_date
+        )
+    ).order_by(SystemLog.created_at.desc()).all()
+    
+    # CSV 생성
+    import csv
+    from io import StringIO
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # 헤더
+    writer.writerow(['ID', '액션', '상세내용', '사용자', 'IP주소', '생성일시'])
+    
+    # 데이터
+    for log in logs:
+        writer.writerow([
+            log.id,
+            log.action,
+            log.detail,
+            log.user.username if log.user else '시스템',
+            log.ip_address,
+            log.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+    
+    output.seek(0)
+    
+    from flask import send_file
+    return send_file(
+        StringIO(output.getvalue()),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=f'system_logs_{datetime.now().strftime("%Y%m%d")}.csv'
+    )

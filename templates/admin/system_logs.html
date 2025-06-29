@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}시스템 로그{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-list-alt"></i> 시스템 로그
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('admin_reports.realtime_logs') }}" class="btn btn-info btn-sm">
+                            <i class="fas fa-stream"></i> 실시간 로그
+                        </a>
+                        <a href="{{ url_for('admin_reports.export_logs') }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-download"></i> 내보내기
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 필터 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <form method="GET" class="d-flex">
+                                <select name="level" class="form-select me-2">
+                                    <option value="all" {{ 'selected' if level == 'all' else '' }}>모든 레벨</option>
+                                    <option value="error" {{ 'selected' if level == 'error' else '' }}>오류</option>
+                                    <option value="warning" {{ 'selected' if level == 'warning' else '' }}>경고</option>
+                                    <option value="info" {{ 'selected' if level == 'info' else '' }}>정보</option>
+                                    <option value="success" {{ 'selected' if level == 'success' else '' }}>성공</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary">필터</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- 로그 테이블 -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>액션</th>
+                                    <th>상세내용</th>
+                                    <th>사용자</th>
+                                    <th>IP주소</th>
+                                    <th>생성일시</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs.items %}
+                                <tr>
+                                    <td>{{ log.id }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if 'ERROR' in log.action else 'warning' if 'WARNING' in log.action else 'success' if 'SUCCESS' in log.action else 'info' }}">
+                                            {{ log.action }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 300px;" title="{{ log.detail }}">
+                                            {{ log.detail or '-' }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if log.user %}
+                                            <span class="badge bg-primary">{{ log.user.username }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">시스템</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ log.ip_address or '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 페이지네이션 -->
+                    {% if logs.pages > 1 %}
+                    <nav aria-label="로그 페이지네이션">
+                        <ul class="pagination justify-content-center">
+                            {% if logs.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_reports.system_logs', page=logs.prev_num, level=level) }}">이전</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in logs.iter_pages() %}
+                                {% if page_num %}
+                                    <li class="page-item {{ 'active' if page_num == logs.page else '' }}">
+                                        <a class="page-link" href="{{ url_for('admin_reports.system_logs', page=page_num, level=level) }}">{{ page_num }}</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if logs.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_reports.system_logs', page=logs.next_num, level=level) }}">다음</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

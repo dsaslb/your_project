@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 from sqlalchemy import and_, func, or_
 
 from extensions import db
-from models import Attendance, AttendanceDispute, User
+from models import Attendance, AttendanceReport, User
 from utils.email_utils import email_service
 from utils.logger import log_action, log_error
-from utils.notification_automation import send_notification
+from utils.notify import send_notification_enhanced
 
 
 class AssigneeManager:
@@ -66,7 +66,7 @@ class AssigneeManager:
     def reassign_dispute(dispute_id, new_assignee_id, reason=""):
         """담당자 재배정"""
         try:
-            dispute = AttendanceDispute.query.get(dispute_id)
+            dispute = AttendanceReport.query.get(dispute_id)
             if not dispute:
                 return False, "신고/이의제기를 찾을 수 없습니다."
 
@@ -82,7 +82,7 @@ class AssigneeManager:
             db.session.commit()
 
             # 새 담당자에게 알림
-            send_notification(
+            send_notification_enhanced(
                 user_id=new_assignee_id,
                 content=f"신고/이의제기 담당자로 배정되었습니다. (신고자: {dispute.user.name or dispute.user.username})",
                 category="신고/이의제기",
@@ -91,7 +91,7 @@ class AssigneeManager:
 
             # 기존 담당자에게 알림 (변경된 경우)
             if old_assignee_id and old_assignee_id != new_assignee_id:
-                send_notification(
+                send_notification_enhanced(
                     user_id=old_assignee_id,
                     content=f"담당 신고/이의제기가 다른 담당자로 이관되었습니다.",
                     category="신고/이의제기",
@@ -114,17 +114,17 @@ class AssigneeManager:
         """SLA 기한 초과 확인 및 알림"""
         try:
             now = datetime.utcnow()
-            overdue_disputes = AttendanceDispute.query.filter(
+            overdue_disputes = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due < now,
-                    AttendanceDispute.assignee_id.isnot(None),
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due < now,
+                    AttendanceReport.assignee_id.isnot(None),
                 )
             ).all()
 
             for dispute in overdue_disputes:
                 # 담당자에게 SLA 초과 알림
-                send_notification(
+                send_notification_enhanced(
                     user_id=dispute.assignee_id,
                     content=f"⚠️ SLA 초과: 신고/이의제기 처리 기한이 초과되었습니다! (신고자: {dispute.user.name or dispute.user.username})",
                     category="SLA경고",
@@ -135,7 +135,7 @@ class AssigneeManager:
                 admin_users = User.query.filter(User.role == "admin").all()
                 for admin in admin_users:
                     if admin.id != dispute.assignee_id:  # 담당자 본인 제외
-                        send_notification(
+                        send_notification_enhanced(
                             user_id=admin.id,
                             content=f"SLA 초과 알림: {dispute.assignee.name or dispute.assignee.username} 담당 신고/이의제기 기한 초과",
                             category="SLA경고",
@@ -158,38 +158,38 @@ class AssigneeManager:
         """담당자별 업무량 조회"""
         try:
             # 대기중인 건수
-            pending_count = AttendanceDispute.query.filter(
+            pending_count = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.assignee_id == assignee_id,
-                    AttendanceDispute.status == "pending",
+                    AttendanceReport.assignee_id == assignee_id,
+                    AttendanceReport.status == "pending",
                 )
             ).count()
 
             # 처리중인 건수
-            processing_count = AttendanceDispute.query.filter(
+            processing_count = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.assignee_id == assignee_id,
-                    AttendanceDispute.status == "processing",
+                    AttendanceReport.assignee_id == assignee_id,
+                    AttendanceReport.status == "processing",
                 )
             ).count()
 
             # SLA 임박 건수 (24시간 이내)
-            sla_urgent = AttendanceDispute.query.filter(
+            sla_urgent = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.assignee_id == assignee_id,
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due
+                    AttendanceReport.assignee_id == assignee_id,
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due
                     <= datetime.utcnow() + timedelta(hours=24),
-                    AttendanceDispute.sla_due > datetime.utcnow(),
+                    AttendanceReport.sla_due > datetime.utcnow(),
                 )
             ).count()
 
             # SLA 초과 건수
-            sla_overdue = AttendanceDispute.query.filter(
+            sla_overdue = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.assignee_id == assignee_id,
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due < datetime.utcnow(),
+                    AttendanceReport.assignee_id == assignee_id,
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due < datetime.utcnow(),
                 )
             ).count()
 
@@ -220,41 +220,41 @@ class AssigneeManager:
                 db.session.query(
                     User.name,
                     User.id,
-                    func.count(AttendanceDispute.id).label("total"),
+                    func.count(AttendanceReport.id).label("total"),
                     func.sum(
-                        func.case([(AttendanceDispute.status == "pending", 1)], else_=0)
+                        func.case([(AttendanceReport.status == "pending", 1)], else_=0)
                     ).label("pending"),
                     func.sum(
                         func.case(
-                            [(AttendanceDispute.status == "processing", 1)], else_=0
+                            [(AttendanceReport.status == "processing", 1)], else_=0
                         )
                     ).label("processing"),
                     func.sum(
                         func.case(
-                            [(AttendanceDispute.status == "resolved", 1)], else_=0
+                            [(AttendanceReport.status == "resolved", 1)], else_=0
                         )
                     ).label("resolved"),
                 )
-                .join(AttendanceDispute, User.id == AttendanceDispute.assignee_id)
+                .join(AttendanceReport, User.id == AttendanceReport.assignee_id)
                 .group_by(User.id, User.name)
-                .order_by(func.count(AttendanceDispute.id).desc())
+                .order_by(func.count(AttendanceReport.id).desc())
                 .all()
             )
 
             # SLA 통계
-            sla_overdue_count = AttendanceDispute.query.filter(
+            sla_overdue_count = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due < datetime.utcnow(),
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due < datetime.utcnow(),
                 )
             ).count()
 
-            sla_urgent_count = AttendanceDispute.query.filter(
+            sla_urgent_count = AttendanceReport.query.filter(
                 and_(
-                    AttendanceDispute.status.in_(["pending", "processing"]),
-                    AttendanceDispute.sla_due
+                    AttendanceReport.status.in_(["pending", "processing"]),
+                    AttendanceReport.sla_due
                     <= datetime.utcnow() + timedelta(hours=24),
-                    AttendanceDispute.sla_due > datetime.utcnow(),
+                    AttendanceReport.sla_due > datetime.utcnow(),
                 )
             ).count()
 
@@ -272,7 +272,7 @@ class AssigneeManager:
 def assign_dispute(dispute_id, assignee_id=None, reason=None):
     """신고/이의제기 담당자 배정"""
     try:
-        dispute = AttendanceDispute.query.get(dispute_id)
+        dispute = AttendanceReport.query.get(dispute_id)
         if not dispute:
             return False, "신고/이의제기를 찾을 수 없습니다."
 
@@ -290,7 +290,7 @@ def assign_dispute(dispute_id, assignee_id=None, reason=None):
 
             # 새 담당자에게 알림
             if assignee_id:
-                send_notification(
+                send_notification_enhanced(
                     user_id=assignee_id,
                     content=f"신고/이의제기 담당자로 배정되었습니다. (신고 #{dispute.id})",
                     category="담당자 배정",
@@ -307,7 +307,7 @@ def assign_dispute(dispute_id, assignee_id=None, reason=None):
 
             # 기존 담당자에게 배정 해제 알림
             if old_assignee_id and old_assignee_id != assignee_id:
-                send_notification(
+                send_notification_enhanced(
                     user_id=old_assignee_id,
                     content=f"신고/이의제기 담당자 배정이 해제되었습니다. (신고 #{dispute.id})",
                     category="담당자 배정",

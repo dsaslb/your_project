@@ -4,6 +4,7 @@ from functools import wraps
 
 from flask import abort, flash, redirect, request, session, url_for
 from flask_login import current_user
+from models import User
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -187,3 +188,111 @@ def escape_html(text):
 # 미리보기 관련 상수
 MAX_PREVIEW_SIZE = 5000  # 미리보기 최대 바이트 제한
 MAX_FILE_SIZE_MB = 10  # 최대 파일 크기 (MB)
+
+
+def require_permission(module, action="view"):
+    """JSON 기반 세밀한 권한 체크 데코레이터"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash("로그인이 필요합니다.", "warning")
+                return redirect(url_for('auth.login', next=request.url))
+            
+            # 권한 확인
+            if not current_user.has_permission(module, action):
+                logger.warning(
+                    f"Permission denied: {current_user.id} ({current_user.role}) -> {module}.{action} -> {request.endpoint}"
+                )
+                flash(f"{module}의 {action} 권한이 없습니다.", "error")
+                return redirect(url_for('dashboard'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+def require_module_access(module):
+    """모듈 접근 권한 확인"""
+    return require_permission(module, "view")
+
+
+def require_module_edit(module):
+    """모듈 편집 권한 확인"""
+    return require_permission(module, "edit")
+
+
+def require_module_create(module):
+    """모듈 생성 권한 확인"""
+    return require_permission(module, "create")
+
+
+def require_module_delete(module):
+    """모듈 삭제 권한 확인"""
+    return require_permission(module, "delete")
+
+
+def require_module_approve(module):
+    """모듈 승인 권한 확인"""
+    return require_permission(module, "approve")
+
+
+def manager_required(f):
+    """매장관리자 권한 확인 데코레이터"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash("로그인이 필요합니다.", "warning")
+            return redirect(url_for("auth.login"))
+
+        if not current_user.is_manager():
+            logger.warning(
+                f"Manager access denied: {current_user.id} -> {request.endpoint}"
+            )
+            flash("매장관리자 권한이 필요합니다.", "error")
+            return redirect(url_for("dashboard"))
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def permission_required(permission_name):
+    """특정 권한 확인 데코레이터"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash("로그인이 필요합니다.", "warning")
+                return redirect(url_for("auth.login"))
+
+            if not current_user.has_permission(permission_name):
+                logger.warning(
+                    f"Permission denied: {current_user.id} -> {permission_name} -> {request.endpoint}"
+                )
+                flash(f"{permission_name} 권한이 필요합니다.", "error")
+                return redirect(url_for("dashboard"))
+
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+def role_required(allowed_roles):
+    """특정 역할만 접근 가능한 데코레이터"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash("로그인이 필요합니다.", "warning")
+                return redirect(url_for("auth.login"))
+
+            if current_user.role not in allowed_roles:
+                logger.warning(
+                    f"Role access denied: {current_user.id} ({current_user.role}) -> {allowed_roles} -> {request.endpoint}"
+                )
+                flash("접근 권한이 없습니다.", "error")
+                return redirect(url_for("dashboard"))
+
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator

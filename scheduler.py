@@ -3,11 +3,14 @@ from datetime import date, datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import and_, extract, func
 
-from models import Attendance, User, db
+from models import Attendance, User, db, SystemLog, AttendanceReport
 from utils.auto_processor import auto_processor
 from utils.email_utils import email_service
+from utils.backup_manager import backup_manager
+from utils.notify import send_notification_enhanced
 
 logger = logging.getLogger(__name__)
 
@@ -490,3 +493,238 @@ def init_scheduler():
 def stop_scheduler():
     """스케줄러 중지"""
     scheduler.stop()
+
+
+class BackupScheduler:
+    def __init__(self, app=None):
+        self.app = app
+        self.scheduler = BackgroundScheduler()
+        if app is not None:
+            self.init_app(app)
+    
+    def init_app(self, app):
+        self.app = app
+        self.backup_manager = backup_manager
+        self.backup_manager.init_app(app)
+        
+        # 스케줄러 설정
+        self.scheduler.add_job(
+            func=self._daily_backup,
+            trigger=CronTrigger(hour=2, minute=0),  # 매일 새벽 2시
+            id='daily_backup',
+            name='일일 자동 백업',
+            replace_existing=True
+        )
+        
+        self.scheduler.add_job(
+            func=self._weekly_backup,
+            trigger=CronTrigger(day_of_week='sun', hour=3, minute=0),  # 매주 일요일 새벽 3시
+            id='weekly_backup',
+            name='주간 자동 백업',
+            replace_existing=True
+        )
+        
+        self.scheduler.add_job(
+            func=self._cleanup_backups,
+            trigger=CronTrigger(hour=4, minute=0),  # 매일 새벽 4시
+            id='cleanup_backups',
+            name='백업 정리',
+            replace_existing=True
+        )
+        
+        # 스케줄러 시작
+        self.scheduler.start()
+        logger.info("백업 스케줄러가 시작되었습니다.")
+    
+    def _daily_backup(self):
+        """일일 백업 실행"""
+        try:
+            with self.app.app_context():
+                logger.info("일일 백업을 시작합니다...")
+                
+                # 데이터베이스 백업 생성
+                backup_path = self.backup_manager.create_backup('db_only')
+                
+                if backup_path:
+                    # 관리자들에게 백업 완료 알림
+                    self._notify_backup_completion('일일', backup_path)
+                    logger.info(f"일일 백업 완료: {backup_path}")
+                else:
+                    logger.error("일일 백업 실패")
+                    
+        except Exception as e:
+            logger.error(f"일일 백업 중 오류 발생: {str(e)}")
+            self._notify_backup_error('일일', str(e))
+    
+    def _weekly_backup(self):
+        """주간 백업 실행"""
+        try:
+            with self.app.app_context():
+                logger.info("주간 백업을 시작합니다...")
+                
+                # 전체 백업 생성
+                backup_path = self.backup_manager.create_backup('full')
+                
+                if backup_path:
+                    # 관리자들에게 백업 완료 알림
+                    self._notify_backup_completion('주간', backup_path)
+                    logger.info(f"주간 백업 완료: {backup_path}")
+                else:
+                    logger.error("주간 백업 실패")
+                    
+        except Exception as e:
+            logger.error(f"주간 백업 중 오류 발생: {str(e)}")
+            self._notify_backup_error('주간', str(e))
+    
+    def _cleanup_backups(self):
+        """백업 정리"""
+        try:
+            with self.app.app_context():
+                logger.info("백업 정리를 시작합니다...")
+                
+                # 오래된 백업 삭제
+                self.backup_manager.cleanup_old_backups()
+                
+                logger.info("백업 정리 완료")
+                
+        except Exception as e:
+            logger.error(f"백업 정리 중 오류 발생: {str(e)}")
+    
+    def _notify_backup_completion(self, backup_type, backup_path):
+        """백업 완료 알림"""
+        try:
+            # 관리자들에게 알림
+            admins = User.query.filter_by(role='admin').all()
+            
+            for admin in admins:
+                send_notification_enhanced(
+                    user_id=admin.id,
+                    title=f"{backup_type} 백업 완료",
+                    content=f"{backup_type} 자동 백업이 성공적으로 완료되었습니다.\n백업 파일: {os.path.basename(backup_path)}",
+                    category="시스템",
+                    priority="중요"
+                )
+                
+        except Exception as e:
+            logger.error(f"백업 완료 알림 발송 실패: {str(e)}")
+    
+    def _notify_backup_error(self, backup_type, error_message):
+        """백업 오류 알림"""
+        try:
+            # 관리자들에게 오류 알림
+            admins = User.query.filter_by(role='admin').all()
+            
+            for admin in admins:
+                send_notification_enhanced(
+                    user_id=admin.id,
+                    title=f"{backup_type} 백업 실패",
+                    content=f"{backup_type} 자동 백업 중 오류가 발생했습니다.\n오류 내용: {error_message}",
+                    category="시스템",
+                    priority="긴급"
+                )
+                
+        except Exception as e:
+            logger.error(f"백업 오류 알림 발송 실패: {str(e)}")
+    
+    def add_custom_backup_job(self, backup_type, schedule_type, **schedule_args):
+        """사용자 정의 백업 작업 추가"""
+        try:
+            job_id = f"custom_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            if schedule_type == 'interval':
+                trigger = IntervalTrigger(**schedule_args)
+            elif schedule_type == 'cron':
+                trigger = CronTrigger(**schedule_args)
+            else:
+                raise ValueError(f"지원하지 않는 스케줄 타입: {schedule_type}")
+            
+            self.scheduler.add_job(
+                func=self._custom_backup,
+                trigger=trigger,
+                id=job_id,
+                name=f'사용자 정의 {backup_type} 백업',
+                args=[backup_type]
+            )
+            
+            logger.info(f"사용자 정의 백업 작업 추가: {job_id}")
+            return job_id
+            
+        except Exception as e:
+            logger.error(f"사용자 정의 백업 작업 추가 실패: {str(e)}")
+            return None
+    
+    def _custom_backup(self, backup_type):
+        """사용자 정의 백업 실행"""
+        try:
+            with self.app.app_context():
+                logger.info(f"사용자 정의 {backup_type} 백업을 시작합니다...")
+                
+                backup_path = self.backup_manager.create_backup(backup_type)
+                
+                if backup_path:
+                    self._notify_backup_completion(f'사용자 정의 {backup_type}', backup_path)
+                    logger.info(f"사용자 정의 백업 완료: {backup_path}")
+                else:
+                    logger.error("사용자 정의 백업 실패")
+                    
+        except Exception as e:
+            logger.error(f"사용자 정의 백업 중 오류 발생: {str(e)}")
+            self._notify_backup_error(f'사용자 정의 {backup_type}', str(e))
+    
+    def remove_job(self, job_id):
+        """작업 제거"""
+        try:
+            self.scheduler.remove_job(job_id)
+            logger.info(f"백업 작업 제거: {job_id}")
+            return True
+        except Exception as e:
+            logger.error(f"백업 작업 제거 실패: {str(e)}")
+            return False
+    
+    def get_jobs(self):
+        """작업 목록 조회"""
+        try:
+            jobs = []
+            for job in self.scheduler.get_jobs():
+                jobs.append({
+                    'id': job.id,
+                    'name': job.name,
+                    'next_run_time': job.next_run_time,
+                    'trigger': str(job.trigger)
+                })
+            return jobs
+        except Exception as e:
+            logger.error(f"작업 목록 조회 실패: {str(e)}")
+            return []
+    
+    def pause_job(self, job_id):
+        """작업 일시정지"""
+        try:
+            self.scheduler.pause_job(job_id)
+            logger.info(f"백업 작업 일시정지: {job_id}")
+            return True
+        except Exception as e:
+            logger.error(f"백업 작업 일시정지 실패: {str(e)}")
+            return False
+    
+    def resume_job(self, job_id):
+        """작업 재개"""
+        try:
+            self.scheduler.resume_job(job_id)
+            logger.info(f"백업 작업 재개: {job_id}")
+            return True
+        except Exception as e:
+            logger.error(f"백업 작업 재개 실패: {str(e)}")
+            return False
+    
+    def shutdown(self):
+        """스케줄러 종료"""
+        try:
+            self.scheduler.shutdown()
+            logger.info("백업 스케줄러가 종료되었습니다.")
+        except Exception as e:
+            logger.error(f"백업 스케줄러 종료 실패: {str(e)}")
+
+
+# 전역 스케줄러 인스턴스
+backup_scheduler = BackupScheduler()

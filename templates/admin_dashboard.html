@@ -1,992 +1,902 @@
-{% extends "base.html" %}
-
-{% block title %}관리자 대시보드{% endblock %}
-
-{% block content %}
-<h2>
-    {% if DASHBOARD_MODE == 'solo' %}
-        🏪 1인 사장님 대시보드
-    {% elif DASHBOARD_MODE == 'franchise' %}
-        🏢 그룹/프랜차이즈 최고관리자 대시보드
-    {% else %}
-        👨‍💼 관리자/팀장 대시보드
-    {% endif %}
-</h2>
-
-<!-- 대시보드 모드 표시 -->
-<div class="alert alert-info mb-3">
-    <i class="fas fa-info-circle"></i>
-    <strong>현재 모드:</strong>
-    {% if DASHBOARD_MODE == 'solo' %}
-        <span class="badge bg-success">1인 사장님 모드</span> - 모든 업무 메뉴에 접근 가능
-    {% elif DASHBOARD_MODE == 'franchise' %}
-        <span class="badge bg-primary">그룹/프랜차이즈 모드</span> - 최고관리자 전용 메뉴만 표시
-    {% else %}
-        <span class="badge bg-secondary">일반 관리자 모드</span>
-    {% endif %}
-</div>
-
-<!-- 1인 사장님 모드: 모든 기능 표시 -->
-{% if DASHBOARD_MODE == 'solo' %}
-    <div class="row mb-3">
-      <div class="col-md-3">
-        <div class="card text-bg-light mb-3">
-          <div class="card-body">
-            <b>직원 수:</b> {{total_staff}}<br>
-            <b>오늘 출근:</b> {{today_att}}명
-            <span style="color:red;">(지각: {{late_cnt}} / 결근: {{abs_cnt}})</span><br>
-            <b>미처리 신고/이의:</b> <span style="color:orange;">{{pending_reports}}</span><br>
-            <b>경고 직원 수:</b> <span style="color:red;">{{warning_users}}</span>
-          </div>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>최고관리자 대시보드 - Core System</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 30px; 
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { 
+            margin: 0; 
+            font-size: 2.5rem; 
+            font-weight: 300;
+        }
+        
+        /* 헤더 메뉴 영역 */
+        .header-menu-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        
+        .topbar-right {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .user-info {
+            color: white;
+        }
+        
+        .user-role {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .logout-btn {
+            background: rgba(211, 47, 47, 0.8);
+            color: white;
+            border: 1px solid rgba(211, 47, 47, 0.6);
+        }
+        
+        .logout-btn:hover {
+            background: rgba(211, 47, 47, 1);
+            color: white;
+        }
+        
+        /* 통계 카드 스타일 */
+        .stats-section {
+            background: #f8f9fa; 
+            padding: 30px; 
+            border-bottom: 1px solid #e9ecef;
+        }
+        .stats-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            min-width: 150px;
+            flex: 1;
+            max-width: 200px;
+        }
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        /* 관리 메뉴 카드 스타일 */
+        .admin-menu-section {
+            padding: 30px;
+            background: white;
+        }
+        .admin-menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .admin-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .admin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        .admin-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .admin-card:hover::before {
+            left: 100%;
+        }
+        .admin-card-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        .admin-card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .admin-card-description {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .admin-card-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        /* 시스템 상태 섹션 */
+        .system-status-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-top: 1px solid #e9ecef;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .status-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .status-good { color: #28a745; }
+        .status-warning { color: #ffc107; }
+        .status-error { color: #dc3545; }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .admin-menu-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-row {
+                flex-direction: column;
+                align-items: center;
+            }
+            .stat-card {
+                max-width: 100%;
+            }
+            .header h1 {
+                font-size: 2rem;
+            }
+            .header-menu-container {
+                position: static;
+                margin-top: 20px;
+            }
+        }
+        
+        /* 차트 섹션 스타일 */
+        .charts-section {
+            background: white;
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .chart-btn {
+            padding: 5px 15px;
+            border: 1px solid #dee2e6;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .chart-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        /* 실시간 활동 섹션 */
+        .realtime-section {
+            background: #f8f9fa;
+            padding: 30px;
+        }
+        .activity-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+            margin-bottom: 5px;
+            border-radius: 8px;
+        }
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.1rem;
+        }
+        .activity-content {
+            flex: 1;
+        }
+        .activity-user {
+            font-weight: 600;
+            color: #495057;
+        }
+        .activity-action {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .activity-time {
+            color: #adb5bd;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <!-- 헤더 메뉴 영역 -->
+            <div class="header-menu-container">
+                <div class="topbar-right">
+                    <span class="user-info">
+                        <i class="fas fa-user"></i> {{ user.username }}
+                        <span class="user-role">{{ user.role|title }}</span>
+                    </span>
+                    <a class="logout-btn" href="/logout">로그아웃</a>
+                </div>
+            </div>
+            
+            <h1>🏢 최고관리자 대시보드</h1>
+            <p class="mb-0">전체 시스템 관리 및 모니터링</p>
         </div>
-      </div>
-      <div class="col-md-5">
-        <div class="card text-bg-light mb-3">
-          <div class="card-body">
-            <h5 class="card-title">최근 사유 TOP5</h5>
-            <ul class="mb-0">
-            {% for reason, cnt in top_reasons %}
-              <li>{{ reason }} ({{ cnt }}회)</li>
-            {% endfor %}
-            </ul>
-          </div>
+        
+        <!-- 통계 섹션 -->
+        <div class="stats-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-chart-bar"></i> 시스템 현황
+            </h3>
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon text-primary">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-number">{{ stats.pending_users }}</div>
+                    <div class="stat-label">승인 대기 직원</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon text-warning">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <div class="stat-number">{{ stats.unread_notifications }}</div>
+                    <div class="stat-label">미읽 알림</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon text-info">
+                        <i class="fas fa-comment"></i>
+                    </div>
+                    <div class="stat-number">{{ stats.pending_feedback }}</div>
+                    <div class="stat-label">처리 대기 피드백</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon text-success">
+                        <i class="fas fa-store"></i>
+                    </div>
+                    <div class="stat-number">{{ stats.total_branches }}</div>
+                    <div class="stat-label">전체 매장</div>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="col-md-4 d-flex align-items-center">
-        <div>
-          <a href="{{ url_for('admin_excuse_list') }}" class="btn btn-warning mb-2">신고/이의 처리 바로가기</a>
-          <a href="{{ url_for('attendance_stats') }}" class="btn btn-info mb-2">출결 통계 차트</a>
+        
+        <!-- 실시간 차트 섹션 -->
+        <div class="charts-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-chart-line"></i> 실시간 모니터링 차트
+            </h3>
+            
+            <div class="charts-grid">
+                <!-- 출근 현황 차트 -->
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span><i class="fas fa-sign-in-alt"></i> 출근 현황</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" onclick="loadChart('attendance', 7)">7일</button>
+                            <button class="chart-btn" onclick="loadChart('attendance', 30)">30일</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- 알림 현황 차트 -->
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span><i class="fas fa-bell"></i> 알림 현황</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" onclick="loadChart('notifications', 7)">7일</button>
+                            <button class="chart-btn" onclick="loadChart('notifications', 30)">30일</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="notificationsChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- 발주 현황 차트 -->
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span><i class="fas fa-shopping-cart"></i> 발주 현황</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" onclick="loadChart('orders', 7)">7일</button>
+                            <button class="chart-btn" onclick="loadChart('orders', 30)">30일</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="ordersChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- 시스템 로그 차트 -->
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span><i class="fas fa-exclamation-triangle"></i> 시스템 로그</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" onclick="loadChart('system_logs', 7)">7일</button>
+                            <button class="chart-btn" onclick="loadChart('system_logs', 30)">30일</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="systemLogsChart"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 기간 필터 -->
-    <form class="row g-3 mb-3">
-      <div class="col-auto">
-        <input type="date" class="form-control" name="from" value="{{ request.args.get('from','') }}">
-      </div>
-      <div class="col-auto">
-        <input type="date" class="form-control" name="to" value="{{ request.args.get('to','') }}">
-      </div>
-      <div class="col-auto">
-        <button type="submit" class="btn btn-secondary">기간검색</button>
-      </div>
-    </form>
-
-    <!-- 팀/직원별 필터링 폼 -->
-    <form method="get" class="row g-3 mb-3">
-      <div class="col-md-2">
-        <select name="team" class="form-select">
-          <option value="">전체팀</option>
-          {% for t in all_teams %}
-          <option value="{{t}}" {% if request.args.get('team')==t %}selected{% endif %}>{{t}}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
-        <select name="user_id" class="form-select">
-          <option value="">전체직원</option>
-          {% for u in users %}
-          <option value="{{u.id}}" {% if request.args.get('user_id')==u.id|string %}selected{% endif %}>{{u.name or u.username}}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <input type="date" name="from" class="form-control" value="{{request.args.get('from') or ''}}">
-      </div>
-      <div class="col-md-2">
-        <input type="date" name="to" class="form-control" value="{{request.args.get('to') or ''}}">
-      </div>
-      <div class="col-md-3">
-        <button type="submit" class="btn btn-primary">필터</button>
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">초기화</a>
-      </div>
-    </form>
-
-    <!-- 내보내기 버튼 -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="btn-group" role="group">
-          <a href="{{ url_for('export_admin_dashboard_excel', **request.args) }}" class="btn btn-success">
-            <i class="fas fa-file-excel"></i> 엑셀 다운로드
-          </a>
-          <a href="{{ url_for('export_admin_dashboard_pdf', **request.args) }}" class="btn btn-danger">
-            <i class="fas fa-file-pdf"></i> PDF 다운로드
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <!-- 빠른 링크 -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="btn-group" role="group">
-          <a href="{{ url_for('admin_statistics') }}" class="btn btn-primary">
-            <i class="fas fa-chart-bar"></i> 월별 통계
-          </a>
-          <a href="{{ url_for('admin_attendance_reason_stats') }}" class="btn btn-warning">
-            <i class="fas fa-chart-pie"></i> 사유별 통계
-          </a>
-          <a href="{{ url_for('admin_users') }}" class="btn btn-info">
-            <i class="fas fa-users"></i> 직원 관리
-          </a>
-          <a href="{{ url_for('admin_swap_requests') }}" class="btn btn-warning">
-            <i class="fas fa-exchange-alt"></i> 근무 변경 신청
-          </a>
-          <a href="{{ url_for('admin_reports') }}" class="btn btn-success">
-            <i class="fas fa-file-alt"></i> 보고서 관리
-          </a>
-          <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-info">
-            <i class="fas fa-bell"></i> 알림센터
-          </a>
-          <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-primary">
-            <i class="fas fa-bell"></i> 전체 알림 관리
-          </a>
-          <a href="{{ url_for('admin_notification_stats') }}" class="btn btn-success">
-            <i class="fas fa-chart-pie"></i> 알림 통계
-          </a>
-        </div>
-      </div>
-    </div>
-
-<!-- 그룹/프랜차이즈 모드: 최고관리자 전용 메뉴만 표시 -->
-{% elif DASHBOARD_MODE == 'franchise' %}
-    <!-- 최고관리자 전용 통계 -->
-    <div class="row mb-3">
-      <div class="col-md-3">
-        <div class="card text-bg-primary mb-3">
-          <div class="card-body">
-            <h5 class="card-title">전체 매장 현황</h5>
-            <b>총 매장 수:</b> {{ branch_list|length }}개<br>
-            <b>총 직원 수:</b> {{ num_users }}명<br>
-            <b>승인 대기:</b> <span style="color:yellow;">{{ pending_users|default(0) }}명</span>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card text-bg-success mb-3">
-          <div class="card-body">
-            <h5 class="card-title">시스템 현황</h5>
-            <b>평균 처리시간:</b> {{ avg_processing|default(0) }}분<br>
-            <b>기준 초과:</b> <span style="color:red;">{{ exceed_count|default(0) }}건</span><br>
-            <b>시스템 상태:</b> <span style="color:green;">정상</span>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card text-bg-info mb-3">
-          <div class="card-body">
-            <h5 class="card-title">최근 활동</h5>
-            <b>최근 주문:</b> {{ recent_orders|length }}건<br>
-            <b>최근 알림:</b> {{ recent_notifications|length }}건<br>
-            <b>최근 피드백:</b> {{ recent_feedbacks|length }}건
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 최고관리자 전용 메뉴 -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-crown"></i> 최고관리자 전용 메뉴</h5>
-          </div>
-          <div class="card-body">
+        
+        <!-- 실시간 활동 섹션 -->
+        <div class="realtime-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-clock"></i> 실시간 활동
+            </h3>
             <div class="row">
-              <div class="col-md-4 mb-3">
-                <div class="card border-primary">
-                  <div class="card-body text-center">
-                    <i class="fas fa-user-check fa-3x text-primary mb-3"></i>
-                    <h5>직원 승인 관리</h5>
-                    <p class="text-muted">새로운 직원 가입 승인 및 권한 관리</p>
-                    <a href="{{ url_for('admin_approve_users') }}" class="btn btn-primary">
-                      <i class="fas fa-users"></i> 직원 승인
-                    </a>
-                  </div>
+                <div class="col-md-8">
+                    <div class="activity-list" id="activityList">
+                        <!-- 실시간 활동이 여기에 표시됩니다 -->
+                    </div>
                 </div>
-              </div>
-              <div class="col-md-4 mb-3">
-                <div class="card border-success">
-                  <div class="card-body text-center">
-                    <i class="fas fa-bell fa-3x text-success mb-3"></i>
-                    <h5>알림 발송</h5>
-                    <p class="text-muted">전체 직원 대상 알림 및 공지사항 발송</p>
-                    <a href="{{ url_for('admin_notify_send') }}" class="btn btn-success">
-                      <i class="fas fa-paper-plane"></i> 알림 발송
-                    </a>
-                  </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-pie"></i> 실시간 통계</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>최근 1시간</strong>
+                                <div id="realtimeStats">
+                                    <!-- 실시간 통계가 여기에 표시됩니다 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              </div>
-              <div class="col-md-4 mb-3">
-                <div class="card border-warning">
-                  <div class="card-body text-center">
-                    <i class="fas fa-chart-line fa-3x text-warning mb-3"></i>
-                    <h5>통합 리포트</h5>
-                    <p class="text-muted">전체 매장 통합 통계 및 분석 리포트</p>
-                    <a href="{{ url_for('admin_reports') }}" class="btn btn-warning">
-                      <i class="fas fa-file-alt"></i> 리포트 보기
-                    </a>
-                  </div>
+            </div>
+        </div>
+        
+        <!-- 최고관리자 전용 메뉴 -->
+        <div class="admin-menu-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-cogs"></i> 최고관리자 전용 관리 메뉴
+            </h3>
+            
+            <div class="admin-menu-grid">
+                <!-- 직원 승인/관리 -->
+                <a href="{{ url_for('admin_users') }}" class="admin-card">
+                    <div class="admin-card-badge">{{ stats.pending_users }}</div>
+                    <div class="admin-card-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="admin-card-title">직원 승인/관리</div>
+                    <div class="admin-card-description">
+                        신규 직원 승인, 계정 관리, 권한 설정
+                    </div>
+                </a>
+                
+                <!-- 권한 관리 -->
+                <a href="{{ url_for('admin_user_permissions') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="admin-card-title">권한 관리</div>
+                    <div class="admin-card-description">
+                        역할별 권한 설정, 권한 위임/회수
+                    </div>
+                </a>
+                
+                <!-- 전체 알림/공지 -->
+                <a href="{{ url_for('admin_notify_send') }}" class="admin-card">
+                    <div class="admin-card-badge">{{ stats.unread_notifications }}</div>
+                    <div class="admin-card-icon">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <div class="admin-card-title">전체 알림/공지</div>
+                    <div class="admin-card-description">
+                        전체 직원 대상 알림 발송, 공지사항 관리
+                    </div>
+                </a>
+                
+                <!-- 통합 보고서 -->
+                <a href="{{ url_for('admin_reports') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="admin-card-title">통합 보고서</div>
+                    <div class="admin-card-description">
+                        매장별 통계, 출근 현황, 매출 분석
+                    </div>
+                </a>
+                
+                <!-- 시스템/오류 보고서 -->
+                <a href="{{ url_for('admin_statistics') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="admin-card-title">시스템/오류 보고서</div>
+                    <div class="admin-card-description">
+                        시스템 로그, 오류 현황, 성능 모니터링
+                    </div>
+                </a>
+                
+                <!-- 백엔드 관리 -->
+                <a href="/admin/flask-admin" class="admin-card" target="_blank">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="admin-card-title">백엔드 관리</div>
+                    <div class="admin-card-description">
+                        Flask-Admin, 데이터베이스 직접 관리
+                    </div>
+                </a>
+                
+                <!-- 시스템 모니터링 -->
+                <a href="{{ url_for('admin_system_monitor') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <div class="admin-card-title">시스템 모니터링</div>
+                    <div class="admin-card-description">
+                        실시간 시스템 상태, 리소스 사용률
+                    </div>
+                </a>
+                
+                <!-- 백업 관리 -->
+                <a href="{{ url_for('admin_backup_management') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="admin-card-title">백업 관리</div>
+                    <div class="admin-card-description">
+                        데이터 백업/복원, 시스템 백업 관리
+                    </div>
+                </a>
+                
+                <!-- 대시보드 모드 설정 -->
+                <a href="{{ url_for('admin_dashboard_mode') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div class="admin-card-title">대시보드 모드 설정</div>
+                    <div class="admin-card-description">
+                        1인 사장님/그룹 프랜차이즈 모드 전환
+                    </div>
+                </a>
+                
+                <!-- 피드백 관리 -->
+                <a href="{{ url_for('admin_feedback') }}" class="admin-card">
+                    <div class="admin-card-badge">{{ stats.pending_feedback }}</div>
+                    <div class="admin-card-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="admin-card-title">피드백 관리</div>
+                    <div class="admin-card-description">
+                        직원 피드백/문의사항 처리 및 관리
+                    </div>
+                </a>
+            </div>
+            
+            <!-- 최고관리자 전용 안내 -->
+            <div class="alert alert-info mt-4">
+                <i class="fas fa-info-circle"></i>
+                <strong>최고관리자 전용 대시보드</strong><br>
+                일반 매장 업무(발주, 스케줄, 재고 등)는 각 매장 관리자/직원 대시보드에서 처리됩니다.
+                이 페이지에서는 전체 시스템 관리 및 모니터링만 수행할 수 있습니다.
+            </div>
+        </div>
+        
+        <!-- 시스템 상태 섹션 -->
+        <div class="system-status-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-info-circle"></i> 시스템 상태
+            </h3>
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-title">데이터베이스 상태</div>
+                    <div class="status-value status-good">
+                        <i class="fas fa-check-circle"></i> 정상
+                    </div>
                 </div>
-              </div>
+                <div class="status-card">
+                    <div class="status-title">서버 업타임</div>
+                    <div class="status-value status-good">
+                        <i class="fas fa-clock"></i> {{ system_status.uptime }}
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-title">대시보드 모드</div>
+                    <div class="status-value status-info">
+                        <i class="fas fa-cog"></i> {{ system_status.dashboard_mode|title }}
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-title">마지막 백업</div>
+                    <div class="status-value status-good">
+                        <i class="fas fa-save"></i> {{ system_status.last_backup }}
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
     </div>
-
-<!-- 일반 관리자 모드 -->
-{% else %}
-    <div class="row mb-3">
-      <div class="col-md-3">
-        <div class="card text-bg-light mb-3">
-          <div class="card-body">
-            <b>직원 수:</b> {{total_staff}}<br>
-            <b>오늘 출근:</b> {{today_att}}명
-            <span style="color:red;">(지각: {{late_cnt}} / 결근: {{abs_cnt}})</span><br>
-            <b>미처리 신고/이의:</b> <span style="color:orange;">{{pending_reports}}</span><br>
-            <b>경고 직원 수:</b> <span style="color:red;">{{warning_users}}</span>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-5">
-        <div class="card text-bg-light mb-3">
-          <div class="card-body">
-            <h5 class="card-title">최근 사유 TOP5</h5>
-            <ul class="mb-0">
-            {% for reason, cnt in top_reasons %}
-              <li>{{ reason }} ({{ cnt }}회)</li>
-            {% endfor %}
-            </ul>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4 d-flex align-items-center">
-        <div>
-          <a href="{{ url_for('admin_excuse_list') }}" class="btn btn-warning mb-2">신고/이의 처리 바로가기</a>
-          <a href="{{ url_for('attendance_stats') }}" class="btn btn-info mb-2">출결 통계 차트</a>
-        </div>
-      </div>
-    </div>
-{% endif %}
-
-<!-- 매장 관리자·직원 업무 페이지 바로가기 (1인 사장님 모드에서만 표시) -->
-{% if DASHBOARD_MODE == 'solo' %}
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-store"></i> 매장 관리자·직원 업무 페이지 바로가기</h5>
-          </div>
-          <div class="card-body">
-            {% if branch_list %}
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead class="table-light">
-                  <tr>
-                    <th>매장명</th>
-                    <th>관리자</th>
-                    <th>직원 수</th>
-                    <th>업무 바로가기</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for branch in branch_list %}
-                  <tr>
-                    <td><strong>{{ branch.name }}</strong></td>
-                    <td>{{ branch.manager_name }}</td>
-                    <td>{{ branch.num_employees }}명</td>
-                    <td>
-                      <div class="btn-group-vertical" role="group">
-                        <!-- 매장 관리자 업무 대시보드 바로가기 -->
-                        <a href="{{ url_for('manager_dashboard', branch_id=branch.id) }}" 
-                           class="btn btn-sm btn-primary mb-1">
-                          <i class="fas fa-user-tie"></i> 관리자 대시보드
-                        </a>
-                        <!-- 직원 업무 바로가기(직원별) -->
-                        {% if branch.employees %}
-                          <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
-                                    type="button" data-bs-toggle="dropdown">
-                              <i class="fas fa-users"></i> 직원별 업무
-                            </button>
-                            <ul class="dropdown-menu">
-                              {% for emp in branch.employees %}
-                              <li>
-                                <a class="dropdown-item" 
-                                   href="{{ url_for('employee_dashboard', employee_id=emp.id) }}">
-                                  <i class="fas fa-user"></i> {{ emp.name or emp.username }} 업무
-                                </a>
-                              </li>
-                              {% endfor %}
-                            </ul>
-                          </div>
-                        {% else %}
-                          <span class="text-muted small">등록된 직원 없음</span>
-                        {% endif %}
-                      </div>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            {% else %}
-            <div class="alert alert-info">
-              <i class="fas fa-info-circle"></i> 등록된 매장이 없습니다. 
-              <a href="{{ url_for('admin_users') }}" class="alert-link">매장 및 직원을 먼저 등록해주세요.</a>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
-{% endif %}
-
-<!-- 새로운 관리 기능 메뉴 -->
-<div class="row mb-3">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-tools"></i> 업무 관리</h5>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-primary w-100">
-              <i class="fas fa-users"></i> 직원 관리
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-success w-100">
-              <i class="fas fa-calendar-alt"></i> 스케줄 관리
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-warning w-100">
-              <i class="fas fa-shopping-cart"></i> 발주 관리
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-info w-100">
-              <i class="fas fa-broom"></i> 청소 관리
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 새로운 기능 버튼들 -->
-<div class="row mb-3">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-cogs"></i> 자동화 기능</h5>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-primary w-100">
-              <i class="fas fa-file-pdf"></i> 월별 근태 요약 PDF
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-success w-100" 
-               onclick="return confirm('일괄 급여 이체를 실행하시겠습니까?')">
-              <i class="fas fa-money-bill-wave"></i> 급여 자동이체
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-info w-100">
-              <i class="fas fa-bell"></i> 알림 발송
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="#" class="btn btn-outline-secondary w-100">
-              <i class="fas fa-download"></i> DB 백업
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 백업/복원 기능 -->
-<div class="row mb-3">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-database"></i> 데이터 관리</h5>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-3 mb-2">
-            <a href="{{ url_for('admin_backup') }}" class="btn btn-outline-primary w-100">
-              <i class="fas fa-download"></i> DB 백업
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="{{ url_for('admin_restore') }}" class="btn btn-outline-warning w-100">
-              <i class="fas fa-upload"></i> DB 복원
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="{{ url_for('admin_file_backup') }}" class="btn btn-outline-info w-100">
-              <i class="fas fa-folder-open"></i> 파일 백업
-            </a>
-          </div>
-          <div class="col-md-3 mb-2">
-            <a href="{{ url_for('admin_file_restore') }}" class="btn btn-outline-secondary w-100">
-              <i class="fas fa-folder-plus"></i> 파일 복원
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 출결 통계 차트 섹션 -->
-<div class="row mb-3">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-chart-bar"></i> 출결 통계 차트</h5>
-        <div class="mt-2">
-          <button onclick="exportChart()" class="btn btn-sm btn-success">
-            <i class="fas fa-download"></i> 차트 이미지 저장
-          </button>
-          <button onclick="refreshChart()" class="btn btn-sm btn-primary">
-            <i class="fas fa-sync"></i> 새로고침
-          </button>
-        </div>
-      </div>
-      <div class="card-body">
-        <canvas id="attendanceChart" width="700" height="220"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 팀별 통계 차트 -->
-<div class="row mb-3">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-chart-pie"></i> 팀별 출결 통계</h5>
-      </div>
-      <div class="card-body">
-        <canvas id="teamChart" width="400" height="200"></canvas>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-chart-doughnut"></i> 사유별 통계</h5>
-      </div>
-      <div class="card-body">
-        <canvas id="reasonChart" width="400" height="200"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="row mb-4">
-  <div class="col-md-3">
-    <div class="card text-bg-light mb-3">
-      <div class="card-body">
-        <h5 class="card-title">직원수</h5>
-        <p class="card-text fs-2">{{ num_users }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card text-bg-light mb-3">
-      <div class="card-body">
-        <h5 class="card-title">누적 출근기록</h5>
-        <p class="card-text fs-2">{{ num_attendance }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6">
-    {% if warn_users %}
-      <div class="alert alert-warning">
-        <b>경고!</b> {{ warn_users|join(', ') }} : 이번 달 지각 2회 이상/결근 발생
-      </div>
-    {% endif %}
-  </div>
-</div>
-
-<!-- 월별 변화 추이 차트 -->
-<div class="row mb-4">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-chart-line"></i> 월별 변화 추이</h5>
-      </div>
-      <div class="card-body">
-        <canvas id="monthlyStatsChart" width="750" height="320"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 알림 카테고리별 통계 -->
-<div class="row mb-4">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-chart-pie"></i> 알림 카테고리별 통계</h5>
-      </div>
-      <div class="card-body">
-        <canvas id="categoryPieChart" width="400" height="250"></canvas>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-info-circle"></i> 통계 요약</h5>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-6">
-            <div class="text-center">
-              <h4 class="text-primary">{{ noti_stats|length }}</h4>
-              <small class="text-muted">월별 알림 통계</small>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="text-center">
-              <h4 class="text-success">{{ noti_category_stats|length }}</h4>
-              <small class="text-muted">알림 카테고리</small>
-            </div>
-          </div>
-        </div>
-        <hr>
-        <div class="row">
-          <div class="col-6">
-            <div class="text-center">
-              <h4 class="text-info">{{ work_stats|length }}</h4>
-              <small class="text-muted">근무 스케줄 월</small>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="text-center">
-              <h4 class="text-warning">{{ clean_stats|length }}</h4>
-              <small class="text-muted">청소 계획 월</small>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 지점별 비교 -->
-<h5>지점별 근무시간/지각/결근 비교</h5>
-<table class="table">
-  <thead><tr><th>지점</th><th>직원수</th><th>총 근무(분)</th><th>지각</th><th>결근</th></tr></thead>
-  <tbody>
-    {% for r in result %}
-    <tr>
-      <td>{{ r.branch }}</td>
-      <td>{{ r.user_count }}</td>
-      <td>{{ r.total_work }}</td>
-      <td>{{ r.total_late }}</td>
-      <td>{{ r.total_absent }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<canvas id="branchChart"></canvas>
-
-<div class="row">
-  <div class="col-md-6">
-    <h5>월별 직원 근무시간 합계</h5>
-    <canvas id="barChart"></canvas>
-  </div>
-  <div class="col-md-6">
-    <h5>일자별 근무시간(분) 트렌드</h5>
-    <canvas id="lineChart"></canvas>
-  </div>
-</div>
-<div class="row mt-4">
-  <div class="col-md-6">
-    <h5>근무시간 분포</h5>
-    <canvas id="pieChart"></canvas>
-  </div>
-  <div class="col-md-6">
-    <h5>이번달 지각 랭킹</h5>
-    <ol>
-      {% for r in top_late %}
-      <li>{{ r.user }} ({{ r.late_count }}회)</li>
-      {% endfor %}
-    </ol>
-    <h5>이번달 결근 랭킹</h5>
-    <ol>
-      {% for r in top_absent %}
-      <li>{{ r.user }} ({{ r.absent_count }}회)</li>
-      {% endfor %}
-    </ol>
-  </div>
-</div>
-
-<h5 class="mt-4">최근 출퇴근 이력(10건)</h5>
-<table class="table table-bordered">
-  <thead>
-    <tr><th>직원</th><th>출근</th><th>퇴근</th><th>근무(분)</th><th>상태</th></tr>
-  </thead>
-  <tbody>
-    {% for r in recent %}
-    <tr>
-      <td>{{ r.user }}</td>
-      <td>{{ r.clock_in }}</td>
-      <td>{{ r.clock_out if r.clock_out else '미입력' }}</td>
-      <td>{{ r.work_minutes }}</td>
-      <td>{{ r.status }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<p>직원 평균 주문 처리 시간: {{ avg_processing|round(1) }}분</p>
-<p>기준 초과 주문 건수: {{ exceed_count }}건</p>
-
-<!-- 매장별 주문/피드백 요약 표 -->
-<div class="card p-4 mb-4">
-  <h4 class="mb-3">매장별 주문/피드백 요약</h4>
-  <table class="table table-sm">
-    <thead>
-      <tr>
-        <th>매장명</th>
-        <th>주문 수</th>
-        <th>피드백 수</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for stat in branch_stats %}
-      <tr>
-        <td>{{ stat.branch.name }}</td>
-        <td>{{ stat.orders }}</td>
-        <td>{{ stat.feedbacks }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<!-- 최근 주문 5개 -->
-<div class="card p-4 mb-4">
-  <h4 class="mb-3">최근 주문</h4>
-  <table class="table table-sm">
-    <thead>
-      <tr>
-        <th>주문ID</th>
-        <th>담당직원</th>
-        <th>매장</th>
-        <th>생성시각</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for order in recent_orders %}
-      <tr>
-        <td>{{ order.id }}</td>
-        <td>{{ order.employee.username if order.employee else '-' }}</td>
-        <td>{{ order.branch.name if order.branch else '-' }}</td>
-        <td>{{ order.created_at }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<!-- 최근 알림 5개 -->
-<div class="card p-4 mb-4">
-  <h4 class="mb-3">최근 알림</h4>
-  <ul>
-    {% for n in recent_notifications %}
-      <li>{{ n.title }} - {{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</li>
-    {% endfor %}
-  </ul>
-</div>
-
-<!-- 최근 피드백/문의 5개 -->
-<div class="card p-4 mb-4">
-  <h4 class="mb-3">최근 개선·문의사항</h4>
-  <ul>
-    {% for f in recent_feedbacks %}
-      <li>{{ f.title }} ({{ f.status }}) - {{ f.created_at.strftime('%Y-%m-%d') }}</li>
-    {% endfor %}
-  </ul>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// 월별 변화 추이 차트
-let monthlyLabels = {{ noti_stats|map(attribute='month')|list|tojson }};
-let notiData = {{ noti_stats|map(attribute='count')|list|tojson }};
-let workData = {{ work_stats|map(attribute='count')|list|tojson }};
-let orderData = {{ order_stats|map(attribute='count')|list|tojson }};
-let cleanData = {{ clean_stats|map(attribute='count')|list|tojson }};
-
-let categories = {{ noti_category_stats|map(attribute='category')|list|tojson }};
-let categoryCounts = {{ noti_category_stats|map(attribute='count')|list|tojson }};
-
-let monthlyCtx = document.getElementById('monthlyStatsChart').getContext('2d');
-let monthlyChart = new Chart(monthlyCtx, {
-  type: 'line',
-  data: {
-    labels: monthlyLabels,
-    datasets: [
-      { 
-        label: '알림', 
-        data: notiData, 
-        borderColor: '#f0ad4e', 
-        backgroundColor: 'rgba(240, 173, 78, 0.1)',
-        fill: false,
-        tension: 0.4
-      },
-      { 
-        label: '근무', 
-        data: workData, 
-        borderColor: '#5bc0de', 
-        backgroundColor: 'rgba(91, 192, 222, 0.1)',
-        fill: false,
-        tension: 0.4
-      },
-      { 
-        label: '발주', 
-        data: orderData, 
-        borderColor: '#5cb85c', 
-        backgroundColor: 'rgba(92, 184, 92, 0.1)',
-        fill: false,
-        tension: 0.4
-      },
-      { 
-        label: '청소', 
-        data: cleanData, 
-        borderColor: '#d9534f', 
-        backgroundColor: 'rgba(217, 83, 79, 0.1)',
-        fill: false,
-        tension: 0.4
-      }
-    ]
-  },
-  options: {
-    responsive: true,
-    plugins: { 
-      legend: { position: 'top' },
-      title: {
-        display: true,
-        text: '월별 업무 현황 변화'
-      }
-    },
-    scales: { 
-      y: { 
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: '건수'
+    
+    <!-- Chart.js 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // 차트 객체들을 저장할 변수
+        let charts = {};
+        
+        // 차트 색상 설정
+        const chartColors = {
+            attendance: {
+                border: 'rgb(75, 192, 192)',
+                background: 'rgba(75, 192, 192, 0.2)'
+            },
+            notifications: {
+                border: 'rgb(255, 99, 132)',
+                background: 'rgba(255, 99, 132, 0.2)'
+            },
+            orders: {
+                border: 'rgb(54, 162, 235)',
+                background: 'rgba(54, 162, 235, 0.2)'
+            },
+            system_logs: {
+                border: 'rgb(255, 205, 86)',
+                background: 'rgba(255, 205, 86, 0.2)'
+            }
+        };
+        
+        // 차트 로드 함수
+        function loadChart(type, days) {
+            // 기존 차트가 있으면 제거
+            if (charts[type]) {
+                charts[type].destroy();
+            }
+            
+            // 버튼 활성화 상태 변경
+            const chartCard = document.querySelector(`#${type}Chart`).closest('.chart-card');
+            chartCard.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 차트 데이터 로드
+            fetch(`/api/dashboard/stats?period=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    const ctx = document.getElementById(`${type}Chart`).getContext('2d');
+                    
+                    // 날짜 라벨 포맷팅
+                    const labels = data.labels.map(date => {
+                        const d = new Date(date);
+                        return `${d.getMonth() + 1}/${d.getDate()}`;
+                    });
+                    
+                    charts[type] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: getChartLabel(type),
+                                data: data.datasets[type] || [],
+                                borderColor: chartColors[type].border,
+                                backgroundColor: chartColors[type].background,
+                                tension: 0.1,
+                                fill: true,
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            },
+                            interaction: {
+                                mode: 'nearest',
+                                axis: 'x',
+                                intersect: false
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('차트 데이터 로드 실패:', error);
+                    // 에러 시 빈 차트 표시
+                    const ctx = document.getElementById(`${type}Chart`).getContext('2d');
+                    charts[type] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: getChartLabel(type),
+                                data: [],
+                                borderColor: chartColors[type].border,
+                                backgroundColor: chartColors[type].background
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                });
         }
-      },
-      x: {
-        title: {
-          display: true,
-          text: '월'
+        
+        // 차트 라벨 반환
+        function getChartLabel(type) {
+            const labels = {
+                'attendance': '출근',
+                'notifications': '알림',
+                'orders': '발주',
+                'system_logs': '시스템 로그'
+            };
+            return labels[type] || type;
         }
-      }
-    }
-  }
-});
-
-// 알림 카테고리별 파이 차트
-let pieCtx = document.getElementById('categoryPieChart').getContext('2d');
-let pieChart = new Chart(pieCtx, {
-  type: 'pie',
-  data: {
-    labels: categories,
-    datasets: [{ 
-      data: categoryCounts,
-      backgroundColor: [
-        '#f0ad4e',
-        '#5bc0de', 
-        '#5cb85c',
-        '#d9534f',
-        '#337ab7',
-        '#777777'
-      ]
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: { 
-      legend: { position: 'bottom' },
-      title: {
-        display: true,
-        text: '알림 카테고리 분포'
-      }
-    }
-  }
-});
-
-// 기존 차트들
-// 지점별 차트
-new Chart(document.getElementById('branchChart'), {
-  type: 'bar',
-  data: {
-    labels: {{ branch_names|tojson }},
-    datasets: [{
-      label: '지점별 근무시간(분)',
-      data: {{ result|map(attribute='total_work')|list|tojson }},
-      backgroundColor: 'rgba(54, 162, 235, 0.5)'
-    }]
-  }
-});
-
-new Chart(document.getElementById('barChart'), {
-  type: 'bar',
-  data: {
-    labels: {{ chart_labels|tojson }},
-    datasets: [{ label: '근무시간(분)', data: {{ chart_data|tojson }}, borderWidth: 1 }]
-  }, options: {scales: { y: { beginAtZero: true } } }
-});
-new Chart(document.getElementById('lineChart'), {
-  type: 'line',
-  data: {
-    labels: {{ trend_dates|tojson }},
-    datasets: [{ label: '근무시간(분)', data: {{ trend_data|tojson }}, borderWidth: 1, tension: 0.4 }]
-  }
-});
-new Chart(document.getElementById('pieChart'), {
-  type: 'pie',
-  data: {
-    labels: {{ dist_labels|tojson }},
-    datasets: [{ data: {{ dist_data|tojson }} }]
-  }
-});
-
-// 출결 통계 차트
-let attendanceChart = null;
-
-function loadAttendanceChart() {
-  // 임시 데이터 (실제로는 API 호출)
-  const mockData = {
-    labels: ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07'],
-    late: [2, 1, 3, 0, 1, 2, 1],
-    absent: [0, 1, 0, 1, 0, 0, 1],
-    total: [15, 14, 15, 14, 15, 15, 14]
-  };
-  
-  if (attendanceChart) attendanceChart.destroy();
-  
-  const ctx = document.getElementById('attendanceChart');
-  if (ctx) {
-    attendanceChart = new Chart(ctx.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: mockData.labels,
-        datasets: [
-          {label: '지각', data: mockData.late, backgroundColor: '#ffe082'},
-          {label: '결근', data: mockData.absent, backgroundColor: '#ef9a9a'},
-          {label: '전체', data: mockData.total, backgroundColor: '#90caf9', type: 'line', order: 0}
-        ]
-      },
-      options: {responsive: true, scales: {y: {beginAtZero: true}}}
-    });
-  }
-}
-
-function exportChart() {
-  if (attendanceChart) {
-    const url = attendanceChart.toBase64Image();
-    const a = document.createElement('a');
-    a.href = url; a.download = 'attendance_chart.png'; a.click();
-  }
-}
-
-function refreshChart() {
-  loadAttendanceChart();
-}
-
-// 팀별 차트
-function loadTeamChart() {
-  const mockTeamData = {
-    labels: ['팀A', '팀B', '팀C', '미지정'],
-    total: [25, 30, 20, 5]
-  };
-  
-  const ctx = document.getElementById('teamChart');
-  if (ctx) {
-    new Chart(ctx.getContext('2d'), {
-      type: 'pie',
-      data: {
-        labels: mockTeamData.labels,
-        datasets: [{
-          data: mockTeamData.total,
-          backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56']
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {display: true, text: '팀별 출결 현황'},
-          legend: {position: 'bottom'}
+        
+        // 실시간 통계 업데이트
+        function updateRealtimeStats() {
+            fetch('/api/dashboard/stats?period=1')
+                .then(response => response.json())
+                .then(data => {
+                    const statsDiv = document.getElementById('realtimeStats');
+                    if (statsDiv && data.current_stats) {
+                        statsDiv.innerHTML = `
+                            <div class="mb-2">
+                                <i class="fas fa-users text-primary"></i> 활성 사용자: ${data.current_stats.active_users}명
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-bell text-warning"></i> 미읽 알림: ${data.current_stats.unread_notifications}건
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-shopping-cart text-info"></i> 대기 발주: ${data.current_stats.pending_orders}건
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-sign-in-alt text-success"></i> 오늘 출근: ${data.current_stats.today_attendance}명
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-exclamation-triangle text-danger"></i> 시스템 오류: ${data.current_stats.system_errors}건
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock"></i> 마지막 업데이트: ${new Date().toLocaleTimeString()}
+                                </small>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('실시간 통계 업데이트 실패:', error);
+                });
         }
-      }
-    });
-  }
-}
-
-// 사유별 차트
-function loadReasonChart() {
-  const mockReasonData = {
-    labels: ['정상출근', '지각', '결근', '병가', '기타'],
-    data: [120, 15, 8, 5, 12]
-  };
-  
-  const ctx = document.getElementById('reasonChart');
-  if (ctx) {
-    new Chart(ctx.getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels: mockReasonData.labels,
-        datasets: [{
-          data: mockReasonData.data,
-          backgroundColor: ['#4bc0c0', '#ff6384', '#36a2eb', '#cc65fe', '#ffce56']
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {display: true, text: '사유별 출결 분포'},
-          legend: {position: 'bottom'}
+        
+        // 실시간 활동 업데이트
+        function updateRealtimeActivities() {
+            fetch('/api/dashboard/realtime')
+                .then(response => response.json())
+                .then(data => {
+                    const activityList = document.getElementById('activityList');
+                    if (activityList && data.activities) {
+                        activityList.innerHTML = '';
+                        
+                        data.activities.forEach(activity => {
+                            const activityItem = document.createElement('div');
+                            activityItem.className = 'activity-item';
+                            
+                            // 활동 타입에 따른 아이콘과 색상 설정
+                            let iconClass = 'fas fa-info-circle';
+                            let bgColor = 'bg-info';
+                            
+                            if (activity.type === 'system_log') {
+                                if (activity.action.includes('error')) {
+                                    iconClass = 'fas fa-exclamation-triangle';
+                                    bgColor = 'bg-danger';
+                                } else if (activity.action.includes('login')) {
+                                    iconClass = 'fas fa-sign-in-alt';
+                                    bgColor = 'bg-success';
+                                } else {
+                                    iconClass = 'fas fa-cog';
+                                    bgColor = 'bg-primary';
+                                }
+                            } else if (activity.type === 'notification') {
+                                iconClass = 'fas fa-bell';
+                                bgColor = 'bg-warning';
+                            }
+                            
+                            activityItem.innerHTML = `
+                                <div class="activity-icon ${bgColor}">
+                                    <i class="${iconClass}"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-user">${activity.username}</div>
+                                    <div class="activity-action">${activity.action}</div>
+                                    ${activity.detail ? `<small class="text-muted">${activity.detail}</small>` : ''}
+                                </div>
+                                <div class="activity-time">${activity.time_ago}</div>
+                            `;
+                            activityList.appendChild(activityItem);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('실시간 활동 업데이트 실패:', error);
+                });
         }
-      }
-    });
-  }
-}
-
-// 페이지 로드 시 차트 초기화
-document.addEventListener('DOMContentLoaded', function() {
-  loadAttendanceChart();
-  loadTeamChart();
-  loadReasonChart();
-});
-
-// 필터 폼 제출 시 차트 새로고침
-document.querySelectorAll('form').forEach(form => {
-  form.addEventListener('submit', function() {
-    setTimeout(() => {
-      refreshChart();
-    }, 100);
-  });
-});
-</script>
-{% endblock %} 
+        
+        // 실시간 알림 개수 업데이트
+        function updateNotificationCount() {
+            fetch('/notifications/count')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.querySelector('.admin-card[href*="notify_send"] .admin-card-badge');
+                    if (badge) {
+                        if (data.count > 0) {
+                            badge.textContent = data.count;
+                            badge.style.display = 'flex';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => console.error('알림 개수 조회 실패:', error));
+        }
+        
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // 차트 초기 로드
+            loadChart('attendance', 7);
+            loadChart('notifications', 7);
+            loadChart('orders', 7);
+            loadChart('system_logs', 7);
+            
+            // 실시간 데이터 초기 로드
+            updateRealtimeStats();
+            updateRealtimeActivities();
+            updateNotificationCount();
+            
+            // 실시간 업데이트 설정
+            setInterval(updateRealtimeStats, 30000); // 30초마다
+            setInterval(updateRealtimeActivities, 10000); // 10초마다
+            setInterval(updateNotificationCount, 30000); // 30초마다
+        });
+    </script>
+</body>
+</html> 

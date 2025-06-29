@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}실시간 시스템 로그{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-stream"></i> 실시간 시스템 로그
+                    </h3>
+                    <div class="card-tools">
+                        <button id="startStream" class="btn btn-success btn-sm">
+                            <i class="fas fa-play"></i> 스트림 시작
+                        </button>
+                        <button id="stopStream" class="btn btn-danger btn-sm" style="display: none;">
+                            <i class="fas fa-stop"></i> 스트림 중지
+                        </button>
+                        <button id="clearLogs" class="btn btn-warning btn-sm">
+                            <i class="fas fa-trash"></i> 로그 지우기
+                        </button>
+                        <a href="{{ url_for('admin_reports.system_logs') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-list"></i> 전체 로그
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 로그 레벨 필터 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <select id="logLevel" class="form-select">
+                                <option value="all">모든 레벨</option>
+                                <option value="error">오류만</option>
+                                <option value="warning">경고만</option>
+                                <option value="info">정보만</option>
+                                <option value="success">성공만</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autoScroll" checked>
+                                <label class="form-check-label" for="autoScroll">
+                                    자동 스크롤
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-end">
+                                <span class="badge bg-primary me-2">
+                                    <i class="fas fa-circle"></i> <span id="logCount">0</span>개 로그
+                                </span>
+                                <span class="badge bg-success me-2">
+                                    <i class="fas fa-signal"></i> <span id="streamStatus">중지됨</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 실시간 로그 표시 영역 -->
+                    <div class="log-container" style="height: 600px; overflow-y: auto; background: #1e1e1e; color: #ffffff; font-family: 'Courier New', monospace; padding: 15px; border-radius: 5px;">
+                        <div id="logStream">
+                            <!-- 실시간 로그가 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.log-entry {
+    margin-bottom: 5px;
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.log-entry.error {
+    background-color: rgba(220, 53, 69, 0.2);
+    border-left: 3px solid #dc3545;
+}
+
+.log-entry.warning {
+    background-color: rgba(255, 193, 7, 0.2);
+    border-left: 3px solid #ffc107;
+}
+
+.log-entry.success {
+    background-color: rgba(40, 167, 69, 0.2);
+    border-left: 3px solid #28a745;
+}
+
+.log-entry.info {
+    background-color: rgba(23, 162, 184, 0.2);
+    border-left: 3px solid #17a2b8;
+}
+
+.log-time {
+    color: #888;
+    font-weight: bold;
+}
+
+.log-action {
+    color: #fff;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.log-detail {
+    color: #ccc;
+    margin-left: 10px;
+    word-break: break-all;
+}
+
+.log-user {
+    color: #4CAF50;
+    margin-left: 10px;
+}
+
+.log-ip {
+    color: #888;
+    margin-left: 10px;
+    font-size: 11px;
+}
+
+.log-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.log-container::-webkit-scrollbar-track {
+    background: #2e2e2e;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let eventSource = null;
+let logCount = 0;
+let isStreaming = false;
+
+// 스트림 시작
+function startStream() {
+    if (isStreaming) return;
+    
+    isStreaming = true;
+    document.getElementById('startStream').style.display = 'none';
+    document.getElementById('stopStream').style.display = 'inline-block';
+    document.getElementById('streamStatus').textContent = '실시간';
+    document.getElementById('streamStatus').className = 'badge bg-success me-2';
+    
+    // EventSource 연결
+    eventSource = new EventSource('/api/logs/stream');
+    
+    eventSource.onmessage = function(event) {
+        try {
+            const logData = JSON.parse(event.data);
+            
+            if (logData.error) {
+                console.error('로그 스트림 오류:', logData.error);
+                return;
+            }
+            
+            addLogEntry(logData);
+            logCount++;
+            document.getElementById('logCount').textContent = logCount;
+            
+        } catch (error) {
+            console.error('로그 데이터 파싱 오류:', error);
+        }
+    };
+    
+    eventSource.onerror = function(error) {
+        console.error('EventSource 오류:', error);
+        stopStream();
+    };
+}
+
+// 스트림 중지
+function stopStream() {
+    if (!isStreaming) return;
+    
+    isStreaming = false;
+    document.getElementById('startStream').style.display = 'inline-block';
+    document.getElementById('stopStream').style.display = 'none';
+    document.getElementById('streamStatus').textContent = '중지됨';
+    document.getElementById('streamStatus').className = 'badge bg-secondary me-2';
+    
+    if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+    }
+}
+
+// 로그 엔트리 추가
+function addLogEntry(logData) {
+    const logStream = document.getElementById('logStream');
+    const logEntry = document.createElement('div');
+    
+    // 로그 레벨에 따른 클래스 설정
+    let logClass = 'info';
+    if (logData.action.includes('ERROR')) logClass = 'error';
+    else if (logData.action.includes('WARNING')) logClass = 'warning';
+    else if (logData.action.includes('SUCCESS')) logClass = 'success';
+    
+    logEntry.className = `log-entry ${logClass}`;
+    
+    logEntry.innerHTML = `
+        <span class="log-time">[${logData.created_at}]</span>
+        <span class="log-action">${logData.action}</span>
+        <span class="log-detail">${logData.detail || ''}</span>
+        <span class="log-user">@${logData.user}</span>
+        <span class="log-ip">${logData.ip_address || ''}</span>
+    `;
+    
+    logStream.appendChild(logEntry);
+    
+    // 자동 스크롤
+    if (document.getElementById('autoScroll').checked) {
+        logStream.scrollTop = logStream.scrollHeight;
+    }
+    
+    // 최대 1000개 로그만 유지
+    while (logStream.children.length > 1000) {
+        logStream.removeChild(logStream.firstChild);
+    }
+}
+
+// 로그 레벨 필터링
+document.getElementById('logLevel').addEventListener('change', function() {
+    const level = this.value;
+    const logEntries = document.querySelectorAll('.log-entry');
+    
+    logEntries.forEach(entry => {
+        const action = entry.querySelector('.log-action').textContent;
+        let shouldShow = true;
+        
+        if (level !== 'all') {
+            if (level === 'error' && !action.includes('ERROR')) shouldShow = false;
+            else if (level === 'warning' && !action.includes('WARNING')) shouldShow = false;
+            else if (level === 'success' && !action.includes('SUCCESS')) shouldShow = false;
+            else if (level === 'info' && (action.includes('ERROR') || action.includes('WARNING') || action.includes('SUCCESS'))) shouldShow = false;
+        }
+        
+        entry.style.display = shouldShow ? 'block' : 'none';
+    });
+});
+
+// 이벤트 리스너
+document.getElementById('startStream').addEventListener('click', startStream);
+document.getElementById('stopStream').addEventListener('click', stopStream);
+document.getElementById('clearLogs').addEventListener('click', function() {
+    if (confirm('모든 로그를 지우시겠습니까?')) {
+        document.getElementById('logStream').innerHTML = '';
+        logCount = 0;
+        document.getElementById('logCount').textContent = '0';
+    }
+});
+
+// 페이지 로드 시 최근 로그 로드
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/logs/recent?limit=50')
+        .then(response => response.json())
+        .then(logs => {
+            logs.reverse().forEach(log => {
+                addLogEntry(log);
+                logCount++;
+            });
+            document.getElementById('logCount').textContent = logCount;
+        })
+        .catch(error => {
+            console.error('최근 로그 로드 실패:', error);
+        });
+});
+
+// 페이지 언로드 시 스트림 정리
+window.addEventListener('beforeunload', function() {
+    stopStream();
+});
+</script>
+{% endblock %} 

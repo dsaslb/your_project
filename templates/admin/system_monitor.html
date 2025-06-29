@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}시스템 모니터링{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-tachometer-alt"></i> 실시간 시스템 모니터링
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- 실시간 상태 카드들 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-users fa-2x mb-2"></i>
+                                    <h5>활성 사용자</h5>
+                                    <h3 id="active-users">0</h3>
+                                    <small>현재 접속 중</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-database fa-2x mb-2"></i>
+                                    <h5>데이터베이스</h5>
+                                    <h3 id="db-status">정상</h3>
+                                    <small>연결 상태</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-bell fa-2x mb-2"></i>
+                                    <h5>미읽 알림</h5>
+                                    <h3 id="unread-notifications">0</h3>
+                                    <small>전체</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-clock fa-2x mb-2"></i>
+                                    <h5>서버 시간</h5>
+                                    <h3 id="server-time">--:--</h3>
+                                    <small>현재 시간</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 실시간 차트 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-chart-line"></i> 사용자 활동 추이
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="userActivityChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-chart-pie"></i> 시스템 리소스 사용률
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="resourceChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 실시간 로그 -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-list"></i> 실시간 시스템 로그
+                                    </h5>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="clearLogs()">
+                                            <i class="fas fa-trash"></i> 로그 지우기
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-success" onclick="exportLogs()">
+                                            <i class="fas fa-download"></i> 내보내기
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="system-logs" style="height: 300px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px;">
+                                        <!-- 로그 내용이 여기에 동적으로 추가됩니다 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 시스템 정보 -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-info-circle"></i> 시스템 정보
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td><strong>서버 버전:</strong></td>
+                                            <td id="server-version">Flask 2.0+</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>데이터베이스:</strong></td>
+                                            <td id="db-version">SQLite 3.x</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>대시보드 모드:</strong></td>
+                                            <td id="dashboard-mode">{{ DASHBOARD_MODE|title }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>업타임:</strong></td>
+                                            <td id="uptime">--</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-exclamation-triangle"></i> 알림 및 경고
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="system-alerts">
+                                        <!-- 시스템 알림이 여기에 표시됩니다 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// 실시간 모니터링 변수들
+let userActivityChart;
+let resourceChart;
+let logCount = 0;
+const maxLogs = 100;
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    startMonitoring();
+    updateServerTime();
+    
+    // 1초마다 서버 시간 업데이트
+    setInterval(updateServerTime, 1000);
+    
+    // 5초마다 시스템 상태 업데이트
+    setInterval(updateSystemStatus, 5000);
+    
+    // 10초마다 차트 업데이트
+    setInterval(updateCharts, 10000);
+});
+
+// 차트 초기화
+function initializeCharts() {
+    // 사용자 활동 차트
+    const userCtx = document.getElementById('userActivityChart').getContext('2d');
+    userActivityChart = new Chart(userCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '활성 사용자',
+                data: [],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // 리소스 사용률 차트
+    const resourceCtx = document.getElementById('resourceChart').getContext('2d');
+    resourceChart = new Chart(resourceCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['CPU', '메모리', '디스크', '네트워크'],
+            datasets: [{
+                data: [25, 30, 15, 10],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 205, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true
+        }
+    });
+}
+
+// 실시간 모니터링 시작
+function startMonitoring() {
+    addLog('시스템 모니터링이 시작되었습니다.', 'info');
+    
+    // WebSocket 연결 (실제 구현 시)
+    // const ws = new WebSocket('ws://localhost:5000/ws');
+    // ws.onmessage = function(event) {
+    //     const data = JSON.parse(event.data);
+    //     handleRealtimeData(data);
+    // };
+}
+
+// 서버 시간 업데이트
+function updateServerTime() {
+    const now = new Date();
+    document.getElementById('server-time').textContent = 
+        now.toLocaleTimeString('ko-KR', { hour12: false });
+}
+
+// 시스템 상태 업데이트
+function updateSystemStatus() {
+    // 실제로는 서버에서 데이터를 가져와야 함
+    fetch('/api/system/status')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('active-users').textContent = data.active_users || 0;
+            document.getElementById('unread-notifications').textContent = data.unread_notifications || 0;
+            document.getElementById('db-status').textContent = data.db_status || '정상';
+            document.getElementById('uptime').textContent = data.uptime || '--';
+        })
+        .catch(error => {
+            addLog('시스템 상태 조회 실패: ' + error.message, 'error');
+        });
+}
+
+// 차트 업데이트
+function updateCharts() {
+    // 사용자 활동 차트 업데이트
+    const now = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+    userActivityChart.data.labels.push(now);
+    userActivityChart.data.datasets[0].data.push(Math.floor(Math.random() * 10) + 1);
+    
+    // 최대 10개 데이터 포인트 유지
+    if (userActivityChart.data.labels.length > 10) {
+        userActivityChart.data.labels.shift();
+        userActivityChart.data.datasets[0].data.shift();
+    }
+    
+    userActivityChart.update();
+
+    // 리소스 사용률 차트 업데이트
+    resourceChart.data.datasets[0].data = [
+        Math.floor(Math.random() * 50) + 20,
+        Math.floor(Math.random() * 40) + 30,
+        Math.floor(Math.random() * 30) + 10,
+        Math.floor(Math.random() * 20) + 5
+    ];
+    resourceChart.update();
+}
+
+// 로그 추가
+function addLog(message, level = 'info') {
+    const logsContainer = document.getElementById('system-logs');
+    const timestamp = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+    
+    let levelClass = 'text-info';
+    let levelIcon = 'ℹ️';
+    
+    switch(level) {
+        case 'error':
+            levelClass = 'text-danger';
+            levelIcon = '❌';
+            break;
+        case 'warning':
+            levelClass = 'text-warning';
+            levelIcon = '⚠️';
+            break;
+        case 'success':
+            levelClass = 'text-success';
+            levelIcon = '✅';
+            break;
+    }
+    
+    const logEntry = document.createElement('div');
+    logEntry.className = levelClass;
+    logEntry.innerHTML = `[${timestamp}] ${levelIcon} ${message}`;
+    
+    logsContainer.appendChild(logEntry);
+    logsContainer.scrollTop = logsContainer.scrollHeight;
+    
+    // 최대 로그 개수 제한
+    logCount++;
+    if (logCount > maxLogs) {
+        logsContainer.removeChild(logsContainer.firstChild);
+        logCount--;
+    }
+}
+
+// 로그 지우기
+function clearLogs() {
+    document.getElementById('system-logs').innerHTML = '';
+    logCount = 0;
+    addLog('로그가 지워졌습니다.', 'info');
+}
+
+// 로그 내보내기
+function exportLogs() {
+    const logsContainer = document.getElementById('system-logs');
+    const logs = logsContainer.innerText;
+    
+    const blob = new Blob([logs], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `system-logs-${new Date().toISOString().slice(0, 19)}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    addLog('로그가 내보내졌습니다.', 'success');
+}
+
+// 실시간 데이터 처리
+function handleRealtimeData(data) {
+    switch(data.type) {
+        case 'user_login':
+            addLog(`사용자 로그인: ${data.username}`, 'success');
+            break;
+        case 'user_logout':
+            addLog(`사용자 로그아웃: ${data.username}`, 'info');
+            break;
+        case 'error':
+            addLog(`시스템 오류: ${data.message}`, 'error');
+            break;
+        case 'warning':
+            addLog(`시스템 경고: ${data.message}`, 'warning');
+            break;
+    }
+}
+
+// 주기적으로 샘플 로그 추가 (테스트용)
+setInterval(() => {
+    const sampleLogs = [
+        { message: '데이터베이스 연결 확인', level: 'info' },
+        { message: '백업 작업 완료', level: 'success' },
+        { message: '메모리 사용률 80% 초과', level: 'warning' },
+        { message: '새로운 사용자 가입', level: 'info' }
+    ];
+    
+    const randomLog = sampleLogs[Math.floor(Math.random() * sampleLogs.length)];
+    if (Math.random() < 0.3) { // 30% 확률로 로그 추가
+        addLog(randomLog.message, randomLog.level);
+    }
+}, 15000);
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+#system-logs {
+    background: #1e1e1e !important;
+    color: #ffffff;
+    font-family: 'Courier New', monospace;
+    border: 1px solid #333;
+}
+
+#system-logs div {
+    margin-bottom: 2px;
+    padding: 2px 0;
+}
+
+.text-info { color: #17a2b8 !important; }
+.text-success { color: #28a745 !important; }
+.text-warning { color: #ffc107 !important; }
+.text-danger { color: #dc3545 !important; }
+
+.table-sm td {
+    padding: 0.25rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %} 

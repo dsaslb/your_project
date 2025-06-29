@@ -10,7 +10,7 @@ from flask import render_template_string
 from sqlalchemy import extract, func
 
 from extensions import db
-from models import Attendance, AttendanceDispute, User
+from models import Attendance, AttendanceReport, User
 from utils.logger import log_action, log_error
 
 
@@ -359,7 +359,7 @@ class EmailService:
     def send_dispute_notification(self, dispute_id, notification_type="created"):
         """신고/이의제기 알림 이메일 발송"""
         try:
-            dispute = AttendanceDispute.query.get(dispute_id)
+            dispute = AttendanceReport.query.get(dispute_id)
             if not dispute:
                 return False, "신고/이의제기를 찾을 수 없습니다."
 

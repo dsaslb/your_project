@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}시스템 로그{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-terminal"></i> 시스템 로그
+                    </h3>
+                    <div class="card-tools">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshLogs()">
+                                <i class="fas fa-sync-alt"></i> 새로고침
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="toggleAutoRefresh()">
+                                <i class="fas fa-play" id="autoRefreshIcon"></i> <span id="autoRefreshText">자동 새로고침</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 필터 섹션 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="levelFilter">로그 레벨:</label>
+                            <select class="form-control" id="levelFilter" onchange="filterLogs()">
+                                <option value="all">전체</option>
+                                <option value="error">오류</option>
+                                <option value="warning">경고</option>
+                                <option value="info">정보</option>
+                                <option value="login">로그인</option>
+                                <option value="backup">백업</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="timeFilter">시간 범위:</label>
+                            <select class="form-control" id="timeFilter" onchange="filterLogs()">
+                                <option value="1">최근 1시간</option>
+                                <option value="6">최근 6시간</option>
+                                <option value="24" selected>최근 24시간</option>
+                                <option value="168">최근 7일</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="perPageFilter">페이지당 항목:</label>
+                            <select class="form-control" id="perPageFilter" onchange="filterLogs()">
+                                <option value="25">25개</option>
+                                <option value="50" selected>50개</option>
+                                <option value="100">100개</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label>&nbsp;</label>
+                            <div>
+                                <span class="badge badge-info" id="logCount">0개 로그</span>
+                                <span class="badge badge-success" id="lastUpdate">마지막 업데이트: -</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 로그 테이블 -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>시간</th>
+                                    <th>사용자</th>
+                                    <th>액션</th>
+                                    <th>상세</th>
+                                    <th>IP 주소</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody">
+                                <!-- 로그 데이터가 여기에 동적으로 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 페이지네이션 -->
+                    <nav aria-label="로그 페이지네이션">
+                        <ul class="pagination justify-content-center" id="pagination">
+                            <!-- 페이지네이션이 여기에 동적으로 생성됩니다 -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let autoRefreshInterval = null;
+let isAutoRefreshEnabled = false;
+
+// 로그 데이터 로드
+function loadLogs(page = 1) {
+    const level = document.getElementById('levelFilter').value;
+    const hours = document.getElementById('timeFilter').value;
+    const perPage = document.getElementById('perPageFilter').value;
+    
+    fetch(`/api/logs?page=${page}&level=${level}&hours=${hours}&per_page=${perPage}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('로그 로드 실패:', data.error);
+                return;
+            }
+            
+            displayLogs(data.logs);
+            displayPagination(data);
+            updateLogCount(data.total);
+            updateLastUpdate();
+        })
+        .catch(error => {
+            console.error('로그 로드 오류:', error);
+        });
+}
+
+// 로그 표시
+function displayLogs(logs) {
+    const tbody = document.getElementById('logsTableBody');
+    tbody.innerHTML = '';
+    
+    logs.forEach(log => {
+        const row = document.createElement('tr');
+        
+        // 로그 레벨에 따른 스타일 적용
+        let rowClass = '';
+        if (log.action.includes('error')) {
+            rowClass = 'table-danger';
+        } else if (log.action.includes('warning')) {
+            rowClass = 'table-warning';
+        } else if (log.action.includes('login')) {
+            rowClass = 'table-success';
+        } else if (log.action.includes('backup')) {
+            rowClass = 'table-info';
+        }
+        
+        row.className = rowClass;
+        
+        row.innerHTML = `
+            <td>
+                <small>${log.time_ago}</small><br>
+                <small class="text-muted">${new Date(log.created_at).toLocaleString()}</small>
+            </td>
+            <td>
+                <span class="badge badge-secondary">${log.username}</span>
+            </td>
+            <td>
+                <strong>${log.action}</strong>
+            </td>
+            <td>
+                <small>${log.detail || '-'}</small>
+            </td>
+            <td>
+                <code>${log.ip_address || '-'}</code>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// 페이지네이션 표시
+function displayPagination(data) {
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    
+    if (data.pages <= 1) return;
+    
+    // 이전 페이지
+    if (data.has_prev) {
+        const prevLi = document.createElement('li');
+        prevLi.className = 'page-item';
+        prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadLogs(${data.current_page - 1})">이전</a>`;
+        pagination.appendChild(prevLi);
+    }
+    
+    // 페이지 번호
+    for (let i = 1; i <= data.pages; i++) {
+        if (i === data.current_page || i === 1 || i === data.pages || 
+            (i >= data.current_page - 2 && i <= data.current_page + 2)) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === data.current_page ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" onclick="loadLogs(${i})">${i}</a>`;
+            pagination.appendChild(li);
+        } else if (i === data.current_page - 3 || i === data.current_page + 3) {
+            const li = document.createElement('li');
+            li.className = 'page-item disabled';
+            li.innerHTML = '<span class="page-link">...</span>';
+            pagination.appendChild(li);
+        }
+    }
+    
+    // 다음 페이지
+    if (data.has_next) {
+        const nextLi = document.createElement('li');
+        nextLi.className = 'page-item';
+        nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadLogs(${data.current_page + 1})">다음</a>`;
+        pagination.appendChild(nextLi);
+    }
+}
+
+// 로그 개수 업데이트
+function updateLogCount(count) {
+    document.getElementById('logCount').textContent = `${count}개 로그`;
+}
+
+// 마지막 업데이트 시간 업데이트
+function updateLastUpdate() {
+    const now = new Date().toLocaleTimeString();
+    document.getElementById('lastUpdate').textContent = `마지막 업데이트: ${now}`;
+}
+
+// 로그 필터링
+function filterLogs() {
+    currentPage = 1;
+    loadLogs(currentPage);
+}
+
+// 로그 새로고침
+function refreshLogs() {
+    loadLogs(currentPage);
+}
+
+// 자동 새로고침 토글
+function toggleAutoRefresh() {
+    const icon = document.getElementById('autoRefreshIcon');
+    const text = document.getElementById('autoRefreshText');
+    
+    if (isAutoRefreshEnabled) {
+        // 자동 새로고침 중지
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+        icon.className = 'fas fa-play';
+        text.textContent = '자동 새로고침';
+        isAutoRefreshEnabled = false;
+    } else {
+        // 자동 새로고침 시작
+        autoRefreshInterval = setInterval(() => {
+            loadLogs(currentPage);
+        }, 10000); // 10초마다
+        icon.className = 'fas fa-pause';
+        text.textContent = '자동 새로고침 중지';
+        isAutoRefreshEnabled = true;
+    }
+}
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    loadLogs();
+});
+</script>
+
+<style>
+.table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
+
+code {
+    font-size: 0.8rem;
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.pagination {
+    margin-top: 20px;
+}
+</style>
+{% endblock %} 
