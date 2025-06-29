@@ -70,6 +70,59 @@ class Config:
     # Rate limiting
     RATELIMIT_DEFAULT = "10 per minute"
 
+    # 대시보드 모드 설정
+    # 'solo': 1인 사장님 버전 (모든 메뉴 표시)
+    # 'franchise': 그룹/프랜차이즈 버전 (최고관리자 메뉴만 표시)
+    DASHBOARD_MODE = os.environ.get('DASHBOARD_MODE', 'solo')
+
+    # 알림 설정
+    NOTIFICATION_ENABLED = os.environ.get('NOTIFICATION_ENABLED', 'true').lower() == 'true'
+
+    # 개발/운영 환경 구분
+    DEBUG = os.environ.get('FLASK_ENV') == 'development'
+
+    # 보안 설정
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
+    # API 설정
+    API_RATE_LIMIT = os.environ.get('API_RATE_LIMIT', '100 per minute')
+
+    # 백업 설정
+    BACKUP_ENABLED = os.environ.get('BACKUP_ENABLED', 'true').lower() == 'true'
+    BACKUP_RETENTION_DAYS = int(os.environ.get('BACKUP_RETENTION_DAYS', 30))
+
+    # 통계/리포트 설정
+    STATS_ENABLED = os.environ.get('STATS_ENABLED', 'true').lower() == 'true'
+
+    # 다국어 설정
+    LANGUAGES = ['ko', 'en']
+    DEFAULT_LANGUAGE = 'ko'
+
+    # 테마 설정
+    THEME = os.environ.get('THEME', 'default')  # 'default', 'dark', 'modern'
+
+    # 기능 토글
+    FEATURES = {
+        'attendance_tracking': True,
+        'payroll_management': True,
+        'inventory_management': True,
+        'order_management': True,
+        'cleaning_schedule': True,
+        'notification_system': True,
+        'report_generation': True,
+        'user_management': True,
+        'approval_system': True,
+        'analytics_dashboard': True,
+        'mobile_support': True,
+        'api_access': True,
+        'backup_restore': True,
+        'audit_logging': True,
+        'multi_branch': True,
+        'franchise_mode': DASHBOARD_MODE == 'franchise'
+    }
+
 
 class DevelopmentConfig(Config):
     """개발 환경 설정"""
@@ -83,6 +136,8 @@ class DevelopmentConfig(Config):
     # 개발용 로깅 - 상세한 디버그 정보
     LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
     LOG_FILE = os.getenv("LOG_FILE", "logs/restaurant_dev.log")
+
+    DASHBOARD_MODE = 'solo'  # 개발 시에는 1인 사장님 모드
 
 
 class ProductionConfig(Config):
@@ -99,6 +154,8 @@ class ProductionConfig(Config):
     # 운영용 로깅 - WARNING 이상만 기록
     LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING")
     LOG_FILE = os.getenv("LOG_FILE", "logs/restaurant_prod.log")
+
+    DASHBOARD_MODE = os.environ.get('DASHBOARD_MODE', 'franchise')  # 운영 시 기본값
 
 
 class TestConfig(Config):
@@ -125,6 +182,8 @@ class TestConfig(Config):
     # 테스트용 로깅 - 디버그 정보 포함
     LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
     LOG_FILE = os.getenv("LOG_FILE", "logs/restaurant_test.log")
+
+    DASHBOARD_MODE = 'solo'
 
 
 class TestingConfig(Config):

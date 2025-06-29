@@ -80,6 +80,39 @@ class User(db.Model, UserMixin):
     def is_employee(self):
         return self.role == "employee"
 
+    def is_owner(self):
+        """1인 사장님 여부 확인"""
+        return self.role == "admin" and not self.is_group_admin()
+
+    def is_group_admin(self):
+        """그룹/프랜차이즈 최고관리자 여부 확인"""
+        return self.role == "admin" and self.has_permission("group_admin")
+
+    def is_solo_mode(self):
+        """1인 사장님 모드에서 모든 메뉴 접근 가능 여부"""
+        return self.is_owner() or self.has_permission("solo_mode")
+
+    def is_franchise_mode(self):
+        """그룹/프랜차이즈 모드에서 최고관리자 메뉴만 접근 가능 여부"""
+        return self.is_group_admin() or self.has_permission("franchise_mode")
+
+    def can_access_all_menus(self):
+        """모든 메뉴에 접근 가능한지 확인 (1인 사장님 모드)"""
+        return self.is_solo_mode()
+
+    def can_access_admin_only_menus(self):
+        """최고관리자 전용 메뉴에 접근 가능한지 확인 (그룹/프랜차이즈 모드)"""
+        return self.is_franchise_mode()
+
+    def get_dashboard_mode(self):
+        """현재 사용자의 대시보드 모드 반환"""
+        if self.is_solo_mode():
+            return 'solo'
+        elif self.is_franchise_mode():
+            return 'franchise'
+        else:
+            return 'employee'  # 일반 직원 모드
+
     def has_permission(self, permission_name):
         """특정 권한이 있는지 확인"""
         if not self.permissions:

@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 import click
 from dateutil import parser as date_parser
 from flask import (Flask, flash, jsonify, redirect, render_template, request,
-                   session, url_for)
+                   session, url_for, current_app)
 from flask_login import (UserMixin, current_user, login_required, login_user,
                          logout_user)
 from flask_migrate import Migrate
@@ -118,7 +118,9 @@ def index():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html", user=current_user)
+    # 대시보드 모드 설정 전달
+    dashboard_mode = current_app.config.get('DASHBOARD_MODE', 'solo')
+    return render_template("dashboard.html", user=current_user, DASHBOARD_MODE=dashboard_mode)
 
 
 @app.route("/profile")
@@ -134,6 +136,9 @@ def admin_dashboard():
         flash("관리자 권한이 필요합니다.")
         return redirect(url_for("dashboard"))
 
+    # 대시보드 모드 설정 전달
+    dashboard_mode = current_app.config.get('DASHBOARD_MODE', 'solo')
+    
     # 매장 목록 데이터 생성 (실제로는 DB에서 불러옴)
     branch_list = []
     try:
@@ -220,6 +225,7 @@ def admin_dashboard():
         "recent_orders": recent_orders,
         "recent_notifications": recent_notifications,
         "recent_feedbacks": recent_feedbacks,
+        "DASHBOARD_MODE": dashboard_mode,
     }
     return render_template("admin_dashboard.html", **context)
 

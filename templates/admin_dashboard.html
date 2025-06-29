@@ -3,198 +3,346 @@
 {% block title %}관리자 대시보드{% endblock %}
 
 {% block content %}
-<h2>관리자/팀장 대시보드</h2>
-<div class="row mb-3">
-  <div class="col-md-3">
-    <div class="card text-bg-light mb-3">
-      <div class="card-body">
-        <b>직원 수:</b> {{total_staff}}<br>
-        <b>오늘 출근:</b> {{today_att}}명
-        <span style="color:red;">(지각: {{late_cnt}} / 결근: {{abs_cnt}})</span><br>
-        <b>미처리 신고/이의:</b> <span style="color:orange;">{{pending_reports}}</span><br>
-        <b>경고 직원 수:</b> <span style="color:red;">{{warning_users}}</span>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-5">
-    <div class="card text-bg-light mb-3">
-      <div class="card-body">
-        <h5 class="card-title">최근 사유 TOP5</h5>
-        <ul class="mb-0">
-        {% for reason, cnt in top_reasons %}
-          <li>{{ reason }} ({{ cnt }}회)</li>
-        {% endfor %}
-        </ul>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4 d-flex align-items-center">
-    <div>
-      <a href="{{ url_for('admin_excuse_list') }}" class="btn btn-warning mb-2">신고/이의 처리 바로가기</a>
-      <a href="{{ url_for('attendance_stats') }}" class="btn btn-info mb-2">출결 통계 차트</a>
-    </div>
-  </div>
+<h2>
+    {% if DASHBOARD_MODE == 'solo' %}
+        🏪 1인 사장님 대시보드
+    {% elif DASHBOARD_MODE == 'franchise' %}
+        🏢 그룹/프랜차이즈 최고관리자 대시보드
+    {% else %}
+        👨‍💼 관리자/팀장 대시보드
+    {% endif %}
+</h2>
+
+<!-- 대시보드 모드 표시 -->
+<div class="alert alert-info mb-3">
+    <i class="fas fa-info-circle"></i>
+    <strong>현재 모드:</strong>
+    {% if DASHBOARD_MODE == 'solo' %}
+        <span class="badge bg-success">1인 사장님 모드</span> - 모든 업무 메뉴에 접근 가능
+    {% elif DASHBOARD_MODE == 'franchise' %}
+        <span class="badge bg-primary">그룹/프랜차이즈 모드</span> - 최고관리자 전용 메뉴만 표시
+    {% else %}
+        <span class="badge bg-secondary">일반 관리자 모드</span>
+    {% endif %}
 </div>
 
-<!-- 기간 필터 -->
-<form class="row g-3 mb-3">
-  <div class="col-auto">
-    <input type="date" class="form-control" name="from" value="{{ request.args.get('from','') }}">
-  </div>
-  <div class="col-auto">
-    <input type="date" class="form-control" name="to" value="{{ request.args.get('to','') }}">
-  </div>
-  <div class="col-auto">
-    <button type="submit" class="btn btn-secondary">기간검색</button>
-  </div>
-</form>
-
-<!-- 팀/직원별 필터링 폼 -->
-<form method="get" class="row g-3 mb-3">
-  <div class="col-md-2">
-    <select name="team" class="form-select">
-      <option value="">전체팀</option>
-      {% for t in all_teams %}
-      <option value="{{t}}" {% if request.args.get('team')==t %}selected{% endif %}>{{t}}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-md-3">
-    <select name="user_id" class="form-select">
-      <option value="">전체직원</option>
-      {% for u in users %}
-      <option value="{{u.id}}" {% if request.args.get('user_id')==u.id|string %}selected{% endif %}>{{u.name or u.username}}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-md-2">
-    <input type="date" name="from" class="form-control" value="{{request.args.get('from') or ''}}">
-  </div>
-  <div class="col-md-2">
-    <input type="date" name="to" class="form-control" value="{{request.args.get('to') or ''}}">
-  </div>
-  <div class="col-md-3">
-    <button type="submit" class="btn btn-primary">필터</button>
-    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">초기화</a>
-  </div>
-</form>
-
-<!-- 내보내기 버튼 -->
-<div class="row mb-3">
-  <div class="col-12">
-    <div class="btn-group" role="group">
-      <a href="{{ url_for('export_admin_dashboard_excel', **request.args) }}" class="btn btn-success">
-        <i class="fas fa-file-excel"></i> 엑셀 다운로드
-      </a>
-      <a href="{{ url_for('export_admin_dashboard_pdf', **request.args) }}" class="btn btn-danger">
-        <i class="fas fa-file-pdf"></i> PDF 다운로드
-      </a>
-    </div>
-  </div>
-</div>
-
-<!-- 빠른 링크 -->
-<div class="row mb-3">
-  <div class="col-12">
-    <div class="btn-group" role="group">
-      <a href="{{ url_for('admin_statistics') }}" class="btn btn-primary">
-        <i class="fas fa-chart-bar"></i> 월별 통계
-      </a>
-      <a href="{{ url_for('admin_attendance_reason_stats') }}" class="btn btn-warning">
-        <i class="fas fa-chart-pie"></i> 사유별 통계
-      </a>
-      <a href="{{ url_for('admin_users') }}" class="btn btn-info">
-        <i class="fas fa-users"></i> 직원 관리
-      </a>
-      <a href="{{ url_for('admin_swap_requests') }}" class="btn btn-warning">
-        <i class="fas fa-exchange-alt"></i> 근무 변경 신청
-      </a>
-      <a href="{{ url_for('admin_reports') }}" class="btn btn-success">
-        <i class="fas fa-file-alt"></i> 보고서 관리
-      </a>
-      <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-info">
-        <i class="fas fa-bell"></i> 알림센터
-      </a>
-      <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-primary">
-        <i class="fas fa-bell"></i> 전체 알림 관리
-      </a>
-      <a href="{{ url_for('admin_notification_stats') }}" class="btn btn-success">
-        <i class="fas fa-chart-pie"></i> 알림 통계
-      </a>
-    </div>
-  </div>
-</div>
-
-<!-- 매장 관리자·직원 업무 페이지 바로가기 -->
-<div class="row mb-3">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-store"></i> 매장 관리자·직원 업무 페이지 바로가기</h5>
+<!-- 1인 사장님 모드: 모든 기능 표시 -->
+{% if DASHBOARD_MODE == 'solo' %}
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <div class="card text-bg-light mb-3">
+          <div class="card-body">
+            <b>직원 수:</b> {{total_staff}}<br>
+            <b>오늘 출근:</b> {{today_att}}명
+            <span style="color:red;">(지각: {{late_cnt}} / 결근: {{abs_cnt}})</span><br>
+            <b>미처리 신고/이의:</b> <span style="color:orange;">{{pending_reports}}</span><br>
+            <b>경고 직원 수:</b> <span style="color:red;">{{warning_users}}</span>
+          </div>
+        </div>
       </div>
-      <div class="card-body">
-        {% if branch_list %}
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead class="table-light">
-              <tr>
-                <th>매장명</th>
-                <th>관리자</th>
-                <th>직원 수</th>
-                <th>업무 바로가기</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for branch in branch_list %}
-              <tr>
-                <td><strong>{{ branch.name }}</strong></td>
-                <td>{{ branch.manager_name }}</td>
-                <td>{{ branch.num_employees }}명</td>
-                <td>
-                  <div class="btn-group-vertical" role="group">
-                    <!-- 매장 관리자 업무 대시보드 바로가기 -->
-                    <a href="{{ url_for('manager_dashboard', branch_id=branch.id) }}" 
-                       class="btn btn-sm btn-primary mb-1">
-                      <i class="fas fa-user-tie"></i> 관리자 대시보드
+      <div class="col-md-5">
+        <div class="card text-bg-light mb-3">
+          <div class="card-body">
+            <h5 class="card-title">최근 사유 TOP5</h5>
+            <ul class="mb-0">
+            {% for reason, cnt in top_reasons %}
+              <li>{{ reason }} ({{ cnt }}회)</li>
+            {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 d-flex align-items-center">
+        <div>
+          <a href="{{ url_for('admin_excuse_list') }}" class="btn btn-warning mb-2">신고/이의 처리 바로가기</a>
+          <a href="{{ url_for('attendance_stats') }}" class="btn btn-info mb-2">출결 통계 차트</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 기간 필터 -->
+    <form class="row g-3 mb-3">
+      <div class="col-auto">
+        <input type="date" class="form-control" name="from" value="{{ request.args.get('from','') }}">
+      </div>
+      <div class="col-auto">
+        <input type="date" class="form-control" name="to" value="{{ request.args.get('to','') }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-secondary">기간검색</button>
+      </div>
+    </form>
+
+    <!-- 팀/직원별 필터링 폼 -->
+    <form method="get" class="row g-3 mb-3">
+      <div class="col-md-2">
+        <select name="team" class="form-select">
+          <option value="">전체팀</option>
+          {% for t in all_teams %}
+          <option value="{{t}}" {% if request.args.get('team')==t %}selected{% endif %}>{{t}}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="user_id" class="form-select">
+          <option value="">전체직원</option>
+          {% for u in users %}
+          <option value="{{u.id}}" {% if request.args.get('user_id')==u.id|string %}selected{% endif %}>{{u.name or u.username}}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="date" name="from" class="form-control" value="{{request.args.get('from') or ''}}">
+      </div>
+      <div class="col-md-2">
+        <input type="date" name="to" class="form-control" value="{{request.args.get('to') or ''}}">
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary">필터</button>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">초기화</a>
+      </div>
+    </form>
+
+    <!-- 내보내기 버튼 -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="btn-group" role="group">
+          <a href="{{ url_for('export_admin_dashboard_excel', **request.args) }}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> 엑셀 다운로드
+          </a>
+          <a href="{{ url_for('export_admin_dashboard_pdf', **request.args) }}" class="btn btn-danger">
+            <i class="fas fa-file-pdf"></i> PDF 다운로드
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 빠른 링크 -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="btn-group" role="group">
+          <a href="{{ url_for('admin_statistics') }}" class="btn btn-primary">
+            <i class="fas fa-chart-bar"></i> 월별 통계
+          </a>
+          <a href="{{ url_for('admin_attendance_reason_stats') }}" class="btn btn-warning">
+            <i class="fas fa-chart-pie"></i> 사유별 통계
+          </a>
+          <a href="{{ url_for('admin_users') }}" class="btn btn-info">
+            <i class="fas fa-users"></i> 직원 관리
+          </a>
+          <a href="{{ url_for('admin_swap_requests') }}" class="btn btn-warning">
+            <i class="fas fa-exchange-alt"></i> 근무 변경 신청
+          </a>
+          <a href="{{ url_for('admin_reports') }}" class="btn btn-success">
+            <i class="fas fa-file-alt"></i> 보고서 관리
+          </a>
+          <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-info">
+            <i class="fas fa-bell"></i> 알림센터
+          </a>
+          <a href="{{ url_for('admin_all_notifications') }}" class="btn btn-primary">
+            <i class="fas fa-bell"></i> 전체 알림 관리
+          </a>
+          <a href="{{ url_for('admin_notification_stats') }}" class="btn btn-success">
+            <i class="fas fa-chart-pie"></i> 알림 통계
+          </a>
+        </div>
+      </div>
+    </div>
+
+<!-- 그룹/프랜차이즈 모드: 최고관리자 전용 메뉴만 표시 -->
+{% elif DASHBOARD_MODE == 'franchise' %}
+    <!-- 최고관리자 전용 통계 -->
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <div class="card text-bg-primary mb-3">
+          <div class="card-body">
+            <h5 class="card-title">전체 매장 현황</h5>
+            <b>총 매장 수:</b> {{ branch_list|length }}개<br>
+            <b>총 직원 수:</b> {{ num_users }}명<br>
+            <b>승인 대기:</b> <span style="color:yellow;">{{ pending_users|default(0) }}명</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-bg-success mb-3">
+          <div class="card-body">
+            <h5 class="card-title">시스템 현황</h5>
+            <b>평균 처리시간:</b> {{ avg_processing|default(0) }}분<br>
+            <b>기준 초과:</b> <span style="color:red;">{{ exceed_count|default(0) }}건</span><br>
+            <b>시스템 상태:</b> <span style="color:green;">정상</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card text-bg-info mb-3">
+          <div class="card-body">
+            <h5 class="card-title">최근 활동</h5>
+            <b>최근 주문:</b> {{ recent_orders|length }}건<br>
+            <b>최근 알림:</b> {{ recent_notifications|length }}건<br>
+            <b>최근 피드백:</b> {{ recent_feedbacks|length }}건
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 최고관리자 전용 메뉴 -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-crown"></i> 최고관리자 전용 메뉴</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <div class="card border-primary">
+                  <div class="card-body text-center">
+                    <i class="fas fa-user-check fa-3x text-primary mb-3"></i>
+                    <h5>직원 승인 관리</h5>
+                    <p class="text-muted">새로운 직원 가입 승인 및 권한 관리</p>
+                    <a href="{{ url_for('admin_approve_users') }}" class="btn btn-primary">
+                      <i class="fas fa-users"></i> 직원 승인
                     </a>
-                    <!-- 직원 업무 바로가기(직원별) -->
-                    {% if branch.employees %}
-                      <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
-                                type="button" data-bs-toggle="dropdown">
-                          <i class="fas fa-users"></i> 직원별 업무
-                        </button>
-                        <ul class="dropdown-menu">
-                          {% for emp in branch.employees %}
-                          <li>
-                            <a class="dropdown-item" 
-                               href="{{ url_for('employee_dashboard', employee_id=emp.id) }}">
-                              <i class="fas fa-user"></i> {{ emp.name or emp.username }} 업무
-                            </a>
-                          </li>
-                          {% endfor %}
-                        </ul>
-                      </div>
-                    {% else %}
-                      <span class="text-muted small">등록된 직원 없음</span>
-                    {% endif %}
                   </div>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card border-success">
+                  <div class="card-body text-center">
+                    <i class="fas fa-bell fa-3x text-success mb-3"></i>
+                    <h5>알림 발송</h5>
+                    <p class="text-muted">전체 직원 대상 알림 및 공지사항 발송</p>
+                    <a href="{{ url_for('admin_notify_send') }}" class="btn btn-success">
+                      <i class="fas fa-paper-plane"></i> 알림 발송
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card border-warning">
+                  <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x text-warning mb-3"></i>
+                    <h5>통합 리포트</h5>
+                    <p class="text-muted">전체 매장 통합 통계 및 분석 리포트</p>
+                    <a href="{{ url_for('admin_reports') }}" class="btn btn-warning">
+                      <i class="fas fa-file-alt"></i> 리포트 보기
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        {% else %}
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle"></i> 등록된 매장이 없습니다. 
-          <a href="{{ url_for('admin_users') }}" class="alert-link">매장 및 직원을 먼저 등록해주세요.</a>
-        </div>
-        {% endif %}
       </div>
     </div>
-  </div>
-</div>
+
+<!-- 일반 관리자 모드 -->
+{% else %}
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <div class="card text-bg-light mb-3">
+          <div class="card-body">
+            <b>직원 수:</b> {{total_staff}}<br>
+            <b>오늘 출근:</b> {{today_att}}명
+            <span style="color:red;">(지각: {{late_cnt}} / 결근: {{abs_cnt}})</span><br>
+            <b>미처리 신고/이의:</b> <span style="color:orange;">{{pending_reports}}</span><br>
+            <b>경고 직원 수:</b> <span style="color:red;">{{warning_users}}</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div class="card text-bg-light mb-3">
+          <div class="card-body">
+            <h5 class="card-title">최근 사유 TOP5</h5>
+            <ul class="mb-0">
+            {% for reason, cnt in top_reasons %}
+              <li>{{ reason }} ({{ cnt }}회)</li>
+            {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 d-flex align-items-center">
+        <div>
+          <a href="{{ url_for('admin_excuse_list') }}" class="btn btn-warning mb-2">신고/이의 처리 바로가기</a>
+          <a href="{{ url_for('attendance_stats') }}" class="btn btn-info mb-2">출결 통계 차트</a>
+        </div>
+      </div>
+    </div>
+{% endif %}
+
+<!-- 매장 관리자·직원 업무 페이지 바로가기 (1인 사장님 모드에서만 표시) -->
+{% if DASHBOARD_MODE == 'solo' %}
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-store"></i> 매장 관리자·직원 업무 페이지 바로가기</h5>
+          </div>
+          <div class="card-body">
+            {% if branch_list %}
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>매장명</th>
+                    <th>관리자</th>
+                    <th>직원 수</th>
+                    <th>업무 바로가기</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for branch in branch_list %}
+                  <tr>
+                    <td><strong>{{ branch.name }}</strong></td>
+                    <td>{{ branch.manager_name }}</td>
+                    <td>{{ branch.num_employees }}명</td>
+                    <td>
+                      <div class="btn-group-vertical" role="group">
+                        <!-- 매장 관리자 업무 대시보드 바로가기 -->
+                        <a href="{{ url_for('manager_dashboard', branch_id=branch.id) }}" 
+                           class="btn btn-sm btn-primary mb-1">
+                          <i class="fas fa-user-tie"></i> 관리자 대시보드
+                        </a>
+                        <!-- 직원 업무 바로가기(직원별) -->
+                        {% if branch.employees %}
+                          <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                    type="button" data-bs-toggle="dropdown">
+                              <i class="fas fa-users"></i> 직원별 업무
+                            </button>
+                            <ul class="dropdown-menu">
+                              {% for emp in branch.employees %}
+                              <li>
+                                <a class="dropdown-item" 
+                                   href="{{ url_for('employee_dashboard', employee_id=emp.id) }}">
+                                  <i class="fas fa-user"></i> {{ emp.name or emp.username }} 업무
+                                </a>
+                              </li>
+                              {% endfor %}
+                            </ul>
+                          </div>
+                        {% else %}
+                          <span class="text-muted small">등록된 직원 없음</span>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> 등록된 매장이 없습니다. 
+              <a href="{{ url_for('admin_users') }}" class="alert-link">매장 및 직원을 먼저 등록해주세요.</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+{% endif %}
 
 <!-- 새로운 관리 기능 메뉴 -->
 <div class="row mb-3">
