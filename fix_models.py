@@ -3,9 +3,10 @@
 
 import re
 
+
 def clean_models_file():
     """모델 파일의 중복을 제거하고 깨끗하게 정리"""
-    
+
     # 깨끗한 모델 내용
     clean_content = '''from extensions import db
 from flask_login import UserMixin
@@ -778,12 +779,13 @@ class PermissionTemplate(db.Model):
     def __repr__(self):
         return f'<PermissionTemplate {self.name}>'
 '''
-    
+
     # 파일에 쓰기
-    with open('models.py', 'w', encoding='utf-8') as f:
+    with open("models.py", "w", encoding="utf-8") as f:
         f.write(clean_content)
-    
+
     print("✅ 모델 파일이 성공적으로 정리되었습니다!")
 
+
 if __name__ == "__main__":
-    clean_models_file() 
+    clean_models_file()

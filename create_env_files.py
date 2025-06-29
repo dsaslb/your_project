@@ -3,11 +3,13 @@
 
 import os
 
+
 def create_env_file(filename, content):
     """UTF-8 인코딩으로 .env 파일 생성"""
-    with open(filename, 'w', encoding='utf-8') as f:
+    with open(filename, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"생성됨: {filename}")
+
 
 # 개발 환경 설정
 dev_content = """# 개발 환경 설정
@@ -102,11 +104,11 @@ PERMANENT_SESSION_LIFETIME=3600
 SESSION_COOKIE_SECURE=0
 """
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("환경별 .env 파일 생성 중...")
-    
-    create_env_file('.env.development', dev_content)
-    create_env_file('.env.production', prod_content)
-    create_env_file('.env.test', test_content)
-    
-    print("\n모든 .env 파일이 생성되었습니다!") 
+
+    create_env_file(".env.development", dev_content)
+    create_env_file(".env.production", prod_content)
+    create_env_file(".env.test", test_content)
+
+    print("\n모든 .env 파일이 생성되었습니다!")

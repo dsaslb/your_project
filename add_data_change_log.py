@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """DataChangeLog 모델을 models.py에 추가하는 스크립트"""
 
+
 def add_data_change_log_model():
     """DataChangeLog 모델을 models.py에 추가"""
-    
+
     model_code = '''
 class DataChangeLog(db.Model):
     """데이터 변경 이력 모델"""
@@ -41,25 +42,26 @@ class DataChangeLog(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 '''
-    
+
     try:
         # models.py 파일 읽기
-        with open('models.py', 'r', encoding='utf-8') as f:
+        with open("models.py", "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         # 이미 모델이 있는지 확인
-        if 'class DataChangeLog' in content:
+        if "class DataChangeLog" in content:
             print("DataChangeLog 모델이 이미 존재합니다.")
             return
-        
+
         # 파일 끝에 모델 추가
-        with open('models.py', 'a', encoding='utf-8') as f:
+        with open("models.py", "a", encoding="utf-8") as f:
             f.write(model_code)
-        
+
         print("✅ DataChangeLog 모델이 models.py에 추가되었습니다!")
-        
+
     except Exception as e:
         print(f"❌ 오류 발생: {e}")
 
-if __name__ == '__main__':
-    add_data_change_log_model() 
+
+if __name__ == "__main__":
+    add_data_change_log_model()

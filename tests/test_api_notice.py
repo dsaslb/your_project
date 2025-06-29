@@ -1,6 +1,9 @@
-import pytest
 import time
+
+import pytest
+
 from models import Notice
+
 
 class TestAPINotice:
     """공지사항 API 테스트 클래스"""
@@ -26,7 +29,7 @@ class TestAPINotice:
         payload = {
             "title": f"테스트 공지 {int(time.time())}",
             "content": "테스트 공지사항 내용입니다.",
-            "category": "공지사항"
+            "category": "공지사항",
         }
         resp = client.post("/api/notices/", headers=admin_headers, json=payload)
         assert resp.status_code == 201
@@ -55,12 +58,12 @@ class TestAPINotice:
         payload = {
             "title": f"카테고리 테스트 공지 {int(time.time())}",
             "content": "카테고리가 포함된 테스트 공지사항입니다.",
-            "category": "자료실"
+            "category": "자료실",
         }
         resp = client.post("/api/notices/", headers=admin_headers, json=payload)
         assert resp.status_code == 201
         notice_id = resp.json["notice_id"]
-        
+
         notice = session.get(Notice, notice_id)
         assert notice.category == "자료실"
 
@@ -70,16 +73,20 @@ class TestAPINotice:
         payload = {"title": unique_title, "content": "통합 테스트용 공지사항입니다."}
         resp = client.post("/api/notices/", headers=admin_headers, json=payload)
         assert resp.status_code == 201
-        
+
         get_resp = client.get("/api/notices/")
         assert get_resp.status_code == 200
-        titles = [n['title'] for n in get_resp.json.get('notices', [])]
+        titles = [n["title"] for n in get_resp.json.get("notices", [])]
         assert unique_title in titles
 
     def test_notice_post_invalid_token(self, client):
         """잘못된 토큰으로 공지사항 등록 실패 테스트"""
         payload = {"title": "테스트 공지", "content": "테스트 공지사항 내용입니다."}
-        resp = client.post("/api/notices/", headers={'Authorization': 'Bearer invalidtoken'}, json=payload)
+        resp = client.post(
+            "/api/notices/",
+            headers={"Authorization": "Bearer invalidtoken"},
+            json=payload,
+        )
         assert resp.status_code == 401
 
     def test_notice_post_empty_payload(self, client, admin_headers):
@@ -96,4 +103,4 @@ class TestAPINotice:
         assert "notices" in data
         assert "total" in data
         assert "page" in data
-        assert "pages" in data 
+        assert "pages" in data

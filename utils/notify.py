@@ -1,13 +1,16 @@
-import smtplib
-import requests
 import json
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import smtplib
 from datetime import datetime
-from extensions import db
-from models import User, ActionLog, Attendance, Notification
-from utils.logger import log_action
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+import requests
 from flask import url_for
+
+from extensions import db
+from models import ActionLog, Attendance, Notification, User
+from utils.logger import log_action
+
 # from utils.email_utils import send_mail # 실제 이메일 전송 함수
 # from utils.kakao_utils import send_kakao # 실제 카카오톡 전송 함수
 

@@ -3,14 +3,16 @@
 사유 템플릿 테이블 구조 수정 스크립트
 """
 
+import sqlite3
+
 from app import app, db
 from models import ReasonTemplate
-import sqlite3
+
 
 def fix_reason_template_table():
     """사유 템플릿 테이블 구조 수정"""
     print("=== 사유 템플릿 테이블 구조 수정 시작 ===")
-    
+
     with app.app_context():
         # 1. 기존 테이블 삭제
         print("\n1. 기존 reason_templates 테이블 삭제:")
@@ -20,7 +22,7 @@ def fix_reason_template_table():
             print("  - 기존 테이블 삭제 완료")
         except Exception as e:
             print(f"  - 테이블 삭제 오류: {e}")
-        
+
         # 2. 새 테이블 생성
         print("\n2. 새 reason_templates 테이블 생성:")
         try:
@@ -41,7 +43,7 @@ def fix_reason_template_table():
             print("  - 새 테이블 생성 완료")
         except Exception as e:
             print(f"  - 테이블 생성 오류: {e}")
-        
+
         # 3. 샘플 데이터 추가
         print("\n3. 샘플 데이터 추가:")
         sample_templates = [
@@ -54,23 +56,21 @@ def fix_reason_template_table():
             ("조리 준비", "주방"),
             ("재료 정리", "주방"),
             ("고객 응대", "홀"),
-            ("테이블 정리", "홀")
+            ("테이블 정리", "홀"),
         ]
-        
+
         for text, team in sample_templates:
             try:
                 template = ReasonTemplate(
-                    text=text,
-                    team=team,
-                    created_by=1  # 관리자 ID
+                    text=text, team=team, created_by=1  # 관리자 ID
                 )
                 db.session.add(template)
                 print(f"  - {text} (팀: {team or '전체'}) 추가됨")
             except Exception as e:
                 print(f"  - {text} 추가 실패: {e}")
-        
+
         db.session.commit()
-        
+
         # 4. 테이블 구조 확인
         print("\n4. 테이블 구조 확인:")
         try:
@@ -81,7 +81,7 @@ def fix_reason_template_table():
                 print(f"    - {col[1]} ({col[2]})")
         except Exception as e:
             print(f"  테이블 구조 확인 오류: {e}")
-        
+
         # 5. 데이터 확인
         print("\n5. 데이터 확인:")
         try:
@@ -91,8 +91,9 @@ def fix_reason_template_table():
                 print(f"    - {t.text} (팀: {t.team or '전체'})")
         except Exception as e:
             print(f"  데이터 확인 오류: {e}")
-        
+
         print("\n=== 사유 템플릿 테이블 구조 수정 완료 ===")
 
+
 if __name__ == "__main__":
-    fix_reason_template_table() 
+    fix_reason_template_table()

@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 def update_profile_route():
     """app.py의 profile 라우트를 확장합니다."""
-    
-    with open('app.py', 'r', encoding='utf-8') as f:
+
+    with open("app.py", "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     # 기존 profile 라우트를 새로운 버전으로 교체
-    old_profile = '''@app.route('/profile')
+    old_profile = """@app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html', user=current_user)'''
-    
-    new_profile = '''@app.route('/profile')
+    return render_template('profile.html', user=current_user)"""
+
+    new_profile = """@app.route('/profile')
 @login_required
 def profile():
     user = User.query.get(session['user_id'])
@@ -78,14 +79,15 @@ def profile():
         lateness_list=lateness_list,
         early_leave_list=early_leave_list,
         notifications=notifications
-    )'''
-    
+    )"""
+
     content = content.replace(old_profile, new_profile)
-    
-    with open('app.py', 'w', encoding='utf-8') as f:
+
+    with open("app.py", "w", encoding="utf-8") as f:
         f.write(content)
-    
+
     print("Profile 라우트 확장 완료!")
 
-if __name__ == '__main__':
-    update_profile_route() 
+
+if __name__ == "__main__":
+    update_profile_route()

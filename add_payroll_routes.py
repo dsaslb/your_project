@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 def add_payroll_routes():
     """app.py에 급여명세서 PDF 라우트와 교대 신청 관련 라우트들을 추가합니다."""
-    
-    with open('app.py', 'r', encoding='utf-8') as f:
+
+    with open("app.py", "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     # 파일 끝에 새로운 라우트들 추가
-    new_routes = '''
+    new_routes = """
 
 # --- Payroll Routes ---
 @app.route('/payroll_pdf/<int:year>/<int:month>')
@@ -105,23 +106,23 @@ def calendar():
 
 if __name__ == '__main__':
     app.run(debug=True)
-'''
-    
+"""
+
     # 파일 끝의 if __name__ == '__main__' 부분을 찾아서 교체
-    if 'if __name__ == \'__main__\':' in content:
+    if "if __name__ == '__main__':" in content:
         # 기존 main 부분 제거하고 새로운 라우트들 추가
         content = content.replace(
-            'if __name__ == \'__main__\':\n    app.run(debug=True)',
-            new_routes
+            "if __name__ == '__main__':\n    app.run(debug=True)", new_routes
         )
     else:
         # 파일 끝에 추가
         content += new_routes
-    
-    with open('app.py', 'w', encoding='utf-8') as f:
+
+    with open("app.py", "w", encoding="utf-8") as f:
         f.write(content)
-    
+
     print("급여명세서 PDF 라우트와 교대 신청 라우트 추가 완료!")
 
-if __name__ == '__main__':
-    add_payroll_routes() 
+
+if __name__ == "__main__":
+    add_payroll_routes()

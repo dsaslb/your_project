@@ -5,15 +5,16 @@
 app.py 오류 수정 스크립트
 """
 
+
 def fix_app_py():
     """app.py의 import와 초기화 오류를 수정합니다."""
-    
+
     print("🔧 app.py 오류 수정 중...")
-    
+
     # 파일 읽기
-    with open('app.py', 'r', encoding='utf-8') as f:
+    with open("app.py", "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     # 새로운 import와 초기화 코드
     new_header = '''from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -179,38 +180,49 @@ def too_large(e):
     return render_template("errors/413.html", message="파일 용량이 너무 큽니다! (최대 10MB)"), 413
 
 '''
-    
+
     # 기존 import 부분을 새로운 import로 교체
-    lines = content.split('\n')
+    lines = content.split("\n")
     new_lines = []
-    
+
     # 첫 번째 @app.route 라인을 찾을 때까지 건너뛰기
     skip_until_route = True
     for line in lines:
         if skip_until_route:
-            if line.strip().startswith('@app.route'):
+            if line.strip().startswith("@app.route"):
                 skip_until_route = False
                 new_lines.append(new_header)
                 new_lines.append(line)
             # import 라인들과 초기화 라인들은 건너뛰기
-            elif not (line.strip().startswith('from ') or line.strip().startswith('import ') or 
-                     line.strip().startswith('app = ') or line.strip().startswith('app.config') or
-                     line.strip().startswith('csrf = ') or line.strip().startswith('db.init_app') or
-                     line.strip().startswith('migrate.init_app') or line.strip().startswith('cache.init_app') or
-                     line.strip().startswith('limiter.init_app') or line.strip().startswith('@app.after_request') or
-                     line.strip().startswith('logger = ') or line.strip().startswith('login_manager = ') or
-                     line.strip().startswith('@login_manager.user_loader') or line.strip().startswith('def load_user') or
-                     line.strip().startswith('def login_required') or line.strip().startswith('def admin_required') or
-                     line.strip().startswith('@app.errorhandler')):
+            elif not (
+                line.strip().startswith("from ")
+                or line.strip().startswith("import ")
+                or line.strip().startswith("app = ")
+                or line.strip().startswith("app.config")
+                or line.strip().startswith("csrf = ")
+                or line.strip().startswith("db.init_app")
+                or line.strip().startswith("migrate.init_app")
+                or line.strip().startswith("cache.init_app")
+                or line.strip().startswith("limiter.init_app")
+                or line.strip().startswith("@app.after_request")
+                or line.strip().startswith("logger = ")
+                or line.strip().startswith("login_manager = ")
+                or line.strip().startswith("@login_manager.user_loader")
+                or line.strip().startswith("def load_user")
+                or line.strip().startswith("def login_required")
+                or line.strip().startswith("def admin_required")
+                or line.strip().startswith("@app.errorhandler")
+            ):
                 new_lines.append(line)
         else:
             new_lines.append(line)
-    
+
     # 파일 저장
-    with open('app.py', 'w', encoding='utf-8') as f:
-        f.write('\n'.join(new_lines))
-    
+    with open("app.py", "w", encoding="utf-8") as f:
+        f.write("\n".join(new_lines))
+
     print("✅ app.py 오류 수정 완료!")
 
-if __name__ == '__main__':
-    fix_app_py() 
+
+if __name__ == "__main__":
+    fix_app_py()

@@ -6,6 +6,9 @@ MVP 완성 후 모듈별로 분리 예정
 
 from flask import Blueprint
 
+# 근태 관리 블루프린트
+from routes.attendance import attendance_bp
+
 # ===== 현재 구현된 기능들 =====
 # (app.py에 통합되어 있음, 나중에 블루프린트로 분리 예정)
 
@@ -20,8 +23,6 @@ from flask import Blueprint
 # report_bp = Blueprint('report', __name__, url_prefix='/report')
 # api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
-# 근태 관리 블루프린트
-from routes.attendance import attendance_bp
 
 def init_blueprints(app):
     """블루프린트 초기화 (v2에서 구현 예정)"""
@@ -34,7 +35,7 @@ def init_blueprints(app):
     # app.register_blueprint(payroll_bp)
     # app.register_blueprint(report_bp)
     # app.register_blueprint(api_bp)
-    
+
     # 근태 관리 블루프린트 등록
     app.register_blueprint(attendance_bp)
-    pass 
+    pass

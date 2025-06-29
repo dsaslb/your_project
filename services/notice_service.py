@@ -1,5 +1,6 @@
 from models import Notice, NoticeHistory, db
 
+
 def update_notice(notice_id, data, file, editor_id):
     """
     공지사항을 수정하고 이력을 기록합니다.
@@ -21,27 +22,28 @@ def update_notice(notice_id, data, file, editor_id):
         before_content=notice.content,
         before_file_path=notice.file_path,
         before_file_type=notice.file_type,
-        action='edit'
+        action="edit",
     )
     db.session.add(history)
 
     # 2. 실제 데이터 수정
-    notice.title = data.get('title', notice.title)
-    notice.content = data.get('content', notice.content)
-    notice.category = data.get('category', notice.category)
+    notice.title = data.get("title", notice.title)
+    notice.content = data.get("content", notice.content)
+    notice.category = data.get("category", notice.category)
 
     # 3. 파일 처리
-    if file and file.filename != '':
-        from utils.file_utils import save_file, delete_file
+    if file and file.filename != "":
+        from utils.file_utils import delete_file, save_file
+
         # 기존 파일 삭제
         if notice.file_path:
             delete_file(notice.file_path)
-        
+
         # 새 파일 저장
         file_path, file_type = save_file(file)
         notice.file_path = file_path
         notice.file_type = file_type
 
     db.session.commit()
-    
-    return notice 
+
+    return notice

@@ -1,11 +1,12 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 
-from models import Notice, db
 from api.utils import token_required
+from models import Notice, db
 
-api_notice_bp = Blueprint('api_notice', __name__, url_prefix='/api/notices')
+api_notice_bp = Blueprint("api_notice", __name__, url_prefix="/api/notices")
 
-@api_notice_bp.route('/', methods=['GET'])
+
+@api_notice_bp.route("/", methods=["GET"])
 def get_notices():
     """
     공지사항 목록 조회
@@ -61,32 +62,37 @@ def get_notices():
               type: integer
               description: 전체 페이지 수
     """
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
 
-    pagination = Notice.query.filter_by(is_hidden=False).order_by(Notice.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
+    pagination = (
+        Notice.query.filter_by(is_hidden=False)
+        .order_by(Notice.created_at.desc())
+        .paginate(page=page, per_page=per_page, error_out=False)
     )
-    
+
     notices = pagination.items
     output = []
     for notice in notices:
         notice_data = {
-            'id': notice.id,
-            'title': notice.title,
-            'author': notice.author.username,
-            'created_at': notice.created_at.isoformat()
+            "id": notice.id,
+            "title": notice.title,
+            "author": notice.author.username,
+            "created_at": notice.created_at.isoformat(),
         }
         output.append(notice_data)
-        
-    return jsonify({
-        'notices': output,
-        'total': pagination.total,
-        'page': pagination.page,
-        'pages': pagination.pages
-    })
 
-@api_notice_bp.route('/', methods=['POST'])
+    return jsonify(
+        {
+            "notices": output,
+            "total": pagination.total,
+            "page": pagination.page,
+            "pages": pagination.pages,
+        }
+    )
+
+
+@api_notice_bp.route("/", methods=["POST"])
 @token_required
 def create_notice(current_user):
     """
@@ -152,15 +158,15 @@ def create_notice(current_user):
               example: "Token is missing!"
     """
     data = request.json
-    if not data or not data.get('title') or not data.get('content'):
+    if not data or not data.get("title") or not data.get("content"):
         return jsonify({"msg": "Title and content are required"}), 400
 
     new_notice = Notice(
-        title=data['title'],
-        content=data['content'],
+        title=data["title"],
+        content=data["content"],
         author_id=current_user.id,
-        category=data.get('category', '공지사항')
+        category=data.get("category", "공지사항"),
     )
     db.session.add(new_notice)
     db.session.commit()
-    return jsonify({'message': 'New notice created!', 'notice_id': new_notice.id}), 201 
+    return jsonify({"message": "New notice created!", "notice_id": new_notice.id}), 201
