@@ -1439,7 +1439,7 @@ def individual_transfer(user_id):
         success, message = transfer_salary(user, wage, f"{year}년 {month}월 급여")
         
         if success:
-            notify_salary_payment(user, wage, year, month)
+            # notify_salary_payment(user, wage, year, month)  # 정의되지 않은 함수, 주석 처리
             flash(f'{user.name or user.username}님 급여 {wage:,}원 이체 완료!', 'success')
         else:
             flash(f'급여 이체 실패: {message}', 'error')
@@ -1504,7 +1504,7 @@ def bulk_transfer():
             
             # 성공 시 알림 발송
             if success:
-                notify_salary_payment(user, wage, year, month)
+                # notify_salary_payment(user, wage, year, month)  # 정의되지 않은 함수, 주석 처리
         
         # 결과 요약
         success_count = sum(1 for r in transfer_results if r['success'])

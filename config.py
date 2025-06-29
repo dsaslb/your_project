@@ -113,12 +113,18 @@ class TestConfig(Config):
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
     LOG_FILE = os.getenv('LOG_FILE', 'logs/restaurant_test.log')
 
+class TestingConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # 또는 테스트용 DB URL
+    WTF_CSRF_ENABLED = False
+
 # 설정 매핑
 config_by_name = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
     'test': TestConfig,
-    'default': DevelopmentConfig
+    'default': DevelopmentConfig,
+    'testing': TestingConfig,
 }
 
 # COOKIE_SECURE 설정 (app.py에서 import용)

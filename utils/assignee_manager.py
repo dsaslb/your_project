@@ -247,8 +247,7 @@ def assign_dispute(dispute_id, assignee_id=None, reason=None):
             return False, "신고/이의제기를 찾을 수 없습니다."
         
         # 담당자 자동 배정 (지정되지 않은 경우)
-        if not assignee_id:
-            assignee_id = auto_assign_dispute(dispute)
+        # assignee_id = auto_assign_dispute(dispute)  # 정의되지 않은 함수, 주석 처리
         
         # 기존 담당자와 다른 경우에만 업데이트
         if dispute.assignee_id != assignee_id:

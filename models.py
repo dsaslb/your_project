@@ -467,18 +467,25 @@ class Suggestion(db.Model):
 
 class Schedule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 직원 근무 시
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)  # 매장 정보
     date = db.Column(db.Date, nullable=False)
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
+    type = db.Column(db.String(16), default='work')  # 'work', 'clean'
     category = db.Column(db.String(50), nullable=False, default='근무')
     status = db.Column(db.String(20), nullable=False, default='대기') # 대기, 승인, 거절
     memo = db.Column(db.String(200), nullable=True)
+    team = db.Column(db.String(30))  # 청소 담당 팀 (ex: "주방", "홀")
+    plan = db.Column(db.String(200))  # 청소 계획 내용
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 담당자(청소 시)
 
-    user = db.relationship('User', backref=db.backref('schedules', lazy=True))
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('schedules', lazy=True))
+    branch = db.relationship('Branch', backref='schedules')
+    manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_schedules')
 
     def __repr__(self):
-        return f'<Schedule {self.id} for User {self.user_id} on {self.date} from {self.start_time} to {self.end_time}>'
+        return f'<Schedule {self.date} {self.type} {self.user_id}>'
 
 class CleaningPlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -511,9 +518,8 @@ class Order(db.Model):
     processing_minutes = db.Column(db.Integer)
     employee_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 직원
     store_id = db.Column(db.Integer, db.ForeignKey('branches.id'))  # 매장
-    
     # 관계 설정
-    user = db.relationship('User', backref='orders')
+    user = db.relationship('User', foreign_keys=[ordered_by])
     
     def __repr__(self):
         return f'<Order {self.item} {self.quantity}>'
@@ -876,6 +882,20 @@ class OrderFeedback(db.Model):
     
     def __repr__(self):
         return f'<OrderFeedback {self.id} {self.type} for Order {self.order_id}>'
+
+class OrderRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    item_name = db.Column(db.String(128))
+    quantity = db.Column(db.Integer)
+    status = db.Column(db.String(32), default='pending')  # 'pending', 'approved', 'completed'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    requested_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'))
+    # 관계
+    user = db.relationship('User', foreign_keys=[requested_by])
+    branch = db.relationship('Branch', foreign_keys=[branch_id])
+    # 기타 필요 항목 자유롭게 추가
 
 
 

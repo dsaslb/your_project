@@ -1,357 +1,54 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>스케줄 관리 - Core System</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            background: white; 
-            border-radius: 20px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-            padding: 30px; 
-            text-align: center;
-        }
-        .header h1 { 
-            margin: 0; 
-            font-size: 2.5rem; 
-            font-weight: 300;
-        }
-        .nav { 
-            background: #f8f9fa; 
-            padding: 20px 30px; 
-            border-bottom: 1px solid #e9ecef;
-        }
-        .nav a { 
-            color: #495057; 
-            text-decoration: none; 
-            margin-right: 20px; 
-            padding: 10px 20px; 
-            border-radius: 25px; 
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-        }
-        .nav a:hover { 
-            background: #667eea; 
-            color: white; 
-            transform: translateY(-2px);
-        }
-        .content { 
-            padding: 30px; 
-        }
-        
-        /* 검색 폼 스타일 */
-        .search-form {
-            background: #f8f9fa;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-        }
-        .search-form label {
-            font-weight: 600;
-            color: #495057;
-            margin-right: 10px;
-        }
-        .search-form input[type="date"] {
-            padding: 10px 15px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 1rem;
-            margin-right: 10px;
-        }
-        .search-form button {
-            background: linear-gradient(140deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-right: 10px;
-            transition: all 0.3s ease;
-        }
-        .search-form button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .quick-buttons {
-            margin-top: 15px;
-        }
-        .quick-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            margin-right: 8px;
-            transition: all 0.3s ease;
-        }
-        .quick-btn:hover {
-            background: #495057;
-            transform: translateY(-1px);
-        }
-        
-        /* 스케줄 테이블 스타일 */
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        .schedule-table th {
-            background: linear-gradient(140deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
-        .schedule-table td {
-            padding: 15px;
-            border-bottom: 1px solid #e9ecef;
-            vertical-align: top;
-        }
-        .schedule-table tr:hover {
-            background: #f8f9fa;
-        }
-        .date-cell {
-            font-weight: 600;
-            color: #495057;
-            min-width: 120px;
-        }
-        .schedule-cell {
-            background: #e8f5e8;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 5px;
-        }
-        .cleaning-cell {
-            background: #fff3cd;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 5px;
-        }
-        .schedule-info {
-            font-size: 0.9rem;
-            color: #495057;
-        }
-        .schedule-time {
-            font-weight: 600;
-            color: #28a745;
-        }
-        .cleaning-team {
-            font-weight: 600;
-            color: #ffc107;
-        }
-        
-        /* 추가 버튼 */
-        .add-btn {
-            background: linear-gradient(140deg, #28a745 0%, #20c997 100%);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-top: 20px;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .add-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        }
-        
-        /* 반응형 디자인 */
-        @media (max-width: 768px) {
-            .schedule-table {
-                font-size: 0.9rem;
-            }
-            .schedule-table th,
-            .schedule-table td {
-                padding: 10px 8px;
-            }
-            .search-form {
-                padding: 20px;
-            }
-            .search-form input[type="date"] {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-            .quick-buttons {
-                text-align: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📆 직원 스케줄표/청소계획</h1>
-        </div>
-        
-        <div class="nav">
-            <a href="/dashboard">🏠 대시보드</a>
-            <a href="/schedule">📆 스케줄 관리</a>
-            <a href="/clean">🧹 청소 관리</a>
-            <a href="/order">🛒 발주 관리</a>
-        </div>
-        
-        <div class="content">
-            <!-- 검색 폼 -->
-            <div class="search-form">
-                <h2>직원 스케줄표/청소계획</h2>
-                <form method="get">
-                    <label>기간: </label>
-                    <div class="col-auto">
-                        <input type="date" class="form-control" name="from" value="{{ from_date }}">
-                    </div>
-                    <div class="col-auto">
-                        <input type="date" class="form-control" name="to" value="{{ to_date }}">
-                    </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-primary">조회</button>
-                    </div>
-                    {% if current_user.is_admin %}
-                    <div class="col-auto">
-                        <a href="#" class="btn btn-success" onclick="showAddForm()">
-                            <i class="fas fa-plus"></i> 스케줄 등록
-                        </a>
-                    </div>
-                    <div class="col-auto">
-                        <a href="#" class="btn btn-info">
-                            <i class="fas fa-calendar-alt"></i> 캘린더로 보기
-                        </a>
-                    </div>
-                    {% endif %}
-                </form>
-            </div>
-            
-            <!-- 스케줄 테이블 -->
-            <table class="schedule-table">
-                <thead>
-                    <tr>
-                        <th>날짜</th>
-                        <th>근무자/시간</th>
-                        <th>청소계획</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in dates %}
-                    <tr>
-                        <td class="date-cell">{{ d.strftime('%Y-%m-%d (%a)') }}</td>
-                        <td>
-                            {% for s in schedules[d] %}
-                                <div class="schedule-cell">
-                                    <div class="schedule-info">
-                                        {% set user = users|selectattr('id', 'equalto', s.user_id)|first %}
-                                        {% if user %}
-                                            <strong>{{ user.username }}</strong>
-                                        {% else %}
-                                            <strong>사용자 ID: {{ s.user_id }}</strong>
-                                        {% endif %}
-                                    </div>
-                                    <div class="schedule-time">
-                                        {{ s.start_time.strftime('%H:%M') }} ~ {{ s.end_time.strftime('%H:%M') }}
-                                    </div>
-                                    {% if s.memo %}
-                                        <div style="color: #6c757d; font-size: 0.85rem; margin-top: 5px;">
-                                            📝 {{ s.memo }}
-                                        </div>
-                                    {% endif %}
-                                    {% if current_user.is_admin or current_user.id == s.user_id %}
-                                        <a href="{{ url_for('edit_schedule', sid=s.id) }}" class="btn btn-sm btn-outline-primary">수정</a>
-                                        <a href="{{ url_for('delete_schedule', sid=s.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</a>
-                                    {% endif %}
-                                </div>
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            <!-- 새로운 청소 계획 -->
-                            {% for c in cleanings[d] %}
-                                <div class="cleaning-cell">
-                                    <div class="cleaning-team">[{{ c.team }}]</div>
-                                    <div>{{ c.plan }}</div>
-                                    {% if current_user.is_admin or current_user.id == c.user_id %}
-                                        <a href="{{ url_for('edit_clean', cid=c.id) }}" class="btn btn-sm btn-outline-primary">수정</a>
-                                        <a href="{{ url_for('delete_clean', cid=c.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</a>
-                                    {% endif %}
-                                </div>
-                            {% endfor %}
-                            
-                            <!-- 기존 청소 스케줄 (호환성) -->
-                            {% for c in old_cleanings[d] %}
-                                <div class="cleaning-cell">
-                                    <div class="cleaning-team">[{{ c.team }}]</div>
-                                    <div>{{ c.content }}</div>
-                                </div>
-                            {% endfor %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-            <!-- 스케줄 추가 버튼 -->
-            <div style="text-align: center; margin-top: 30px;">
-                <button class="add-btn" onclick="showAddForm()">➕ 스케줄 추가</button>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // 빠른 날짜 설정 함수들
-        function setToday() {
-            const t = new Date().toISOString().slice(0,10);
-            document.querySelector('[name=from]').value = t;
-            document.querySelector('[name=to]').value = t;
-            document.querySelector('form').submit();
-        }
-        
-        function setWeek() {
-            let today = new Date();
-            let first = new Date(today.setDate(today.getDate() - today.getDay()));
-            let last = new Date(today.setDate(today.getDate() - today.getDay() + 6));
-            document.querySelector('[name=from]').value = first.toISOString().slice(0,10);
-            document.querySelector('[name=to]').value = last.toISOString().slice(0,10);
-            document.querySelector('form').submit();
-        }
-        
-        function setMonth() {
-            let today = new Date();
-            let first = new Date(today.getFullYear(), today.getMonth(), 1);
-            let last = new Date(today.getFullYear(), today.getMonth()+1, 0);
-            document.querySelector('[name=from]').value = first.toISOString().slice(0,10);
-            document.querySelector('[name=to]').value = last.toISOString().slice(0,10);
-            document.querySelector('form').submit();
-        }
-        
-        function showAddForm() {
-            // 스케줄 추가 폼 표시 (추후 구현)
-            alert('스케줄 추가 기능은 추후 구현 예정입니다.');
-        }
-    </script>
-</body>
-</html> 
+{% extends "base.html" %}
+{% block content %}
+<h2>스케줄 관리</h2>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link active" id="work-tab" data-toggle="tab" href="#work" onclick="showTab('work')">근무 스케줄</a></li>
+  <li class="nav-item"><a class="nav-link" id="clean-tab" data-toggle="tab" href="#clean" onclick="showTab('clean')">청소 스케줄</a></li>
+</ul>
+<div class="tab-content">
+  <div class="tab-pane active" id="work">
+    <h4>근무 스케줄</h4>
+    <table class="table">
+      <thead>
+        <tr><th>날짜</th><th>시작</th><th>종료</th><th>직원</th></tr>
+      </thead>
+      <tbody>
+        {% for sch in work_schedules %}
+        <tr>
+          <td>{{ sch.date }}</td>
+          <td>{{ sch.start_time }}</td>
+          <td>{{ sch.end_time }}</td>
+          <td>{{ sch.user.username if sch.user else '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="tab-pane" id="clean" style="display:none;">
+    <h4>청소 스케줄</h4>
+    <table class="table">
+      <thead>
+        <tr><th>날짜</th><th>시작</th><th>종료</th><th>팀/담당자</th></tr>
+      </thead>
+      <tbody>
+        {% for sch in clean_schedules %}
+        <tr>
+          <td>{{ sch.date }}</td>
+          <td>{{ sch.start_time }}</td>
+          <td>{{ sch.end_time }}</td>
+          <td>{{ sch.user.username if sch.user else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+function showTab(tab) {
+  document.getElementById('work').style.display = (tab === 'work') ? '' : 'none';
+  document.getElementById('clean').style.display = (tab === 'clean') ? '' : 'none';
+  document.getElementById('work-tab').classList.toggle('active', tab === 'work');
+  document.getElementById('clean-tab').classList.toggle('active', tab === 'clean');
+}
+</script>
+{% endblock %} 

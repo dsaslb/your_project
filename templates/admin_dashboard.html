@@ -511,6 +511,74 @@
 <p>직원 평균 주문 처리 시간: {{ avg_processing|round(1) }}분</p>
 <p>기준 초과 주문 건수: {{ exceed_count }}건</p>
 
+<!-- 매장별 주문/피드백 요약 표 -->
+<div class="card p-4 mb-4">
+  <h4 class="mb-3">매장별 주문/피드백 요약</h4>
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>매장명</th>
+        <th>주문 수</th>
+        <th>피드백 수</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stat in branch_stats %}
+      <tr>
+        <td>{{ stat.branch.name }}</td>
+        <td>{{ stat.orders }}</td>
+        <td>{{ stat.feedbacks }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- 최근 주문 5개 -->
+<div class="card p-4 mb-4">
+  <h4 class="mb-3">최근 주문</h4>
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>주문ID</th>
+        <th>담당직원</th>
+        <th>매장</th>
+        <th>생성시각</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in recent_orders %}
+      <tr>
+        <td>{{ order.id }}</td>
+        <td>{{ order.employee.username if order.employee else '-' }}</td>
+        <td>{{ order.branch.name if order.branch else '-' }}</td>
+        <td>{{ order.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- 최근 알림 5개 -->
+<div class="card p-4 mb-4">
+  <h4 class="mb-3">최근 알림</h4>
+  <ul>
+    {% for n in recent_notifications %}
+      <li>{{ n.title }} - {{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<!-- 최근 피드백/문의 5개 -->
+<div class="card p-4 mb-4">
+  <h4 class="mb-3">최근 개선·문의사항</h4>
+  <ul>
+    {% for f in recent_feedbacks %}
+      <li>{{ f.title }} ({{ f.status }}) - {{ f.created_at.strftime('%Y-%m-%d') }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // 월별 변화 추이 차트

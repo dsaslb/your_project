@@ -11,7 +11,7 @@ from sqlalchemy import func
 
 from config import config_by_name
 from extensions import db, migrate, login_manager, csrf, limiter, cache
-from models import User, Schedule, CleaningPlan, Report, Notification, Notice, Order, FeedbackIssue, Branch
+from models import User, Schedule, CleaningPlan, Report, Notification, Notice, Order, FeedbackIssue, Branch, OrderRequest
 
 # Import notification functions
 from utils.notify import (
@@ -164,6 +164,23 @@ def admin_dashboard():
     exceed_count = db.session.query(Order).join(Branch).filter(
         Order.processing_minutes > Branch.processing_time_standard
     ).count()
+    
+    # 매장별 주문/피드백/알림 요약
+    branch_stats = []
+    for branch in Branch.query.all():
+        orders = Order.query.filter_by(store_id=branch.id).count()
+        feedbacks = FeedbackIssue.query.filter_by(branch_id=branch.id).count()
+        branch_stats.append({
+            'branch': branch,
+            'orders': orders,
+            'feedbacks': feedbacks,
+        })
+    
+    # 최근 주문/알림/피드백 (5개)
+    recent_orders = Order.query.order_by(Order.created_at.desc()).limit(5).all()
+    recent_notifications = Notification.query.order_by(Notification.created_at.desc()).limit(5).all()
+    recent_feedbacks = FeedbackIssue.query.order_by(FeedbackIssue.created_at.desc()).limit(5).all()
+    
     context = {
         'num_users': User.query.count(),
         'num_attendance': 0,
@@ -182,6 +199,10 @@ def admin_dashboard():
         'branch_list': branch_list,
         'avg_processing': avg_processing or 0,
         'exceed_count': exceed_count,
+        'branch_stats': branch_stats,
+        'recent_orders': recent_orders,
+        'recent_notifications': recent_notifications,
+        'recent_feedbacks': recent_feedbacks,
     }
     return render_template('admin_dashboard.html', **context)
 
@@ -238,36 +259,15 @@ def employee_dashboard(employee_id):
 @app.route('/schedule', methods=['GET'])
 @login_required
 def schedule():
-    from_date_str = request.args.get('from', datetime.now().strftime('%Y-%m-%d'))
-    to_date_str = request.args.get('to', datetime.now().strftime('%Y-%m-%d'))
-    
-    try:
-        from_dt = date_parser.parse(from_date_str).date()
-        to_dt = date_parser.parse(to_date_str).date()
-    except ValueError:
-        flash('날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)', 'error')
-        from_dt = datetime.now().date()
-        to_dt = datetime.now().date()
-    
-    if from_dt > to_dt:
-        flash('시작일은 종료일보다 늦을 수 없습니다.', 'error')
-        from_dt, to_dt = to_dt, from_dt
-    
-    days_diff = (to_dt - from_dt).days
-    if days_diff > 90:
-        flash('최대 90일까지 조회 가능합니다.', 'warning')
-        to_dt = from_dt + timedelta(days=90)
-    
-    days = [(from_dt + timedelta(days=i)) for i in range(days_diff + 1)]
-    schedules = {d: Schedule.query.filter_by(date=d).all() for d in days}
-    cleanings = {d: CleaningPlan.query.filter_by(date=d).all() for d in days}
-    
-    return render_template('schedule.html',
-        from_date=from_dt.strftime('%Y-%m-%d'), 
-        to_date=to_dt.strftime('%Y-%m-%d'),
-        dates=days, 
-        schedules=schedules, 
-        cleanings=cleanings
+    branch_id = current_user.branch_id
+    # 근무 스케줄
+    work_schedules = Schedule.query.filter_by(branch_id=branch_id, type='work').all()
+    # 청소 스케줄
+    clean_schedules = Schedule.query.filter_by(branch_id=branch_id, type='clean').all()
+    return render_template(
+        'schedule.html',
+        work_schedules=work_schedules,
+        clean_schedules=clean_schedules
     )
 
 @app.route('/clean')
@@ -592,6 +592,35 @@ def admin_order_setting():
         flash('기준 시간이 저장되었습니다.')
         return redirect(url_for('admin_order_setting'))
     return render_template('admin/order_setting.html', branches=branches)
+
+@app.route('/orders')
+@login_required
+def order_list():
+    if current_user.is_admin():
+        orders = OrderRequest.query.order_by(OrderRequest.created_at.desc()).all()
+    elif current_user.role == 'manager':
+        orders = OrderRequest.query.filter_by(branch_id=current_user.branch_id).order_by(OrderRequest.created_at.desc()).all()
+    else:
+        orders = OrderRequest.query.filter_by(requested_by=current_user.id).order_by(OrderRequest.created_at.desc()).all()
+    return render_template('orders.html', orders=orders)
+
+@app.route('/orders/new', methods=['GET', 'POST'])
+@login_required
+def order_new():
+    if request.method == 'POST':
+        item_name = request.form['item_name']
+        quantity = int(request.form['quantity'])
+        order = OrderRequest(
+            item_name=item_name,
+            quantity=quantity,
+            requested_by=current_user.id,
+            branch_id=current_user.branch_id
+        )
+        db.session.add(order)
+        db.session.commit()
+        flash('발주 요청이 등록되었습니다.')
+        return redirect(url_for('order_list'))
+    return render_template('order_new.html')
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
