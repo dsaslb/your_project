@@ -295,3 +295,25 @@ Thumbs.db
 # Backup files
 *.bak
 *.backup
+
+# Project specific
+backups/
+*.py.bak
+*_backup.py
+*_backup_*.py
+app_backup_*.py
+app_*_backup.py
+fix_*.py
+test_*.py
+create_*_*.py
+*_fix.py
+*_clean.py
+*_simple.py
+*_final.py
+*_complete.py
+*_new.py
+*_socketio.py
+*_runner.py
+*_setup.txt
+*.txt
+base_*.html
