@@ -338,12 +338,12 @@
                         <span class="user-role">{{ user.role|title }}</span>
                     </span>
                     <a class="logout-btn" href="/logout">로그아웃</a>
-                </div>
-            </div>
+      </div>
+    </div>
             
             <h1>🏢 최고관리자 대시보드</h1>
             <p class="mb-0">전체 시스템 관리 및 모니터링</p>
-        </div>
+  </div>
         
         <!-- 통계 섹션 -->
         <div class="stats-section">
@@ -354,32 +354,32 @@
                 <div class="stat-card">
                     <div class="stat-icon text-primary">
                         <i class="fas fa-users"></i>
-                    </div>
+      </div>
                     <div class="stat-number">{{ stats.pending_users }}</div>
                     <div class="stat-label">승인 대기 직원</div>
-                </div>
+    </div>
                 <div class="stat-card">
                     <div class="stat-icon text-warning">
                         <i class="fas fa-bell"></i>
-                    </div>
+  </div>
                     <div class="stat-number">{{ stats.unread_notifications }}</div>
                     <div class="stat-label">미읽 알림</div>
-                </div>
+    </div>
                 <div class="stat-card">
                     <div class="stat-icon text-info">
                         <i class="fas fa-comment"></i>
-                    </div>
+  </div>
                     <div class="stat-number">{{ stats.pending_feedback }}</div>
                     <div class="stat-label">처리 대기 피드백</div>
-                </div>
+</div>
                 <div class="stat-card">
                     <div class="stat-icon text-success">
                         <i class="fas fa-store"></i>
-                    </div>
+  </div>
                     <div class="stat-number">{{ stats.total_branches }}</div>
                     <div class="stat-label">전체 매장</div>
-                </div>
-            </div>
+  </div>
+  </div>
         </div>
         
         <!-- 실시간 차트 섹션 -->
@@ -396,12 +396,12 @@
                         <div class="chart-controls">
                             <button class="chart-btn active" onclick="loadChart('attendance', 7)">7일</button>
                             <button class="chart-btn" onclick="loadChart('attendance', 30)">30일</button>
-                        </div>
-                    </div>
+  </div>
+  </div>
                     <div class="chart-container">
                         <canvas id="attendanceChart"></canvas>
-                    </div>
-                </div>
+  </div>
+  </div>
                 
                 <!-- 알림 현황 차트 -->
                 <div class="chart-card">
@@ -410,13 +410,13 @@
                         <div class="chart-controls">
                             <button class="chart-btn active" onclick="loadChart('notifications', 7)">7일</button>
                             <button class="chart-btn" onclick="loadChart('notifications', 30)">30일</button>
-                        </div>
-                    </div>
+    </div>
+  </div>
                     <div class="chart-container">
                         <canvas id="notificationsChart"></canvas>
                     </div>
-                </div>
-                
+</div>
+
                 <!-- 발주 현황 차트 -->
                 <div class="chart-card">
                     <div class="chart-title">
@@ -424,13 +424,13 @@
                         <div class="chart-controls">
                             <button class="chart-btn active" onclick="loadChart('orders', 7)">7일</button>
                             <button class="chart-btn" onclick="loadChart('orders', 30)">30일</button>
-                        </div>
-                    </div>
+    </div>
+  </div>
                     <div class="chart-container">
                         <canvas id="ordersChart"></canvas>
                     </div>
-                </div>
-                
+</div>
+
                 <!-- 시스템 로그 차트 -->
                 <div class="chart-card">
                     <div class="chart-title">
@@ -438,14 +438,14 @@
                         <div class="chart-controls">
                             <button class="chart-btn active" onclick="loadChart('system_logs', 7)">7일</button>
                             <button class="chart-btn" onclick="loadChart('system_logs', 30)">30일</button>
-                        </div>
-                    </div>
+      </div>
+                      </div>
                     <div class="chart-container">
                         <canvas id="systemLogsChart"></canvas>
-                    </div>
-                </div>
-            </div>
+                  </div>
         </div>
+        </div>
+      </div>
         
         <!-- 실시간 활동 섹션 -->
         <div class="realtime-section">
@@ -456,25 +456,25 @@
                 <div class="col-md-8">
                     <div class="activity-list" id="activityList">
                         <!-- 실시간 활동이 여기에 표시됩니다 -->
-                    </div>
-                </div>
+    </div>
+  </div>
                 <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header">
+    <div class="card">
+      <div class="card-header">
                             <h5><i class="fas fa-chart-pie"></i> 실시간 통계</h5>
-                        </div>
-                        <div class="card-body">
+      </div>
+      <div class="card-body">
                             <div class="mb-3">
                                 <strong>최근 1시간</strong>
                                 <div id="realtimeStats">
                                     <!-- 실시간 통계가 여기에 표시됩니다 -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          </div>
+          </div>
+          </div>
+          </div>
         </div>
+      </div>
+    </div>
         
         <!-- 최고관리자 전용 메뉴 -->
         <div class="admin-menu-section">
@@ -488,22 +488,22 @@
                     <div class="admin-card-badge">{{ stats.pending_users }}</div>
                     <div class="admin-card-icon">
                         <i class="fas fa-user-check"></i>
-                    </div>
+  </div>
                     <div class="admin-card-title">직원 승인/관리</div>
                     <div class="admin-card-description">
                         신규 직원 승인, 계정 관리, 권한 설정
-                    </div>
+</div>
                 </a>
                 
                 <!-- 권한 관리 -->
                 <a href="{{ url_for('admin_user_permissions') }}" class="admin-card">
                     <div class="admin-card-icon">
                         <i class="fas fa-user-shield"></i>
-                    </div>
+      </div>
                     <div class="admin-card-title">권한 관리</div>
                     <div class="admin-card-description">
                         역할별 권한 설정, 권한 위임/회수
-                    </div>
+          </div>
                 </a>
                 
                 <!-- 전체 알림/공지 -->
@@ -511,101 +511,101 @@
                     <div class="admin-card-badge">{{ stats.unread_notifications }}</div>
                     <div class="admin-card-icon">
                         <i class="fas fa-bullhorn"></i>
-                    </div>
+          </div>
                     <div class="admin-card-title">전체 알림/공지</div>
                     <div class="admin-card-description">
                         전체 직원 대상 알림 발송, 공지사항 관리
-                    </div>
-                </a>
+          </div>
+            </a>
                 
                 <!-- 통합 보고서 -->
                 <a href="{{ url_for('admin_reports') }}" class="admin-card">
                     <div class="admin-card-icon">
                         <i class="fas fa-chart-line"></i>
-                    </div>
+          </div>
                     <div class="admin-card-title">통합 보고서</div>
                     <div class="admin-card-description">
                         매장별 통계, 출근 현황, 매출 분석
-                    </div>
+        </div>
                 </a>
                 
                 <!-- 시스템/오류 보고서 -->
                 <a href="{{ url_for('admin_statistics') }}" class="admin-card">
                     <div class="admin-card-icon">
                         <i class="fas fa-exclamation-triangle"></i>
-                    </div>
+      </div>
                     <div class="admin-card-title">시스템/오류 보고서</div>
                     <div class="admin-card-description">
                         시스템 로그, 오류 현황, 성능 모니터링
-                    </div>
-                </a>
+          </div>
+            </a>
                 
                 <!-- 백엔드 관리 -->
                 <a href="/admin/flask-admin" class="admin-card" target="_blank">
                     <div class="admin-card-icon">
                         <i class="fas fa-server"></i>
-                    </div>
+          </div>
                     <div class="admin-card-title">백엔드 관리</div>
                     <div class="admin-card-description">
                         Flask-Admin, 데이터베이스 직접 관리
-                    </div>
-                </a>
+          </div>
+            </a>
                 
                 <!-- 시스템 모니터링 -->
                 <a href="{{ url_for('admin_system_monitor') }}" class="admin-card">
                     <div class="admin-card-icon">
                         <i class="fas fa-tachometer-alt"></i>
-                    </div>
+          </div>
                     <div class="admin-card-title">시스템 모니터링</div>
                     <div class="admin-card-description">
                         실시간 시스템 상태, 리소스 사용률
-                    </div>
+        </div>
                 </a>
                 
                 <!-- 백업 관리 -->
                 <a href="{{ url_for('admin_backup_management') }}" class="admin-card">
                     <div class="admin-card-icon">
                         <i class="fas fa-database"></i>
-                    </div>
+        </div>
                     <div class="admin-card-title">백업 관리</div>
                     <div class="admin-card-description">
                         데이터 백업/복원, 시스템 백업 관리
-                    </div>
+      </div>
                 </a>
                 
                 <!-- 대시보드 모드 설정 -->
-                <a href="{{ url_for('admin_dashboard_mode') }}" class="admin-card">
+                <a href="{{ url_for('admin_dashboard') }}" class="admin-card">
                     <div class="admin-card-icon">
                         <i class="fas fa-cog"></i>
-                    </div>
+      </div>
                     <div class="admin-card-title">대시보드 모드 설정</div>
                     <div class="admin-card-description">
                         1인 사장님/그룹 프랜차이즈 모드 전환
-                    </div>
+      </div>
                 </a>
                 
                 <!-- 피드백 관리 -->
-                <a href="{{ url_for('admin_feedback') }}" class="admin-card">
+                <a href="{{ url_for('admin_notify_send') }}" class="admin-card">
                     <div class="admin-card-badge">{{ stats.pending_feedback }}</div>
                     <div class="admin-card-icon">
                         <i class="fas fa-comments"></i>
-                    </div>
+      </div>
                     <div class="admin-card-title">피드백 관리</div>
                     <div class="admin-card-description">
                         직원 피드백/문의사항 처리 및 관리
-                    </div>
+    </div>
                 </a>
-            </div>
-            
+</div>
+
             <!-- 최고관리자 전용 안내 -->
             <div class="alert alert-info mt-4">
                 <i class="fas fa-info-circle"></i>
                 <strong>최고관리자 전용 대시보드</strong><br>
                 일반 매장 업무(발주, 스케줄, 재고 등)는 각 매장 관리자/직원 대시보드에서 처리됩니다.
                 이 페이지에서는 전체 시스템 관리 및 모니터링만 수행할 수 있습니다.
-            </div>
-        </div>
-        
+  </div>
+</div>
+
         <!-- 시스템 상태 섹션 -->
         <div class="system-status-section">
             <h3 class="text-center mb-4">
@@ -616,30 +616,30 @@
                     <div class="status-title">데이터베이스 상태</div>
                     <div class="status-value status-good">
                         <i class="fas fa-check-circle"></i> 정상
-                    </div>
-                </div>
+      </div>
+      </div>
                 <div class="status-card">
                     <div class="status-title">서버 업타임</div>
                     <div class="status-value status-good">
                         <i class="fas fa-clock"></i> {{ system_status.uptime }}
-                    </div>
-                </div>
+    </div>
+  </div>
                 <div class="status-card">
                     <div class="status-title">대시보드 모드</div>
                     <div class="status-value status-info">
                         <i class="fas fa-cog"></i> {{ system_status.dashboard_mode|title }}
-                    </div>
-                </div>
+      </div>
+            </div>
                 <div class="status-card">
                     <div class="status-title">마지막 백업</div>
                     <div class="status-value status-good">
                         <i class="fas fa-save"></i> {{ system_status.last_backup }}
-                    </div>
-                </div>
-            </div>
-        </div>
+          </div>
+      </div>
     </div>
-    
+  </div>
+</div>
+
     <!-- Chart.js 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -692,8 +692,8 @@
                     });
                     
                     charts[type] = new Chart(ctx, {
-                        type: 'line',
-                        data: {
+  type: 'line',
+  data: {
                             labels: labels,
                             datasets: [{
                                 label: getChartLabel(type),
@@ -704,39 +704,39 @@
                                 fill: true,
                                 borderWidth: 2
                             }]
-                        },
-                        options: {
-                            responsive: true,
+  },
+  options: {
+    responsive: true,
                             maintainAspectRatio: false,
-                            plugins: {
+    plugins: { 
                                 legend: {
                                     display: false
                                 },
                                 tooltip: {
                                     mode: 'index',
                                     intersect: false
-                                }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
+      }
+    },
+    scales: { 
+      y: { 
+        beginAtZero: true,
                                     ticks: {
                                         stepSize: 1
-                                    }
-                                },
-                                x: {
+        }
+      },
+      x: {
                                     grid: {
                                         display: false
-                                    }
-                                }
+        }
+      }
                             },
                             interaction: {
                                 mode: 'nearest',
                                 axis: 'x',
                                 intersect: false
-                            }
-                        }
-                    });
+    }
+  }
+});
                 })
                 .catch(error => {
                     console.error('차트 데이터 로드 실패:', error);
@@ -744,17 +744,17 @@
                     const ctx = document.getElementById(`${type}Chart`).getContext('2d');
                     charts[type] = new Chart(ctx, {
                         type: 'line',
-                        data: {
+  data: {
                             labels: [],
-                            datasets: [{
+    datasets: [{ 
                                 label: getChartLabel(type),
                                 data: [],
                                 borderColor: chartColors[type].border,
                                 backgroundColor: chartColors[type].background
-                            }]
-                        },
-                        options: {
-                            responsive: true,
+    }]
+  },
+  options: {
+    responsive: true,
                             maintainAspectRatio: false
                         }
                     });
@@ -880,7 +880,7 @@
         }
         
         // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
             // 차트 초기 로드
             loadChart('attendance', 7);
             loadChart('notifications', 7);
@@ -896,7 +896,7 @@
             setInterval(updateRealtimeStats, 30000); // 30초마다
             setInterval(updateRealtimeActivities, 10000); // 10초마다
             setInterval(updateNotificationCount, 30000); // 30초마다
-        });
-    </script>
+});
+</script>
 </body>
 </html> 

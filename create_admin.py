@@ -19,49 +19,8 @@ from models import User
 # .env 파일 로드
 load_dotenv()
 
-with app.app_context():
-    try:
-        # 기존 admin 사용자 확인
-        admin_user = User.query.filter_by(username="admin").first()
-
-        if not admin_user:
-            print("Creating new admin user...")
-            # 사용자 정보 설정
-            username = "admin"
-            password = "admin_password"  # 실제 운영에서는 더 강력한 비밀번호를 사용해야 합니다.
-            email = "admin@example.com"
-
-            # 새 사용자 생성
-            new_admin = User(
-                username=username,
-                email=email,
-                role="admin",
-                status="approved",  # 바로 승인된 상태로 생성
-            )
-            new_admin.set_password(password)
-
-            db.session.add(new_admin)
-            db.session.commit()
-
-            print(
-                f"Admin user '{username}' created successfully with password '{password}'."
-            )
-        else:
-            print(f"Admin user 'admin' already exists.")
-            # 비밀번호 재설정 (필요시)
-            # print("Resetting admin password...")
-            # admin_user.set_password('new_admin_password')
-            # db.session.commit()
-            # print("Admin password has been reset.")
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        db.session.rollback()
-
-
 def create_admin_user():
     """관리자 계정을 생성합니다."""
-
     with app.app_context():
         # 기존 admin 계정이 있는지 확인
         existing_admin = User.query.filter_by(username="admin").first()
@@ -73,15 +32,13 @@ def create_admin_user():
             return False
 
         # 관리자 비밀번호 설정 (여기서 변경 가능)
-        admin_password = "admin123"  # 원하는 비밀번호로 변경하세요
-
-        # 비밀번호 해시 생성
-        password_hash = generate_password_hash(admin_password)
+        admin_password = "admin123!"  # 원하는 비밀번호로 변경하세요
 
         # 새 관리자 계정 생성
         admin_user = User(
-            username="admin", password=password_hash, status="approved", role="admin"
+            username="admin", email="admin2@example.com", status="approved", role="admin"
         )
+        admin_user.set_password(admin_password)
 
         try:
             db.session.add(admin_user)
@@ -103,7 +60,6 @@ def create_admin_user():
             db.session.rollback()
             return False
 
-
 def main():
     """메인 실행 함수"""
     print("🚀 관리자 계정 생성 스크립트를 시작합니다...")
@@ -123,7 +79,6 @@ def main():
     except Exception as e:
         print(f"❌ 스크립트 실행 중 오류 발생: {e}")
         print("데이터베이스 연결이나 모델 설정을 확인해주세요.")
-
 
 if __name__ == "__main__":
     main()

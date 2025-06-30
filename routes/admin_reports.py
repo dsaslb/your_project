@@ -3,6 +3,7 @@
 """
 
 import io
+import json
 from collections import Counter
 from datetime import datetime, timedelta
 
@@ -16,11 +17,11 @@ from reportlab.pdfgen import canvas
 from sqlalchemy import and_, func, or_
 
 from extensions import db
-from models import Attendance, AttendanceReport, User, PermissionChangeLog, PermissionTemplate, Notification, SystemLog, Order
+from models import (Attendance, AttendanceReport, Notification, Order,
+                    PermissionChangeLog, PermissionTemplate, SystemLog, User)
 from utils.decorators import admin_required, require_permission
 from utils.logger import log_action, log_error
 from utils.notify import send_notification_enhanced
-import json
 
 admin_reports_bp = Blueprint("admin_reports", __name__)
 
@@ -63,9 +64,7 @@ def admin_reports():
         # 통계 계산
         total_count = AttendanceReport.query.count()
         pending_count = AttendanceReport.query.filter_by(status="pending").count()
-        processing_count = AttendanceReport.query.filter_by(
-            status="processing"
-        ).count()
+        processing_count = AttendanceReport.query.filter_by(status="processing").count()
         resolved_count = AttendanceReport.query.filter_by(status="resolved").count()
 
         # 사용자 목록 (필터용)
@@ -1076,58 +1075,62 @@ def export_report_stats_excel():
         return redirect(url_for("admin_reports.report_stats"))
 
 
-@admin_reports_bp.route('/admin/permissions')
+@admin_reports_bp.route("/admin/permissions")
 @login_required
 @require_permission("employee_management", "assign_roles")
 def manage_permissions():
     """권한 관리 페이지"""
     users = User.query.filter(User.deleted_at.is_(None)).all()
     permission_templates = PermissionTemplate.query.filter_by(is_active=True).all()
-    
+
     # 권한 모듈 정의
     permission_modules = {
         "dashboard": "대시보드",
         "employee_management": "직원 관리",
-        "schedule_management": "스케줄 관리", 
+        "schedule_management": "스케줄 관리",
         "order_management": "발주 관리",
         "inventory_management": "재고 관리",
         "notification_management": "알림 관리",
         "system_management": "시스템 관리",
-        "reports": "보고서"
+        "reports": "보고서",
     }
-    
+
     permission_actions = {
         "view": "조회",
         "create": "생성",
         "edit": "편집",
         "delete": "삭제",
         "approve": "승인",
-        "assign_roles": "권한 부여"
+        "assign_roles": "권한 부여",
     }
-    
-    return render_template('admin/permissions.html',
-                         users=users,
-                         permission_templates=permission_templates,
-                         permission_modules=permission_modules,
-                         permission_actions=permission_actions)
+
+    return render_template(
+        "admin/permissions.html",
+        users=users,
+        permission_templates=permission_templates,
+        permission_modules=permission_modules,
+        permission_actions=permission_actions,
+    )
 
 
-@admin_reports_bp.route('/admin/permissions/user/<int:user_id>', methods=['GET', 'POST'])
+@admin_reports_bp.route(
+    "/admin/permissions/user/<int:user_id>", methods=["GET", "POST"]
+)
 @login_required
 @require_permission("employee_management", "assign_roles")
 def user_permissions(user_id):
     """사용자별 권한 관리"""
     user = User.query.get_or_404(user_id)
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         try:
             # 기존 권한 백업
             old_permissions = user.permissions.copy() if user.permissions else {}
-            
+
             # 새로운 권한 설정
             new_permissions = {}
-            for module in request.form.getlist('modules'):
-                actions = request.form.getlist(f'actions_{module}')
+            for module in request.form.getlist("modules"):
+                actions = request.form.getlist(f"actions_{module}")
                 new_permissions[module] = {
                     "view": "view" in actions,
                     "create": "create" in actions,
@@ -1135,9 +1138,9 @@ def user_permissions(user_id):
                     "delete": "delete" in actions,
                     "approve": "approve" in actions,
                     "assign_roles": "assign_roles" in actions,
-                    "admin_only": request.form.get(f'admin_only_{module}') == 'on'
+                    "admin_only": request.form.get(f"admin_only_{module}") == "on",
                 }
-            
+
             # 권한 변경 로그 기록
             change_log = PermissionChangeLog(
                 user_id=user.id,
@@ -1145,68 +1148,70 @@ def user_permissions(user_id):
                 change_type="permission",
                 before_value=json.dumps(old_permissions, ensure_ascii=False),
                 after_value=json.dumps(new_permissions, ensure_ascii=False),
-                reason=request.form.get('reason', ''),
+                reason=request.form.get("reason", ""),
                 ip_address=request.remote_addr,
-                user_agent=request.user_agent.string
+                user_agent=request.user_agent.string,
             )
-            
+
             # 권한 업데이트
             user.permissions = new_permissions
             db.session.add(change_log)
             db.session.commit()
-            
+
             flash(f"{user.username}의 권한이 성공적으로 업데이트되었습니다.", "success")
-            return redirect(url_for('admin_reports.manage_permissions'))
-            
+            return redirect(url_for("admin_reports.manage_permissions"))
+
         except Exception as e:
             db.session.rollback()
             flash(f"권한 업데이트 중 오류가 발생했습니다: {str(e)}", "error")
-    
-    return render_template('admin/user_permissions.html', user=user)
+
+    return render_template("admin/user_permissions.html", user=user)
 
 
-@admin_reports_bp.route('/admin/permissions/template', methods=['GET', 'POST'])
+@admin_reports_bp.route("/admin/permissions/template", methods=["GET", "POST"])
 @login_required
 @require_permission("employee_management", "assign_roles")
 def permission_templates():
     """권한 템플릿 관리"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             template = PermissionTemplate(
-                name=request.form['name'],
-                description=request.form['description'],
-                permissions=request.form['permissions'],
-                role_type=request.form['role_type'],
-                created_by=current_user.id
+                name=request.form["name"],
+                description=request.form["description"],
+                permissions=request.form["permissions"],
+                role_type=request.form["role_type"],
+                created_by=current_user.id,
             )
             db.session.add(template)
             db.session.commit()
             flash("권한 템플릿이 생성되었습니다.", "success")
-            return redirect(url_for('admin_reports.permission_templates'))
+            return redirect(url_for("admin_reports.permission_templates"))
         except Exception as e:
             db.session.rollback()
             flash(f"템플릿 생성 중 오류가 발생했습니다: {str(e)}", "error")
-    
+
     templates = PermissionTemplate.query.all()
-    return render_template('admin/permission_templates.html', templates=templates)
+    return render_template("admin/permission_templates.html", templates=templates)
 
 
-@admin_reports_bp.route('/admin/permissions/apply_template/<int:user_id>/<int:template_id>')
+@admin_reports_bp.route(
+    "/admin/permissions/apply_template/<int:user_id>/<int:template_id>"
+)
 @login_required
 @require_permission("employee_management", "assign_roles")
 def apply_permission_template(user_id, template_id):
     """권한 템플릿 적용"""
     user = User.query.get_or_404(user_id)
     template = PermissionTemplate.query.get_or_404(template_id)
-    
+
     try:
         # 기존 권한 백업
         old_permissions = user.permissions.copy() if user.permissions else {}
-        
+
         # 템플릿 권한 적용
         new_permissions = json.loads(template.permissions)
         user.permissions = new_permissions
-        
+
         # 권한 변경 로그 기록
         change_log = PermissionChangeLog(
             user_id=user.id,
@@ -1216,56 +1221,58 @@ def apply_permission_template(user_id, template_id):
             after_value=json.dumps(new_permissions, ensure_ascii=False),
             reason=f"템플릿 '{template.name}' 적용",
             ip_address=request.remote_addr,
-            user_agent=request.user_agent.string
+            user_agent=request.user_agent.string,
         )
-        
+
         db.session.add(change_log)
         db.session.commit()
-        
-        flash(f"{user.username}에게 '{template.name}' 템플릿이 적용되었습니다.", "success")
-        
+
+        flash(
+            f"{user.username}에게 '{template.name}' 템플릿이 적용되었습니다.", "success"
+        )
+
     except Exception as e:
         db.session.rollback()
         flash(f"템플릿 적용 중 오류가 발생했습니다: {str(e)}", "error")
-    
-    return redirect(url_for('admin_reports.manage_permissions'))
+
+    return redirect(url_for("admin_reports.manage_permissions"))
 
 
-@admin_reports_bp.route('/admin/permissions/logs')
+@admin_reports_bp.route("/admin/permissions/logs")
 @login_required
 @require_permission("employee_management", "view")
 def permission_logs():
     """권한 변경 로그"""
-    page = request.args.get('page', 1, type=int)
+    page = request.args.get("page", 1, type=int)
     logs = PermissionChangeLog.query.order_by(
         PermissionChangeLog.created_at.desc()
-    ).paginate(
-        page=page, per_page=50, error_out=False
-    )
-    
-    return render_template('admin/permission_logs.html', logs=logs)
+    ).paginate(page=page, per_page=50, error_out=False)
+
+    return render_template("admin/permission_logs.html", logs=logs)
 
 
-@admin_reports_bp.route('/api/permissions/check')
+@admin_reports_bp.route("/api/permissions/check")
 @login_required
 def check_permissions():
     """권한 체크 API"""
-    module = request.args.get('module')
-    action = request.args.get('action', 'view')
-    
+    module = request.args.get("module")
+    action = request.args.get("action", "view")
+
     if not module:
         return jsonify({"error": "모듈이 지정되지 않았습니다."}), 400
-    
+
     has_perm = current_user.has_permission(module, action)
-    return jsonify({
-        "module": module,
-        "action": action,
-        "has_permission": has_perm,
-        "user_role": current_user.role
-    })
+    return jsonify(
+        {
+            "module": module,
+            "action": action,
+            "has_permission": has_perm,
+            "user_role": current_user.role,
+        }
+    )
 
 
-@admin_reports_bp.route('/api/permissions/summary')
+@admin_reports_bp.route("/api/permissions/summary")
 @login_required
 def permission_summary():
     """권한 요약 정보 API"""
@@ -1273,361 +1280,382 @@ def permission_summary():
     return jsonify(summary)
 
 
-@admin_reports_bp.route('/admin/dashboard/charts')
+@admin_reports_bp.route("/admin/dashboard/charts")
 @login_required
 @require_permission("dashboard", "view")
 def dashboard_charts():
     """관리자 대시보드 차트 데이터"""
     # 기간 설정
-    days = request.args.get('days', 30, type=int)
+    days = request.args.get("days", 30, type=int)
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
-    
+
     # 출근 데이터 (일별)
-    attendance_data = db.session.query(
-        func.date(Attendance.clock_in).label('date'),
-        func.count(Attendance.id).label('count')
-    ).filter(
-        and_(
-            Attendance.clock_in >= start_date,
-            Attendance.clock_in <= end_date
+    attendance_data = (
+        db.session.query(
+            func.date(Attendance.clock_in).label("date"),
+            func.count(Attendance.id).label("count"),
         )
-    ).group_by(func.date(Attendance.clock_in)).all()
-    
+        .filter(
+            and_(Attendance.clock_in >= start_date, Attendance.clock_in <= end_date)
+        )
+        .group_by(func.date(Attendance.clock_in))
+        .all()
+    )
+
     # 알림 데이터 (일별)
-    notification_data = db.session.query(
-        func.date(Notification.created_at).label('date'),
-        func.count(Notification.id).label('count')
-    ).filter(
-        and_(
-            Notification.created_at >= start_date,
-            Notification.created_at <= end_date
+    notification_data = (
+        db.session.query(
+            func.date(Notification.created_at).label("date"),
+            func.count(Notification.id).label("count"),
         )
-    ).group_by(func.date(Notification.created_at)).all()
-    
+        .filter(
+            and_(
+                Notification.created_at >= start_date,
+                Notification.created_at <= end_date,
+            )
+        )
+        .group_by(func.date(Notification.created_at))
+        .all()
+    )
+
     # 발주 데이터 (일별)
-    order_data = db.session.query(
-        func.date(Order.created_at).label('date'),
-        func.count(Order.id).label('count')
-    ).filter(
-        and_(
-            Order.created_at >= start_date,
-            Order.created_at <= end_date
+    order_data = (
+        db.session.query(
+            func.date(Order.created_at).label("date"),
+            func.count(Order.id).label("count"),
         )
-    ).group_by(func.date(Order.created_at)).all()
-    
+        .filter(and_(Order.created_at >= start_date, Order.created_at <= end_date))
+        .group_by(func.date(Order.created_at))
+        .all()
+    )
+
     # 시스템 로그 데이터 (일별)
-    system_log_data = db.session.query(
-        func.date(SystemLog.created_at).label('date'),
-        func.count(SystemLog.id).label('count')
-    ).filter(
-        and_(
-            SystemLog.created_at >= start_date,
-            SystemLog.created_at <= end_date
+    system_log_data = (
+        db.session.query(
+            func.date(SystemLog.created_at).label("date"),
+            func.count(SystemLog.id).label("count"),
         )
-    ).group_by(func.date(SystemLog.created_at)).all()
-    
+        .filter(
+            and_(SystemLog.created_at >= start_date, SystemLog.created_at <= end_date)
+        )
+        .group_by(func.date(SystemLog.created_at))
+        .all()
+    )
+
     # 데이터 포맷팅
     def format_chart_data(data, label):
         dates = []
         counts = []
         for item in data:
-            dates.append(item.date.strftime('%Y-%m-%d'))
+            dates.append(item.date.strftime("%Y-%m-%d"))
             counts.append(item.count)
         return {
-            'labels': dates,
-            'datasets': [{
-                'label': label,
-                'data': counts,
-                'borderColor': 'rgb(75, 192, 192)',
-                'backgroundColor': 'rgba(75, 192, 192, 0.2)',
-                'tension': 0.1
-            }]
+            "labels": dates,
+            "datasets": [
+                {
+                    "label": label,
+                    "data": counts,
+                    "borderColor": "rgb(75, 192, 192)",
+                    "backgroundColor": "rgba(75, 192, 192, 0.2)",
+                    "tension": 0.1,
+                }
+            ],
         }
-    
-    return jsonify({
-        'attendance': format_chart_data(attendance_data, '출근'),
-        'notifications': format_chart_data(notification_data, '알림'),
-        'orders': format_chart_data(order_data, '발주'),
-        'system_logs': format_chart_data(system_log_data, '시스템 로그')
-    })
+
+    return jsonify(
+        {
+            "attendance": format_chart_data(attendance_data, "출근"),
+            "notifications": format_chart_data(notification_data, "알림"),
+            "orders": format_chart_data(order_data, "발주"),
+            "system_logs": format_chart_data(system_log_data, "시스템 로그"),
+        }
+    )
 
 
-@admin_reports_bp.route('/admin/dashboard/stats')
+@admin_reports_bp.route("/admin/dashboard/stats")
 @login_required
 @require_permission("dashboard", "view")
 def dashboard_stats():
     """관리자 대시보드 통계 데이터"""
     today = datetime.now().date()
     this_month = datetime.now().replace(day=1)
-    
+
     # 오늘 통계
     today_stats = {
-        'attendance': Attendance.query.filter(
+        "attendance": Attendance.query.filter(
             func.date(Attendance.clock_in) == today
         ).count(),
-        'notifications': Notification.query.filter(
+        "notifications": Notification.query.filter(
             func.date(Notification.created_at) == today
         ).count(),
-        'orders': Order.query.filter(
-            func.date(Order.created_at) == today
-        ).count(),
-        'system_logs': SystemLog.query.filter(
+        "orders": Order.query.filter(func.date(Order.created_at) == today).count(),
+        "system_logs": SystemLog.query.filter(
             func.date(SystemLog.created_at) == today
-        ).count()
+        ).count(),
     }
-    
+
     # 이번 달 통계
     month_stats = {
-        'attendance': Attendance.query.filter(
+        "attendance": Attendance.query.filter(
             Attendance.clock_in >= this_month
         ).count(),
-        'notifications': Notification.query.filter(
+        "notifications": Notification.query.filter(
             Notification.created_at >= this_month
         ).count(),
-        'orders': Order.query.filter(
-            Order.created_at >= this_month
-        ).count(),
-        'system_logs': SystemLog.query.filter(
+        "orders": Order.query.filter(Order.created_at >= this_month).count(),
+        "system_logs": SystemLog.query.filter(
             SystemLog.created_at >= this_month
-        ).count()
+        ).count(),
     }
-    
+
     # 사용자 통계
     user_stats = {
-        'total_users': User.query.filter(User.deleted_at.is_(None)).count(),
-        'active_users': User.query.filter(
-            and_(User.deleted_at.is_(None), User.status == 'approved')
+        "total_users": User.query.filter(User.deleted_at.is_(None)).count(),
+        "active_users": User.query.filter(
+            and_(User.deleted_at.is_(None), User.status == "approved")
         ).count(),
-        'pending_users': User.query.filter(
-            and_(User.deleted_at.is_(None), User.status == 'pending')
+        "pending_users": User.query.filter(
+            and_(User.deleted_at.is_(None), User.status == "pending")
         ).count(),
-        'admin_users': User.query.filter(
-            and_(User.deleted_at.is_(None), User.role == 'admin')
-        ).count()
+        "admin_users": User.query.filter(
+            and_(User.deleted_at.is_(None), User.role == "admin")
+        ).count(),
     }
-    
-    return jsonify({
-        'today': today_stats,
-        'month': month_stats,
-        'users': user_stats
-    })
+
+    return jsonify({"today": today_stats, "month": month_stats, "users": user_stats})
 
 
-@admin_reports_bp.route('/admin/dashboard/realtime')
+@admin_reports_bp.route("/admin/dashboard/realtime")
 @login_required
 @require_permission("dashboard", "view")
 def realtime_dashboard():
     """실시간 대시보드"""
     # 최근 1시간 데이터
     one_hour_ago = datetime.now() - timedelta(hours=1)
-    
+
     # 실시간 통계
     realtime_stats = {
-        'recent_attendance': Attendance.query.filter(
+        "recent_attendance": Attendance.query.filter(
             Attendance.clock_in >= one_hour_ago
         ).count(),
-        'recent_notifications': Notification.query.filter(
+        "recent_notifications": Notification.query.filter(
             Notification.created_at >= one_hour_ago
         ).count(),
-        'recent_orders': Order.query.filter(
-            Order.created_at >= one_hour_ago
-        ).count(),
-        'recent_logs': SystemLog.query.filter(
+        "recent_orders": Order.query.filter(Order.created_at >= one_hour_ago).count(),
+        "recent_logs": SystemLog.query.filter(
             SystemLog.created_at >= one_hour_ago
-        ).count()
+        ).count(),
     }
-    
+
     # 최근 활동
     recent_activities = []
-    
+
     # 최근 출근
-    recent_attendance = Attendance.query.filter(
-        Attendance.clock_in >= one_hour_ago
-    ).order_by(Attendance.clock_in.desc()).limit(5).all()
-    
+    recent_attendance = (
+        Attendance.query.filter(Attendance.clock_in >= one_hour_ago)
+        .order_by(Attendance.clock_in.desc())
+        .limit(5)
+        .all()
+    )
+
     for attendance in recent_attendance:
-        recent_activities.append({
-            'type': 'attendance',
-            'user': attendance.user.username,
-            'action': '출근',
-            'time': attendance.clock_in.strftime('%H:%M'),
-            'icon': 'fas fa-sign-in-alt'
-        })
-    
+        recent_activities.append(
+            {
+                "type": "attendance",
+                "user": attendance.user.username,
+                "action": "출근",
+                "time": attendance.clock_in.strftime("%H:%M"),
+                "icon": "fas fa-sign-in-alt",
+            }
+        )
+
     # 최근 알림
-    recent_notifications = Notification.query.filter(
-        Notification.created_at >= one_hour_ago
-    ).order_by(Notification.created_at.desc()).limit(5).all()
-    
+    recent_notifications = (
+        Notification.query.filter(Notification.created_at >= one_hour_ago)
+        .order_by(Notification.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
     for notification in recent_notifications:
-        recent_activities.append({
-            'type': 'notification',
-            'user': notification.user.username,
-            'action': notification.title or '알림',
-            'time': notification.created_at.strftime('%H:%M'),
-            'icon': 'fas fa-bell'
-        })
-    
+        recent_activities.append(
+            {
+                "type": "notification",
+                "user": notification.user.username,
+                "action": notification.title or "알림",
+                "time": notification.created_at.strftime("%H:%M"),
+                "icon": "fas fa-bell",
+            }
+        )
+
     # 시간순 정렬
-    recent_activities.sort(key=lambda x: x['time'], reverse=True)
-    
-    return jsonify({
-        'stats': realtime_stats,
-        'activities': recent_activities[:10]  # 최대 10개
-    })
+    recent_activities.sort(key=lambda x: x["time"], reverse=True)
+
+    return jsonify(
+        {"stats": realtime_stats, "activities": recent_activities[:10]}  # 최대 10개
+    )
 
 
-@admin_reports_bp.route('/admin/logs')
+@admin_reports_bp.route("/admin/logs")
 @login_required
 @require_permission("system_management", "monitoring")
 def system_logs():
     """시스템 로그 뷰어"""
     # 로그 레벨 필터
-    level = request.args.get('level', 'all')
+    level = request.args.get("level", "all")
     # 페이지네이션
-    page = request.args.get('page', 1, type=int)
-    
+    page = request.args.get("page", 1, type=int)
+
     # 로그 쿼리
     query = SystemLog.query
-    
-    if level != 'all':
+
+    if level != "all":
         query = query.filter(SystemLog.action.contains(level.upper()))
-    
+
     logs = query.order_by(SystemLog.created_at.desc()).paginate(
         page=page, per_page=100, error_out=False
     )
-    
-    return render_template('admin/system_logs.html', logs=logs, level=level)
+
+    return render_template("admin/system_logs.html", logs=logs, level=level)
 
 
-@admin_reports_bp.route('/admin/logs/realtime')
+@admin_reports_bp.route("/admin/logs/realtime")
 @login_required
 @require_permission("system_management", "monitoring")
 def realtime_logs():
     """실시간 로그 스트리밍"""
-    return render_template('admin/realtime_logs.html')
+    return render_template("admin/realtime_logs.html")
 
 
-@admin_reports_bp.route('/api/logs/stream')
+@admin_reports_bp.route("/api/logs/stream")
 @login_required
 @require_permission("system_management", "monitoring")
 def log_stream():
     """로그 스트림 API"""
-    from flask import Response, stream_with_context
     import time
-    
+
+    from flask import Response, stream_with_context
+
     def generate():
         last_id = 0
-        
+
         while True:
             try:
                 # 새로운 로그 조회
-                new_logs = SystemLog.query.filter(
-                    SystemLog.id > last_id
-                ).order_by(SystemLog.created_at.desc()).limit(10).all()
-                
+                new_logs = (
+                    SystemLog.query.filter(SystemLog.id > last_id)
+                    .order_by(SystemLog.created_at.desc())
+                    .limit(10)
+                    .all()
+                )
+
                 if new_logs:
                     for log in new_logs:
                         last_id = max(last_id, log.id)
-                        
+
                         log_data = {
-                            'id': log.id,
-                            'action': log.action,
-                            'detail': log.detail,
-                            'user': log.user.username if log.user else '시스템',
-                            'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                            'ip_address': log.ip_address
+                            "id": log.id,
+                            "action": log.action,
+                            "detail": log.detail,
+                            "user": log.user.username if log.user else "시스템",
+                            "created_at": log.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                            "ip_address": log.ip_address,
                         }
-                        
+
                         yield f"data: {json.dumps(log_data, ensure_ascii=False)}\n\n"
-                
+
                 time.sleep(2)  # 2초마다 체크
-                
+
             except Exception as e:
                 yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
                 time.sleep(5)
-    
-    return Response(stream_with_context(generate()), 
-                   mimetype='text/event-stream')
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
 
-@admin_reports_bp.route('/api/logs/recent')
+@admin_reports_bp.route("/api/logs/recent")
 @login_required
 @require_permission("system_management", "monitoring")
 def recent_logs():
     """최근 로그 조회 API"""
-    limit = request.args.get('limit', 50, type=int)
-    level = request.args.get('level', 'all')
-    
+    limit = request.args.get("limit", 50, type=int)
+    level = request.args.get("level", "all")
+
     query = SystemLog.query
-    
-    if level != 'all':
+
+    if level != "all":
         query = query.filter(SystemLog.action.contains(level.upper()))
-    
+
     logs = query.order_by(SystemLog.created_at.desc()).limit(limit).all()
-    
+
     log_list = []
     for log in logs:
-        log_list.append({
-            'id': log.id,
-            'action': log.action,
-            'detail': log.detail,
-            'user': log.user.username if log.user else '시스템',
-            'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'ip_address': log.ip_address
-        })
-    
+        log_list.append(
+            {
+                "id": log.id,
+                "action": log.action,
+                "detail": log.detail,
+                "user": log.user.username if log.user else "시스템",
+                "created_at": log.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "ip_address": log.ip_address,
+            }
+        )
+
     return jsonify(log_list)
 
 
-@admin_reports_bp.route('/admin/logs/export')
+@admin_reports_bp.route("/admin/logs/export")
 @login_required
 @require_permission("system_management", "monitoring")
 def export_logs():
     """로그 내보내기"""
     from datetime import datetime, timedelta
-    
+
     # 기간 설정
-    days = request.args.get('days', 7, type=int)
+    days = request.args.get("days", 7, type=int)
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
-    
+
     # 로그 조회
-    logs = SystemLog.query.filter(
-        and_(
-            SystemLog.created_at >= start_date,
-            SystemLog.created_at <= end_date
+    logs = (
+        SystemLog.query.filter(
+            and_(SystemLog.created_at >= start_date, SystemLog.created_at <= end_date)
         )
-    ).order_by(SystemLog.created_at.desc()).all()
-    
+        .order_by(SystemLog.created_at.desc())
+        .all()
+    )
+
     # CSV 생성
     import csv
     from io import StringIO
-    
+
     output = StringIO()
     writer = csv.writer(output)
-    
+
     # 헤더
-    writer.writerow(['ID', '액션', '상세내용', '사용자', 'IP주소', '생성일시'])
-    
+    writer.writerow(["ID", "액션", "상세내용", "사용자", "IP주소", "생성일시"])
+
     # 데이터
     for log in logs:
-        writer.writerow([
-            log.id,
-            log.action,
-            log.detail,
-            log.user.username if log.user else '시스템',
-            log.ip_address,
-            log.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        ])
-    
+        writer.writerow(
+            [
+                log.id,
+                log.action,
+                log.detail,
+                log.user.username if log.user else "시스템",
+                log.ip_address,
+                log.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            ]
+        )
+
     output.seek(0)
-    
+
     from flask import send_file
+
     return send_file(
         StringIO(output.getvalue()),
-        mimetype='text/csv',
+        mimetype="text/csv",
         as_attachment=True,
-        download_name=f'system_logs_{datetime.now().strftime("%Y%m%d")}.csv'
+        download_name=f'system_logs_{datetime.now().strftime("%Y%m%d")}.csv',
     )

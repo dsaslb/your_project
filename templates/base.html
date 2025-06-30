@@ -73,11 +73,11 @@
             
             <nav class="sidebar-nav">
                 <!-- 공통 메뉴 -->
-                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                    <i class="fas fa-tachometer-alt mr-2"></i>
-                    대시보드
-                </a>
-                
+                    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-tachometer-alt mr-2"></i>
+                        대시보드
+                    </a>
+                    
                 <!-- 권한별 메뉴 분기 -->
                 {% if current_user.is_authenticated and current_user.role == 'admin' %}
                     <!-- 최고관리자 메뉴 -->
@@ -113,7 +113,7 @@
                         <i class="fas fa-users mr-2"></i>
                         직원 관리
                     </a>
-                    {% endif %}
+                        {% endif %}
                     
                     {% if current_user.has_permission('schedule_management', 'view') %}
                     <a href="{{ url_for('schedule') }}" class="nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
@@ -149,8 +149,8 @@
                     <a href="{{ url_for('order_new') }}" class="nav-link {% if request.endpoint == 'order_new' %}active{% endif %}">
                         <i class="fas fa-shopping-cart mr-2"></i>
                         발주 신청
-                    </a>
-                    {% endif %}
+                        </a>
+                        {% endif %}
                 {% endif %}
                 
                 <!-- 공통 메뉴 (모든 권한에서 표시) -->
@@ -166,11 +166,8 @@
                     <i class="fas fa-user mr-2"></i>
                     내 정보
                 </a>
-                
-                <a href="{{ url_for('change_password') }}" class="nav-link {% if request.endpoint == 'change_password' %}active{% endif %}">
-                    <i class="fas fa-key mr-2"></i>
-                    비밀번호 변경
-                </a>
+
+                {# <a href="{{ url_for('change_password') }}" class="nav-link {% if request.endpoint == 'change_password' %}active{% endif %}">비밀번호 변경</a> #}
             </nav>
             
             <div class="sidebar-bottom">

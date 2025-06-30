@@ -4,6 +4,7 @@ from functools import wraps
 
 from flask import abort, flash, redirect, request, session, url_for
 from flask_login import current_user
+
 from models import User
 
 # 로거 설정
@@ -192,23 +193,26 @@ MAX_FILE_SIZE_MB = 10  # 최대 파일 크기 (MB)
 
 def require_permission(module, action="view"):
     """JSON 기반 세밀한 권한 체크 데코레이터"""
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 flash("로그인이 필요합니다.", "warning")
-                return redirect(url_for('auth.login', next=request.url))
-            
+                return redirect(url_for("auth.login", next=request.url))
+
             # 권한 확인
             if not current_user.has_permission(module, action):
                 logger.warning(
                     f"Permission denied: {current_user.id} ({current_user.role}) -> {module}.{action} -> {request.endpoint}"
                 )
                 flash(f"{module}의 {action} 권한이 없습니다.", "error")
-                return redirect(url_for('dashboard'))
-            
+                return redirect(url_for("dashboard"))
+
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator
 
 
@@ -239,6 +243,7 @@ def require_module_approve(module):
 
 def manager_required(f):
     """매장관리자 권한 확인 데코레이터"""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
@@ -253,11 +258,13 @@ def manager_required(f):
             return redirect(url_for("dashboard"))
 
         return f(*args, **kwargs)
+
     return decorated_function
 
 
 def permission_required(permission_name):
     """특정 권한 확인 데코레이터"""
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -273,12 +280,15 @@ def permission_required(permission_name):
                 return redirect(url_for("dashboard"))
 
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator
 
 
 def role_required(allowed_roles):
     """특정 역할만 접근 가능한 데코레이터"""
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -294,5 +304,7 @@ def role_required(allowed_roles):
                 return redirect(url_for("dashboard"))
 
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator

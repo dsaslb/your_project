@@ -178,8 +178,7 @@ class AssigneeManager:
                 and_(
                     AttendanceReport.assignee_id == assignee_id,
                     AttendanceReport.status.in_(["pending", "processing"]),
-                    AttendanceReport.sla_due
-                    <= datetime.utcnow() + timedelta(hours=24),
+                    AttendanceReport.sla_due <= datetime.utcnow() + timedelta(hours=24),
                     AttendanceReport.sla_due > datetime.utcnow(),
                 )
             ).count()
@@ -230,9 +229,7 @@ class AssigneeManager:
                         )
                     ).label("processing"),
                     func.sum(
-                        func.case(
-                            [(AttendanceReport.status == "resolved", 1)], else_=0
-                        )
+                        func.case([(AttendanceReport.status == "resolved", 1)], else_=0)
                     ).label("resolved"),
                 )
                 .join(AttendanceReport, User.id == AttendanceReport.assignee_id)
@@ -252,8 +249,7 @@ class AssigneeManager:
             sla_urgent_count = AttendanceReport.query.filter(
                 and_(
                     AttendanceReport.status.in_(["pending", "processing"]),
-                    AttendanceReport.sla_due
-                    <= datetime.utcnow() + timedelta(hours=24),
+                    AttendanceReport.sla_due <= datetime.utcnow() + timedelta(hours=24),
                     AttendanceReport.sla_due > datetime.utcnow(),
                 )
             ).count()

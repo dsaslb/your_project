@@ -1,4 +1,5 @@
 import datetime
+import secrets
 
 import jwt
 from flask import (Blueprint, current_app, flash, jsonify, redirect,
@@ -83,11 +84,14 @@ def api_login():
         return jsonify({"msg": "Invalid credentials"}), 401
 
     try:
+        now = datetime.datetime.utcnow()
         token = jwt.encode(
             {
                 "user_id": user.id,
                 "role": user.role,
-                "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
+                "iat": now,  # 발급 시간 (마이크로초 단위)
+                "jti": secrets.token_hex(16),  # 고유 토큰 ID
+                "exp": now + datetime.timedelta(hours=24),
             },
             current_app.config["JWT_SECRET_KEY"],
             algorithm="HS256",

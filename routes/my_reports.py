@@ -367,9 +367,7 @@ def report_chart_data():
 
         # 유형별 통계
         type_stats = (
-            db.session.query(
-                AttendanceReport.dispute_type, func.count().label("count")
-            )
+            db.session.query(AttendanceReport.dispute_type, func.count().label("count"))
             .group_by(AttendanceReport.dispute_type)
             .all()
         )

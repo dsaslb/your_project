@@ -4,10 +4,10 @@ from datetime import date, datetime, timedelta
 
 import click
 from dateutil import parser as date_parser
-from flask import (Flask, flash, jsonify, redirect, render_template, request,
-                   session, url_for, current_app)
-from flask_login import (UserMixin, current_user, login_required, login_user,
-                         logout_user, AnonymousUserMixin)
+from flask import (Flask, current_app, flash, jsonify, redirect,
+                   render_template, request, session, url_for)
+from flask_login import (AnonymousUserMixin, UserMixin, current_user,
+                         login_required, login_user, logout_user)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.admin_log import admin_log_bp
@@ -21,8 +21,8 @@ from api.notice import api_notice_bp
 from api.report import api_report_bp
 from config import config_by_name
 from extensions import cache, csrf, db, limiter, login_manager, migrate
-from models import (CleaningPlan, Notice, Notification, Order, Report,
-                    Schedule, User, FeedbackIssue, Branch, SystemLog)
+from models import (Branch, CleaningPlan, FeedbackIssue, Notice, Notification,
+                    Order, Report, Schedule, SystemLog, User)
 from routes.notifications import notifications_bp
 # Import Route Blueprints
 from routes.payroll import payroll_bp
@@ -133,8 +133,8 @@ def admin_dashboard():
         return redirect(url_for("dashboard"))
 
     # 대시보드 모드 설정 전달
-    dashboard_mode = current_app.config.get('DASHBOARD_MODE', 'solo')
-    
+    dashboard_mode = current_app.config.get("DASHBOARD_MODE", "solo")
+
     # 최고관리자 전용 통계 데이터
     stats = {
         "pending_users": User.query.filter_by(status="pending").count(),
@@ -156,7 +156,7 @@ def admin_dashboard():
             Schedule.date >= datetime.now().date()
         ).count(),
     }
-    
+
     # 시스템 상태 정보
     system_status = {
         "uptime": "24시간+",  # 실제로는 서버 시작 시간 계산
@@ -168,10 +168,12 @@ def admin_dashboard():
         # 추가 시스템 정보
         "memory_usage": "45%",
         "disk_usage": "32%",
-        "active_sessions": len([u for u in User.query.filter_by(status='approved').all()]),
+        "active_sessions": len(
+            [u for u in User.query.filter_by(status="approved").all()]
+        ),
         "system_load": "정상",
     }
-    
+
     # 매장 목록 데이터 생성 (실제로는 DB에서 불러옴)
     branch_list = []
     try:
@@ -186,15 +188,15 @@ def admin_dashboard():
                 "name": "본점",
                 "manager": managers[0] if managers else None,
                 "employees": employees[:5] if employees else [],
-                "status": "운영중"
+                "status": "운영중",
             },
             {
-                "id": 2, 
+                "id": 2,
                 "name": "지점1",
                 "manager": managers[1] if len(managers) > 1 else None,
                 "employees": employees[5:10] if len(employees) > 5 else [],
-                "status": "운영중"
-            }
+                "status": "운영중",
+            },
         ]
     except Exception as e:
         print(f"매장 데이터 생성 오류: {e}")
@@ -203,12 +205,12 @@ def admin_dashboard():
     chart_data = {
         "attendance": {
             "labels": ["월", "화", "수", "목", "금", "토", "일"],
-            "data": [85, 88, 92, 87, 90, 95, 82]
+            "data": [85, 88, 92, 87, 90, 95, 82],
         },
         "orders": {
             "labels": ["1월", "2월", "3월", "4월", "5월", "6월"],
-            "data": [120, 135, 142, 138, 156, 168]
-        }
+            "data": [120, 135, 142, 138, 156, 168],
+        },
     }
 
     # 최근 활동 데이터
@@ -216,18 +218,18 @@ def admin_dashboard():
         {"type": "user_join", "message": "새 직원 가입", "time": "5분 전"},
         {"type": "order", "message": "발주 승인", "time": "10분 전"},
         {"type": "schedule", "message": "근무표 수정", "time": "15분 전"},
-        {"type": "notification", "message": "전체 알림 발송", "time": "30분 전"}
+        {"type": "notification", "message": "전체 알림 발송", "time": "30분 전"},
     ]
 
     # 알림 데이터
     alerts = {
         "critical": [
             {"type": "system", "message": "백업 필요", "time": "1시간 전"},
-            {"type": "user", "message": "승인 대기 사용자 3명", "time": "2시간 전"}
+            {"type": "user", "message": "승인 대기 사용자 3명", "time": "2시간 전"},
         ],
         "warning": [
             {"type": "performance", "message": "서버 부하 증가", "time": "3시간 전"}
-        ]
+        ],
     }
 
     # 권한별 접근 통계
@@ -235,7 +237,7 @@ def admin_dashboard():
         "admin_count": User.query.filter_by(role="admin").count(),
         "manager_count": User.query.filter_by(role="manager").count(),
         "employee_count": User.query.filter_by(role="employee").count(),
-        "pending_count": User.query.filter_by(status="pending").count()
+        "pending_count": User.query.filter_by(status="pending").count(),
     }
 
     # 실시간 모니터링 데이터
@@ -246,7 +248,7 @@ def admin_dashboard():
         "last_backup": "2024-01-15 14:30",
         "db_connections": 5,
         "memory_usage": "45%",
-        "cpu_usage": "32%"
+        "cpu_usage": "32%",
     }
 
     # 권한 관리 데이터
@@ -256,8 +258,8 @@ def admin_dashboard():
         "pending_changes": 2,
         "recent_updates": [
             {"user": "test_manager1", "action": "권한 수정", "time": "1시간 전"},
-            {"user": "test_employee5", "action": "권한 부여", "time": "2시간 전"}
-        ]
+            {"user": "test_employee5", "action": "권한 부여", "time": "2시간 전"},
+        ],
     }
 
     # 보고서 데이터
@@ -265,15 +267,21 @@ def admin_dashboard():
         "total_reports": Report.query.count(),
         "pending_reports": Report.query.filter_by(status="pending").count(),
         "resolved_reports": Report.query.filter_by(status="resolved").count(),
-        "recent_reports": Report.query.order_by(Report.created_at.desc()).limit(5).all()
+        "recent_reports": Report.query.order_by(Report.created_at.desc())
+        .limit(5)
+        .all(),
     }
 
     # 시스템 로그 데이터
     log_data = {
         "total_logs": SystemLog.query.count(),
-        "error_logs": SystemLog.query.filter(SystemLog.action.like('%error%')).count(),
-        "warning_logs": SystemLog.query.filter(SystemLog.action.like('%warning%')).count(),
-        "recent_logs": SystemLog.query.order_by(SystemLog.created_at.desc()).limit(10).all()
+        "error_logs": SystemLog.query.filter(SystemLog.action.like("%error%")).count(),
+        "warning_logs": SystemLog.query.filter(
+            SystemLog.action.like("%warning%")
+        ).count(),
+        "recent_logs": SystemLog.query.order_by(SystemLog.created_at.desc())
+        .limit(10)
+        .all(),
     }
 
     # 백업 데이터
@@ -282,7 +290,7 @@ def admin_dashboard():
         "backup_size": "45.2 MB",
         "backup_status": "성공",
         "next_backup": "2024-01-16 14:30",
-        "backup_count": 30
+        "backup_count": 30,
     }
 
     # 성능 데이터
@@ -290,7 +298,7 @@ def admin_dashboard():
         "response_time": "0.15초",
         "requests_per_minute": 45,
         "error_rate": "0.02%",
-        "uptime": "99.8%"
+        "uptime": "99.8%",
     }
 
     # 사용자 활동 데이터
@@ -302,7 +310,7 @@ def admin_dashboard():
         "top_absent": [],
         "recent": [],
     }
-    
+
     context = {
         "user": current_user,
         "stats": stats,
@@ -320,7 +328,7 @@ def admin_dashboard():
         "performance_data": performance_data,
         "user_activity": user_activity,
     }
-    
+
     return render_template("admin_dashboard.html", **context)
 
 
@@ -349,23 +357,31 @@ def schedule():
         to_dt = from_dt + timedelta(days=90)
 
     days = [(from_dt + timedelta(days=i)) for i in range(days_diff + 1)]
-    schedules = {d: Schedule.query.filter_by(date=d).all() for d in days}
-    cleanings = {d: CleaningPlan.query.filter_by(date=d).all() for d in days}
+    
+    # 통합된 Schedule 모델에서 근무와 청소 스케줄 분리
+    all_schedules = Schedule.query.filter(
+        Schedule.date >= from_dt,
+        Schedule.date <= to_dt
+    ).all()
+    
+    work_schedules = [s for s in all_schedules if s.type == 'work']
+    clean_schedules = [s for s in all_schedules if s.type == 'clean']
 
     return render_template(
         "schedule.html",
         from_date=from_dt.strftime("%Y-%m-%d"),
         to_date=to_dt.strftime("%Y-%m-%d"),
         dates=days,
-        schedules=schedules,
-        cleanings=cleanings,
+        work_schedules=work_schedules,
+        clean_schedules=clean_schedules,
     )
 
 
 @app.route("/clean")
 @login_required
 def clean():
-    plans = CleaningPlan.query.order_by(CleaningPlan.date.desc()).all()
+    # 청소 스케줄만 조회
+    plans = Schedule.query.filter_by(type='clean').order_by(Schedule.date.desc()).all()
     return render_template("clean.html", plans=plans)
 
 
@@ -460,7 +476,7 @@ def admin_user_permissions():
     if not current_user.is_admin():
         flash("관리자 권한이 필요합니다.", "error")
         return redirect(url_for("index"))
-    
+
     users = User.query.filter_by(status="approved").all()
     return render_template("admin/user_permissions.html", users=users)
 
@@ -471,7 +487,7 @@ def api_user_permissions(user_id):
     """사용자 권한 조회 API"""
     if not current_user.is_admin():
         return jsonify({"error": "권한이 없습니다."}), 403
-    
+
     user = User.query.get_or_404(user_id)
     return jsonify(user.permissions or {})
 
@@ -482,13 +498,13 @@ def api_update_user_permissions(user_id):
     """사용자 권한 업데이트 API"""
     if not current_user.is_admin():
         return jsonify({"error": "권한이 없습니다."}), 403
-    
+
     user = User.query.get_or_404(user_id)
     permissions = request.json
-    
+
     user.permissions = permissions
     db.session.commit()
-    
+
     return jsonify({"success": True, "message": "권한이 업데이트되었습니다."})
 
 
@@ -499,7 +515,7 @@ def admin_notify_send():
     if not current_user.is_admin():
         flash("관리자 권한이 필요합니다.", "error")
         return redirect(url_for("index"))
-    
+
     return render_template("admin/notify_send.html")
 
 
@@ -510,7 +526,7 @@ def admin_reports():
     if not current_user.is_admin():
         flash("관리자 권한이 필요합니다.", "error")
         return redirect(url_for("index"))
-    
+
     reports = Report.query.order_by(Report.created_at.desc()).all()
     return render_template("admin/reports.html", reports=reports)
 
@@ -522,7 +538,7 @@ def admin_system_monitor():
     if not current_user.is_admin():
         flash("관리자 권한이 필요합니다.", "error")
         return redirect(url_for("index"))
-    
+
     return render_template("admin/system_monitor.html")
 
 
@@ -533,7 +549,7 @@ def admin_backup_management():
     if not current_user.is_admin():
         flash("관리자 권한이 필요합니다.", "error")
         return redirect(url_for("index"))
-    
+
     return render_template("admin/backup_management.html")
 
 
@@ -581,6 +597,101 @@ def all_notifications():
 @login_required
 def schedule_fc():
     return render_template("schedule_fc.html")
+
+
+# --- Schedule API Routes ---
+@app.route("/api/schedule", methods=["POST"])
+@login_required
+def api_add_schedule():
+    """스케줄 추가 API"""
+    try:
+        data = request.json
+        schedule = Schedule(
+            date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
+            start_time=datetime.strptime(data['start_time'], '%H:%M').time(),
+            end_time=datetime.strptime(data['end_time'], '%H:%M').time(),
+            type=data['type'],  # 'work' 또는 'clean'
+            user_id=data.get('user_id'),
+            team=data.get('team'),  # 청소 스케줄용
+            status='pending'
+        )
+        db.session.add(schedule)
+        db.session.commit()
+        return jsonify({"success": True, "message": "스케줄이 추가되었습니다.", "id": schedule.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": f"오류가 발생했습니다: {str(e)}"}), 400
+
+
+@app.route("/api/schedule/<int:schedule_id>", methods=["PUT"])
+@login_required
+def api_update_schedule(schedule_id):
+    """스케줄 수정 API"""
+    try:
+        schedule = Schedule.query.get_or_404(schedule_id)
+        data = request.json
+        
+        schedule.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        schedule.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+        schedule.end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+        schedule.user_id = data.get('user_id')
+        schedule.team = data.get('team')
+        schedule.status = data.get('status', schedule.status)
+        
+        db.session.commit()
+        return jsonify({"success": True, "message": "스케줄이 수정되었습니다."})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": f"오류가 발생했습니다: {str(e)}"}), 400
+
+
+@app.route("/api/schedule/<int:schedule_id>", methods=["DELETE"])
+@login_required
+def api_delete_schedule(schedule_id):
+    """스케줄 삭제 API"""
+    try:
+        schedule = Schedule.query.get_or_404(schedule_id)
+        db.session.delete(schedule)
+        db.session.commit()
+        return jsonify({"success": True, "message": "스케줄이 삭제되었습니다."})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": f"오류가 발생했습니다: {str(e)}"}), 400
+
+
+@app.route("/api/schedule/<int:schedule_id>", methods=["GET"])
+@login_required
+def api_get_schedule(schedule_id):
+    """스케줄 조회 API"""
+    try:
+        schedule = Schedule.query.get_or_404(schedule_id)
+        return jsonify({
+            "id": schedule.id,
+            "date": schedule.date.strftime('%Y-%m-%d') if schedule.date else None,
+            "start_time": schedule.start_time.strftime('%H:%M') if schedule.start_time else None,
+            "end_time": schedule.end_time.strftime('%H:%M') if schedule.end_time else None,
+            "type": schedule.type,
+            "user_id": schedule.user_id,
+            "team": schedule.team,
+            "status": schedule.status
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": f"오류가 발생했습니다: {str(e)}"}), 400
+
+
+@app.route("/api/users")
+@login_required
+def api_get_users():
+    """사용자 목록 API (스케줄 배정용)"""
+    try:
+        users = User.query.filter_by(status='approved').all()
+        return jsonify([{
+            "id": user.id,
+            "username": user.username,
+            "role": user.role
+        } for user in users])
+    except Exception as e:
+        return jsonify({"success": False, "message": f"오류가 발생했습니다: {str(e)}"}), 400
 
 
 # --- CLI Commands ---
