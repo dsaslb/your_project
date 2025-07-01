@@ -5,9 +5,19 @@ import { ResizableLayout } from "@/components/resizable-layout"
 import { Sidebar } from "@/components/sidebar"
 import { Button } from "@/components/ui/button"
 import { Calendar, Plus, Users, Clock } from "lucide-react"
+import { useUser } from "@/components/UserContext"
 
 export default function SchedulePage() {
+  const { user, setUser } = useUser()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  // 더미 매장 데이터
+  const stores = [
+    { id: "1", name: "강남점" },
+    { id: "2", name: "홍대점" },
+    { id: "3", name: "잠실점" },
+  ]
+  // 최고관리자용 매장 선택 state
+  const [selectedStore, setSelectedStore] = useState(stores[0].id)
 
   return (
     <ResizableLayout
@@ -15,6 +25,7 @@ export default function SchedulePage() {
         <Sidebar
           isCollapsed={isSidebarCollapsed}
           onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          user={user}
         />
       }
       defaultSidebarWidth={20}
@@ -25,43 +36,47 @@ export default function SchedulePage() {
         {/* Header */}
         <header className="flex h-16 items-center justify-between border-b px-6">
           <h1 className="text-2xl font-bold">스케줄 관리</h1>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            새 스케줄 추가
-          </Button>
+          <div className="flex items-center gap-4">
+            {user.role === "admin" ? (
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={selectedStore}
+                onChange={e => setSelectedStore(e.target.value)}
+              >
+                {stores.map(store => (
+                  <option key={store.id} value={store.id}>{store.name}</option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-sm text-muted-foreground">{user.name}님 환영합니다</span>
+            )}
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              새 스케줄 추가
+            </Button>
+          </div>
         </header>
 
         {/* Main Content */}
         <main className="flex-1 p-6 space-y-6">
-          {/* 통계 카드들 */}
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="rounded-lg border bg-card p-6">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">오늘 근무자</h3>
-              </div>
-              <p className="text-3xl font-bold text-primary mt-2">12명</p>
+          {/* 상단 요약 카드 섹션 */}
+          <div className="grid gap-6 md:grid-cols-3 mb-8">
+            <div className="rounded-lg border bg-card p-6 flex flex-col items-start">
+              <span className="text-muted-foreground text-xs mb-1">오늘 근무자</span>
+              <span className="text-3xl font-bold text-primary mt-2">12명</span>
             </div>
-            
-            <div className="rounded-lg border bg-card p-6">
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-orange-500" />
-                <h3 className="text-lg font-semibold">총 근무시간</h3>
-              </div>
-              <p className="text-3xl font-bold text-orange-500 mt-2">96시간</p>
+            <div className="rounded-lg border bg-card p-6 flex flex-col items-start">
+              <span className="text-muted-foreground text-xs mb-1">총 근무시간</span>
+              <span className="text-3xl font-bold text-orange-500 mt-2">96시간</span>
             </div>
-            
-            <div className="rounded-lg border bg-card p-6">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-green-500" />
-                <h3 className="text-lg font-semibold">청소 스케줄</h3>
-              </div>
-              <p className="text-3xl font-bold text-green-500 mt-2">3건</p>
+            <div className="rounded-lg border bg-card p-6 flex flex-col items-start">
+              <span className="text-muted-foreground text-xs mb-1">청소 스케줄</span>
+              <span className="text-3xl font-bold text-green-500 mt-2">3건</span>
             </div>
           </div>
 
-          {/* 스케줄 테이블 */}
-          <div className="rounded-lg border">
+          {/* 주간 스케줄 표 섹션 */}
+          <div className="rounded-lg border bg-card mb-8">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-4">이번 주 스케줄</h2>
               <div className="overflow-x-auto">

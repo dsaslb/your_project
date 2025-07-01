@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { hasPermission, type User, type Permission } from "@/lib/utils"
+import { useUser } from "@/components/UserContext"
 
 interface SidebarProps {
   isCollapsed?: boolean
@@ -91,17 +92,27 @@ export function Sidebar({
   isCollapsed = false, 
   onToggle, 
   className,
-  user = { id: "1", name: "매장 관리자", role: "manager" },
+  user: userProp,
   showMobileMenu = false,
   onMobileMenuToggle
 }: SidebarProps) {
+  const { user } = useUser();
   const pathname = usePathname()
   const [searchTerm, setSearchTerm] = React.useState("")
 
-  // 현재 사용자 권한에 맞는 메뉴만 필터링
-  const filteredMenuItems = menuItems.filter(item => 
-    item.permissions.some(permission => hasPermission(user, permission))
-  )
+  // 권한별 메뉴 분기
+  const filteredMenuItems = menuItems.filter(item => {
+    if (user.role === "admin") return true; // 전체 메뉴
+    if (user.role === "manager") {
+      // 매장관리자: 매장 관리/근무/발주 등
+      return ["dashboard","schedule","orders","inventory","reports"].some(key => user.permissions[key]);
+    }
+    if (user.role === "employee") {
+      // 직원: 근무/스케줄/본인 업무만
+      return ["dashboard","schedule"].some(key => user.permissions[key]);
+    }
+    return false;
+  })
 
   // 검색어에 따른 메뉴 필터링
   const searchedMenuItems = filteredMenuItems.filter(item =>

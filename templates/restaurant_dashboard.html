@@ -1,612 +1,921 @@
 <!DOCTYPE html>
-<html lang="ko" class="h-full">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>매장 관리자 대시보드 - Restaurant Management System</title>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>레스토랑 관리 시스템 - 통합 대시보드</title>
-    
-    <!-- Tailwind CSS -->
-    <link href="{{ url_for('static', filename='css/tailwind.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/common.css') }}" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Theme Provider -->
-    <script src="{{ url_for('static', filename='js/theme-provider.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        body {
+            width: 100%;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 30px; 
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { 
+            margin: 0; 
+            font-size: 2.5rem; 
+            font-weight: 300;
+        }
+        
+        /* 헤더 메뉴 영역 */
+        .header-menu-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        
+        .topbar-right {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .user-info {
+            color: white;
+        }
+        
+        .user-role {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .logout-btn {
+            background: rgba(211, 47, 47, 0.8);
+            color: white;
+            border: 1px solid rgba(211, 47, 47, 0.6);
+        }
+        
+        .logout-btn:hover {
+            background: rgba(211, 47, 47, 1);
+            color: white;
+        }
+        
+        /* 통계 카드 스타일 */
+        .stats-section {
+            background: #f8f9fa; 
+            padding: 30px; 
+            border-bottom: 1px solid #e9ecef;
+        }
+        .stats-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            min-width: 150px;
+            flex: 1;
+            max-width: 200px;
+        }
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        /* 관리 메뉴 카드 스타일 */
+        .admin-menu-section {
+            padding: 30px;
+            background: white;
+        }
+        .admin-menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .admin-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .admin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        .admin-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .admin-card:hover::before {
+            left: 100%;
+        }
+        .admin-card-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        .admin-card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .admin-card-description {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .admin-card-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        /* 차트 섹션 스타일 */
+        .charts-section {
+            background: white;
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .chart-btn {
+            padding: 5px 15px;
+            border: 1px solid #dee2e6;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .chart-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        /* 실시간 활동 섹션 */
+        .realtime-section {
+            background: #f8f9fa;
+            padding: 30px;
+        }
+        .activity-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+            margin-bottom: 5px;
+            border-radius: 8px;
+        }
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.1rem;
+        }
+        .activity-content {
+            flex: 1;
+        }
+        .activity-user {
+            font-weight: 600;
+            color: #495057;
+        }
+        .activity-action {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .activity-time {
+            color: #adb5bd;
+            font-size: 0.8rem;
+        }
+        
+        /* 시스템 상태 섹션 */
+        .system-status-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-top: 1px solid #e9ecef;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .status-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .status-good { color: #28a745; }
+        .status-warning { color: #ffc107; }
+        .status-error { color: #dc3545; }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .admin-menu-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-row {
+                flex-direction: column;
+                align-items: center;
+            }
+            .stat-card {
+                max-width: 100%;
+            }
+            .header h1 {
+                font-size: 2rem;
+            }
+            .header-menu-container {
+                position: static;
+                margin-top: 20px;
+            }
+        }
+    </style>
 </head>
-<body class="h-full bg-background text-foreground transition-colors duration-300">
-    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <!-- Header -->
-        <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 px-6 py-4 sticky top-0 z-50">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <div class="absolute inset-0 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl blur opacity-75"></div>
-                        <div class="relative h-10 w-10 text-white bg-gradient-to-r from-orange-500 to-pink-500 p-2 rounded-xl flex items-center justify-center">
-                            <i class="fas fa-utensils text-lg"></i>
+<body>
+    <div class="container">
+        <div class="header">
+            <!-- 헤더 메뉴 영역 -->
+            <div class="header-menu-container">
+                <div class="topbar-right">
+                    <span class="user-info">
+                        <i class="fas fa-user"></i> {{ user.username }}
+                        <span class="user-role">{{ user.role|title }}</span>
+                    </span>
+                    <a class="logout-btn" href="{{ url_for('auth.logout') }}">로그아웃</a>
+                </div>
+            </div>
+            
+            <h1>🏪 매장 관리자 대시보드</h1>
+            <p class="mb-0">매장 운영 및 직원 관리</p>
+        </div>
+        
+        <!-- 통계 섹션 -->
+        <div class="stats-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-chart-bar"></i> 매장 현황
+            </h3>
+            <div class="stats-row">
+                {% if user.role == 'admin' %}
+                    <!-- 관리자용 통계 -->
+                    <div class="stat-card">
+                        <div class="stat-icon text-primary">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="stat-number">{{ stats.today_attendance }}</div>
+                        <div class="stat-label">오늘 출근 직원</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon text-warning">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-number">₩{{ "{:,}".format(stats.monthly_revenue) }}</div>
+                        <div class="stat-label">이번 주 매출</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon text-info">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div class="stat-number">28</div>
+                        <div class="stat-label">오늘 예약</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon text-success">
+                            <i class="fas fa-utensils"></i>
+                        </div>
+                        <div class="stat-number">{{ stats.active_orders }}</div>
+                        <div class="stat-label">활성 주문</div>
+                    </div>
+                {% else %}
+                    <!-- 일반 사용자용 통계 -->
+                    <div class="stat-card">
+                        <div class="stat-icon text-success">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-number">
+                            {% if stats.today_attendance %}
+                                <i class="fas fa-check text-success"></i>
+                            {% else %}
+                                <i class="fas fa-times text-danger"></i>
+                            {% endif %}
+                        </div>
+                        <div class="stat-label">
+                            {% if stats.today_attendance %}출근 완료{% else %}미출근{% endif %}
                         </div>
                     </div>
-                    <div>
-                        <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                            레스토랑 관리 시스템
-                        </h1>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">직원 및 운영 관리 대시보드</p>
+                    <div class="stat-card">
+                        <div class="stat-icon text-primary">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div class="stat-number">{{ stats.monthly_attendance }}</div>
+                        <div class="stat-label">이번 달 출근</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon text-warning">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="stat-number">{{ stats.unread_notifications }}</div>
+                        <div class="stat-label">미읽 알림</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon text-info">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="stat-number">{{ stats.user_name }}</div>
+                        <div class="stat-label">{{ user.role }}</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 실시간 차트 섹션 -->
+        <div class="charts-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-chart-line"></i> 매장 운영 차트
+            </h3>
+            
+            <div class="charts-grid">
+                <!-- 출근 현황 차트 -->
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span><i class="fas fa-sign-in-alt"></i> 출근 현황</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" onclick="loadChart('attendance', 7)">7일</button>
+                            <button class="chart-btn" onclick="loadChart('attendance', 30)">30일</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="attendanceChart"></canvas>
                     </div>
                 </div>
                 
-                <div class="flex items-center space-x-4">
-                    <!-- Theme Toggle -->
-                    <button id="theme-toggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                        <i class="fas fa-moon dark:hidden"></i>
-                        <i class="fas fa-sun hidden dark:block text-yellow-400"></i>
-                    </button>
-                    
-                    <!-- User Menu -->
-                    <div class="relative">
-                        <button id="user-menu-button" class="flex items-center space-x-2 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                            <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                {{ user.name[0] if user.name else user.username[0] }}
-                            </div>
-                            <span class="text-sm font-medium">{{ user.name or user.username }}</span>
-                            <i class="fas fa-chevron-down text-xs"></i>
-                        </button>
-                        
-                        <!-- Dropdown Menu -->
-                        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                            <div class="py-2">
-                                <a href="{{ url_for('profile') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    <i class="fas fa-user mr-2"></i>프로필
-                                </a>
-                                <a href="{{ url_for('notifications') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    <i class="fas fa-bell mr-2"></i>알림
-                                    {% if stats.unread_notifications > 0 %}
-                                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">{{ stats.unread_notifications }}</span>
-                                    {% endif %}
-                                </a>
-                                <hr class="my-2 border-gray-200 dark:border-gray-700">
-                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
-                                </a>
+                <!-- 매출 현황 차트 -->
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span><i class="fas fa-dollar-sign"></i> 매출 현황</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" onclick="loadChart('revenue', 7)">7일</button>
+                            <button class="chart-btn" onclick="loadChart('revenue', 30)">30일</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 주문 현황 차트 -->
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span><i class="fas fa-shopping-cart"></i> 주문 현황</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" onclick="loadChart('orders', 7)">7일</button>
+                            <button class="chart-btn" onclick="loadChart('orders', 30)">30일</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="ordersChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 예약 현황 차트 -->
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span><i class="fas fa-calendar-check"></i> 예약 현황</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" onclick="loadChart('reservations', 7)">7일</button>
+                            <button class="chart-btn" onclick="loadChart('reservations', 30)">30일</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="reservationsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 실시간 활동 섹션 -->
+        <div class="realtime-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-clock"></i> 실시간 활동
+            </h3>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="activity-list" id="activityList">
+                        <!-- 실시간 활동이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-pie"></i> 실시간 통계</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>최근 1시간</strong>
+                                <div id="realtimeStats">
+                                    <!-- 실시간 통계가 여기에 표시됩니다 -->
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </header>
+        </div>
+        
+        <!-- 매장 관리 메뉴 -->
+        <div class="admin-menu-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-cogs"></i> 매장 관리 메뉴
+            </h3>
+            
+            <div class="admin-menu-grid">
+                <!-- 스케줄 관리 -->
+                <a href="{{ url_for('schedule') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-calendar-days"></i>
+                    </div>
+                    <div class="admin-card-title">스케줄 관리</div>
+                    <div class="admin-card-description">
+                        직원 근무 스케줄 관리 및 조정
+                    </div>
+                </a>
+                
+                <!-- 직원 관리 -->
+                <a href="{{ url_for('admin_users') }}" class="admin-card">
+                    <div class="admin-card-badge">{{ stats.total_users }}</div>
+                    <div class="admin-card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="admin-card-title">직원 관리</div>
+                    <div class="admin-card-description">
+                        직원 정보 관리, 권한 설정
+                    </div>
+                </a>
+                
+                <!-- 출석 관리 -->
+                <a href="{{ url_for('attendance_tracker') }}" class="admin-card">
+                    <div class="admin-card-badge">{{ stats.today_attendance }}</div>
+                    <div class="admin-card-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="admin-card-title">출석 관리</div>
+                    <div class="admin-card-description">
+                        직원 출퇴근 현황 확인 및 관리
+                    </div>
+                </a>
+                
+                <!-- 주문 관리 -->
+                <a href="{{ url_for('order_manage') }}" class="admin-card">
+                    <div class="admin-card-badge">{{ stats.active_orders }}</div>
+                    <div class="admin-card-icon">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    <div class="admin-card-title">주문 관리</div>
+                    <div class="admin-card-description">
+                        주문 현황 확인 및 처리
+                    </div>
+                </a>
+                
+                <!-- 재고 관리 -->
+                <a href="{{ url_for('inventory') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div class="admin-card-title">재고 관리</div>
+                    <div class="admin-card-description">
+                        재고 현황 확인 및 발주 관리
+                    </div>
+                </a>
+                
+                <!-- 알림/공지 -->
+                <a href="{{ url_for('notifications') }}" class="admin-card">
+                    <div class="admin-card-badge">{{ stats.unread_notifications }}</div>
+                    <div class="admin-card-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <div class="admin-card-title">알림/공지</div>
+                    <div class="admin-card-description">
+                        직원 대상 알림 발송 및 공지사항
+                    </div>
+                </a>
+                
+                <!-- 매출 통계 -->
+                <a href="{{ url_for('reports') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="admin-card-title">매출 통계</div>
+                    <div class="admin-card-description">
+                        매출 분석 및 통계 리포트
+                    </div>
+                </a>
+                
+                <!-- 설정 -->
+                <a href="{{ url_for('settings') }}" class="admin-card">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div class="admin-card-title">설정</div>
+                    <div class="admin-card-description">
+                        매장 정보 및 시스템 설정
+                    </div>
+                </a>
+            </div>
 
-        <div class="flex">
-            <!-- Sidebar -->
-            <aside class="w-64 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-700 min-h-screen">
-                <nav class="p-4 space-y-2">
-                    <button id="tab-dashboard" class="tab-button active w-full justify-start" data-tab="dashboard">
-                        <i class="fas fa-chart-line mr-2"></i>
-                        대시보드
-                    </button>
-                    <button id="tab-schedule" class="tab-button w-full justify-start" data-tab="schedule">
-                        <i class="fas fa-calendar-days mr-2"></i>
-                        스케줄 관리
-                    </button>
-                    <button id="tab-staff" class="tab-button w-full justify-start" data-tab="staff">
-                        <i class="fas fa-users mr-2"></i>
-                        직원 관리
-                    </button>
-                    <button id="tab-attendance" class="tab-button w-full justify-start" data-tab="attendance">
-                        <i class="fas fa-clock mr-2"></i>
-                        출석 관리
-                    </button>
-                </nav>
-            </aside>
+            <!-- 매장 관리자 안내 -->
+            <div class="alert alert-info mt-4">
+                <i class="fas fa-info-circle"></i>
+                <strong>매장 관리자 대시보드</strong><br>
+                매장 운영에 필요한 모든 기능에 접근할 수 있습니다. 직원 관리, 스케줄 관리, 주문 관리, 재고 관리 등을 통해 효율적인 매장 운영을 지원합니다.
+            </div>
+        </div>
 
-            <!-- Main Content -->
-            <main class="flex-1 p-6">
-                <!-- Dashboard Tab -->
-                <div id="content-dashboard" class="tab-content active">
-                    <div class="space-y-6">
-                        <!-- Stats Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {% if user.role == 'admin' %}
-                                <!-- 관리자용 통계 -->
-                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">오늘 출근 직원</h3>
-                                        <div class="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
-                                            <i class="fas fa-user-check h-4 w-4 text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div class="card-content relative z-10">
-                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.today_attendance }}</div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">전체 {{ stats.total_users }}명 중</p>
-                                        <span class="badge badge-secondary mt-2 text-xs">+2 from yesterday</span>
-                                    </div>
-                                </div>
-
-                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">이번 주 매출</h3>
-                                        <div class="p-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg">
-                                            <i class="fas fa-dollar-sign h-4 w-4 text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div class="card-content relative z-10">
-                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">₩{{ "{:,}".format(stats.monthly_revenue) }}</div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">+12% from last week</p>
-                                        <span class="badge badge-secondary mt-2 text-xs">↗️ 12%</span>
-                                    </div>
-                                </div>
-
-                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">오늘 예약</h3>
-                                        <div class="p-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 shadow-lg">
-                                            <i class="fas fa-calendar h-4 w-4 text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div class="card-content relative z-10">
-                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">28</div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">테이블 예약 현황</p>
-                                        <span class="badge badge-secondary mt-2 text-xs">85% 점유율</span>
-                                    </div>
-                                </div>
-
-                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">활성 주문</h3>
-                                        <div class="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 shadow-lg">
-                                            <i class="fas fa-utensils h-4 w-4 text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div class="card-content relative z-10">
-                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.active_orders }}</div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">현재 처리 중</p>
-                                        <span class="badge badge-secondary mt-2 text-xs">평균 15분 대기</span>
-                                    </div>
-                                </div>
-                            {% else %}
-                                <!-- 일반 사용자용 통계 -->
-                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">오늘 출근</h3>
-                                        <div class="p-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg">
-                                            <i class="fas fa-clock h-4 w-4 text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div class="card-content relative z-10">
-                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">
-                                            {% if stats.today_attendance %}
-                                                <i class="fas fa-check text-green-500"></i>
-                                            {% else %}
-                                                <i class="fas fa-times text-red-500"></i>
-                                            {% endif %}
-                                        </div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            {% if stats.today_attendance %}출근 완료{% else %}미출근{% endif %}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">이번 달 출근</h3>
-                                        <div class="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
-                                            <i class="fas fa-calendar h-4 w-4 text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div class="card-content relative z-10">
-                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.monthly_attendance }}</div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">이번 달 출근일</p>
-                                    </div>
-                                </div>
-
-                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">미읽 알림</h3>
-                                        <div class="p-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 shadow-lg">
-                                            <i class="fas fa-bell h-4 w-4 text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div class="card-content relative z-10">
-                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.unread_notifications }}</div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">새로운 알림</p>
-                                    </div>
-                                </div>
-
-                                <div class="card relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                                    <div class="card-header flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                                        <h3 class="card-title text-sm font-medium text-gray-600 dark:text-gray-400">내 정보</h3>
-                                        <div class="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 shadow-lg">
-                                            <i class="fas fa-user h-4 w-4 text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div class="card-content relative z-10">
-                                        <div class="text-lg font-bold text-gray-900 dark:text-white">{{ stats.user_name }}</div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ user.role }}</p>
-                                    </div>
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Recent Activity & Today's Schedule -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">최근 활동</h3>
-                                    <p class="card-description">오늘의 주요 활동 내역</p>
-                                </div>
-                                <div class="card-content space-y-4">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <div class="flex-1">
-                                            <p class="text-sm font-medium text-gray-900 dark:text-white">김서버님이 출근했습니다</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">09:00 AM</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                        <div class="flex-1">
-                                            <p class="text-sm font-medium text-gray-900 dark:text-white">새로운 예약이 등록되었습니다</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">08:45 AM</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                        <div class="flex-1">
-                                            <p class="text-sm font-medium text-gray-900 dark:text-white">주방 직원 교대 시간입니다</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">08:30 AM</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">오늘의 스케줄</h3>
-                                    <p class="card-description">현재 근무 중인 직원</p>
-                                </div>
-                                <div class="card-content space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
-                                                김서
-                                            </div>
-                                            <div>
-                                                <p class="text-sm font-medium text-gray-900 dark:text-white">김서버</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400">서빙</p>
-                                            </div>
-                                        </div>
-                                        <span class="badge badge-outline text-green-600 border-green-600">근무중</span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">
-                                                박셰
-                                            </div>
-                                            <div>
-                                                <p class="text-sm font-medium text-gray-900 dark:text-white">박셰프</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400">주방</p>
-                                            </div>
-                                        </div>
-                                        <span class="badge badge-outline text-green-600 border-green-600">근무중</span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
-                                                이매
-                                            </div>
-                                            <div>
-                                                <p class="text-sm font-medium text-gray-900 dark:text-white">이매니저</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400">관리</p>
-                                            </div>
-                                        </div>
-                                        <span class="badge badge-outline text-orange-600 border-orange-600">휴게시간</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+        <!-- 시스템 상태 섹션 -->
+        <div class="system-status-section">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-info-circle"></i> 매장 상태
+            </h3>
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-title">매장 운영 상태</div>
+                    <div class="status-value status-good">
+                        <i class="fas fa-check-circle"></i> 정상 운영
                     </div>
                 </div>
-
-                <!-- Schedule Tab -->
-                <div id="content-schedule" class="tab-content hidden">
-                    <div class="space-y-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">스케줄 관리</h2>
-                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 스케줄을 관리하고 조정하세요</p>
-                            </div>
-                            <a href="{{ url_for('schedule') }}" class="btn btn-primary">
-                                <i class="fas fa-plus mr-2"></i>
-                                새 스케줄 추가
-                            </a>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">이번 주 스케줄</h3>
-                                <p class="card-description">2024년 1월 15일 - 21일</p>
-                            </div>
-                            <div class="card-content">
-                                <div class="overflow-x-auto">
-                                    <table class="table w-full">
-                                        <thead>
-                                            <tr class="border-b border-gray-200 dark:border-gray-700">
-                                                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">직원</th>
-                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">월</th>
-                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">화</th>
-                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">수</th>
-                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">목</th>
-                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">금</th>
-                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">토</th>
-                                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">일</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr class="border-b border-gray-100 dark:border-gray-800">
-                                                <td class="py-3 px-4">
-                                                    <div class="flex items-center space-x-3">
-                                                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
-                                                            김서
-                                                        </div>
-                                                        <div>
-                                                            <p class="font-medium text-gray-900 dark:text-white">김서버</p>
-                                                            <p class="text-sm text-gray-500 dark:text-gray-400">서빙</p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="text-center py-3 px-4">
-                                                    <span class="badge badge-outline">09:00-17:00</span>
-                                                </td>
-                                                <td class="text-center py-3 px-4">
-                                                    <span class="badge badge-outline">09:00-17:00</span>
-                                                </td>
-                                                <td class="text-center py-3 px-4">
-                                                    <span class="badge badge-outline">09:00-17:00</span>
-                                                </td>
-                                                <td class="text-center py-3 px-4">
-                                                    <span class="badge badge-outline">09:00-17:00</span>
-                                                </td>
-                                                <td class="text-center py-3 px-4">
-                                                    <span class="badge badge-outline">09:00-17:00</span>
-                                                </td>
-                                                <td class="text-center py-3 px-4">
-                                                    <span class="badge badge-outline">10:00-18:00</span>
-                                                </td>
-                                                <td class="text-center py-3 px-4">
-                                                    <span class="text-gray-400">휴무</span>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+                <div class="status-card">
+                    <div class="status-title">오늘 출근률</div>
+                    <div class="status-value status-good">
+                        <i class="fas fa-users"></i> {{ (stats.today_attendance / stats.total_users * 100)|round(1) }}%
                     </div>
                 </div>
-
-                <!-- Staff Tab -->
-                <div id="content-staff" class="tab-content hidden">
-                    <div class="space-y-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">직원 관리</h2>
-                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 정보를 관리하고 권한을 설정하세요</p>
-                            </div>
-                            <a href="{{ url_for('admin_users') }}" class="btn btn-primary">
-                                <i class="fas fa-plus mr-2"></i>
-                                새 직원 추가
-                            </a>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">직원 목록</h3>
-                                <p class="card-description">전체 {{ stats.total_users }}명의 직원</p>
-                            </div>
-                            <div class="card-content">
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                                                김서
-                                            </div>
-                                            <div>
-                                                <p class="font-medium text-gray-900 dark:text-white">김서버</p>
-                                                <p class="text-sm text-gray-500 dark:text-gray-400">서빙</p>
-                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white">
-                                                박셰
-                                            </div>
-                                            <div>
-                                                <p class="font-medium text-gray-900 dark:text-white">박셰프</p>
-                                                <p class="text-sm text-gray-500 dark:text-gray-400">주방</p>
-                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white">
-                                                이매
-                                            </div>
-                                            <div>
-                                                <p class="font-medium text-gray-900 dark:text-white">이매니저</p>
-                                                <p class="text-sm text-gray-500 dark:text-gray-400">관리</p>
-                                                <span class="badge badge-outline text-green-600 border-green-600 text-xs">활성</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <div class="status-card">
+                    <div class="status-title">주문 처리율</div>
+                    <div class="status-value status-good">
+                        <i class="fas fa-utensils"></i> 95%
                     </div>
                 </div>
-
-                <!-- Attendance Tab -->
-                <div id="content-attendance" class="tab-content hidden">
-                    <div class="space-y-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">출석 관리</h2>
-                                <p class="text-gray-500 dark:text-gray-400 mt-1">직원 출퇴근 현황을 확인하고 관리하세요</p>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <a href="{{ url_for('attendance_tracker') }}" class="btn btn-primary">
-                                    <i class="fas fa-calendar mr-2"></i>
-                                    출석 보고서
-                                </a>
-                            </div>
-                        </div>
-
-                        <!-- Summary Stats -->
-                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
-                            <div class="card">
-                                <div class="card-content p-4">
-                                    <div class="text-center">
-                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">예정 인원</p>
-                                        <p class="text-2xl font-bold text-gray-900 dark:text-white">5명</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-content p-4">
-                                    <div class="text-center">
-                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">출근</p>
-                                        <p class="text-2xl font-bold text-green-600">4명</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-content p-4">
-                                    <div class="text-center">
-                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">지각</p>
-                                        <p class="text-2xl font-bold text-yellow-600">1명</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-content p-4">
-                                    <div class="text-center">
-                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">결근</p>
-                                        <p class="text-2xl font-bold text-red-600">0명</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-content p-4">
-                                    <div class="text-center">
-                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">총 근무시간</p>
-                                        <p class="text-2xl font-bold text-blue-600">32.5h</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-content p-4">
-                                    <div class="text-center">
-                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">초과근무</p>
-                                        <p class="text-2xl font-bold text-orange-600">2.5h</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Quick Actions -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">빠른 작업</h3>
-                                <p class="card-description">자주 사용하는 기능에 빠르게 접근하세요</p>
-                            </div>
-                            <div class="card-content">
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <a href="{{ url_for('m_attendance') }}" class="flex flex-col items-center p-4 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105">
-                                        <i class="fas fa-clock text-2xl mb-2"></i>
-                                        <span class="text-sm font-medium">출결 관리</span>
-                                    </a>
-                                    
-                                    <a href="{{ url_for('m_notifications') }}" class="flex flex-col items-center p-4 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105">
-                                        <i class="fas fa-bell text-2xl mb-2"></i>
-                                        <span class="text-sm font-medium">알림센터</span>
-                                    </a>
-                                    
-                                    <a href="{{ url_for('m_stats') }}" class="flex flex-col items-center p-4 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 transition-all duration-300 transform hover:scale-105">
-                                        <i class="fas fa-chart-bar text-2xl mb-2"></i>
-                                        <span class="text-sm font-medium">통계</span>
-                                    </a>
-                                    
-                                    <a href="{{ url_for('m_profile') }}" class="flex flex-col items-center p-4 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105">
-                                        <i class="fas fa-user text-2xl mb-2"></i>
-                                        <span class="text-sm font-medium">프로필</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+                <div class="status-card">
+                    <div class="status-title">재고 상태</div>
+                    <div class="status-value status-warning">
+                        <i class="fas fa-boxes"></i> 주의 필요
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     </div>
 
-    <!-- Theme Toggle Script -->
-    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <!-- Chart.js 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- User Menu Script -->
     <script>
-        // User dropdown toggle
-        const userMenuButton = document.getElementById('user-menu-button');
-        const userDropdown = document.getElementById('user-dropdown');
+        // 차트 객체들을 저장할 변수
+        let charts = {};
         
-        userMenuButton.addEventListener('click', () => {
-            userDropdown.classList.toggle('hidden');
-        });
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!userMenuButton.contains(e.target) && !userDropdown.contains(e.target)) {
-                userDropdown.classList.add('hidden');
+        // 차트 색상 설정
+        const chartColors = {
+            attendance: {
+                border: 'rgb(75, 192, 192)',
+                background: 'rgba(75, 192, 192, 0.2)'
+            },
+            revenue: {
+                border: 'rgb(255, 99, 132)',
+                background: 'rgba(255, 99, 132, 0.2)'
+            },
+            orders: {
+                border: 'rgb(54, 162, 235)',
+                background: 'rgba(54, 162, 235, 0.2)'
+            },
+            reservations: {
+                border: 'rgb(255, 205, 86)',
+                background: 'rgba(255, 205, 86, 0.2)'
             }
-        });
+        };
         
-        // Tab switching functionality
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const targetTab = button.getAttribute('data-tab');
-                
-                // Remove active class from all buttons and contents
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabContents.forEach(content => content.classList.add('hidden'));
-                
-                // Add active class to clicked button and show corresponding content
-                button.classList.add('active');
-                document.getElementById(`content-${targetTab}`).classList.remove('hidden');
-            });
-        });
-
-        // Tab button styles
+        // 차트 로드 함수
+        function loadChart(type, days) {
+            // 기존 차트가 있으면 제거
+            if (charts[type]) {
+                charts[type].destroy();
+            }
+            
+            // 버튼 활성화 상태 변경
+            const chartCard = document.querySelector(`#${type}Chart`).closest('.chart-card');
+            chartCard.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 차트 데이터 로드
+            fetch(`/api/dashboard/stats?period=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    const ctx = document.getElementById(`${type}Chart`).getContext('2d');
+                    
+                    // 날짜 라벨 포맷팅
+                    const labels = data.labels.map(date => {
+                        const d = new Date(date);
+                        return `${d.getMonth() + 1}/${d.getDate()}`;
+                    });
+                    
+                    charts[type] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: getChartLabel(type),
+                                data: data.datasets[type] || [],
+                                borderColor: chartColors[type].border,
+                                backgroundColor: chartColors[type].background,
+                                tension: 0.1,
+                                fill: true,
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { 
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            },
+                            scales: { 
+                                y: { 
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            },
+                            interaction: {
+                                mode: 'nearest',
+                                axis: 'x',
+                                intersect: false
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('차트 데이터 로드 실패:', error);
+                    // 에러 시 빈 차트 표시
+                    const ctx = document.getElementById(`${type}Chart`).getContext('2d');
+                    charts[type] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{ 
+                                label: getChartLabel(type),
+                                data: [],
+                                borderColor: chartColors[type].border,
+                                backgroundColor: chartColors[type].background
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                });
+        }
+        
+        // 차트 라벨 반환
+        function getChartLabel(type) {
+            const labels = {
+                'attendance': '출근',
+                'revenue': '매출',
+                'orders': '주문',
+                'reservations': '예약'
+            };
+            return labels[type] || type;
+        }
+        
+        // 실시간 통계 업데이트
+        function updateRealtimeStats() {
+            fetch('/api/dashboard/stats?period=1')
+                .then(response => response.json())
+                .then(data => {
+                    const statsDiv = document.getElementById('realtimeStats');
+                    if (statsDiv && data.current_stats) {
+                        statsDiv.innerHTML = `
+                            <div class="mb-2">
+                                <i class="fas fa-users text-primary"></i> 활성 직원: ${data.current_stats.active_users}명
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-bell text-warning"></i> 미읽 알림: ${data.current_stats.unread_notifications}건
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-shopping-cart text-info"></i> 대기 주문: ${data.current_stats.pending_orders}건
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-sign-in-alt text-success"></i> 오늘 출근: ${data.current_stats.today_attendance}명
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-calendar text-info"></i> 오늘 예약: ${data.current_stats.today_reservations}건
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock"></i> 마지막 업데이트: ${new Date().toLocaleTimeString()}
+                                </small>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('실시간 통계 업데이트 실패:', error);
+                });
+        }
+        
+        // 실시간 활동 업데이트
+        function updateRealtimeActivities() {
+            fetch('/api/dashboard/realtime')
+                .then(response => response.json())
+                .then(data => {
+                    const activityList = document.getElementById('activityList');
+                    if (activityList && data.activities) {
+                        activityList.innerHTML = '';
+                        
+                        data.activities.forEach(activity => {
+                            const activityItem = document.createElement('div');
+                            activityItem.className = 'activity-item';
+                            
+                            // 활동 타입에 따른 아이콘과 색상 설정
+                            let iconClass = 'fas fa-info-circle';
+                            let bgColor = 'bg-info';
+                            
+                            if (activity.type === 'attendance') {
+                                iconClass = 'fas fa-sign-in-alt';
+                                bgColor = 'bg-success';
+                            } else if (activity.type === 'order') {
+                                iconClass = 'fas fa-utensils';
+                                bgColor = 'bg-primary';
+                            } else if (activity.type === 'notification') {
+                                iconClass = 'fas fa-bell';
+                                bgColor = 'bg-warning';
+                            }
+                            
+                            activityItem.innerHTML = `
+                                <div class="activity-icon ${bgColor}">
+                                    <i class="${iconClass}"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-user">${activity.username}</div>
+                                    <div class="activity-action">${activity.action}</div>
+                                    ${activity.detail ? `<small class="text-muted">${activity.detail}</small>` : ''}
+                                </div>
+                                <div class="activity-time">${activity.time_ago}</div>
+                            `;
+                            activityList.appendChild(activityItem);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('실시간 활동 업데이트 실패:', error);
+                });
+        }
+        
+        // 실시간 알림 개수 업데이트
+        function updateNotificationCount() {
+            fetch('/notifications/count')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.querySelector('.admin-card[href*="notifications"] .admin-card-badge');
+                    if (badge) {
+                        if (data.count > 0) {
+                            badge.textContent = data.count;
+                            badge.style.display = 'flex';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => console.error('알림 개수 조회 실패:', error));
+        }
+        
+        // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
-            const tabButtons = document.querySelectorAll('.tab-button');
-            tabButtons.forEach(button => {
-                button.classList.add('btn', 'btn-ghost', 'w-full', 'justify-start');
-            });
+            // 차트 초기 로드
+            loadChart('attendance', 7);
+            loadChart('revenue', 7);
+            loadChart('orders', 7);
+            loadChart('reservations', 7);
+            
+            // 실시간 데이터 초기 로드
+            updateRealtimeStats();
+            updateRealtimeActivities();
+            updateNotificationCount();
+            
+            // 실시간 업데이트 설정
+            setInterval(updateRealtimeStats, 30000); // 30초마다
+            setInterval(updateRealtimeActivities, 10000); // 10초마다
+            setInterval(updateNotificationCount, 30000); // 30초마다
         });
     </script>
 </body>

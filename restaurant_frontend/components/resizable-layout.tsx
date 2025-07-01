@@ -65,7 +65,7 @@ export function ResizableLayout({
       {/* Sidebar */}
       <div 
         className="border-r bg-background"
-        style={{ width: `${sidebarWidth}%`, minWidth: "200px" }}
+        style={{ width: `${sidebarWidth}%`, minWidth: "120px" }}
       >
         {sidebar}
       </div>
