@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from 'react'
 import { AppLayout } from "@/components/app-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   DollarSign, 
   Users, 
@@ -13,16 +15,44 @@ import {
   Utensils,
   Package,
   TrendingUp,
+  TrendingDown,
   Clock,
   Bell,
   AlertCircle,
   AlertTriangle,
   Settings,
-  FileText
+  FileText,
+  CheckCircle,
+  Activity
 } from "lucide-react"
 import { useUser } from '@/components/UserContext'
 import { toast } from '@/lib/toast'
 import NotificationService from '@/lib/notification-service'
+import { useRealtime, useRealtimeEvent } from '@/lib/realtime-service'
+import { useNotifications } from '@/components/NotificationSystem'
+import { apiClient } from '@/lib/api-client'
+
+interface DashboardStats {
+  totalOrders: number;
+  pendingOrders: number;
+  completedOrders: number;
+  totalRevenue: number;
+  totalStaff: number;
+  activeStaff: number;
+  inventoryItems: number;
+  lowStockItems: number;
+  todaySales: number;
+  weeklyGrowth: number;
+}
+
+interface RecentActivity {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  status: 'success' | 'warning' | 'error' | 'info';
+}
 
 export default function DashboardPage() {
   const { user } = useUser()
@@ -30,6 +60,28 @@ export default function DashboardPage() {
   const [notificationStats, setNotificationStats] = useState<any>(null)
   const [noticeStats, setNoticeStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<DashboardStats>({
+    totalOrders: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    totalRevenue: 0,
+    totalStaff: 0,
+    activeStaff: 0,
+    inventoryItems: 0,
+    lowStockItems: 0,
+    todaySales: 0,
+    weeklyGrowth: 0,
+  })
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
+
+  // 실시간 서비스 연결
+  const { isConnected, lastEvent } = useRealtime()
+  const { addNotification } = useNotifications()
+
+  // 실시간 이벤트 구독
+  const orderEvent = useRealtimeEvent('order.created')
+  const inventoryEvent = useRealtimeEvent('inventory.low')
+  const staffEvent = useRealtimeEvent('staff.attendance')
 
   // 알림 통계 로드
   useEffect(() => {
@@ -56,6 +108,114 @@ export default function DashboardPage() {
     setLoading(false)
   }, [])
 
+  // 초기 데이터 로드
+  useEffect(() => {
+    loadDashboardData()
+  }, [])
+
+  // 실시간 이벤트 처리
+  useEffect(() => {
+    if (orderEvent) {
+      handleOrderEvent(orderEvent)
+    }
+  }, [orderEvent])
+
+  useEffect(() => {
+    if (inventoryEvent) {
+      handleInventoryEvent(inventoryEvent)
+    }
+  }, [inventoryEvent])
+
+  useEffect(() => {
+    if (staffEvent) {
+      handleStaffEvent(staffEvent)
+    }
+  }, [staffEvent])
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true)
+      
+      // 대시보드 통계 로드
+      const statsData = await apiClient.get<DashboardStats>('/dashboard/stats')
+      setStats(statsData)
+      
+      // 최근 활동 로드
+      const activitiesData = await apiClient.get<RecentActivity[]>('/dashboard/activities')
+      setRecentActivities(activitiesData)
+      
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error)
+      addNotification({
+        type: 'error',
+        title: '데이터 로드 실패',
+        message: '대시보드 데이터를 불러오는데 실패했습니다.',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOrderEvent = (event: any) => {
+    // 주문 통계 업데이트
+    setStats(prev => ({
+      ...prev,
+      totalOrders: prev.totalOrders + 1,
+      pendingOrders: prev.pendingOrders + 1,
+    }))
+
+    // 최근 활동에 추가
+    const newActivity: RecentActivity = {
+      id: Date.now().toString(),
+      type: 'order',
+      title: '새 주문 등록',
+      description: `새로운 주문이 등록되었습니다.`,
+      timestamp: new Date().toISOString(),
+      status: 'info',
+    }
+
+    setRecentActivities(prev => [newActivity, ...prev.slice(0, 9)])
+  }
+
+  const handleInventoryEvent = (event: any) => {
+    // 재고 통계 업데이트
+    setStats(prev => ({
+      ...prev,
+      lowStockItems: prev.lowStockItems + 1,
+    }))
+
+    // 알림 추가
+    addNotification({
+      type: 'warning',
+      title: '재고 부족',
+      message: '일부 재고가 부족합니다. 확인해주세요.',
+      action: {
+        label: '재고 확인',
+        url: '/inventory',
+      },
+    })
+  }
+
+  const handleStaffEvent = (event: any) => {
+    // 직원 통계 업데이트
+    setStats(prev => ({
+      ...prev,
+      activeStaff: prev.activeStaff + 1,
+    }))
+
+    // 최근 활동에 추가
+    const newActivity: RecentActivity = {
+      id: Date.now().toString(),
+      type: 'staff',
+      title: '직원 출근',
+      description: `직원이 출근했습니다.`,
+      timestamp: new Date().toISOString(),
+      status: 'success',
+    }
+
+    setRecentActivities(prev => [newActivity, ...prev.slice(0, 9)])
+  }
+
   // 시스템 알림 테스트
   const handleTestSystemNotification = async (type: 'maintenance' | 'backup' | 'error' | 'update') => {
     try {
@@ -71,6 +231,41 @@ export default function DashboardPage() {
       console.error('시스템 알림 생성 실패:', error)
       toast.error('시스템 알림 생성에 실패했습니다.')
     }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+      case 'error':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />
+      default:
+        return <Activity className="h-4 w-4 text-blue-500" />
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ko-KR', {
+      style: 'currency',
+      currency: 'KRW',
+    }).format(amount)
+  }
+
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
   }
 
   return (
@@ -98,6 +293,21 @@ export default function DashboardPage() {
               >
                 업데이트 알림 테스트
               </Button>
+            </div>
+          </div>
+
+          {/* 실시간 상태 표시 */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">대시보드</h1>
+            <div className="flex items-center gap-2">
+              <Badge variant={isConnected ? "default" : "secondary"}>
+                {isConnected ? "실시간 연결됨" : "연결 끊김"}
+              </Badge>
+              {lastEvent && (
+                <span className="text-sm text-muted-foreground">
+                  마지막 업데이트: {formatTime(lastEvent.timestamp)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -469,6 +679,162 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* 주요 통계 카드 */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">총 주문</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalOrders}</div>
+                <p className="text-xs text-muted-foreground">
+                  대기: {stats.pendingOrders} | 완료: {stats.completedOrders}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">총 매출</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
+                <p className="text-xs text-muted-foreground">
+                  오늘: {formatCurrency(stats.todaySales)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">직원</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.activeStaff}</div>
+                <p className="text-xs text-muted-foreground">
+                  전체: {stats.totalStaff}명
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">재고</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.inventoryItems}</div>
+                <p className="text-xs text-muted-foreground">
+                  부족: {stats.lowStockItems}개
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 성장률 및 진행률 */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>주간 성장률</CardTitle>
+                <CardDescription>이번 주 매출 성장률</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  {stats.weeklyGrowth >= 0 ? (
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 text-red-500" />
+                  )}
+                  <span className={`text-2xl font-bold ${
+                    stats.weeklyGrowth >= 0 ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    {stats.weeklyGrowth >= 0 ? '+' : ''}{stats.weeklyGrowth}%
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>주문 완료율</CardTitle>
+                <CardDescription>전체 주문 대비 완료율</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>완료율</span>
+                    <span>{stats.totalOrders > 0 ? Math.round((stats.completedOrders / stats.totalOrders) * 100) : 0}%</span>
+                  </div>
+                  <Progress 
+                    value={stats.totalOrders > 0 ? (stats.completedOrders / stats.totalOrders) * 100 : 0} 
+                    className="w-full" 
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 최근 활동 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>최근 활동</CardTitle>
+              <CardDescription>실시간으로 업데이트되는 최근 활동</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentActivities.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    아직 활동이 없습니다.
+                  </p>
+                ) : (
+                  recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg border">
+                      {getStatusIcon(activity.status)}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm">{activity.title}</h4>
+                        <p className="text-sm text-muted-foreground">{activity.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatTime(activity.timestamp)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 빠른 액션 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>빠른 액션</CardTitle>
+              <CardDescription>자주 사용하는 기능에 빠르게 접근</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => window.location.href = '/orders'}>
+                  <ShoppingCart className="h-6 w-6" />
+                  <span>주문 관리</span>
+                </Button>
+                <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => window.location.href = '/inventory'}>
+                  <Package className="h-6 w-6" />
+                  <span>재고 관리</span>
+                </Button>
+                <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => window.location.href = '/staff'}>
+                  <Users className="h-6 w-6" />
+                  <span>직원 관리</span>
+                </Button>
+                <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => window.location.href = '/schedule'}>
+                  <Calendar className="h-6 w-6" />
+                  <span>스케줄 관리</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppLayout>

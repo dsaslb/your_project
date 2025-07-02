@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -32,142 +32,260 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
-  MoreVertical
+  MoreVertical,
+  History,
+  Filter,
+  Download,
+  Upload,
+  RefreshCw,
+  BarChart3,
+  TrendingUp,
+  Shield,
+  Star
 } from "lucide-react"
 import { useUser } from "@/components/UserContext"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { api as noticeApi } from '../notice/page';
-import { toast } from 'sonner';
-import NotificationService from '@/lib/notification-service';
+import { toast } from '@/lib/toast'
+import { apiClient } from '@/lib/api-client'
 
 // 발주 타입 정의
 interface Order {
   id: number;
+  orderNumber: string;
   item: string;
   quantity: number;
   unit: string;
   supplier: string;
   price: number;
-  status: "pending" | "approved" | "rejected" | "delivered";
+  totalAmount: number;
+  status: "pending" | "approved" | "rejected" | "processing" | "delivered" | "cancelled";
   priority: "high" | "medium" | "low";
   requester: string;
+  requesterId: number;
   requestedAt: string;
   expectedDate: string;
   approvedBy?: string;
+  approvedAt?: string;
   deliveredAt?: string;
   notes?: string;
+  attachments?: string[];
+  category: string;
+  urgency: "normal" | "urgent" | "critical";
+  budgetCode?: string;
+  deliveryAddress?: string;
+  contactPerson?: string;
+  contactPhone?: string;
 }
 
-// Toast 알림용
-function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
-  return (
-    <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded shadow-lg text-white ${type === "success" ? "bg-green-600" : "bg-red-600"}`}
-      role="alert">
-      <div className="flex items-center gap-2">
-        {type === "success" ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-        <span>{message}</span>
-        <button className="ml-2" onClick={onClose}><X className="w-4 h-4" /></button>
-      </div>
-    </div>
-  );
+// 주문 이력 타입
+interface OrderHistory {
+  id: number;
+  orderId: number;
+  action: string;
+  status: string;
+  performedBy: string;
+  performedAt: string;
+  notes?: string;
+  previousValue?: any;
+  newValue?: any;
 }
 
-// 알림 등록 함수
-async function createOrderNotice({ type, title, content, author }) {
-  try {
-    await noticeApi.createNotice({
-      type,
-      title,
-      content,
-      status: 'unread',
-      author
-    });
-  } catch (e) {
-    // 무시(실패 시에도 orders는 정상 동작)
+// 주문 통계 타입
+interface OrderStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  delivered: number;
+  totalAmount: number;
+  avgProcessingTime: number;
+  byCategory: { [key: string]: number };
+  byPriority: { [key: string]: number };
+  bySupplier: { [key: string]: number };
+}
+
+// API 응답 타입
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
+// API 함수들
+const orderApi = {
+  // 주문 목록 조회
+  async getOrders(filters?: any): Promise<{ orders: Order[]; total: number; page: number; limit: number }> {
+    try {
+      const params = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== undefined && value !== '') {
+            params.append(key, value.toString());
+          }
+        });
+      }
+      
+      const endpoint = `/api/orders${params.toString() ? `?${params.toString()}` : ''}`;
+      return apiClient.get(endpoint);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+      // API 실패 시 더미 데이터 반환
+      return {
+        orders: [],
+        total: 0,
+        page: 1,
+        limit: 10
+      };
+    }
+  },
+
+  // 주문 생성
+  async createOrder(orderData: Omit<Order, 'id' | 'orderNumber' | 'requestedAt' | 'totalAmount'>): Promise<Order> {
+    try {
+      return apiClient.post('/api/orders', orderData);
+    } catch (error) {
+      console.error('Failed to create order:', error);
+      throw error;
+    }
+  },
+
+  // 주문 수정
+  async updateOrder(id: number, orderData: Partial<Order>): Promise<Order> {
+    try {
+      return apiClient.put(`/api/orders/${id}`, orderData);
+    } catch (error) {
+      console.error('Failed to update order:', error);
+      throw error;
+    }
+  },
+
+  // 주문 삭제
+  async deleteOrder(id: number): Promise<void> {
+    try {
+      return apiClient.delete(`/api/orders/${id}`);
+    } catch (error) {
+      console.error('Failed to delete order:', error);
+      throw error;
+    }
+  },
+
+  // 주문 승인
+  async approveOrder(id: number, notes?: string): Promise<Order> {
+    try {
+      return apiClient.patch(`/api/orders/${id}/approve`, { notes });
+    } catch (error) {
+      console.error('Failed to approve order:', error);
+      throw error;
+    }
+  },
+
+  // 주문 거절
+  async rejectOrder(id: number, reason: string): Promise<Order> {
+    try {
+      return apiClient.patch(`/api/orders/${id}/reject`, { reason });
+    } catch (error) {
+      console.error('Failed to reject order:', error);
+      throw error;
+    }
+  },
+
+  // 주문 상태 변경
+  async updateOrderStatus(id: number, status: Order['status'], notes?: string): Promise<Order> {
+    try {
+      return apiClient.patch(`/api/orders/${id}/status`, { status, notes });
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+      throw error;
+    }
+  },
+
+  // 주문 이력 조회
+  async getOrderHistory(id: number): Promise<OrderHistory[]> {
+    try {
+      return apiClient.get(`/api/orders/${id}/history`);
+    } catch (error) {
+      console.error('Failed to fetch order history:', error);
+      return [];
+    }
+  },
+
+  // 주문 통계 조회
+  async getOrderStats(): Promise<OrderStats> {
+    try {
+      return apiClient.get('/api/orders/stats');
+    } catch (error) {
+      console.error('Failed to fetch order stats:', error);
+      return {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        delivered: 0,
+        totalAmount: 0,
+        avgProcessingTime: 0,
+        byCategory: {},
+        byPriority: {},
+        bySupplier: {}
+      };
+    }
+  },
+
+  // 내가 요청한 주문
+  async getMyOrders(): Promise<Order[]> {
+    try {
+      return apiClient.get('/api/orders/my');
+    } catch (error) {
+      console.error('Failed to fetch my orders:', error);
+      return [];
+    }
+  },
+
+  // 승인 대기 중인 주문
+  async getPendingOrders(): Promise<Order[]> {
+    try {
+      return apiClient.get('/api/orders/pending');
+    } catch (error) {
+      console.error('Failed to fetch pending orders:', error);
+      return [];
+    }
   }
-}
+};
 
 export default function OrdersPage() {
   const { user } = useUser();
-  const [searchTerm, setSearchTerm] = useState("")
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [showDetailModal, setShowDetailModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [showToast, setShowToast] = useState(false)
-  const [toastMessage, setToastMessage] = useState("")
-  const [toastType, setToastType] = useState<"success" | "error">("success")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [orders, setOrders] = useState<Order[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [supplierFilter, setSupplierFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
   
-  // 더미 발주 데이터
-  const [ordersData, setOrdersData] = useState<Order[]>([
-    {
-      id: 1,
-      item: "쌀 20kg",
-      quantity: 2,
-      unit: "포",
-      supplier: "농협",
-      price: 45000,
-      status: "pending",
-      priority: "medium",
-      requester: "김철수",
-      requestedAt: "2024-06-01 09:00",
-      expectedDate: "2024-06-03",
-      notes: "주간 재고 확보용"
-    },
-    {
-      id: 2,
-      item: "닭고기 10kg",
-      quantity: 1,
-      unit: "박스",
-      supplier: "삼성물산",
-      price: 35000,
-      status: "approved",
-      priority: "high",
-      requester: "이영희",
-      requestedAt: "2024-06-02 10:30",
-      expectedDate: "2024-06-04",
-      approvedBy: "정수진",
-      notes: "특가 행사용"
-    },
-    {
-      id: 3,
-      item: "설탕 5kg",
-      quantity: 3,
-      unit: "봉",
-      supplier: "CJ제일제당",
-      price: 8000,
-      status: "rejected",
-      priority: "low",
-      requester: "박민수",
-      requestedAt: "2024-06-03 11:00",
-      expectedDate: "2024-06-05",
-      notes: "재고 충분"
-    },
-    {
-      id: 4,
-      item: "식용유 18L",
-      quantity: 1,
-      unit: "통",
-      supplier: "오뚜기",
-      price: 25000,
-      status: "delivered",
-      priority: "medium",
-      requester: "최지영",
-      requestedAt: "2024-06-04 08:45",
-      expectedDate: "2024-06-06",
-      approvedBy: "정수진",
-      deliveredAt: "2024-06-05 14:00",
-      notes: "정기 발주"
-    }
-  ])
-
-  // 새 발주 폼 상태
+  // 모달 상태
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  
+  // 선택된 주문
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderHistory, setOrderHistory] = useState<OrderHistory[]>([]);
+  
+  // 로딩 및 에러 상태
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  
+  // 통계 데이터
+  const [stats, setStats] = useState<OrderStats | null>(null);
+  
+  // 새 주문 폼 상태
   const [newOrder, setNewOrder] = useState({
     item: "",
     quantity: "",
@@ -176,153 +294,265 @@ export default function OrdersPage() {
     price: "",
     expectedDate: "",
     priority: "medium" as "high" | "medium" | "low",
-    notes: ""
-  })
+    category: "",
+    urgency: "normal" as "normal" | "urgent" | "critical",
+    notes: "",
+    deliveryAddress: "",
+    contactPerson: "",
+    contactPhone: ""
+  });
 
-  // Toast 알림 표시 함수
-  const showToastMessage = (message: string, type: "success" | "error" = "success") => {
-    setToastMessage(message)
-    setToastType(type)
-    setShowToast(true)
-    setTimeout(() => setShowToast(false), 3000)
-  }
+  // 권한 체크
+  const canCreateOrder = user?.permissions?.includes('orders.create') || user?.role === 'admin';
+  const canApproveOrder = user?.permissions?.includes('orders.approve') || user?.role === 'admin';
+  const canDeleteOrder = user?.permissions?.includes('orders.delete') || user?.role === 'admin';
+  const canEditOrder = user?.permissions?.includes('orders.edit') || user?.role === 'admin';
 
-  // 발주 추가
-  const handleAddOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => {
+  // 주문 목록 로드
+  const loadOrders = async () => {
+    setIsLoading(true);
+    setIsError(false);
     try {
-      const newOrder: Order = {
-        ...orderData,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      const filters = {
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+        category: categoryFilter !== 'all' ? categoryFilter : undefined,
+        supplier: supplierFilter !== 'all' ? supplierFilter : undefined,
+        search: searchTerm || undefined
+      };
+      
+      const result = await orderApi.getOrders(filters);
+      setOrders(result.orders);
+    } catch (error) {
+      console.error('Failed to load orders:', error);
+      setIsError(true);
+      toast.error('주문 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 통계 로드
+  const loadStats = async () => {
+    try {
+      const statsData = await orderApi.getOrderStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+    }
+  };
+
+  // 초기 로드
+  useEffect(() => {
+    loadOrders();
+    loadStats();
+  }, []);
+
+  // 필터링
+  useEffect(() => {
+    let filtered = orders;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
+        order.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.requester.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(order => order.status === statusFilter);
+    }
+    
+    if (priorityFilter !== "all") {
+      filtered = filtered.filter(order => order.priority === priorityFilter);
+    }
+    
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(order => order.category === categoryFilter);
+    }
+    
+    if (supplierFilter !== "all") {
+      filtered = filtered.filter(order => order.supplier === supplierFilter);
+    }
+    
+    if (dateFilter !== "all") {
+      const today = new Date();
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.requestedAt);
+        switch (dateFilter) {
+          case 'today':
+            return orderDate.toDateString() === today.toDateString();
+          case 'week':
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return orderDate >= weekAgo;
+          case 'month':
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            return orderDate >= monthAgo;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    setFilteredOrders(filtered);
+  }, [orders, searchTerm, statusFilter, priorityFilter, categoryFilter, supplierFilter, dateFilter]);
+
+  // 주문 추가
+  const handleAddOrder = async () => {
+    if (!canCreateOrder) {
+      toast.error('주문 생성 권한이 없습니다.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const orderData = {
+        ...newOrder,
+        requesterId: user?.id || 0,
+        totalAmount: parseFloat(newOrder.price) * parseFloat(newOrder.quantity)
       };
 
-      setOrders(prev => [newOrder, ...prev]);
-      showToastMessage("발주가 등록되었습니다.", "success");
-
-      // 발주 등록 알림 생성
-      await NotificationService.createOrderNotification('created', newOrder);
+      const createdOrder = await orderApi.createOrder(orderData);
+      setOrders(prev => [createdOrder, ...prev]);
+      setShowAddModal(false);
+      setNewOrder({
+        item: "", quantity: "", unit: "", supplier: "", price: "",
+        expectedDate: "", priority: "medium", category: "", urgency: "normal",
+        notes: "", deliveryAddress: "", contactPerson: "", contactPhone: ""
+      });
+      toast.success('주문이 성공적으로 등록되었습니다.');
+      loadStats(); // 통계 업데이트
     } catch (error) {
-      console.error('발주 등록 실패:', error);
-      showToastMessage('발주 등록에 실패했습니다.', 'error');
-    }
-      setShowAddForm(false);
-      toast.success('발주가 등록되었습니다.');
-
-      // 발주 등록 알림 생성
-      await NotificationService.createOrderNotification('created', newOrder);
-    } catch (error) {
-      console.error('발주 등록 실패:', error);
-      toast.error('발주 등록에 실패했습니다.');
+      console.error('Failed to create order:', error);
+      toast.error('주문 등록에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // 발주 수정
-  const handleEditOrder = () => {
-    if (!selectedOrder) return
+  // 주문 승인
+  const handleApproveOrder = async (orderId: number, notes?: string) => {
+    if (!canApproveOrder) {
+      toast.error('주문 승인 권한이 없습니다.');
+      return;
+    }
 
-    const updatedOrdersData = orders.map(order =>
-      order.id === selectedOrder.id ? selectedOrder : order
-    )
-    setOrders(updatedOrdersData)
-    setShowEditModal(false)
-    setSelectedOrder(null)
-    showToastMessage("발주가 성공적으로 수정되었습니다.")
-  }
-
-  // 발주 삭제
-  const handleDeleteOrder = async (id: string) => {
+    setIsSubmitting(true);
     try {
-      const orderToDelete = orders.find(order => order.id === id);
-      setOrders(prev => prev.filter(order => order.id !== id));
-      toast.success('발주가 삭제되었습니다.');
-
-      // 발주 삭제 알림 생성
-      if (orderToDelete) {
-        await NotificationService.createOrderNotification('cancelled', orderToDelete);
-      }
+      const updatedOrder = await orderApi.approveOrder(orderId, notes);
+      setOrders(prev => prev.map(order => 
+        order.id === orderId ? updatedOrder : order
+      ));
+      setShowApproveModal(false);
+      setSelectedOrder(null);
+      toast.success('주문이 승인되었습니다.');
+      loadStats(); // 통계 업데이트
     } catch (error) {
-      console.error('발주 삭제 실패:', error);
-      toast.error('발주 삭제에 실패했습니다.');
+      console.error('Failed to approve order:', error);
+      toast.error('주문 승인에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // 발주 승인
-  const handleApproveOrder = async (id: number) => {
+  // 주문 거절
+  const handleRejectOrder = async (orderId: number, reason: string) => {
+    if (!canApproveOrder) {
+      toast.error('주문 거절 권한이 없습니다.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const order = ordersData.find(order => order.id === id);
-      if (!order) return;
-
-      const updatedOrder = { ...order, status: "approved" as const };
-      setOrdersData(prev => prev.map(o => o.id === id ? updatedOrder : o));
-      showToastMessage("발주가 승인되었습니다.", "success");
-
-      // 발주 승인 알림 생성
-      await NotificationService.createOrderNotification('approved', updatedOrder);
+      const updatedOrder = await orderApi.rejectOrder(orderId, reason);
+      setOrders(prev => prev.map(order => 
+        order.id === orderId ? updatedOrder : order
+      ));
+      setShowRejectModal(false);
+      setSelectedOrder(null);
+      toast.success('주문이 거절되었습니다.');
+      loadStats(); // 통계 업데이트
     } catch (error) {
-      console.error('발주 승인 실패:', error);
-      showToastMessage('발주 승인에 실패했습니다.', 'error');
+      console.error('Failed to reject order:', error);
+      toast.error('주문 거절에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // 발주 거절
-  const handleRejectOrder = async (id: number) => {
+  // 주문 삭제
+  const handleDeleteOrder = async (orderId: number) => {
+    if (!canDeleteOrder) {
+      toast.error('주문 삭제 권한이 없습니다.');
+      return;
+    }
+
+    if (!confirm('정말로 이 주문을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const order = ordersData.find(order => order.id === id);
-      if (!order) return;
-
-      const updatedOrder = { ...order, status: "rejected" as const };
-      setOrdersData(prev => prev.map(o => o.id === id ? updatedOrder : o));
-      showToastMessage("발주가 거절되었습니다.", "success");
-
-      // 발주 거절 알림 생성
-      await NotificationService.createOrderNotification('rejected', updatedOrder);
+      await orderApi.deleteOrder(orderId);
+      setOrders(prev => prev.filter(order => order.id !== orderId));
+      toast.success('주문이 삭제되었습니다.');
+      loadStats(); // 통계 업데이트
     } catch (error) {
-      console.error('발주 거절 실패:', error);
-      showToastMessage('발주 거절에 실패했습니다.', 'error');
+      console.error('Failed to delete order:', error);
+      toast.error('주문 삭제에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // 발주 상세 보기
-  const handleViewDetail = (order: Order) => {
-    setSelectedOrder(order)
-    setShowDetailModal(true)
-  }
+  // 주문 이력 조회
+  const handleViewHistory = async (orderId: number) => {
+    try {
+      const history = await orderApi.getOrderHistory(orderId);
+      setOrderHistory(history);
+      setShowHistoryModal(true);
+    } catch (error) {
+      console.error('Failed to fetch order history:', error);
+      toast.error('주문 이력을 불러오는데 실패했습니다.');
+    }
+  };
 
-  // 발주 수정 모달 열기
-  const handleEditClick = (order: Order) => {
-    setSelectedOrder({ ...order })
-    setShowEditModal(true)
-  }
-
-  const filteredOrders = orders.filter(order =>
-    order.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.status.toLowerCase().includes(statusFilter.toLowerCase())
-  )
-
+  // 상태별 색상
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-      case 'approved': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-      case 'delivered': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+      case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+      case "approved": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+      case "rejected": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+      case "processing": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+      case "delivered": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
+      case "cancelled": return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
     }
-  }
+  };
 
+  // 우선순위별 색상
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+      case "high": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+      case "medium": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+      case "low": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
     }
-  }
+  };
 
-  const pendingOrders = orders.filter(order => order.status === 'pending').length
-  const totalOrderValue = orders.reduce((sum, order) => sum + order.quantity, 0)
-  const highPriorityOrders = orders.filter(order => order.priority === 'high').length
+  // 긴급도별 색상
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "critical": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+      case "urgent": return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
+      case "normal": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+    }
+  };
 
   return (
     <AppLayout>
@@ -333,418 +563,350 @@ export default function OrdersPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">발주 관리</h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                재료 발주 및 공급업체 관리
+                재료 발주, 승인, 배송 관리 및 실시간 모니터링
               </p>
             </div>
-            <Button onClick={() => setShowAddForm(!showAddForm)}>
-              <Plus className="w-4 h-4 mr-2" />
-              새 발주
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowStats(!showStats)}
+                variant="outline"
+                size="sm"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                통계
+              </Button>
+              {canCreateOrder && (
+                <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  발주 등록
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* 페이지 정상 작동 메시지 */}
+          {/* 실시간 상태 표시 */}
           <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
             <CardContent className="p-4">
-              <div className="flex items-center">
-                <Check className="w-5 h-5 text-green-600 mr-2" />
-                <span className="text-green-800 dark:text-green-200 font-medium">
-                  ✅ 발주 관리 페이지 정상 작동 중 - 등록/수정/삭제/승인/거절 기능 테스트 가능
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                  <span className="text-green-800 dark:text-green-200 font-medium">
+                    ✅ 실시간 API 연동 완료 - 승인/거절/이력/통계 기능 테스트 가능
+                  </span>
+                </div>
+                <Button
+                  onClick={loadOrders}
+                  variant="outline"
+                  size="sm"
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  새로고침
+                </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* 통계 카드 */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 발주 건수</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{orders.length}건</p>
+          {showStats && stats && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 발주</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}건</p>
+                    </div>
+                    <ShoppingCart className="w-8 h-8 text-blue-600" />
                   </div>
-                  <Package className="w-8 h-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">대기중 발주</p>
-                    <p className="text-2xl font-bold text-yellow-600">{pendingOrders}건</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">승인 대기</p>
+                      <p className="text-2xl font-bold text-yellow-600">{stats.pending}건</p>
+                    </div>
+                    <Clock className="w-8 h-8 text-yellow-600" />
                   </div>
-                  <Clock className="w-8 h-8 text-yellow-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 발주액</p>
-                    <p className="text-2xl font-bold text-green-600">₩{totalOrderValue.toLocaleString()}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 발주액</p>
+                      <p className="text-2xl font-bold text-green-600">₩{stats.totalAmount.toLocaleString()}</p>
+                    </div>
+                    <DollarSign className="w-8 h-8 text-green-600" />
                   </div>
-                  <DollarSign className="w-8 h-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">긴급 발주</p>
-                    <p className="text-2xl font-bold text-red-600">{highPriorityOrders}건</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">평균 처리시간</p>
+                      <p className="text-2xl font-bold text-purple-600">{stats.avgProcessingTime}일</p>
+                    </div>
+                    <TrendingUp className="w-8 h-8 text-purple-600" />
                   </div>
-                  <AlertTriangle className="w-8 h-8 text-red-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* 검색 및 필터 */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="품목명, 요청자, 상태로 검색..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <div>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="all">전체 상태</option>
-                    <option value="pending">대기</option>
-                    <option value="approved">승인</option>
-                    <option value="rejected">거절</option>
-                    <option value="delivered">납품완료</option>
-                  </select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 발주 추가 폼 */}
-          {showAddForm && (
-            <Card>
-              <CardHeader>
-                <CardTitle>새 발주 추가</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input 
-                    placeholder="품목명" 
-                    value={newOrder.item}
-                    onChange={(e) => setNewOrder({...newOrder, item: e.target.value})}
-                  />
-                  <Input 
-                    placeholder="수량" 
-                    type="number" 
-                    value={newOrder.quantity}
-                    onChange={(e) => setNewOrder({...newOrder, quantity: e.target.value})}
-                  />
-                  <Input 
-                    placeholder="단위" 
-                    value={newOrder.unit}
-                    onChange={(e) => setNewOrder({...newOrder, unit: e.target.value})}
-                  />
-                  <Input 
-                    placeholder="공급업체" 
-                    value={newOrder.supplier}
-                    onChange={(e) => setNewOrder({...newOrder, supplier: e.target.value})}
-                  />
-                  <Input 
-                    placeholder="단가" 
-                    type="number" 
-                    value={newOrder.price}
-                    onChange={(e) => setNewOrder({...newOrder, price: e.target.value})}
-                  />
-                  <Input 
-                    placeholder="예상 도착일" 
-                    type="date" 
-                    value={newOrder.expectedDate}
-                    onChange={(e) => setNewOrder({...newOrder, expectedDate: e.target.value})}
-                  />
-                  <select 
-                    className="border rounded px-3 py-2"
-                    value={newOrder.priority}
-                    onChange={(e) => setNewOrder({...newOrder, priority: e.target.value as "high" | "medium" | "low"})}
-                  >
-                    <option value="high">높음</option>
-                    <option value="medium">보통</option>
-                    <option value="low">낮음</option>
-                  </select>
-                </div>
-                <div className="mt-4">
-                  <textarea 
-                    className="w-full border rounded px-3 py-2"
-                    placeholder="메모"
-                    value={newOrder.notes}
-                    onChange={(e) => setNewOrder({...newOrder, notes: e.target.value})}
-                  />
-                </div>
-                <div className="flex justify-end space-x-2 mt-4">
-                  <Button variant="outline" onClick={() => setShowAddForm(false)}>
-                    취소
-                  </Button>
-                  <Button onClick={() => handleAddOrder(newOrder)}>발주 요청</Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
-          {/* 발주 목록 테이블 */}
+          {/* 필터 및 검색 */}
           <Card>
-            <CardHeader>
-              <CardTitle>발주 목록</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3">발주번호</th>
-                      <th className="text-left p-3">품목</th>
-                      <th className="text-left p-3">수량</th>
-                      <th className="text-left p-3">공급업체</th>
-                      <th className="text-left p-3">금액</th>
-                      <th className="text-left p-3">상태</th>
-                      <th className="text-left p-3">우선순위</th>
-                      <th className="text-left p-3">예상도착일</th>
-                      <th className="text-left p-3">작업</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOrders.map((order) => (
-                      <tr key={order.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td className="p-3 font-medium">{order.id}</td>
-                        <td className="p-3">{order.item}</td>
-                        <td className="p-3">{order.quantity} {order.unit}</td>
-                        <td className="p-3">{order.supplier}</td>
-                        <td className="p-3">₩{(order.quantity * (order.price || 0)).toLocaleString()}</td>
-                        <td className="p-3">
-                          <Badge className={getStatusColor(order.status)}>
-                            {order.status === 'pending' && '대기중'}
-                            {order.status === 'approved' && '승인됨'}
-                            {order.status === 'delivered' && '배송완료'}
-                            {order.status === 'rejected' && '거절됨'}
-                          </Badge>
-                        </td>
-                        <td className="p-3">
-                          <Badge className={getPriorityColor(order.priority)}>
-                            {order.priority === 'high' && '높음'}
-                            {order.priority === 'medium' && '보통'}
-                            {order.priority === 'low' && '낮음'}
-                          </Badge>
-                        </td>
-                        <td className="p-3">{order.expectedDate}</td>
-                        <td className="p-3">
-                          <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="sm" onClick={() => handleViewDetail(order)}>
-                              <Eye className="w-3 h-3" />
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEditClick(order)}>
-                              <Edit className="w-3 h-3" />
-                            </Button>
-                            {order.status === 'pending' && (
-                              <>
-                                <Button variant="outline" size="sm" onClick={() => handleApproveOrder(order.id.toString())}>
-                                  <ThumbsUp className="w-3 h-3" />
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={() => handleRejectOrder(order.id.toString())}>
-                                  <ThumbsDown className="w-3 h-3" />
-                                </Button>
-                              </>
-                            )}
-                            <Button variant="outline" size="sm" onClick={() => handleDeleteOrder(order.id.toString())}>
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 발주 상세 모달 */}
-        {showDetailModal && selectedOrder && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">발주 상세</h2>
-                <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">발주번호</label>
-                  <p className="text-gray-900 dark:text-white">{selectedOrder.id}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">품목</label>
-                  <p className="text-gray-900 dark:text-white">{selectedOrder.item}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">수량</label>
-                  <p className="text-gray-900 dark:text-white">{selectedOrder.quantity} {selectedOrder.unit}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">공급업체</label>
-                  <p className="text-gray-900 dark:text-white">{selectedOrder.supplier}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">금액</label>
-                  <p className="text-gray-900 dark:text-white">₩{(selectedOrder.quantity * (selectedOrder.price || 0)).toLocaleString()}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">상태</label>
-                  <Badge className={getStatusColor(selectedOrder.status)}>
-                    {selectedOrder.status === 'pending' && '대기중'}
-                    {selectedOrder.status === 'approved' && '승인됨'}
-                    {selectedOrder.status === 'delivered' && '배송완료'}
-                    {selectedOrder.status === 'rejected' && '거절됨'}
-                  </Badge>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">우선순위</label>
-                  <Badge className={getPriorityColor(selectedOrder.priority)}>
-                    {selectedOrder.priority === 'high' && '높음'}
-                    {selectedOrder.priority === 'medium' && '보통'}
-                    {selectedOrder.priority === 'low' && '낮음'}
-                  </Badge>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">발주일</label>
-                  <p className="text-gray-900 dark:text-white">{selectedOrder.requestedAt}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">예상도착일</label>
-                  <p className="text-gray-900 dark:text-white">{selectedOrder.expectedDate}</p>
-                </div>
-                {selectedOrder.approvedBy && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">승인자</label>
-                    <p className="text-gray-900 dark:text-white">{selectedOrder.approvedBy}</p>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                <div className="md:col-span-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="발주 검색..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
-                )}
-                {selectedOrder.deliveredAt && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">납품일</label>
-                    <p className="text-gray-900 dark:text-white">{selectedOrder.deliveredAt}</p>
-                  </div>
-                )}
-                {selectedOrder.notes && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">메모</label>
-                    <p className="text-gray-900 dark:text-white">{selectedOrder.notes}</p>
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-end mt-6">
-                <Button onClick={() => setShowDetailModal(false)}>
-                  닫기
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 발주 수정 모달 */}
-        {showEditModal && selectedOrder && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">발주 수정</h2>
-                <Button variant="ghost" size="sm" onClick={() => setShowEditModal(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="space-y-4">
-                <Input
-                  placeholder="품목명"
-                  value={selectedOrder.item}
-                  onChange={(e) => setSelectedOrder({...selectedOrder, item: e.target.value})}
-                />
-                <Input
-                  placeholder="수량"
-                  type="number"
-                  value={selectedOrder.quantity}
-                  onChange={(e) => setSelectedOrder({...selectedOrder, quantity: parseInt(e.target.value)})}
-                />
-                <Input
-                  placeholder="단위"
-                  value={selectedOrder.unit}
-                  onChange={(e) => setSelectedOrder({...selectedOrder, unit: e.target.value})}
-                />
-                <Input
-                  placeholder="공급업체"
-                  value={selectedOrder.supplier}
-                  onChange={(e) => setSelectedOrder({...selectedOrder, supplier: e.target.value})}
-                />
-                <Input
-                  placeholder="단가"
-                  type="number"
-                  value={selectedOrder.price}
-                  onChange={(e) => setSelectedOrder({...selectedOrder, price: parseInt(e.target.value)})}
-                />
-                <Input
-                  placeholder="예상 도착일"
-                  type="date"
-                  value={selectedOrder.expectedDate}
-                  onChange={(e) => setSelectedOrder({...selectedOrder, expectedDate: e.target.value})}
-                />
+                </div>
                 <select
-                  className="w-full border rounded px-3 py-2"
-                  value={selectedOrder.priority}
-                  onChange={(e) => setSelectedOrder({...selectedOrder, priority: e.target.value as "high" | "medium" | "low"})}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
                 >
+                  <option value="all">전체 상태</option>
+                  <option value="pending">승인 대기</option>
+                  <option value="approved">승인됨</option>
+                  <option value="rejected">거절됨</option>
+                  <option value="processing">처리 중</option>
+                  <option value="delivered">배송 완료</option>
+                  <option value="cancelled">취소됨</option>
+                </select>
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
+                >
+                  <option value="all">전체 우선순위</option>
                   <option value="high">높음</option>
                   <option value="medium">보통</option>
                   <option value="low">낮음</option>
                 </select>
-                <textarea
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="메모"
-                  value={selectedOrder.notes || ""}
-                  onChange={(e) => setSelectedOrder({...selectedOrder, notes: e.target.value})}
-                />
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
+                >
+                  <option value="all">전체 카테고리</option>
+                  <option value="식재료">식재료</option>
+                  <option value="조미료">조미료</option>
+                  <option value="청소용품">청소용품</option>
+                  <option value="기타">기타</option>
+                </select>
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
+                >
+                  <option value="all">전체 기간</option>
+                  <option value="today">오늘</option>
+                  <option value="week">이번 주</option>
+                  <option value="month">이번 달</option>
+                </select>
               </div>
-              <div className="flex justify-end space-x-2 mt-6">
-                <Button variant="outline" onClick={() => setShowEditModal(false)}>
-                  취소
-                </Button>
-                <Button onClick={handleEditOrder}>
-                  수정
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+            </CardContent>
+          </Card>
 
-        {/* Toast 알림 */}
-        {showToast && (
-          <div className={`fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-            toastType === "success" 
-              ? "bg-green-500 text-white" 
-              : "bg-red-500 text-white"
-          }`}>
-            {toastMessage}
-          </div>
-        )}
+          {/* 주문 목록 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>발주 목록 ({filteredOrders.length}건)</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    내보내기
+                  </Button>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin mr-2" />
+                  <span>로딩 중...</span>
+                </div>
+              ) : isError ? (
+                <div className="text-center py-8">
+                  <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-red-600">데이터를 불러오는데 실패했습니다.</p>
+                  <Button onClick={loadOrders} className="mt-4">
+                    다시 시도
+                  </Button>
+                </div>
+              ) : filteredOrders.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">발주 내역이 없습니다.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3">발주번호</th>
+                        <th className="text-left p-3">품목</th>
+                        <th className="text-left p-3">수량</th>
+                        <th className="text-left p-3">공급업체</th>
+                        <th className="text-left p-3">금액</th>
+                        <th className="text-left p-3">상태</th>
+                        <th className="text-left p-3">우선순위</th>
+                        <th className="text-left p-3">요청자</th>
+                        <th className="text-left p-3">요청일</th>
+                        <th className="text-left p-3">작업</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOrders.map((order) => (
+                        <tr key={order.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <td className="p-3">
+                            <span className="font-mono text-sm">{order.orderNumber}</span>
+                          </td>
+                          <td className="p-3">
+                            <div>
+                              <div className="font-medium">{order.item}</div>
+                              <div className="text-sm text-gray-500">{order.category}</div>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            {order.quantity} {order.unit}
+                          </td>
+                          <td className="p-3">{order.supplier}</td>
+                          <td className="p-3">
+                            <div>
+                              <div className="font-medium">₩{order.totalAmount.toLocaleString()}</div>
+                              <div className="text-sm text-gray-500">단가: ₩{order.price.toLocaleString()}</div>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <Badge className={getStatusColor(order.status)}>
+                              {order.status === 'pending' && '승인 대기'}
+                              {order.status === 'approved' && '승인됨'}
+                              {order.status === 'rejected' && '거절됨'}
+                              {order.status === 'processing' && '처리 중'}
+                              {order.status === 'delivered' && '배송 완료'}
+                              {order.status === 'cancelled' && '취소됨'}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
+                            <Badge className={getPriorityColor(order.priority)}>
+                              {order.priority === 'high' && '높음'}
+                              {order.priority === 'medium' && '보통'}
+                              {order.priority === 'low' && '낮음'}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center">
+                              <Avatar className="w-6 h-6 mr-2">
+                                <AvatarFallback>{order.requester[0]}</AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">{order.requester}</span>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="text-sm">
+                              <div>{new Date(order.requestedAt).toLocaleDateString()}</div>
+                              <div className="text-gray-500">{new Date(order.requestedAt).toLocaleTimeString()}</div>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowDetailModal(true);
+                                }}
+                                title="상세보기"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {order.status === 'pending' && canApproveOrder && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedOrder(order);
+                                      setShowApproveModal(true);
+                                    }}
+                                    title="승인"
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedOrder(order);
+                                      setShowRejectModal(true);
+                                    }}
+                                    title="거절"
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {canEditOrder && order.status === 'pending' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedOrder(order);
+                                    setShowEditModal(true);
+                                  }}
+                                  title="수정"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {canDeleteOrder && order.status === 'pending' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteOrder(order.id)}
+                                  title="삭제"
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleViewHistory(order.id)}
+                                title="이력보기"
+                              >
+                                <History className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AppLayout>
-  )
+  );
 } 

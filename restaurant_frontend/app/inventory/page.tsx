@@ -33,7 +33,7 @@ import {
   MoreVertical
 } from "lucide-react";
 import { api as noticeApi } from '../notice/page';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import NotificationService from '@/lib/notification-service';
 
 // 재고 타입 정의

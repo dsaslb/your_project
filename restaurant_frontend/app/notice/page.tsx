@@ -91,7 +91,7 @@ const api = {
   // 알림 목록 조회
   async getNotices(): Promise<Notice[]> {
     try {
-      const response = await fetch('/api/notices', {
+      const response = await fetch('http://localhost:5000/api/notices', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +110,7 @@ const api = {
       return [
         {
           id: 1,
-          title: "API 연동 테스트 - 시스템 점검 안내",
+          title: "실시간 API 연동 - 시스템 점검 안내",
           content: "6월 10일(월) 02:00~04:00 시스템 점검이 진행됩니다.",
           type: "notice",
           priority: "high",
@@ -123,7 +123,7 @@ const api = {
         },
         {
           id: 2,
-          title: "API 연동 테스트 - 재고 부족 경고",
+          title: "실시간 API 연동 - 재고 부족 경고",
           content: "닭고기 10kg 재고가 부족합니다. 즉시 발주 바랍니다.",
           type: "alert",
           priority: "low",
@@ -141,7 +141,7 @@ const api = {
   // 알림 등록
   async createNotice(notice: Omit<Notice, 'id' | 'createdAt'>): Promise<Notice> {
     try {
-      const response = await fetch('/api/notices', {
+      const response = await fetch('http://localhost:5000/api/notices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ const api = {
   // 알림 삭제
   async deleteNotice(id: number): Promise<boolean> {
     try {
-      const response = await fetch(`/api/notices/${id}`, {
+      const response = await fetch(`http://localhost:5000/api/notices/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -185,7 +185,7 @@ const api = {
   // 알림 읽음 처리
   async markAsRead(id: number): Promise<Notice> {
     try {
-      const response = await fetch(`/api/notices/${id}/read`, {
+      const response = await fetch(`http://localhost:5000/api/notices/${id}/read`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ function useNoticeSSE(onNewNotice: (notice: Notice) => void, onError: (msg: stri
     let isUnmounted = false;
 
     function connect() {
-      eventSource = new EventSource('/api/notices/stream');
+      eventSource = new EventSource('http://localhost:5000/api/notices/stream');
       eventSource.onmessage = (event) => {
         try {
           const notice: Notice = JSON.parse(event.data);

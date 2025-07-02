@@ -4,9 +4,14 @@ import { Bell, Search, Sun, Moon, Menu, Settings, User } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTheme } from "next-themes"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ThemeToggle } from "./theme-toggle"
+import { LogoutButton } from "./LogoutButton"
+import { UserContext } from "./UserContext"
+import { useMobile } from "../hooks/use-mobile"
+import { NotificationButton } from "./NotificationSystem"
 
 interface DashboardHeaderFullProps {
   onToggleNav: () => void
@@ -14,6 +19,7 @@ interface DashboardHeaderFullProps {
 
 export function DashboardHeader({ onToggleNav }: DashboardHeaderFullProps) {
   const { setTheme, theme } = useTheme()
+  const user = UserContext.useUser()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-gray-950/95">
@@ -47,90 +53,53 @@ export function DashboardHeader({ onToggleNav }: DashboardHeaderFullProps) {
 
           {/* 오른쪽: 액션 버튼들 */}
           <div className="flex items-center gap-2">
-            {/* 테마 토글 */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              className="h-9 w-9"
-            >
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            </Button>
+            {/* 검색 */}
+            <div className="relative hidden md:block">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="검색..."
+                className="pl-10 w-64"
+              />
+            </div>
 
-            {/* 알림 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-9 w-9">
-                  <Bell className="h-4 w-4" />
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs"
-                  >
-                    3
-                  </Badge>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <div className="p-4">
-                  <h3 className="text-sm font-semibold mb-2">알림</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">새로운 주문이 들어왔습니다</p>
-                        <p className="text-xs text-gray-500">5분 전</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">재고 부족 알림</p>
-                        <p className="text-xs text-gray-500">10분 전</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">근무표 업데이트 완료</p>
-                        <p className="text-xs text-gray-500">1시간 전</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* 알림 버튼 */}
+            <NotificationButton />
+
+            {/* 테마 토글 */}
+            <ThemeToggle />
 
             {/* 사용자 메뉴 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/avatars/01.png" alt="관리자" />
-                    <AvatarFallback className="bg-amber-500 text-white">관</AvatarFallback>
+                    <AvatarImage src={user?.avatar} alt={user?.name} />
+                    <AvatarFallback>
+                      {user?.name?.charAt(0) || 'U'}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <div className="p-4">
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">매장 관리자</p>
-                    <p className="text-xs text-gray-500">admin@restaurant.com</p>
+                    <p className="text-sm font-medium leading-none">{user?.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
                   </div>
-                </div>
-                <div className="border-t">
-                  <DropdownMenuItem className="flex items-center gap-2 p-3">
-                    <User className="h-4 w-4" />
-                    <span>프로필</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="flex items-center gap-2 p-3">
-                    <Settings className="h-4 w-4" />
-                    <span>설정</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="flex items-center gap-2 p-3 text-red-600">
-                    <span>로그아웃</span>
-                  </DropdownMenuItem>
-                </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>프로필</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>설정</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <LogoutButton />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

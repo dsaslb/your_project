@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { UserProvider } from "@/components/UserContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { HistoryManager } from "@/components/HistoryManager";
+import { NotificationProvider } from "@/components/NotificationSystem";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,10 +29,12 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <UserProvider>
-            <AuthGuard>
-              <HistoryManager />
-              {children}
-            </AuthGuard>
+            <NotificationProvider>
+              <AuthGuard>
+                <HistoryManager />
+                {children}
+              </AuthGuard>
+            </NotificationProvider>
           </UserProvider>
         </ThemeProvider>
       </body>
