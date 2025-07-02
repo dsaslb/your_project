@@ -155,18 +155,18 @@ if __name__ == "__main__":
         name = args.version or input("백업 버전명을 입력하세요: ")
         desc = args.desc or ""
         result = ui_manager.create_backup(name, desc)
-        print(f"백업 완료: {result}")
+        logger.info(f"백업 완료: {result}")
     elif args.action == "restore":
         name = args.version or input("복원할 버전명을 입력하세요: ")
         ok = ui_manager.restore_backup(name)
-        print("복원 성공" if ok else "복원 실패")
+        logger.info("복원 성공" if ok else "복원 실패")
     elif args.action == "list":
         for v in ui_manager.list_versions():
-            print(
+            logger.info(
                 f"버전: {v['version']}, 날짜: {v['timestamp']}, 설명: {v.get('description','')}"
             )
     elif args.action == "compare":
         v1 = args.version or input("비교할 첫 번째 버전명: ")
         v2 = args.version2 or input("비교할 두 번째 버전명: ")
         diff = ui_manager.compare_versions(v1, v2)
-        print(json.dumps(diff, indent=2, ensure_ascii=False))
+        logger.info(json.dumps(diff, indent=2, ensure_ascii=False))

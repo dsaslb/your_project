@@ -1,8 +1,0 @@
-# -*- coding: utf-8 -*-
-
-
-class BackupManager:
-    pass
-
-
-backup_manager = BackupManager()

@@ -3,6 +3,8 @@ import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import logging
+from typing import List, Optional
 
 import requests
 from flask import url_for
@@ -14,6 +16,7 @@ from utils.logger import log_action
 # from utils.email_utils import send_mail # 실제 이메일 전송 함수
 # from utils.kakao_utils import send_kakao # 실제 카카오톡 전송 함수
 
+logger = logging.getLogger(__name__)
 
 class NotificationService:
     """알림 서비스 클래스"""
@@ -97,7 +100,7 @@ class NotificationService:
         try:
             # 실제 SMS API 연동 시 여기에 구현
             # 예: 네이버 클라우드 플랫폼, 가비아 등
-            print(f"[SMS] {phone_number}: {message}")
+            logger.info(f"[SMS] {phone_number}: {message}")
             return True, "SMS 발송 성공 (가상)"
 
         except Exception as e:
@@ -107,7 +110,7 @@ class NotificationService:
 def send_notification(user, message):
     # 실제 카카오톡/이메일/SMS API 연동 위치
     # 예: requests.post 또는 SMTP, 문자 발송 등
-    print(f"[알림] to {user.name or user.username}: {message}")
+    logger.info(f"[알림] to {user.name or user.username}: {message}")
     return True
 
 
@@ -115,24 +118,28 @@ def send_notification(
     user_id, content, related_url=None, email_info=None, kakao_info=None
 ):
     """
-    사용자에게 알림을 생성하고, 이메일/카카오톡 전송을 트리거합니다.
-    email_info: {'to': 'email@example.com', 'subject': '제목', 'template': 'email_template.html'}
-    kakao_info: {'to': 'kakao_id', 'template_code': '...'}
+    사용자에게 알림을 생성하고 전송합니다.
     """
     try:
         # 1. 데이터베이스에 알림 저장
-        n = Notification(user_id=user_id, content=content, related_url=related_url)
-        db.session.add(n)
+        notification = Notification(
+            user_id=user_id,
+            content=content,
+            related_url=related_url,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(notification)
+        db.session.commit()
 
         # 2. 이메일 연동 (주석 처리)
         # if email_info and email_info.get('to'):
-        #     # send_mail(
+        #     # send_email(
         #     #     recipient=email_info['to'],
         #     #     subject=email_info.get('subject', '알림'),
         #     #     template=email_info.get('template', 'default_email'),
         #     #     context={'content': content}
         #     # )
-        #     print(f"DEBUG: 이메일 전송 -> {email_info['to']}, 내용: {content}")
+        #     logger.debug(f"이메일 전송 -> {email_info['to']}, 내용: {content}")
 
         # 3. 카카오톡 연동 (주석 처리)
         # if kakao_info and kakao_info.get('to'):
@@ -141,10 +148,10 @@ def send_notification(
         #     #     template_code=kakao_info['template_code'],
         #     #     params={'content': content}
         #     # )
-        #     print(f"DEBUG: 카카오톡 전송 -> {kakao_info['to']}, 내용: {content}")
+        #     logger.debug(f"카카오톡 전송 -> {kakao_info['to']}, 내용: {content}")
 
     except Exception as e:
-        print(f"알림 생성 중 오류 발생: {e}")
+        logger.error(f"알림 생성 중 오류 발생: {e}")
         db.session.rollback()
 
 
@@ -157,7 +164,7 @@ def notify_admins(content, related_url=None):
         for admin in admins:
             send_notification(admin.id, content, related_url)
     except Exception as e:
-        print(f"Error sending admin notifications: {e}")
+        logger.error(f"Error sending admin notifications: {e}")
 
 
 def send_email(user, subject, body, attachment=None):
@@ -167,12 +174,12 @@ def send_email(user, subject, body, attachment=None):
 
 def send_sms(user, message):
     try:
-        print(f"[SMS] to {getattr(user, 'phone', '-')}: {message}")
+        logger.info(f"[SMS] to {getattr(user, 'phone', '-')}: {message}")
         # 실제 SMS 연동은 아래 주석 해제
         # ...
         return True
     except Exception as e:
-        print("SMS 예외:", e)
+        logger.error(f"SMS 예외: {e}")
         return True
 
 
@@ -320,7 +327,7 @@ def log_notification(user_id, notification_type, message, success, error_msg="")
             f"{'SUCCESS' if success else 'FAILED'}: {message} {error_msg}",
         )
     except Exception as e:
-        print(f"알림 로그 기록 실패: {e}")
+        logger.error(f"알림 로그 기록 실패: {e}")
 
 
 def send_notification_enhanced(user_id, content, category="공지", link=None):
@@ -475,7 +482,7 @@ def send_order_approval_notification(order):
 
         return True
     except Exception as e:
-        print(f"발주 승인 알림 발송 실패: {e}")
+        logger.error(f"발주 승인 알림 발송 실패: {e}")
         return False
 
 
@@ -496,7 +503,7 @@ def send_admin_only_notification(content, category="공지", link=None):
         db.session.commit()
         return True
     except Exception as e:
-        print(f"관리자 전용 알림 발송 실패: {e}")
+        logger.error(f"관리자 전용 알림 발송 실패: {e}")
         db.session.rollback()
         return False
 
@@ -520,7 +527,7 @@ def send_notification_to_role(
         db.session.commit()
         return True
     except Exception as e:
-        print(f"역할별 알림 발송 실패: {e}")
+        logger.error(f"역할별 알림 발송 실패: {e}")
         db.session.rollback()
         return False
 
@@ -543,7 +550,7 @@ def send_notification_with_keyword_filter(keyword, content, category="공지", l
 
         return True
     except Exception as e:
-        print(f"키워드 필터 알림 발송 실패: {e}")
+        logger.error(f"키워드 필터 알림 발송 실패: {e}")
         return False
 
 
@@ -560,5 +567,5 @@ def send_email(user, subject, body, attachment=None):
 def send_notification_simple(user, message):
     # 실제 카카오톡/이메일/SMS API 연동 위치
     # 예: requests.post 또는 SMTP, 문자 발송 등
-    print(f"[알림] to {user.name or user.username}: {message}")
+    logger.info(f"[알림] to {user.name or user.username}: {message}")
     return True

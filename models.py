@@ -1477,3 +1477,58 @@ class OrderRequest(db.Model):
     user = db.relationship("User", foreign_keys=[requested_by])
     branch = db.relationship("Branch", foreign_keys=[branch_id])
     # 기타 필요 항목 자유롭게 추가
+
+
+class PayTransfer(db.Model):
+    """급여 이체 모델"""
+    __tablename__ = "pay_transfers"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    from_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    to_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    amount = db.Column(db.Integer, nullable=False)  # 이체 금액
+    description = db.Column(db.String(200))  # 이체 설명
+    status = db.Column(db.String(20), default="pending", index=True)  # pending/completed/failed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    completed_at = db.Column(db.DateTime, index=True)
+    
+    # 관계 설정
+    from_user = db.relationship("User", foreign_keys=[from_user_id], backref="sent_transfers")
+    to_user = db.relationship("User", foreign_keys=[to_user_id], backref="received_transfers")
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index("idx_transfer_users", "from_user_id", "to_user_id"),
+        db.Index("idx_transfer_status", "status", "created_at"),
+    )
+    
+    def __repr__(self):
+        return f"<PayTransfer {self.from_user_id} -> {self.to_user_id}: {self.amount}원>"
+
+
+class Payroll(db.Model):
+    """급여 모델"""
+    __tablename__ = "payrolls"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    month = db.Column(db.Integer, nullable=False, index=True)
+    base_salary = db.Column(db.Integer, default=0)  # 기본급
+    allowance = db.Column(db.Integer, default=0)  # 수당
+    deduction = db.Column(db.Integer, default=0)  # 공제
+    net_salary = db.Column(db.Integer, default=0)  # 실수령액
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    user = db.relationship("User", backref="payrolls")
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index("idx_payroll_user_period", "user_id", "year", "month"),
+        db.UniqueConstraint("user_id", "year", "month", name="uq_user_year_month"),
+    )
+    
+    def __repr__(self):
+        return f"<Payroll {self.user_id} {self.year}-{self.month}: {self.net_salary}원>"

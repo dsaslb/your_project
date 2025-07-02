@@ -3,6 +3,7 @@
 """
 
 from datetime import datetime, timedelta
+import logging
 
 from sqlalchemy import and_, func, or_
 
@@ -11,6 +12,8 @@ from models import Attendance, AttendanceReport, User
 from utils.email_utils import email_service
 from utils.logger import log_action, log_error
 from utils.notify import send_notification_enhanced
+
+logger = logging.getLogger(__name__)
 
 
 class AssigneeManager:
@@ -323,6 +326,163 @@ def assign_dispute(dispute_id, assignee_id=None, reason=None):
     except Exception as e:
         log_error(e, None, f"Assignee assignment failed for dispute {dispute_id}")
         return False, f"담당자 배정 실패: {str(e)}"
+
+
+def assign_cleaning_tasks():
+    """청소 업무 자동 배정"""
+    try:
+        today = datetime.now().date()
+        
+        # 오늘 청소 업무가 배정되지 않은 직원들 찾기
+        available_staff = (
+            db.session.query(User)
+            .filter(
+                and_(
+                    User.role == "staff",
+                    User.status == "approved",
+                    ~db.session.query(Attendance).filter(
+                        and_(
+                            Attendance.user_id == User.id,
+                            Attendance.date == today,
+                            Attendance.cleaning_assigned == True
+                        )
+                    ).exists()
+                )
+            )
+            .all()
+        )
+
+        # 청소 업무 배정
+        cleaning_tasks = [
+            "주방 청소",
+            "매장 청소", 
+            "화장실 청소",
+            "테이블 정리"
+        ]
+
+        for i, user in enumerate(available_staff):
+            if i < len(cleaning_tasks):
+                # 근태 기록에 청소 업무 추가
+                attendance = Attendance.query.filter_by(
+                    user_id=user.id, date=today
+                ).first()
+                
+                if attendance:
+                    attendance.cleaning_assigned = True
+                    attendance.cleaning_task = cleaning_tasks[i]
+                    
+                    log_action(
+                        user.id,
+                        "CLEANING_ASSIGNED",
+                        f"청소 업무 배정: {cleaning_tasks[i]}"
+                    )
+
+        db.session.commit()
+        logger.info(f"청소 업무 배정 완료: {len(available_staff)}명")
+
+    except Exception as e:
+        logger.error(f"청소 업무 배정 실패: {e}")
+        db.session.rollback()
+
+
+def assign_inventory_check():
+    """재고 점검 업무 자동 배정"""
+    try:
+        today = datetime.now().date()
+        
+        # 매니저 중 오늘 재고 점검이 배정되지 않은 사람 찾기
+        available_managers = (
+            db.session.query(User)
+            .filter(
+                and_(
+                    User.role == "manager",
+                    User.status == "approved",
+                    ~db.session.query(Attendance).filter(
+                        and_(
+                            Attendance.user_id == User.id,
+                            Attendance.date == today,
+                            Attendance.inventory_check_assigned == True
+                        )
+                    ).exists()
+                )
+            )
+            .all()
+        )
+
+        # 재고 점검 업무 배정
+        for user in available_managers:
+            attendance = Attendance.query.filter_by(
+                user_id=user.id, date=today
+            ).first()
+            
+            if attendance:
+                attendance.inventory_check_assigned = True
+                attendance.inventory_check_task = "전체 재고 점검"
+                
+                log_action(
+                    user.id,
+                    "INVENTORY_CHECK_ASSIGNED",
+                    "재고 점검 업무 배정"
+                )
+
+        db.session.commit()
+        logger.info(f"재고 점검 업무 배정 완료: {len(available_managers)}명")
+
+    except Exception as e:
+        logger.error(f"재고 점검 업무 배정 실패: {e}")
+        db.session.rollback()
+
+
+def assign_quality_control():
+    """품질 관리 업무 자동 배정"""
+    try:
+        today = datetime.now().date()
+        
+        # 품질 관리 담당자 찾기
+        quality_staff = (
+            db.session.query(User)
+            .filter(
+                and_(
+                    User.role.in_(["manager", "staff"]),
+                    User.status == "approved",
+                    ~db.session.query(Attendance).filter(
+                        and_(
+                            Attendance.user_id == User.id,
+                            Attendance.date == today,
+                            Attendance.quality_check_assigned == True
+                        )
+                    ).exists()
+                )
+            )
+            .limit(2)  # 최대 2명
+            .all()
+        )
+
+        # 품질 관리 업무 배정
+        quality_tasks = ["음식 품질 점검", "서비스 품질 점검"]
+        
+        for i, user in enumerate(quality_staff):
+            if i < len(quality_tasks):
+                attendance = Attendance.query.filter_by(
+                    user_id=user.id, date=today
+                ).first()
+                
+                if attendance:
+                    attendance.quality_check_assigned = True
+                    attendance.quality_check_task = quality_tasks[i]
+                    
+                    log_action(
+                        user.id,
+                        "QUALITY_CHECK_ASSIGNED",
+                        f"품질 관리 업무 배정: {quality_tasks[i]}"
+                    )
+
+        db.session.commit()
+        logger.info(f"품질 관리 업무 배정 완료: {len(quality_staff)}명")
+
+    except Exception as e:
+        logger.error(f"품질 관리 업무 배정 실패: {e}")
+        db.session.rollback()
 
 
 # 전역 인스턴스

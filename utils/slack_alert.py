@@ -7,6 +7,10 @@ from typing import Optional
 
 import requests
 
+from utils.logger import log_action
+
+logger = logging.getLogger(__name__)
+
 # Slack Webhook URL 환경변수에서 가져오기
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
@@ -23,7 +27,7 @@ def send_slack_alert(message: str, level: str = "INFO") -> bool:
         bool: 전송 성공 여부
     """
     if not SLACK_WEBHOOK_URL:
-        logging.warning("Slack Webhook URL이 설정되지 않았습니다.")
+        logger.warning("❌ Slack Webhook URL이 설정되지 않았습니다.")
         return False
 
     # 레벨별 이모지 설정
@@ -48,17 +52,17 @@ def send_slack_alert(message: str, level: str = "INFO") -> bool:
             headers={"Content-Type": "application/json"},
         )
         response.raise_for_status()
-        logging.info(f"Slack 알림 전송 성공: {message[:50]}...")
+        logger.info(f"Slack 알림 전송 성공: {message[:50]}...")
         return True
 
     except requests.exceptions.Timeout:
-        logging.error("Slack 알림 전송 타임아웃")
+        logger.error("Slack 알림 전송 타임아웃")
         return False
     except requests.exceptions.RequestException as e:
-        logging.error(f"Slack 알림 전송 실패: {e}")
+        logger.error(f"Slack 알림 전송 실패: {e}")
         return False
     except Exception as e:
-        logging.error(f"Slack 알림 전송 중 예상치 못한 오류: {e}")
+        logger.error(f"Slack 알림 전송 중 예상치 못한 오류: {e}")
         return False
 
 
@@ -108,16 +112,16 @@ def test_slack_connection() -> bool:
         bool: 연결 성공 여부
     """
     if not SLACK_WEBHOOK_URL:
-        print("❌ Slack Webhook URL이 설정되지 않았습니다.")
+        logger.error("❌ Slack Webhook URL이 설정되지 않았습니다.")
         return False
 
     test_message = "🧪 Slack 연결 테스트 메시지입니다."
     success = send_slack_alert(test_message, "INFO")
 
     if success:
-        print("✅ Slack 연결 테스트 성공!")
+        logger.info("✅ Slack 연결 테스트 성공!")
     else:
-        print("❌ Slack 연결 테스트 실패!")
+        logger.error("❌ Slack 연결 테스트 실패!")
 
     return success
 

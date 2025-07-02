@@ -4,12 +4,16 @@ import logging.handlers
 import os
 import shutil
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
 from flask import request, session
 
 from extensions import db
-from models import ActionLog
+from models import ActionLog, SystemLog
+from utils.logger import log_action
+
+logger = logging.getLogger(__name__)
 
 
 def setup_logger(app=None):
@@ -166,177 +170,176 @@ def log_security_event(user_id, event_type, details=None, ip_address=None):
 def cleanup_old_logs(days=30):
     """오래된 로그 정리"""
     try:
-        from datetime import timedelta
-
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
         # 데이터베이스 로그 정리
         ActionLog.query.filter(ActionLog.created_at < cutoff_date).delete()
         db.session.commit()
 
-        logger = logging.getLogger("restaurant")
         logger.info(f"Cleaned up logs older than {days} days")
 
     except Exception as e:
         log_error(e)
 
 
-def compress_old_logs(log_dir="logs", compress_after_days=7):
-    """오래된 로그 파일 압축"""
+def compress_log_file(filename: str) -> bool:
+    """로그 파일 압축"""
     try:
+        if not os.path.exists(filename):
+            return False
+            
+        compressed_filename = f"{filename}.gz"
+        
+        with open(filename, 'rb') as f_in:
+            with gzip.open(compressed_filename, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        
+        # 원본 파일 삭제
+        os.remove(filename)
+        
+        logger.info(f"Compressed log file: {filename}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to compress {filename}: {e}")
+        return False
+
+
+def compress_old_logs():
+    """오래된 로그 파일들 압축"""
+    try:
+        log_dir = "logs"
         if not os.path.exists(log_dir):
             return
-
-        now = time.time()
-        compress_cutoff = now - (compress_after_days * 24 * 60 * 60)
-
-        compressed_count = 0
+            
+        cutoff_date = datetime.now() - timedelta(days=7)
+        
         for filename in os.listdir(log_dir):
-            if not filename.endswith(".log"):
-                continue
-
-            file_path = os.path.join(log_dir, filename)
-
-            # 이미 압축된 파일은 건너뛰기
-            if filename.endswith(".gz"):
-                continue
-
-            # 파일인지 확인
-            if not os.path.isfile(file_path):
-                continue
-
-            # 수정 시간 확인
-            file_mtime = os.path.getmtime(file_path)
-            if file_mtime < compress_cutoff:
-                try:
-                    # 압축 파일명
-                    gz_filename = filename + ".gz"
-                    gz_path = os.path.join(log_dir, gz_filename)
-
-                    # 이미 압축 파일이 있으면 건너뛰기
-                    if os.path.exists(gz_path):
-                        continue
-
-                    # 파일 압축
-                    with open(file_path, "rb") as f_in:
-                        with gzip.open(gz_path, "wb") as f_out:
-                            shutil.copyfileobj(f_in, f_out)
-
-                    # 원본 파일 삭제
-                    os.remove(file_path)
-                    compressed_count += 1
-                    print(f"Compressed log file: {filename}")
-
-                except Exception as e:
-                    print(f"Failed to compress {filename}: {e}")
-
-        return compressed_count
+            if filename.endswith('.log'):
+                filepath = os.path.join(log_dir, filename)
+                file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
+                
+                if file_time < cutoff_date:
+                    compress_log_file(filepath)
+                    
     except Exception as e:
-        print(f"Log compression failed: {e}")
-        return 0
+        logger.error(f"Log compression failed: {e}")
 
 
-def get_log_stats(log_dir="logs"):
-    """로그 파일 통계"""
+def get_log_statistics() -> Dict:
+    """로그 파일 통계 조회"""
     try:
+        log_dir = "logs"
         if not os.path.exists(log_dir):
             return {}
-
+            
         stats = {
             "total_files": 0,
             "total_size": 0,
             "file_types": {},
             "oldest_file": None,
-            "newest_file": None,
+            "newest_file": None
         }
-
+        
         for filename in os.listdir(log_dir):
-            file_path = os.path.join(log_dir, filename)
-
-            if not os.path.isfile(file_path):
-                continue
-
-            file_size = os.path.getsize(file_path)
-            file_mtime = os.path.getmtime(file_path)
-
-            stats["total_files"] += 1
-            stats["total_size"] += file_size
-
-            # 파일 타입별 통계
-            file_ext = os.path.splitext(filename)[1]
-            if file_ext not in stats["file_types"]:
-                stats["file_types"][file_ext] = {"count": 0, "size": 0}
-            stats["file_types"][file_ext]["count"] += 1
-            stats["file_types"][file_ext]["size"] += file_size
-
-            # 가장 오래된/최신 파일
-            if stats["oldest_file"] is None or file_mtime < stats["oldest_file"][1]:
-                stats["oldest_file"] = (filename, file_mtime)
-            if stats["newest_file"] is None or file_mtime > stats["newest_file"][1]:
-                stats["newest_file"] = (filename, file_mtime)
-
+            filepath = os.path.join(log_dir, filename)
+            if os.path.isfile(filepath):
+                stats["total_files"] += 1
+                stats["total_size"] += os.path.getsize(filepath)
+                
+                # 파일 확장자별 통계
+                ext = os.path.splitext(filename)[1]
+                if ext not in stats["file_types"]:
+                    stats["file_types"][ext] = {"count": 0, "size": 0}
+                stats["file_types"][ext]["count"] += 1
+                stats["file_types"][ext]["size"] += os.path.getsize(filepath)
+                
+                # 가장 오래된/최신 파일
+                file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
+                if not stats["oldest_file"] or file_time < stats["oldest_file"][1]:
+                    stats["oldest_file"] = (filename, file_time)
+                if not stats["newest_file"] or file_time > stats["newest_file"][1]:
+                    stats["newest_file"] = (filename, file_time)
+        
         return stats
+        
     except Exception as e:
-        print(f"Failed to get log stats: {e}")
+        logger.error(f"Failed to get log stats: {e}")
         return {}
 
 
-def rotate_logs_manually():
+def manual_log_rotation():
     """수동 로그 로테이션"""
     try:
-        # 메인 로그 로테이션
-        main_logger = logging.getLogger("restaurant")
-        for handler in main_logger.handlers:
-            if isinstance(handler, logging.handlers.RotatingFileHandler):
-                handler.doRollover()
-
-        # 보안 로그 로테이션
-        security_logger = logging.getLogger("security")
-        for handler in security_logger.handlers:
-            if isinstance(handler, logging.handlers.TimedRotatingFileHandler):
-                handler.doRollover()
-
-        print("Manual log rotation completed")
+        compress_old_logs()
+        cleanup_old_logs()
+        logger.info("Manual log rotation completed")
         return True
+        
     except Exception as e:
-        print(f"Manual log rotation failed: {e}")
+        logger.error(f"Manual log rotation failed: {e}")
         return False
 
 
-# CLI 명령어용 함수들
-def cleanup_logs_command():
-    """CLI 명령어용 로그 정리"""
-    deleted = cleanup_old_logs()
-    compressed = compress_old_logs()
-    stats = get_log_stats()
+def cleanup_old_logs():
+    """오래된 로그 파일 정리"""
+    try:
+        log_dir = "logs"
+        if not os.path.exists(log_dir):
+            return
+            
+        cutoff_date = datetime.now() - timedelta(days=30)
+        deleted = 0
+        compressed = 0
+        
+        for filename in os.listdir(log_dir):
+            filepath = os.path.join(log_dir, filename)
+            if os.path.isfile(filepath):
+                file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
+                
+                if file_time < cutoff_date:
+                    if filename.endswith('.gz'):
+                        os.remove(filepath)
+                        deleted += 1
+                    else:
+                        if compress_log_file(filepath):
+                            compressed += 1
+        
+        stats = get_log_statistics()
+        logger.info(f"Log cleanup completed:")
+        logger.info(f"- Deleted files: {deleted}")
+        logger.info(f"- Compressed files: {compressed}")
+        logger.info(f"- Total files: {stats.get('total_files', 0)}")
+        logger.info(f"- Total size: {stats.get('total_size', 0) / (1024*1024):.2f} MB")
+        
+    except Exception as e:
+        logger.error(f"Log cleanup failed: {e}")
 
-    print(f"Log cleanup completed:")
-    print(f"- Deleted files: {deleted}")
-    print(f"- Compressed files: {compressed}")
-    print(f"- Total files: {stats.get('total_files', 0)}")
-    print(f"- Total size: {stats.get('total_size', 0) / (1024*1024):.2f} MB")
 
-
-def show_log_stats_command():
-    """CLI 명령어용 로그 통계"""
-    stats = get_log_stats()
-
-    print("Log Statistics:")
-    print(f"- Total files: {stats.get('total_files', 0)}")
-    print(f"- Total size: {stats.get('total_size', 0) / (1024*1024):.2f} MB")
-
-    if stats.get("file_types"):
-        print("\nFile types:")
-        for ext, info in stats["file_types"].items():
-            print(f"  {ext}: {info['count']} files, {info['size'] / 1024:.2f} KB")
-
-    if stats.get("oldest_file"):
-        oldest_time = datetime.fromtimestamp(stats["oldest_file"][1])
-        print(f"\nOldest file: {stats['oldest_file'][0]} ({oldest_time})")
-
-    if stats.get("newest_file"):
-        newest_time = datetime.fromtimestamp(stats["newest_file"][1])
-        print(f"Newest file: {stats['newest_file'][0]} ({newest_time})")
+def print_log_statistics():
+    """로그 통계 출력"""
+    try:
+        stats = get_log_statistics()
+        
+        logger.info("Log Statistics:")
+        logger.info(f"- Total files: {stats.get('total_files', 0)}")
+        logger.info(f"- Total size: {stats.get('total_size', 0) / (1024*1024):.2f} MB")
+        
+        if stats.get('file_types'):
+            logger.info("\nFile types:")
+            for ext, info in stats['file_types'].items():
+                logger.info(f"  {ext}: {info['count']} files, {info['size'] / 1024:.2f} KB")
+        
+        if stats.get('oldest_file'):
+            oldest_time = stats['oldest_file'][1].strftime('%Y-%m-%d %H:%M:%S')
+            logger.info(f"\nOldest file: {stats['oldest_file'][0]} ({oldest_time})")
+        
+        if stats.get('newest_file'):
+            newest_time = stats['newest_file'][1].strftime('%Y-%m-%d %H:%M:%S')
+            logger.info(f"Newest file: {stats['newest_file'][0]} ({newest_time})")
+            
+    except Exception as e:
+        logger.error(f"Failed to print log statistics: {e}")
 
 
 def get_user_activity_logs(user_id, limit=50):

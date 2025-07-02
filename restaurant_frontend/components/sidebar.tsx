@@ -1,127 +1,86 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar, 
-  Users, 
-  Package, 
-  Settings, 
-  BarChart3,
-  ClipboardList,
-  Home,
-  LogOut,
-  Menu,
-  X,
-  User,
-  Bell,
-  Search
-} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { hasPermission, type User, type Permission } from "@/lib/utils"
 import { useUser } from "@/components/UserContext"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  User,
+  LogOut,
+  Crown,
+  Building2,
+  Home,
+  Users,
+  ShoppingCart,
+  Package,
+  Calendar,
+  Bell,
+  BarChart3,
+  Settings
+} from "lucide-react"
+
+const menuItems = [
+  { icon: Home, label: "대시보드", href: "/dashboard", description: "전체 현황 및 통계" },
+  { icon: Users, label: "직원 관리", href: "/staff", description: "직원 정보 및 권한 관리" },
+  { icon: ShoppingCart, label: "발주 관리", href: "/orders", description: "재료 발주 및 승인" },
+  { icon: Package, label: "재고 관리", href: "/inventory", description: "재고 현황 및 관리" },
+  { icon: Calendar, label: "스케줄", href: "/schedule", description: "근무 및 청소 스케줄" },
+  { icon: Bell, label: "알림/공지", href: "/notifications", description: "공지사항 및 알림" },
+  { icon: BarChart3, label: "보고서", href: "/reports", description: "매출 및 통계 보고서" },
+  { icon: Settings, label: "설정", href: "/settings", description: "시스템 설정" }
+]
 
 interface SidebarProps {
   isCollapsed?: boolean
   onToggle?: () => void
   className?: string
-  user?: User
-  showMobileMenu?: boolean
-  onMobileMenuToggle?: () => void
 }
 
-// 메뉴 아이템 정의
-const menuItems = [
-  { 
-    icon: Home, 
-    label: "대시보드", 
-    href: "/dashboard", 
-    permissions: ['schedule', 'staff', 'orders', 'inventory', 'reports', 'settings'] as Permission[],
-    description: "메인 대시보드"
-  },
-  { 
-    icon: Calendar, 
-    label: "스케줄 관리", 
-    href: "/schedule", 
-    permissions: ['schedule'] as Permission[],
-    description: "근무 및 청소 스케줄"
-  },
-  { 
-    icon: Users, 
-    label: "직원 관리", 
-    href: "/staff", 
-    permissions: ['staff'] as Permission[],
-    description: "직원 정보 및 관리"
-  },
-  { 
-    icon: Package, 
-    label: "발주 관리", 
-    href: "/orders", 
-    permissions: ['orders'] as Permission[],
-    description: "재료 발주 및 관리"
-  },
-  { 
-    icon: ClipboardList, 
-    label: "재고 관리", 
-    href: "/inventory", 
-    permissions: ['inventory'] as Permission[],
-    description: "재고 현황 및 관리"
-  },
-  { 
-    icon: BarChart3, 
-    label: "통계/리포트", 
-    href: "/reports", 
-    permissions: ['reports'] as Permission[],
-    description: "매출 및 통계 분석"
-  },
-  { 
-    icon: Settings, 
-    label: "설정", 
-    href: "/settings", 
-    permissions: ['settings'] as Permission[],
-    description: "시스템 설정"
-  },
-]
-
-export function Sidebar({ 
-  isCollapsed = false, 
-  onToggle, 
-  className,
-  user: userProp,
-  showMobileMenu = false,
-  onMobileMenuToggle
-}: SidebarProps) {
-  const { user } = useUser();
+export function Sidebar({ isCollapsed = false, onToggle, className }: SidebarProps) {
+  const { user, logout } = useUser()
   const pathname = usePathname()
   const [searchTerm, setSearchTerm] = React.useState("")
 
-  // 권한별 메뉴 분기
-  const filteredMenuItems = menuItems.filter(item => {
-    if (user.role === "admin") return true; // 전체 메뉴
-    if (user.role === "manager") {
-      // 매장관리자: 매장 관리/근무/발주 등
-      return ["dashboard","schedule","orders","inventory","reports"].some(key => user.permissions[key]);
-    }
-    if (user.role === "employee") {
-      // 직원: 근무/스케줄/본인 업무만
-      return ["dashboard","schedule"].some(key => user.permissions[key]);
-    }
-    return false;
-  })
+  if (!user) {
+    return (
+      <aside className={cn(
+        "flex h-full flex-col border-r bg-background transition-all duration-300",
+        isCollapsed ? "w-16" : "w-80",
+        className
+      )}>
+        <div className="flex h-16 items-center justify-between border-b px-4">
+          {!isCollapsed && <h1 className="text-lg font-semibold">레스토랑 관리</h1>}
+          <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+            <p className="text-sm text-muted-foreground">로딩 중...</p>
+          </div>
+        </div>
+      </aside>
+    )
+  }
 
-  // 검색어에 따른 메뉴 필터링
-  const searchedMenuItems = filteredMenuItems.filter(item =>
+  const filteredMenuItems = menuItems.filter(item =>
     item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.description.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const SidebarContent = () => (
-    <>
+  return (
+    <aside className={cn(
+      "flex h-full flex-col border-r bg-background transition-all duration-300",
+      isCollapsed ? "w-16" : "w-80",
+      className
+    )}>
       {/* Header */}
       <div className="flex h-16 items-center justify-between px-4 border-b">
         {!isCollapsed && (
@@ -131,18 +90,20 @@ export function Sidebar({
             </div>
             <div>
               <h2 className="text-lg font-semibold">레스토랑 관리</h2>
-              <p className="text-xs text-muted-foreground">{user.name}</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs text-muted-foreground">{user.name}</p>
+                {user.role === 'admin' && <Crown className="h-3 w-3 text-yellow-500" />}
+                {user.role === 'manager' && <Building2 className="h-3 w-3 text-blue-500" />}
+              </div>
+              {user.storeName && (
+                <p className="text-xs text-muted-foreground">{user.storeName}</p>
+              )}
             </div>
           </div>
         )}
         <div className="flex items-center gap-2">
           <ThemeToggle variant="button" size="sm" />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className="h-8 w-8"
-          >
+          <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
             {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
@@ -167,7 +128,7 @@ export function Sidebar({
       {/* Navigation */}
       <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-2">
-          {searchedMenuItems.map((item) => {
+          {filteredMenuItems.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
             
@@ -182,16 +143,11 @@ export function Sidebar({
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon className={cn(
-                    "h-4 w-4",
-                    isActive && "text-primary"
-                  )} />
+                  <Icon className={cn("h-4 w-4", isActive && "text-primary")} />
                   {!isCollapsed && (
                     <div className="flex-1 min-w-0">
                       <span className="truncate">{item.label}</span>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {item.description}
-                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                     </div>
                   )}
                 </Link>
@@ -203,70 +159,24 @@ export function Sidebar({
 
       {/* Footer */}
       <div className="p-4 border-t">
-        {!isCollapsed ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">{user.name}</span>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+            <User className="h-4 w-4" />
+          </div>
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {user.role === 'admin' ? '최고관리자' : 
+                 user.role === 'manager' ? '매장관리자' : '직원'}
+              </p>
             </div>
-            <Button variant="ghost" size="sm" className="w-full justify-start">
-              <LogOut className="h-4 w-4 mr-2" />
-              로그아웃
-            </Button>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-    </>
-  )
-
-  // 모바일 메뉴
-  if (showMobileMenu !== undefined) {
-    return (
-      <>
-        {/* Mobile Menu Overlay */}
-        {showMobileMenu && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={onMobileMenuToggle}
-          />
-        )}
-        
-        {/* Mobile Sidebar */}
-        <div className={cn(
-          "fixed top-0 left-0 h-full bg-background border-r z-50 transition-transform duration-300 lg:hidden",
-          showMobileMenu ? "translate-x-0" : "-translate-x-full",
-          "w-80"
-        )}>
-          <SidebarContent />
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={logout}>
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
-        
-        {/* Mobile Menu Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMobileMenuToggle}
-          className="fixed top-4 left-4 z-50 lg:hidden"
-        >
-          {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </Button>
-      </>
-    )
-  }
-
-  // 데스크탑 사이드바
-  return (
-    <div className={cn(
-      "flex h-full flex-col bg-background border-r transition-all duration-300",
-      isCollapsed ? "w-16" : "w-64",
-      className
-    )}>
-      <SidebarContent />
-    </div>
+      </div>
+    </aside>
   )
 } 

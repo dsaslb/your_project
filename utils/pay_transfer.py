@@ -1,11 +1,15 @@
 import json
 from datetime import datetime
+import logging
+from typing import Dict, List, Optional
 
 import requests
 
 from extensions import db
-from models import ActionLog, User
+from models import ActionLog, User, PayTransfer
 from utils.logger import log_action
+
+logger = logging.getLogger(__name__)
 
 
 class BankTransferAPI:
@@ -37,7 +41,7 @@ class BankTransferAPI:
             # return response.status_code == 200
 
             # 가상 이체 (테스트용)
-            print(f"[가상이체] {payload}")
+            logger.info(f"[가상이체] {payload}")
 
             # 이체 로그 기록
             self._log_transfer(user.id, amount, payload["reference_id"], "SUCCESS")
@@ -60,7 +64,7 @@ class BankTransferAPI:
             db.session.add(action_log)
             db.session.commit()
         except Exception as e:
-            print(f"이체 로그 기록 실패: {e}")
+            logger.error(f"이체 로그 기록 실패: {e}")
 
 
 def transfer_salary(user, amount):
@@ -76,7 +80,7 @@ def transfer_salary(user, amount):
     # headers = {"Authorization": "Bearer ..."}
     # r = requests.post(api_url, json=payload, headers=headers)
     # 아래는 테스트용(실제 이체X)
-    print(f"[가상이체] {payload}")
+    logger.info(f"[가상이체] {payload}")
     return True
 
 
@@ -119,19 +123,33 @@ def validate_bank_account(user):
     return True, "계좌 정보 유효"
 
 
-def get_transfer_history(user_id, limit=10):
+def get_transfer_history(user_id, limit=50):
     """이체 이력 조회"""
     try:
-        return (
-            ActionLog.query.filter(
-                ActionLog.user_id == user_id, ActionLog.action.like("SALARY_TRANSFER_%")
-            )
-            .order_by(ActionLog.created_at.desc())
+        # 송금 이력
+        sent_transfers = (
+            PayTransfer.query.filter_by(from_user_id=user_id)
+            .order_by(PayTransfer.created_at.desc())
             .limit(limit)
             .all()
         )
+
+        # 수신 이력
+        received_transfers = (
+            PayTransfer.query.filter_by(to_user_id=user_id)
+            .order_by(PayTransfer.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        # 합치고 정렬
+        all_transfers = sent_transfers + received_transfers
+        all_transfers.sort(key=lambda x: x.created_at, reverse=True)
+
+        return all_transfers[:limit]
+
     except Exception as e:
-        print(f"이체 이력 조회 실패: {e}")
+        logger.error(f"이체 이력 조회 실패: {e}")
         return []
 
 
@@ -167,3 +185,52 @@ class MockBankAPI:
 
 # 글로벌 가상 API 인스턴스
 mock_api = MockBankAPI()
+
+def process_transfer(from_user_id, to_user_id, amount, description=""):
+    """가상 이체 처리"""
+    try:
+        # 이체 정보 생성
+        payload = {
+            "from_user_id": from_user_id,
+            "to_user_id": to_user_id,
+            "amount": amount,
+            "description": description,
+            "timestamp": datetime.utcnow(),
+        }
+
+        logger.info(f"[가상이체] {payload}")
+
+        # 이체 기록 생성
+        transfer = PayTransfer(
+            from_user_id=from_user_id,
+            to_user_id=to_user_id,
+            amount=amount,
+            description=description,
+            status="completed",
+            created_at=datetime.utcnow(),
+        )
+
+        db.session.add(transfer)
+        db.session.commit()
+
+        # 이체 로그 기록
+        try:
+            log_action(
+                from_user_id,
+                "PAY_TRANSFER_SENT",
+                f"이체 완료: {amount}원 -> {to_user_id}",
+            )
+            log_action(
+                to_user_id,
+                "PAY_TRANSFER_RECEIVED",
+                f"이체 수신: {amount}원 <- {from_user_id}",
+            )
+        except Exception as e:
+            logger.error(f"이체 로그 기록 실패: {e}")
+
+        return True, "이체가 성공적으로 완료되었습니다."
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"이체 처리 중 오류: {e}")
+        return False, f"이체 처리 중 오류가 발생했습니다: {str(e)}"

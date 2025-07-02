@@ -4,6 +4,7 @@
 MVP 완성 후 운영 환경 배포를 위한 스크립트
 """
 
+import logging
 import os
 import shutil
 import subprocess

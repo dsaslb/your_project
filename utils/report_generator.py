@@ -12,6 +12,7 @@ from flask import render_template
 from sqlalchemy import and_, extract, func
 
 from models import Attendance, AttendanceReport, User, db
+from utils.logger import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -385,3 +386,42 @@ def send_individual_attendance_report(user_id, period="week"):
     except Exception as e:
         logger.error(f"개별 리포트 발송 중 오류: {str(e)}")
         return False
+
+
+def generate_attendance_report(start_date, end_date, user_id=None):
+    """근태 리포트 생성"""
+    try:
+        # 근태 데이터 조회
+        query = db.session.query(Attendance).filter(
+            Attendance.date >= start_date,
+            Attendance.date <= end_date
+        )
+        
+        if user_id:
+            query = query.filter(Attendance.user_id == user_id)
+        
+        attendances = query.all()
+        
+        # 리포트 데이터 구성
+        report_data = {
+            "period": f"{start_date} ~ {end_date}",
+            "total_records": len(attendances),
+            "generated_at": datetime.now().isoformat(),
+            "data": []
+        }
+        
+        for attendance in attendances:
+            report_data["data"].append({
+                "user_id": attendance.user_id,
+                "date": attendance.date.isoformat(),
+                "status": attendance.status,
+                "clock_in": attendance.clock_in.isoformat() if attendance.clock_in else None,
+                "clock_out": attendance.clock_out.isoformat() if attendance.clock_out else None
+            })
+        
+        logger.info(f"근태 리포트 생성 완료: {len(attendances)}건")
+        return report_data
+        
+    except Exception as e:
+        logger.error(f"근태 리포트 생성 실패: {e}")
+        return None

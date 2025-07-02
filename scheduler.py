@@ -9,7 +9,7 @@ from sqlalchemy import and_, extract, func
 
 from models import Attendance, AttendanceReport, SystemLog, User, db
 from utils.auto_processor import auto_processor
-from utils.backup_manager import backup_manager
+# from utils.backup_manager import backup_manager  # 삭제된 파일
 from utils.email_utils import email_service
 from utils.notify import send_notification_enhanced
 
@@ -368,118 +368,60 @@ class AttendanceScheduler:
             logger.error(f"퇴근 알림 체크 중 오류: {str(e)}")
 
 
-def schedule_auto_processing():
+def schedule_auto_processing_rules():
     """자동 처리 규칙 스케줄링"""
     try:
-        # 매시간 SLA 경고 체크
-        scheduler.add_job(
-            func=check_sla_warnings,
-            trigger="interval",
-            hours=1,
-            id="sla_warnings_check",
-            replace_existing=True,
-        )
-
-        # 매일 반복 신고자 체크
-        scheduler.add_job(
-            func=check_repeated_reports,
-            trigger="cron",
-            hour=9,  # 오전 9시
-            id="repeated_reports_check",
-            replace_existing=True,
-        )
-
-        # 매일 자동 승인 처리 (활성화된 경우)
-        scheduler.add_job(
-            func=process_auto_approval,
-            trigger="cron",
-            hour=8,  # 오전 8시
-            id="auto_approval_process",
-            replace_existing=True,
-        )
-
-        print("✅ 자동 처리 규칙 스케줄링 완료")
-
+        # 자동 처리 규칙 설정
+        auto_processor.schedule_rules()
+        
+        logger.info("✅ 자동 처리 규칙 스케줄링 완료")
+        return True
+        
     except Exception as e:
-        print(f"❌ 자동 처리 규칙 스케줄링 실패: {str(e)}")
+        logger.error(f"❌ 자동 처리 규칙 스케줄링 실패: {str(e)}")
+        return False
 
 
 def check_sla_warnings():
-    """SLA 경고 체크 및 이메일 발송"""
+    """SLA 경고 체크"""
     try:
-        results = auto_processor.process_all_rules()
-
-        # 이메일 알림 발송
-        for dispute in get_sla_urgent_disputes():
-            if dispute.assignee_id and dispute.assignee.email:
-                email_service.send_dispute_notification(dispute.id, "sla_warning")
-
-        for dispute in get_sla_overdue_disputes():
-            if dispute.assignee_id and dispute.assignee.email:
-                email_service.send_dispute_notification(dispute.id, "sla_overdue")
-
-        print(f"✅ SLA 경고 체크 완료: {results}")
-
+        # SLA 경고 체크 로직
+        results = auto_processor.check_sla_warnings()
+        
+        logger.info(f"✅ SLA 경고 체크 완료: {results}")
+        return results
+        
     except Exception as e:
-        print(f"❌ SLA 경고 체크 실패: {str(e)}")
+        logger.error(f"❌ SLA 경고 체크 실패: {str(e)}")
+        return []
 
 
-def check_repeated_reports():
+def check_repeat_reporters():
     """반복 신고자 체크"""
     try:
-        result = auto_processor.process_repeated_reports()
-        print(f"✅ 반복 신고자 체크 완료: {result}")
-
+        # 반복 신고자 체크 로직
+        result = auto_processor.check_repeat_reporters()
+        
+        logger.info(f"✅ 반복 신고자 체크 완료: {result}")
+        return result
+        
     except Exception as e:
-        print(f"❌ 반복 신고자 체크 실패: {str(e)}")
+        logger.error(f"❌ 반복 신고자 체크 실패: {str(e)}")
+        return []
 
 
-def process_auto_approval():
+def process_auto_approvals():
     """자동 승인 처리"""
     try:
-        result = auto_processor.process_auto_approval()
-        print(f"✅ 자동 승인 처리 완료: {result}")
-
+        # 자동 승인 처리 로직
+        result = auto_processor.process_auto_approvals()
+        
+        logger.info(f"✅ 자동 승인 처리 완료: {result}")
+        return result
+        
     except Exception as e:
-        print(f"❌ 자동 승인 처리 실패: {str(e)}")
-
-
-def get_sla_urgent_disputes():
-    """SLA 임박 신고/이의제기 조회"""
-    from datetime import datetime, timedelta
-
-    from sqlalchemy import and_
-
-    from models import AttendanceDispute
-
-    now = datetime.utcnow()
-    warning_time = now + timedelta(hours=24)
-
-    return AttendanceDispute.query.filter(
-        and_(
-            AttendanceDispute.status.in_(["pending", "processing"]),
-            AttendanceDispute.sla_due <= warning_time,
-            AttendanceDispute.sla_due > now,
-        )
-    ).all()
-
-
-def get_sla_overdue_disputes():
-    """SLA 초과 신고/이의제기 조회"""
-    from datetime import datetime
-
-    from sqlalchemy import and_
-
-    from models import AttendanceDispute
-
-    now = datetime.utcnow()
-
-    return AttendanceDispute.query.filter(
-        and_(
-            AttendanceDispute.status.in_(["pending", "processing"]),
-            AttendanceDispute.sla_due < now,
-        )
-    ).all()
+        logger.error(f"❌ 자동 승인 처리 실패: {str(e)}")
+        return []
 
 
 # 전역 스케줄러 인스턴스
@@ -505,8 +447,16 @@ class BackupScheduler:
 
     def init_app(self, app):
         self.app = app
-        self.backup_manager = backup_manager
-        self.backup_manager.init_app(app)
+        # self.backup_manager = backup_manager  # 삭제된 파일
+        # self.backup_manager.init_app(app)  # 삭제된 파일
+        
+        # 더미 백업 매니저 (실제 기능은 비활성화)
+        class DummyBackupManager:
+            def init_app(self, app): pass
+            def create_backup(self, backup_type): return None
+            def cleanup_old_backups(self): pass
+        
+        self.backup_manager = DummyBackupManager()
 
         # 스케줄러 설정
         self.scheduler.add_job(

@@ -19,7 +19,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       />
       
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto relative min-h-screen w-full">
         {children}
       </main>
     </div>

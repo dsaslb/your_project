@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/lib/theme";
+import { ThemeProvider } from "@/components/theme-provider";
+import { UserProvider } from "@/components/UserContext";
+import { AuthGuard } from "@/components/AuthGuard";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "레스토랑 관리 시스템",
-  description: "매장 관리자와 직원을 위한 통합 관리 시스템",
+  title: "맛있는집 - 매장 관리 시스템",
+  description: "전문적인 레스토랑 관리 및 브랜드 홈페이지",
 };
 
 export default function RootLayout({
@@ -20,11 +22,15 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <UserProvider>
+            <AuthGuard>
+              {children}
+            </AuthGuard>
+          </UserProvider>
         </ThemeProvider>
       </body>
     </html>

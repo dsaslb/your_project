@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,11 +13,65 @@ import {
   Utensils,
   Package,
   TrendingUp,
-  Clock
+  Clock,
+  Bell,
+  AlertCircle,
+  AlertTriangle,
+  Settings,
+  FileText
 } from "lucide-react"
+import { useUser } from '@/components/UserContext'
+import { toast } from 'sonner'
+import NotificationService from '@/lib/notification-service'
 
 export default function DashboardPage() {
+  const { user } = useUser()
   const [currentTime] = useState(new Date())
+  const [notificationStats, setNotificationStats] = useState<any>(null)
+  const [noticeStats, setNoticeStats] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  // 알림 통계 로드
+  useEffect(() => {
+    const loadNotificationStats = async () => {
+      try {
+        const stats = await NotificationService.getNotificationStats()
+        setNotificationStats(stats)
+      } catch (error) {
+        console.error('알림 통계 로드 실패:', error)
+      }
+    }
+
+    const loadNoticeStats = async () => {
+      try {
+        const stats = await NotificationService.getNoticeStats()
+        setNoticeStats(stats)
+      } catch (error) {
+        console.error('공지사항 통계 로드 실패:', error)
+      }
+    }
+
+    loadNotificationStats()
+    loadNoticeStats()
+    setLoading(false)
+  }, [])
+
+  // 시스템 알림 테스트
+  const handleTestSystemNotification = async (type: 'maintenance' | 'backup' | 'error' | 'update') => {
+    try {
+      const systemData = {
+        scheduledTime: new Date().toLocaleString(),
+        version: '1.0.0',
+        message: '테스트 시스템 알림입니다.'
+      }
+
+      await NotificationService.createSystemNotification(type, systemData)
+      toast.success(`${type} 알림이 생성되었습니다.`)
+    } catch (error) {
+      console.error('시스템 알림 생성 실패:', error)
+      toast.error('시스템 알림 생성에 실패했습니다.')
+    }
+  }
 
   return (
     <AppLayout>
@@ -28,10 +82,127 @@ export default function DashboardPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">레스토랑 대시보드</h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {currentTime.toLocaleDateString("ko-KR")} {currentTime.toLocaleTimeString("ko-KR")}
+                {user?.name}님, 환영합니다! 오늘도 좋은 하루 되세요.
               </p>
             </div>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => handleTestSystemNotification('maintenance')}
+              >
+                점검 알림 테스트
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => handleTestSystemNotification('update')}
+              >
+                업데이트 알림 테스트
+              </Button>
+            </div>
           </div>
+
+          {/* 알림 통계 카드 */}
+          {notificationStats && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 알림</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {notificationStats.total}개
+                      </p>
+                    </div>
+                    <Bell className="w-8 h-8 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">읽지 않은 알림</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {notificationStats.unread}개
+                      </p>
+                    </div>
+                    <AlertCircle className="w-8 h-8 text-red-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">긴급 알림</p>
+                      <p className="text-2xl font-bold text-orange-600">
+                        {notificationStats.byPriority.high}개
+                      </p>
+                    </div>
+                    <AlertTriangle className="w-8 h-8 text-orange-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">시스템 알림</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {notificationStats.byType.system}개
+                      </p>
+                    </div>
+                    <Settings className="w-8 h-8 text-purple-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* 공지사항 통계 카드 */}
+          {noticeStats && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 공지사항</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {noticeStats.total}개
+                      </p>
+                    </div>
+                    <FileText className="w-8 h-8 text-green-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">긴급 공지</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {noticeStats.byPriority.high}개
+                      </p>
+                    </div>
+                    <AlertTriangle className="w-8 h-8 text-red-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">시스템 공지</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {noticeStats.byCategory.시스템}개
+                      </p>
+                    </div>
+                    <Settings className="w-8 h-8 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* 상단 통계 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

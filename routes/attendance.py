@@ -1,5 +1,7 @@
 from datetime import date, datetime
 from functools import wraps
+import logging
+from typing import Dict, List, Optional
 
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, url_for)
@@ -7,6 +9,10 @@ from flask_login import current_user, login_required
 from sqlalchemy import and_, extract, func
 
 from models import Attendance, User, db
+from utils.logger import log_action
+from utils.email_utils import send_email
+
+logger = logging.getLogger(__name__)
 
 attendance_bp = Blueprint("attendance", __name__)
 
@@ -744,9 +750,9 @@ def send_weekly_report():
         for admin in admins:
             if admin.email:
                 # 실제 환경에서는 SMTP 설정 필요
-                print(f"이메일 발송 테스트: {admin.email}")
-                print(f"제목: 주간 근태 리포트")
-                print(f"내용: {email_body}")
+                        logger.info(f"이메일 발송 테스트: {admin.email}")
+        logger.info(f"제목: 주간 근태 리포트")
+        logger.info(f"내용: {email_body}")
                 success_count += 1
 
         flash(f"주간 리포트 발송 완료: {success_count}/{len(admins)}명", "success")
@@ -828,9 +834,9 @@ def send_monthly_report():
         for admin in admins:
             if admin.email:
                 # 실제 환경에서는 SMTP 설정 필요
-                print(f"이메일 발송 테스트: {admin.email}")
-                print(f"제목: 월간 근태 리포트")
-                print(f"내용: {email_body}")
+                        logger.info(f"이메일 발송 테스트: {admin.email}")
+        logger.info(f"제목: 월간 근태 리포트")
+        logger.info(f"내용: {email_body}")
                 success_count += 1
 
         flash(f"월간 리포트 발송 완료: {success_count}/{len(admins)}명", "success")
@@ -839,3 +845,127 @@ def send_monthly_report():
         flash(f"리포트 발송 중 오류가 발생했습니다: {str(e)}", "error")
 
     return redirect(url_for("attendance.attendance_stats_simple"))
+
+
+@attendance_bp.route("/test-email-weekly", methods=["POST"])
+def test_weekly_email():
+    """주간 이메일 발송 테스트"""
+    try:
+        # 관리자 계정 찾기
+        admin = User.query.filter_by(role="admin").first()
+        if not admin or not admin.email:
+            return jsonify({"success": False, "message": "관리자 이메일이 없습니다."})
+        
+        # 주간 리포트 데이터 생성
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=7)
+        
+        # 주간 근태 통계
+        weekly_stats = (
+            db.session.query(
+                func.count(Attendance.id).label('total_attendance'),
+                func.count(Attendance.id).filter(Attendance.status == "present").label('present_count'),
+                func.count(Attendance.id).filter(Attendance.status == "late").label('late_count'),
+                func.count(Attendance.id).filter(Attendance.status == "absent").label('absent_count')
+            )
+            .filter(
+                and_(
+                    Attendance.date >= start_date,
+                    Attendance.date <= end_date
+                )
+            )
+            .first()
+        )
+        
+        # 이메일 내용 생성
+        email_body = f"""
+주간 근태 리포트 ({start_date} ~ {end_date})
+
+총 출근: {weekly_stats.total_attendance}건
+정상 출근: {weekly_stats.present_count}건
+지각: {weekly_stats.late_count}건
+결근: {weekly_stats.absent_count}건
+
+출근률: {round(weekly_stats.present_count / weekly_stats.total_attendance * 100, 1)}%
+        """.strip()
+        
+        # 이메일 발송
+        success = send_email(
+            to_addr=admin.email,
+            subject="주간 근태 리포트",
+            body=email_body
+        )
+        
+        if success:
+            logger.info(f"이메일 발송 테스트: {admin.email}")
+            logger.info(f"제목: 주간 근태 리포트")
+            logger.info(f"내용: {email_body}")
+            return jsonify({"success": True, "message": "주간 이메일 발송 완료"})
+        else:
+            return jsonify({"success": False, "message": "이메일 발송 실패"})
+            
+    except Exception as e:
+        logger.error(f"주간 이메일 테스트 실패: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@attendance_bp.route("/test-email-monthly", methods=["POST"])
+def test_monthly_email():
+    """월간 이메일 발송 테스트"""
+    try:
+        # 관리자 계정 찾기
+        admin = User.query.filter_by(role="admin").first()
+        if not admin or not admin.email:
+            return jsonify({"success": False, "message": "관리자 이메일이 없습니다."})
+        
+        # 월간 리포트 데이터 생성
+        end_date = datetime.now().date()
+        start_date = end_date.replace(day=1)
+        
+        # 월간 근태 통계
+        monthly_stats = (
+            db.session.query(
+                func.count(Attendance.id).label('total_attendance'),
+                func.count(Attendance.id).filter(Attendance.status == "present").label('present_count'),
+                func.count(Attendance.id).filter(Attendance.status == "late").label('late_count'),
+                func.count(Attendance.id).filter(Attendance.status == "absent").label('absent_count')
+            )
+            .filter(
+                and_(
+                    Attendance.date >= start_date,
+                    Attendance.date <= end_date
+                )
+            )
+            .first()
+        )
+        
+        # 이메일 내용 생성
+        email_body = f"""
+월간 근태 리포트 ({start_date} ~ {end_date})
+
+총 출근: {monthly_stats.total_attendance}건
+정상 출근: {monthly_stats.present_count}건
+지각: {monthly_stats.late_count}건
+결근: {monthly_stats.absent_count}건
+
+출근률: {round(monthly_stats.present_count / monthly_stats.total_attendance * 100, 1)}%
+        """.strip()
+        
+        # 이메일 발송
+        success = send_email(
+            to_addr=admin.email,
+            subject="월간 근태 리포트",
+            body=email_body
+        )
+        
+        if success:
+            logger.info(f"이메일 발송 테스트: {admin.email}")
+            logger.info(f"제목: 월간 근태 리포트")
+            logger.info(f"내용: {email_body}")
+            return jsonify({"success": True, "message": "월간 이메일 발송 완료"})
+        else:
+            return jsonify({"success": False, "message": "이메일 발송 실패"})
+            
+    except Exception as e:
+        logger.error(f"월간 이메일 테스트 실패: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500

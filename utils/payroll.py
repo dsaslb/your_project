@@ -3,6 +3,9 @@
 """
 
 from datetime import datetime, time
+import logging
+import os
+from typing import Dict, List, Optional
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -13,6 +16,11 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import (Paragraph, SimpleDocTemplate, Spacer, Table,
                                 TableStyle)
 
+from extensions import db
+from models import Attendance, Payroll, User
+from utils.logger import log_action
+
+logger = logging.getLogger(__name__)
 
 def calc_wage(user, work_time_hour, wage_table=None):
     """
@@ -127,114 +135,165 @@ def get_monthly_stats(user_id, year, month, db_session):
     }
 
 
-def generate_payroll_pdf(filename, user, month, year, work_days, total_hours, wage):
+def generate_payroll_pdf(user_id, year, month, filename=None):
     """급여명세서 PDF 생성"""
-    doc = SimpleDocTemplate(filename, pagesize=A4)
-    styles = getSampleStyleSheet()
-    story = []
+    try:
+        if not filename:
+            filename = f"payroll_{user_id}_{year}_{month}.pdf"
 
-    # 제목 스타일
-    title_style = ParagraphStyle(
-        "CustomTitle",
-        parent=styles["Heading1"],
-        fontSize=18,
-        spaceAfter=30,
-        alignment=TA_CENTER,
-    )
+        # 사용자 정보 조회
+        user = User.query.get(user_id)
+        if not user:
+            return None
 
-    # 제목
-    title = Paragraph(f"{year}년 {month}월 급여 명세서", title_style)
-    story.append(title)
-    story.append(Spacer(1, 20))
+        # 급여 정보 조회
+        payroll = Payroll.query.filter_by(
+            user_id=user_id, year=year, month=month
+        ).first()
 
-    # 기본 정보
-    info_data = [
-        ["사원명", user.name or user.username],
-        ["사원번호", str(user.id)],
-        ["근무일수", f"{work_days}일"],
-        ["총 근무시간", f"{total_hours}시간"],
-        ["시급", "12,000원"],
-        ["지급액", f"{wage:,}원"],
-    ]
+        if not payroll:
+            return None
 
-    info_table = Table(info_data, colWidths=[2 * inch, 4 * inch])
-    info_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (0, -1), colors.grey),
-                ("TEXTCOLOR", (0, 0), (0, -1), colors.whitesmoke),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 12),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-                ("BACKGROUND", (1, 0), (1, -1), colors.beige),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ]
+        # PDF 생성
+        doc = SimpleDocTemplate(filename, pagesize=A4)
+        story = []
+
+        # 스타일 정의
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "CustomTitle",
+            parent=styles["Heading1"],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1,  # 중앙 정렬
         )
-    )
 
-    story.append(info_table)
-    story.append(Spacer(1, 30))
+        # 제목
+        title = Paragraph(f"{year}년 {month}월 급여명세서", title_style)
+        story.append(title)
+        story.append(Spacer(1, 20))
 
-    # 급여 상세 내역
-    detail_data = [
-        ["구분", "시간", "단가", "금액"],
-        ["기본급", f"{total_hours}시간", "12,000원", f"{wage:,}원"],
-        ["수당", "-", "-", "0원"],
-        ["공제", "-", "-", "0원"],
-        ["", "", "합계", f"{wage:,}원"],
-    ]
+        # 기본 정보 테이블
+        basic_data = [
+            ["성명", user.name or user.username],
+            ["사번", str(user.id)],
+            ["부서", getattr(user, "department", "-")],
+            ["급여 지급일", f"{year}년 {month}월 말일"],
+        ]
 
-    detail_table = Table(
-        detail_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch]
-    )
-    detail_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 10),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                ("BACKGROUND", (0, 1), (-1, -2), colors.beige),
-                ("ALIGN", (0, -1), (-1, -1), "RIGHT"),
-                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, -1), (-1, -1), 12),
-            ]
+        basic_table = Table(basic_data, colWidths=[100, 300])
+        basic_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 0), (0, -1), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (0, -1), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ]
+            )
         )
-    )
+        story.append(basic_table)
+        story.append(Spacer(1, 20))
 
-    story.append(detail_table)
-    story.append(Spacer(1, 30))
+        # 급여 상세 테이블
+        salary_data = [
+            ["구분", "금액", "비고"],
+            ["기본급", f"{payroll.base_salary:,}원", ""],
+            ["수당", f"{payroll.allowance:,}원", ""],
+            ["공제", f"{payroll.deduction:,}원", ""],
+            ["실수령액", f"{payroll.net_salary:,}원", ""],
+        ]
 
-    # 발행일
-    issue_date = Paragraph(
-        f"발행일: {datetime.now().strftime('%Y년 %m월 %d일')}", styles["Normal"]
-    )
-    story.append(issue_date)
+        salary_table = Table(salary_data, colWidths=[100, 200, 100])
+        salary_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ]
+            )
+        )
+        story.append(salary_table)
 
-    # PDF 생성
-    doc.build(story)
+        # PDF 생성
+        doc.build(story)
 
-    print(f"급여명세서 PDF 생성 완료: {filename}")
+        logger.info(f"급여명세서 PDF 생성 완료: {filename}")
+        return filename
+
+    except Exception as e:
+        logger.error(f"급여명세서 PDF 생성 실패: {e}")
+        return None
 
 
-def generate_simple_payroll_pdf(
-    filename, user, month, year, work_days, total_hours, wage
-):
-    """간단한 급여명세서 PDF 생성 (기존 호환성)"""
-    c = canvas.Canvas(filename, pagesize=A4)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(100, 800, f"{year}년 {month}월 급여 명세서")
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 770, f"사원명: {user.name or user.username}")
-    c.drawString(100, 750, f"근무일수: {work_days}일")
-    c.drawString(100, 730, f"총 근무시간: {total_hours}시간")
-    c.drawString(100, 710, f"지급액: {wage:,}원")
-    c.save()
-    print(f"간단 급여명세서 PDF 생성 완료: {filename}")
+def generate_simple_payroll_pdf(user_id, year, month, filename=None):
+    """간단 급여명세서 PDF 생성"""
+    try:
+        if not filename:
+            filename = f"simple_payroll_{user_id}_{year}_{month}.pdf"
+
+        # 사용자 정보 조회
+        user = User.query.get(user_id)
+        if not user:
+            return None
+
+        # 급여 정보 조회
+        payroll = Payroll.query.filter_by(
+            user_id=user_id, year=year, month=month
+        ).first()
+
+        if not payroll:
+            return None
+
+        # PDF 생성
+        doc = SimpleDocTemplate(filename, pagesize=A4)
+        story = []
+
+        # 스타일 정의
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "CustomTitle",
+            parent=styles["Heading1"],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1,
+        )
+
+        # 제목
+        title = Paragraph(f"{year}년 {month}월 급여명세서", title_style)
+        story.append(title)
+        story.append(Spacer(1, 20))
+
+        # 간단 정보
+        info_text = f"""
+        성명: {user.name or user.username}
+        사번: {user.id}
+        실수령액: {payroll.net_salary:,}원
+        지급일: {year}년 {month}월 말일
+        """
+        info_para = Paragraph(info_text, styles["Normal"])
+        story.append(info_para)
+
+        # PDF 생성
+        doc.build(story)
+
+        logger.info(f"간단 급여명세서 PDF 생성 완료: {filename}")
+        return filename
+
+    except Exception as e:
+        logger.error(f"간단 급여명세서 PDF 생성 실패: {e}")
+        return None
 
 
 def analyze_attendance(attendance):

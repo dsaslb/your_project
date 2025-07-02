@@ -3,6 +3,7 @@
 """
 
 from datetime import datetime, timedelta
+import logging
 
 from sqlalchemy import and_, func, or_
 
@@ -11,6 +12,8 @@ from models import AttendanceReport, Notification, User
 from utils.assignee_manager import assignee_manager
 from utils.logger import log_action, log_error
 from utils.notify import send_notification_enhanced
+
+logger = logging.getLogger(__name__)
 
 
 class AutoProcessor:
@@ -269,3 +272,160 @@ class AutoProcessor:
 
 # 전역 인스턴스
 auto_processor = AutoProcessor()
+
+def process_attendance_automatically():
+    """자동 근태 처리"""
+    try:
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+
+        # 어제 출근하지 않은 직원들 찾기
+        absent_users = (
+            db.session.query(User)
+            .filter(
+                and_(
+                    User.role.in_(["staff", "manager"]),
+                    User.status == "approved",
+                    ~db.session.query(Attendance).filter(
+                        and_(
+                            Attendance.user_id == User.id,
+                            Attendance.date == yesterday,
+                        )
+                    ).exists(),
+                )
+            )
+            .all()
+        )
+
+        # 결근 처리
+        for user in absent_users:
+            attendance = Attendance(
+                user_id=user.id,
+                date=yesterday,
+                status="absent",
+                created_at=datetime.utcnow(),
+            )
+            db.session.add(attendance)
+            log_action(
+                user.id,
+                "AUTO_ABSENT",
+                f"자동 결근 처리: {yesterday}",
+            )
+
+        db.session.commit()
+        logger.info(f"자동 근태 처리 완료: 결근 {len(absent_users)}명")
+
+    except Exception as e:
+        logger.error(f"자동 근태 처리 실패: {e}")
+        db.session.rollback()
+
+
+def process_late_attendance():
+    """지각 처리"""
+    try:
+        today = datetime.now().date()
+        late_threshold = datetime.combine(today, datetime.min.time().replace(hour=9, minute=30))
+
+        # 오늘 지각한 직원들 찾기
+        late_attendances = (
+            db.session.query(Attendance)
+            .filter(
+                and_(
+                    Attendance.date == today,
+                    Attendance.clock_in > late_threshold,
+                    Attendance.status == "present",
+                )
+            )
+            .all()
+        )
+
+        # 지각 처리
+        for attendance in late_attendances:
+            attendance.status = "late"
+            log_action(
+                attendance.user_id,
+                "LATE_ATTENDANCE",
+                f"지각 처리: {attendance.clock_in.time()}",
+            )
+
+        db.session.commit()
+        logger.info(f"지각 처리 완료: {len(late_attendances)}명")
+
+    except Exception as e:
+        logger.error(f"지각 처리 실패: {e}")
+        db.session.rollback()
+
+
+def process_early_leave():
+    """조퇴 처리"""
+    try:
+        today = datetime.now().date()
+        early_leave_threshold = datetime.combine(today, datetime.min.time().replace(hour=17, minute=30))
+
+        # 오늘 조퇴한 직원들 찾기
+        early_leave_attendances = (
+            db.session.query(Attendance)
+            .filter(
+                and_(
+                    Attendance.date == today,
+                    Attendance.clock_out < early_leave_threshold,
+                    Attendance.clock_out.isnot(None),
+                    Attendance.status.in_(["present", "late"]),
+                )
+            )
+            .all()
+        )
+
+        # 조퇴 처리
+        for attendance in early_leave_attendances:
+            attendance.status = "early_leave"
+            log_action(
+                attendance.user_id,
+                "EARLY_LEAVE",
+                f"조퇴 처리: {attendance.clock_out.time()}",
+            )
+
+        db.session.commit()
+        logger.info(f"조퇴 처리 완료: {len(early_leave_attendances)}명")
+
+    except Exception as e:
+        logger.error(f"조퇴 처리 실패: {e}")
+        db.session.rollback()
+
+
+def process_overtime():
+    """야근 처리"""
+    try:
+        today = datetime.now().date()
+        overtime_threshold = datetime.combine(today, datetime.min.time().replace(hour=22, minute=0))
+
+        # 오늘 야근한 직원들 찾기
+        overtime_attendances = (
+            db.session.query(Attendance)
+            .filter(
+                and_(
+                    Attendance.date == today,
+                    Attendance.clock_out > overtime_threshold,
+                    Attendance.clock_out.isnot(None),
+                )
+            )
+            .all()
+        )
+
+        # 야근 처리
+        for attendance in overtime_attendances:
+            attendance.overtime_hours = (
+                attendance.clock_out - overtime_threshold
+            ).total_seconds() / 3600
+            log_action(
+                attendance.user_id,
+                "OVERTIME",
+                f"야근 처리: {attendance.overtime_hours:.1f}시간",
+            )
+
+        db.session.commit()
+        logger.info(f"야근 처리 완료: {len(overtime_attendances)}명")
+
+    except Exception as e:
+        logger.error(f"야근 처리 실패: {e}")
+        db.session.rollback()

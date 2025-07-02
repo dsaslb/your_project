@@ -1,3 +1,4 @@
+import logging
 import os
 import smtplib
 from datetime import datetime, timedelta
@@ -6,68 +7,56 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from flask import render_template_string
+from flask import render_template_string, current_app
 from sqlalchemy import extract, func
 
 from extensions import db
 from models import Attendance, AttendanceReport, User
 from utils.logger import log_action, log_error
 
+logger = logging.getLogger(__name__)
 
-def send_email(to_addr, subject, body, attachment_path=None):
-    """
-    이메일 발송 함수
 
-    Args:
-        to_addr (str): 수신자 이메일 주소
-        subject (str): 이메일 제목
-        body (str): 이메일 본문
-        attachment_path (str, optional): 첨부파일 경로
-    """
+def send_email(to_addr, subject, body, html_body=None):
+    """이메일 발송 함수"""
     try:
-        # 실제 SMTP 설정 (실제 사용 시 config.py에서 가져오기)
-        smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        smtp_username = os.getenv("SMTP_USERNAME", "your-email@gmail.com")
-        smtp_password = os.getenv("SMTP_PASSWORD", "your-app-password")
+        # SMTP 설정
+        smtp_server = current_app.config.get("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = current_app.config.get("SMTP_PORT", 587)
+        smtp_username = current_app.config.get("SMTP_USERNAME")
+        smtp_password = current_app.config.get("SMTP_PASSWORD")
+
+        if not all([smtp_username, smtp_password]):
+            logger.warning("SMTP 설정이 완료되지 않았습니다.")
+            return False
 
         # 이메일 메시지 생성
-        msg = MIMEMultipart()
+        msg = MIMEMultipart("alternative")
         msg["From"] = smtp_username
         msg["To"] = to_addr
         msg["Subject"] = subject
 
-        # 본문 추가
-        msg.attach(MIMEText(body, "plain", "utf-8"))
+        # 텍스트 본문
+        text_part = MIMEText(body, "plain", "utf-8")
+        msg.attach(text_part)
 
-        # 첨부파일 추가 (있는 경우)
-        if attachment_path and os.path.exists(attachment_path):
-            with open(attachment_path, "rb") as attachment:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(attachment.read())
+        # HTML 본문 (있는 경우)
+        if html_body:
+            html_part = MIMEText(html_body, "html", "utf-8")
+            msg.attach(html_part)
 
-            encoders.encode_base64(part)
-            part.add_header(
-                "Content-Disposition",
-                f"attachment; filename= {os.path.basename(attachment_path)}",
-            )
-            msg.attach(part)
+        # SMTP 서버 연결 및 발송
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(msg)
 
-        # SMTP 서버 연결 및 이메일 발송
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(smtp_username, smtp_password)
-
-        text = msg.as_string()
-        server.sendmail(smtp_username, to_addr, text)
-        server.quit()
-
-        print(f"✅ 이메일 발송 성공: {to_addr}")
-        log_action(None, "EMAIL_SENT", f"Email sent to {to_addr}: {subject}")
+        logger.info(f"✅ 이메일 발송 성공: {to_addr}")
+        return True
 
     except Exception as e:
-        print(f"❌ 이메일 발송 실패: {to_addr} - {str(e)}")
-        log_error(e, None, f"Email send failed to {to_addr}")
+        logger.error(f"❌ 이메일 발송 실패: {to_addr} - {str(e)}")
+        return False
 
 
 def generate_monthly_report(user, year, month):
@@ -165,7 +154,7 @@ def send_monthly_reports():
             prev_month = now.month - 1
             prev_year = now.year
 
-        print(f"📧 {prev_year}년 {prev_month}월 월말 리포트 발송 시작...")
+        logger.info(f"📧 {prev_year}년 {prev_month}월 월말 리포트 발송 시작...")
 
         success_count = 0
         fail_count = 0
@@ -173,7 +162,7 @@ def send_monthly_reports():
         for user in users:
             try:
                 if not user.email:
-                    print(f"⚠️ 이메일 주소 없음: {user.username}")
+                    logger.warning(f"⚠️ 이메일 주소 없음: {user.username}")
                     continue
 
                 # 리포트 생성
@@ -210,16 +199,16 @@ def send_monthly_reports():
                 send_email(user.email, subject, body)
 
                 success_count += 1
-                print(f"✅ {user.username}에게 리포트 발송 완료")
+                logger.info(f"✅ {user.username}에게 리포트 발송 완료")
 
             except Exception as e:
                 fail_count += 1
-                print(f"❌ {user.username} 리포트 발송 실패: {str(e)}")
+                logger.error(f"❌ {user.username} 리포트 발송 실패: {str(e)}")
                 log_error(
                     e, user.id, f"Monthly report email failed for {user.username}"
                 )
 
-        print(f"📧 월말 리포트 발송 완료: 성공 {success_count}건, 실패 {fail_count}건")
+        logger.info(f"📧 월말 리포트 발송 완료: 성공 {success_count}건, 실패 {fail_count}건")
         log_action(
             None,
             "MONTHLY_REPORTS_SENT",
@@ -227,7 +216,7 @@ def send_monthly_reports():
         )
 
     except Exception as e:
-        print(f"❌ 월말 리포트 발송 중 오류: {str(e)}")
+        logger.error(f"❌ 월말 리포트 발송 중 오류: {str(e)}")
         log_error(e, None, "Monthly reports sending failed")
 
 
@@ -266,13 +255,13 @@ def send_attendance_reminder():
                     """.strip()
 
                     send_email(user.email, subject, body)
-                    print(f"📧 {user.username}에게 출근 알림 발송")
+                    logger.info(f"📧 {user.username}에게 출근 알림 발송")
 
             except Exception as e:
-                print(f"❌ {user.username} 출근 알림 발송 실패: {str(e)}")
+                logger.error(f"❌ {user.username} 출근 알림 발송 실패: {str(e)}")
 
     except Exception as e:
-        print(f"❌ 출근 알림 발송 중 오류: {str(e)}")
+        logger.error(f"❌ 출근 알림 발송 중 오류: {str(e)}")
         log_error(e, None, "Attendance reminder sending failed")
 
 
@@ -283,16 +272,16 @@ def create_email_commands(app):
     @app.cli.command("send-monthly-reports")
     def send_monthly_reports_command():
         """월말 리포트 이메일 발송"""
-        print("월말 리포트 이메일 발송을 시작합니다...")
+        logger.info("월말 리포트 이메일 발송을 시작합니다...")
         send_monthly_reports()
-        print("완료되었습니다.")
+        logger.info("완료되었습니다.")
 
     @app.cli.command("send-attendance-reminder")
     def send_attendance_reminder_command():
         """출근 알림 이메일 발송"""
-        print("출근 알림 이메일 발송을 시작합니다...")
+        logger.info("출근 알림 이메일 발송을 시작합니다...")
         send_attendance_reminder()
-        print("완료되었습니다.")
+        logger.info("완료되었습니다.")
 
 
 class EmailService:

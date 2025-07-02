@@ -3,6 +3,8 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from functools import wraps
+import logging
+from typing import Dict, Optional
 
 from flask import flash, redirect, request, url_for
 from werkzeug.utils import secure_filename
@@ -24,6 +26,7 @@ except ImportError:
     User = ActionLog = DummyModel
     db = None
 
+logger = logging.getLogger(__name__)
 
 def password_strong(password):
     """비밀번호 강도 검사"""
@@ -195,24 +198,25 @@ def is_suspicious_activity(user_id, action_type):
         return False
 
 
-def create_audit_trail(user_id, action, resource_type, resource_id, details=None):
-    """감사 추적 기록 생성"""
+def create_audit_trail(user_id: int, action: str, details: str, ip_address: str = None):
+    """감사 로그 생성"""
     try:
-        audit_log = ActionLog(
-            user_id=user_id,
-            action=action,
-            message=(
-                f"{resource_type}:{resource_id} - {details}"
-                if details
-                else f"{resource_type}:{resource_id}"
-            ),
-            ip_address=get_client_ip(),
-            user_agent=request.headers.get("User-Agent") if request else None,
-        )
-        db.session.add(audit_log)
-        db.session.commit()
+        audit_log = {
+            "user_id": user_id,
+            "action": action,
+            "details": details,
+            "ip_address": ip_address,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # 실제 구현에서는 데이터베이스에 저장
+        log_action(user_id, f"AUDIT_{action}", details)
+        
+        return True
+        
     except Exception as e:
-        print(f"Audit trail creation failed: {e}")
+        logger.error(f"Audit trail creation failed: {e}")
+        return False
 
 
 def check_account_lockout(user):

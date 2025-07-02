@@ -10,14 +10,20 @@
 
 import time
 from datetime import datetime, timedelta
+import logging
+from typing import Dict, List, Optional
 
 from flask import (Blueprint, Response, jsonify, render_template, request,
                    session)
 from flask_login import current_user, login_required
-from sqlalchemy import func
+from sqlalchemy import func, and_
 
 from models import (Attendance, Notification, ReasonEditLog, ReasonTemplate,
                     User, db)
+from utils.logger import log_action
+from utils.notify import send_notification_enhanced
+
+logger = logging.getLogger(__name__)
 
 notification_automation_bp = Blueprint("notification_automation", __name__)
 
@@ -32,7 +38,7 @@ def send_automated_notification(user_id, content, category="공지", link=None):
         db.session.commit()
         return True
     except Exception as e:
-        print(f"알림 발송 오류: {e}")
+        logger.error(f"알림 발송 오류: {e}")
         return False
 
 
@@ -86,7 +92,7 @@ def send_notification(
         db.session.commit()
         return True
     except Exception as e:
-        print(f"알림 발송 오류: {e}")
+        logger.error(f"알림 발송 오류: {e}")
         return False
 
 
@@ -117,7 +123,7 @@ def ai_classify_notification(content):
 def send_mobile_push(user, message):
     """모바일 푸시 알림 (샘플)"""
     # 추후 FCM/APNS 연동
-    print(f"[푸시알림] {user.username}: {message}")
+    logger.info(f"[푸시알림] {user.username}: {message}")
 
 
 def send_notification_with_push(user_id, content, **kwargs):
@@ -175,7 +181,7 @@ def ai_reason_analyze(user_id):
             "reason_counts": reason_counts,
         }
     except Exception as e:
-        print(f"AI 분석 오류: {e}")
+        logger.error(f"AI 분석 오류: {e}")
         return {
             "warnings": [],
             "recommendations": [],
@@ -524,7 +530,7 @@ def notifications_stream():
                 yield f"data: {unread_count}\n\n"
                 time.sleep(30)  # 30초마다 업데이트
             except Exception as e:
-                print(f"알림 스트림 오류: {e}")
+                logger.error(f"알림 스트림 오류: {e}")
                 break
 
     return Response(generate(), mimetype="text/plain")
@@ -570,3 +576,191 @@ def api_user_info(user_id):
             "branch": user.branch.name if user.branch else None,
         }
     )
+
+
+@notification_automation_bp.route("/send-bulk", methods=["POST"])
+def send_bulk_notifications():
+    """대량 알림 발송"""
+    try:
+        data = request.get_json()
+        user_ids = data.get("user_ids", [])
+        content = data.get("content", "")
+        category = data.get("category", "공지")
+        
+        success_count = 0
+        for user_id in user_ids:
+            try:
+                send_notification_enhanced(
+                    user_id=user_id,
+                    content=content,
+                    category=category
+                )
+                success_count += 1
+            except Exception as e:
+                logger.error(f"알림 발송 오류: {e}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"{success_count}건 발송 완료",
+            "total": len(user_ids),
+            "success_count": success_count
+        })
+        
+    except Exception as e:
+        logger.error(f"대량 알림 발송 실패: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@notification_automation_bp.route("/send-scheduled", methods=["POST"])
+def send_scheduled_notifications():
+    """예약 알림 발송"""
+    try:
+        data = request.get_json()
+        user_ids = data.get("user_ids", [])
+        content = data.get("content", "")
+        scheduled_time = data.get("scheduled_time")
+        
+        # 예약 시간 파싱
+        scheduled_datetime = datetime.fromisoformat(scheduled_time)
+        
+        success_count = 0
+        for user_id in user_ids:
+            try:
+                # 예약 알림 생성 (실제로는 스케줄러 사용)
+                notification = Notification(
+                    user_id=user_id,
+                    content=content,
+                    scheduled_at=scheduled_datetime,
+                    status="scheduled"
+                )
+                db.session.add(notification)
+                success_count += 1
+            except Exception as e:
+                logger.error(f"알림 발송 오류: {e}")
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"{success_count}건 예약 완료",
+            "scheduled_time": scheduled_time
+        })
+        
+    except Exception as e:
+        logger.error(f"예약 알림 발송 실패: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@notification_automation_bp.route("/send-push", methods=["POST"])
+def send_push_notifications():
+    """푸시 알림 발송"""
+    try:
+        data = request.get_json()
+        user_ids = data.get("user_ids", [])
+        message = data.get("message", "")
+        
+        success_count = 0
+        for user_id in user_ids:
+            try:
+                user = User.query.get(user_id)
+                if user:
+                    logger.info(f"[푸시알림] {user.username}: {message}")
+                    # 실제 푸시 알림 로직 구현
+                    success_count += 1
+            except Exception as e:
+                logger.error(f"푸시 알림 발송 실패: {e}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"{success_count}건 푸시 알림 발송 완료"
+        })
+        
+    except Exception as e:
+        logger.error(f"푸시 알림 발송 실패: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@notification_automation_bp.route("/analyze-engagement", methods=["GET"])
+def analyze_notification_engagement():
+    """알림 참여도 분석"""
+    try:
+        # 최근 30일 알림 통계
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
+        
+        # 알림 발송 통계
+        sent_stats = (
+            db.session.query(
+                func.date(Notification.created_at).label('date'),
+                func.count(Notification.id).label('count')
+            )
+            .filter(
+                and_(
+                    Notification.created_at >= start_date,
+                    Notification.created_at <= end_date
+                )
+            )
+            .group_by(func.date(Notification.created_at))
+            .all()
+        )
+        
+        # 읽음 통계
+        read_stats = (
+            db.session.query(
+                func.date(Notification.read_at).label('date'),
+                func.count(Notification.id).label('count')
+            )
+            .filter(
+                and_(
+                    Notification.read_at >= start_date,
+                    Notification.read_at <= end_date
+                )
+            )
+            .group_by(func.date(Notification.read_at))
+            .all()
+        )
+        
+        analysis_data = {
+            "period": f"{start_date.date()} ~ {end_date.date()}",
+            "sent_notifications": len(sent_stats),
+            "read_notifications": len(read_stats),
+            "engagement_rate": round(len(read_stats) / len(sent_stats) * 100, 2) if sent_stats else 0
+        }
+        
+        return jsonify({
+            "success": True,
+            "data": analysis_data
+        })
+        
+    except Exception as e:
+        logger.error(f"AI 분석 오류: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@notification_automation_bp.route("/stream", methods=["GET"])
+def notification_stream():
+    """실시간 알림 스트림"""
+    try:
+        # SSE (Server-Sent Events) 구현
+        def generate():
+            while True:
+                # 새로운 알림 확인
+                new_notifications = (
+                    Notification.query
+                    .filter_by(status="unread")
+                    .order_by(Notification.created_at.desc())
+                    .limit(10)
+                    .all()
+                )
+                
+                if new_notifications:
+                    for notification in new_notifications:
+                        yield f"data: {notification.content}\n\n"
+                
+                time.sleep(5)  # 5초마다 확인
+        
+        return Response(generate(), mimetype="text/event-stream")
+        
+    except Exception as e:
+        logger.error(f"알림 스트림 오류: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
