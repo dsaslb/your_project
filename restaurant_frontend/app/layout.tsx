@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { UserProvider } from "@/components/UserContext";
 import { AuthGuard } from "@/components/AuthGuard";
+import { HistoryManager } from "@/components/HistoryManager";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,6 +29,7 @@ export default function RootLayout({
         >
           <UserProvider>
             <AuthGuard>
+              <HistoryManager />
               {children}
             </AuthGuard>
           </UserProvider>

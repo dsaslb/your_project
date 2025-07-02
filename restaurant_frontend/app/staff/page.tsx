@@ -36,7 +36,7 @@ import {
   BarChart3
 } from "lucide-react"
 import { api as noticeApi } from '../notice/page';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import NotificationService from '@/lib/notification-service';
 
 // 직원 타입 정의
@@ -304,18 +304,7 @@ export default function StaffPage() {
     return texts[permission as keyof typeof texts] || permission;
   };
 
-  // 직원 삭제
-  const handleDeleteStaff = async (staffId: number) => {
-    setStaff(staff.filter(s => s.id !== staffId));
-    setShowDeleteModal(false);
-    setSelectedStaff(null);
-    await createStaffNotice({
-      type: 'alert',
-      title: '직원 삭제',
-      content: `${staff.find(s => s.id === staffId)?.name} 직원이 삭제되었습니다.`,
-      author: user?.name || '관리자'
-    });
-  };
+
 
   // 직원 등록 (더미)
   const handleAddStaff = async () => {
@@ -350,7 +339,7 @@ export default function StaffPage() {
     });
   };
 
-  const handleUpdateStaff = async (id: string, updates: Partial<Staff>) => {
+  const handleUpdateStaff = async (id: number, updates: Partial<Staff>) => {
     try {
       const oldStaff = staff.find(s => s.id === id);
       const updatedStaff = { ...oldStaff, ...updates, updatedAt: new Date().toISOString() };
@@ -366,15 +355,23 @@ export default function StaffPage() {
     }
   };
 
-  const handleDeleteStaff = async (id: string) => {
+  const handleDeleteStaff = async (id: number) => {
     try {
       const staffToDelete = staff.find(s => s.id === id);
       setStaff(prev => prev.filter(s => s.id !== id));
+      setShowDeleteModal(false);
+      setSelectedStaff(null);
       toast.success('직원이 삭제되었습니다.');
 
       // 직원 삭제 알림 생성
       if (staffToDelete) {
         await NotificationService.createStaffNotification('left', staffToDelete);
+        await createStaffNotice({
+          type: 'alert',
+          title: '직원 삭제',
+          content: `${staffToDelete.name} 직원이 삭제되었습니다.`,
+          author: user?.name || '관리자'
+        });
       }
     } catch (error) {
       console.error('직원 삭제 실패:', error);
@@ -382,7 +379,7 @@ export default function StaffPage() {
     }
   };
 
-  const handleStaffLeave = async (id: string) => {
+  const handleStaffLeave = async (id: number) => {
     try {
       const staffMember = staff.find(s => s.id === id);
       if (!staffMember) return;
@@ -404,7 +401,7 @@ export default function StaffPage() {
     }
   };
 
-  const handleAttendanceIssue = async (id: string, issue: string) => {
+  const handleAttendanceIssue = async (id: number, issue: string) => {
     try {
       const staffMember = staff.find(s => s.id === id);
       if (!staffMember) return;

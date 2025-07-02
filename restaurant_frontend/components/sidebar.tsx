@@ -56,7 +56,13 @@ export function Sidebar({ isCollapsed = false, onToggle, className }: SidebarPro
       )}>
         <div className="flex h-16 items-center justify-between border-b px-4">
           {!isCollapsed && <h1 className="text-lg font-semibold">레스토랑 관리</h1>}
-          <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onToggle} 
+            className="h-8 w-8 hover:bg-accent"
+            title={isCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          >
             {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
@@ -103,7 +109,13 @@ export function Sidebar({ isCollapsed = false, onToggle, className }: SidebarPro
         )}
         <div className="flex items-center gap-2">
           <ThemeToggle variant="button" size="sm" />
-          <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onToggle} 
+            className="h-8 w-8 hover:bg-accent"
+            title={isCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          >
             {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
@@ -172,7 +184,13 @@ export function Sidebar({ isCollapsed = false, onToggle, className }: SidebarPro
               </p>
             </div>
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={logout}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 hover:bg-accent" 
+            onClick={logout}
+            title="로그아웃"
+          >
             <LogOut className="h-4 w-4" />
           </Button>
         </div>

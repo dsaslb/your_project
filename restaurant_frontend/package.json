@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:mobile": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
     "start": "next start",
+    "start:mobile": "next start --hostname 0.0.0.0 --port 3000",
     "lint": "next lint"
   },
   "dependencies": {
@@ -28,6 +30,7 @@
     "react-resizable": "^3.0.5",
     "react-resizable-panels": "^3.0.3",
     "recharts": "^3.0.2",
+    "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7"
   },

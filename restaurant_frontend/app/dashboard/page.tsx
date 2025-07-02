@@ -21,7 +21,7 @@ import {
   FileText
 } from "lucide-react"
 import { useUser } from '@/components/UserContext'
-import { toast } from 'sonner'
+import { toast } from '@/lib/toast'
 import NotificationService from '@/lib/notification-service'
 
 export default function DashboardPage() {
