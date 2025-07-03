@@ -1,0 +1,40 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          cd restaurant_frontend && npm ci
+      - name: Lint
+        run: |
+          cd restaurant_frontend && npm run lint
+      - name: Run tests
+        run: |
+          cd restaurant_frontend && npm run test
+      - name: Build frontend
+        run: |
+          cd restaurant_frontend && npm run build
+      - name: Build backend
+        run: |
+          pip install -r requirements.txt
+          python -m compileall .
+      - name: Build Docker image
+        run: |
+          docker build -t restaurant-app:latest .
+      - name: Deploy
+        if: github.ref == 'refs/heads/main'
+        run: |
+          bash scripts/deploy_prod.sh 

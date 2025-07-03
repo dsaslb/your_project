@@ -49,6 +49,8 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { toast } from '@/lib/toast'
 import { apiClient } from '@/lib/api-client'
+import { PermissionGuard } from '@/components/PermissionGuard'
+import { Alert } from '@/components/ui/alert'
 
 // 발주 타입 정의
 interface Order {
@@ -253,16 +255,27 @@ const orderApi = {
   }
 };
 
+// 권한 체크 함수 예시
+function useOrderPermissions(user) {
+  return {
+    canApprove: user?.role === 'admin' || user?.permissions?.order_management?.approve,
+    canEdit: user?.role === 'admin' || user?.permissions?.order_management?.edit,
+    canDelete: user?.role === 'admin' || user?.permissions?.order_management?.delete,
+    canCreate: user?.role === 'admin' || user?.permissions?.order_management?.create,
+  };
+}
+
 export default function OrdersPage() {
   const { user } = useUser();
+  const perms = useOrderPermissions(user);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState('all');
+  const [sortOption, setSortOption] = useState('latest');
   
   // 모달 상태
   const [showAddModal, setShowAddModal] = useState(false);
@@ -303,10 +316,10 @@ export default function OrdersPage() {
   });
 
   // 권한 체크
-  const canCreateOrder = user?.permissions?.includes('orders.create') || user?.role === 'admin';
-  const canApproveOrder = user?.permissions?.includes('orders.approve') || user?.role === 'admin';
-  const canDeleteOrder = user?.permissions?.includes('orders.delete') || user?.role === 'admin';
-  const canEditOrder = user?.permissions?.includes('orders.edit') || user?.role === 'admin';
+  const canCreateOrder = perms.canCreate;
+  const canApproveOrder = perms.canApprove;
+  const canDeleteOrder = perms.canDelete;
+  const canEditOrder = perms.canEdit;
 
   // 주문 목록 로드
   const loadOrders = async () => {
@@ -349,57 +362,22 @@ export default function OrdersPage() {
   }, []);
 
   // 필터링
-  useEffect(() => {
-    let filtered = orders;
-    
-    if (searchTerm) {
-      filtered = filtered.filter(order =>
-        order.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.requester.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  const filteredOrders = useMemo(() => {
+    let filtered = [...orders];
+    if (statusFilter !== 'all') filtered = filtered.filter(o => o.status === statusFilter);
+    if (categoryFilter !== 'all') filtered = filtered.filter(o => o.category === categoryFilter);
+    // 기간 필터 예시(최근 7일)
+    if (dateFilter === '7days') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      filtered = filtered.filter(o => new Date(o.requestedAt) >= weekAgo);
     }
-    
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(order => order.status === statusFilter);
-    }
-    
-    if (priorityFilter !== "all") {
-      filtered = filtered.filter(order => order.priority === priorityFilter);
-    }
-    
-    if (categoryFilter !== "all") {
-      filtered = filtered.filter(order => order.category === categoryFilter);
-    }
-    
-    if (supplierFilter !== "all") {
-      filtered = filtered.filter(order => order.supplier === supplierFilter);
-    }
-    
-    if (dateFilter !== "all") {
-      const today = new Date();
-      filtered = filtered.filter(order => {
-        const orderDate = new Date(order.requestedAt);
-        switch (dateFilter) {
-          case 'today':
-            return orderDate.toDateString() === today.toDateString();
-          case 'week':
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return orderDate >= weekAgo;
-          case 'month':
-            const monthAgo = new Date();
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            return orderDate >= monthAgo;
-          default:
-            return true;
-        }
-      });
-    }
-    
-    setFilteredOrders(filtered);
-  }, [orders, searchTerm, statusFilter, priorityFilter, categoryFilter, supplierFilter, dateFilter]);
+    // 정렬
+    if (sortOption === 'latest') filtered.sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
+    else if (sortOption === 'oldest') filtered.sort((a, b) => new Date(a.requestedAt).getTime() - new Date(b.requestedAt).getTime());
+    else if (sortOption === 'priority') filtered.sort((a, b) => (a.priority > b.priority ? -1 : 1));
+    return filtered;
+  }, [orders, statusFilter, categoryFilter, dateFilter, sortOption]);
 
   // 주문 추가
   const handleAddOrder = async () => {
@@ -436,51 +414,23 @@ export default function OrdersPage() {
 
   // 주문 승인
   const handleApproveOrder = async (orderId: number, notes?: string) => {
-    if (!canApproveOrder) {
-      toast.error('주문 승인 권한이 없습니다.');
-      return;
-    }
-
-    setIsSubmitting(true);
     try {
-      const updatedOrder = await orderApi.approveOrder(orderId, notes);
-      setOrders(prev => prev.map(order => 
-        order.id === orderId ? updatedOrder : order
-      ));
-      setShowApproveModal(false);
-      setSelectedOrder(null);
-      toast.success('주문이 승인되었습니다.');
-      loadStats(); // 통계 업데이트
-    } catch (error) {
-      console.error('Failed to approve order:', error);
-      toast.error('주문 승인에 실패했습니다.');
-    } finally {
-      setIsSubmitting(false);
+      await orderApi.approveOrder(orderId, notes);
+      toast.success('발주가 승인되었습니다.');
+      await loadOrders();
+    } catch (e) {
+      toast.error('승인 중 오류가 발생했습니다.');
     }
   };
 
   // 주문 거절
   const handleRejectOrder = async (orderId: number, reason: string) => {
-    if (!canApproveOrder) {
-      toast.error('주문 거절 권한이 없습니다.');
-      return;
-    }
-
-    setIsSubmitting(true);
     try {
-      const updatedOrder = await orderApi.rejectOrder(orderId, reason);
-      setOrders(prev => prev.map(order => 
-        order.id === orderId ? updatedOrder : order
-      ));
-      setShowRejectModal(false);
-      setSelectedOrder(null);
-      toast.success('주문이 거절되었습니다.');
-      loadStats(); // 통계 업데이트
-    } catch (error) {
-      console.error('Failed to reject order:', error);
-      toast.error('주문 거절에 실패했습니다.');
-    } finally {
-      setIsSubmitting(false);
+      await orderApi.rejectOrder(orderId, reason);
+      toast.success('발주가 거절되었습니다.');
+      await loadOrders();
+    } catch (e) {
+      toast.error('거절 중 오류가 발생했습니다.');
     }
   };
 
@@ -554,359 +504,336 @@ export default function OrdersPage() {
     }
   };
 
-  return (
-    <AppLayout>
-      <div className="w-full h-full bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">발주 관리</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                재료 발주, 승인, 배송 관리 및 실시간 모니터링
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setShowStats(!showStats)}
-                variant="outline"
-                size="sm"
-              >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                통계
-              </Button>
-              {canCreateOrder && (
-                <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  발주 등록
-                </Button>
-              )}
-            </div>
-          </div>
+  // 권한별 분기 예시
+  if (!user) return <div className="p-6">로그인 필요</div>;
+  if (user.role === 'employee') {
+    return <div className="p-6">직원은 본인 발주만 확인할 수 있습니다.</div>;
+  }
 
-          {/* 실시간 상태 표시 */}
-          <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                  <span className="text-green-800 dark:text-green-200 font-medium">
-                    ✅ 실시간 API 연동 완료 - 승인/거절/이력/통계 기능 테스트 가능
-                  </span>
-                </div>
+  return (
+    <PermissionGuard permissions={['orders.view']} fallback={<Alert message="발주 관리 접근 권한이 없습니다." type="error" />}>
+      <AppLayout>
+        <div className="w-full h-full bg-gray-50 dark:bg-gray-900 p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">발주 관리</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  재료 발주, 승인, 배송 관리 및 실시간 모니터링
+                </p>
+              </div>
+              <div className="flex gap-2">
                 <Button
-                  onClick={loadOrders}
+                  onClick={() => setShowStats(!showStats)}
                   variant="outline"
                   size="sm"
-                  disabled={isLoading}
                 >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                  새로고침
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  통계
                 </Button>
+                {canCreateOrder && (
+                  <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    발주 등록
+                  </Button>
+                )}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* 통계 카드 */}
-          {showStats && stats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 발주</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}건</p>
-                    </div>
-                    <ShoppingCart className="w-8 h-8 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">승인 대기</p>
-                      <p className="text-2xl font-bold text-yellow-600">{stats.pending}건</p>
-                    </div>
-                    <Clock className="w-8 h-8 text-yellow-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 발주액</p>
-                      <p className="text-2xl font-bold text-green-600">₩{stats.totalAmount.toLocaleString()}</p>
-                    </div>
-                    <DollarSign className="w-8 h-8 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">평균 처리시간</p>
-                      <p className="text-2xl font-bold text-purple-600">{stats.avgProcessingTime}일</p>
-                    </div>
-                    <TrendingUp className="w-8 h-8 text-purple-600" />
-                  </div>
-                </CardContent>
-              </Card>
             </div>
-          )}
 
-          {/* 필터 및 검색 */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                <div className="md:col-span-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="발주 검색..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+            {/* 실시간 상태 표시 */}
+            <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                    <span className="text-green-800 dark:text-green-200 font-medium">
+                      ✅ 실시간 API 연동 완료 - 승인/거절/이력/통계 기능 테스트 가능
+                    </span>
                   </div>
+                  <Button
+                    onClick={loadOrders}
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoading}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                    새로고침
+                  </Button>
                 </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
-                >
-                  <option value="all">전체 상태</option>
-                  <option value="pending">승인 대기</option>
-                  <option value="approved">승인됨</option>
-                  <option value="rejected">거절됨</option>
-                  <option value="processing">처리 중</option>
-                  <option value="delivered">배송 완료</option>
-                  <option value="cancelled">취소됨</option>
-                </select>
-                <select
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
-                >
-                  <option value="all">전체 우선순위</option>
-                  <option value="high">높음</option>
-                  <option value="medium">보통</option>
-                  <option value="low">낮음</option>
-                </select>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
-                >
-                  <option value="all">전체 카테고리</option>
-                  <option value="식재료">식재료</option>
-                  <option value="조미료">조미료</option>
-                  <option value="청소용품">청소용품</option>
-                  <option value="기타">기타</option>
-                </select>
-                <select
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
-                >
-                  <option value="all">전체 기간</option>
-                  <option value="today">오늘</option>
-                  <option value="week">이번 주</option>
-                  <option value="month">이번 달</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* 주문 목록 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>발주 목록 ({filteredOrders.length}건)</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    내보내기
-                  </Button>
+            {/* 통계 카드 */}
+            {showStats && stats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 발주</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}건</p>
+                      </div>
+                      <ShoppingCart className="w-8 h-8 text-blue-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">승인 대기</p>
+                        <p className="text-2xl font-bold text-yellow-600">{stats.pending}건</p>
+                      </div>
+                      <Clock className="w-8 h-8 text-yellow-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 발주액</p>
+                        <p className="text-2xl font-bold text-green-600">₩{stats.totalAmount.toLocaleString()}</p>
+                      </div>
+                      <DollarSign className="w-8 h-8 text-green-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">평균 처리시간</p>
+                        <p className="text-2xl font-bold text-purple-600">{stats.avgProcessingTime}일</p>
+                      </div>
+                      <TrendingUp className="w-8 h-8 text-purple-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* 필터 및 검색 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-wrap gap-2 mb-4 items-end">
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border rounded px-2 py-1">
+                    <option value="all">상태 전체</option>
+                    <option value="pending">대기</option>
+                    <option value="approved">승인</option>
+                    <option value="rejected">거절</option>
+                    <option value="processing">처리중</option>
+                    <option value="delivered">완료</option>
+                    <option value="cancelled">취소</option>
+                  </select>
+                  <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="border rounded px-2 py-1">
+                    <option value="all">카테고리 전체</option>
+                    {[...new Set(orders.map(o => o.category))].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="border rounded px-2 py-1">
+                    <option value="all">전체 기간</option>
+                    <option value="7days">최근 7일</option>
+                  </select>
+                  <select value={sortOption} onChange={e => setSortOption(e.target.value)} className="border rounded px-2 py-1">
+                    <option value="latest">최신순</option>
+                    <option value="oldest">오래된순</option>
+                    <option value="priority">중요도순</option>
+                  </select>
                 </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin mr-2" />
-                  <span>로딩 중...</span>
-                </div>
-              ) : isError ? (
-                <div className="text-center py-8">
-                  <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-red-600">데이터를 불러오는데 실패했습니다.</p>
-                  <Button onClick={loadOrders} className="mt-4">
-                    다시 시도
-                  </Button>
-                </div>
-              ) : filteredOrders.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">발주 내역이 없습니다.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-3">발주번호</th>
-                        <th className="text-left p-3">품목</th>
-                        <th className="text-left p-3">수량</th>
-                        <th className="text-left p-3">공급업체</th>
-                        <th className="text-left p-3">금액</th>
-                        <th className="text-left p-3">상태</th>
-                        <th className="text-left p-3">우선순위</th>
-                        <th className="text-left p-3">요청자</th>
-                        <th className="text-left p-3">요청일</th>
-                        <th className="text-left p-3">작업</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredOrders.map((order) => (
-                        <tr key={order.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                          <td className="p-3">
-                            <span className="font-mono text-sm">{order.orderNumber}</span>
-                          </td>
-                          <td className="p-3">
-                            <div>
-                              <div className="font-medium">{order.item}</div>
-                              <div className="text-sm text-gray-500">{order.category}</div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            {order.quantity} {order.unit}
-                          </td>
-                          <td className="p-3">{order.supplier}</td>
-                          <td className="p-3">
-                            <div>
-                              <div className="font-medium">₩{order.totalAmount.toLocaleString()}</div>
-                              <div className="text-sm text-gray-500">단가: ₩{order.price.toLocaleString()}</div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <Badge className={getStatusColor(order.status)}>
-                              {order.status === 'pending' && '승인 대기'}
-                              {order.status === 'approved' && '승인됨'}
-                              {order.status === 'rejected' && '거절됨'}
-                              {order.status === 'processing' && '처리 중'}
-                              {order.status === 'delivered' && '배송 완료'}
-                              {order.status === 'cancelled' && '취소됨'}
-                            </Badge>
-                          </td>
-                          <td className="p-3">
-                            <Badge className={getPriorityColor(order.priority)}>
-                              {order.priority === 'high' && '높음'}
-                              {order.priority === 'medium' && '보통'}
-                              {order.priority === 'low' && '낮음'}
-                            </Badge>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center">
-                              <Avatar className="w-6 h-6 mr-2">
-                                <AvatarFallback>{order.requester[0]}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm">{order.requester}</span>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="text-sm">
-                              <div>{new Date(order.requestedAt).toLocaleDateString()}</div>
-                              <div className="text-gray-500">{new Date(order.requestedAt).toLocaleTimeString()}</div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedOrder(order);
-                                  setShowDetailModal(true);
-                                }}
-                                title="상세보기"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {order.status === 'pending' && canApproveOrder && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedOrder(order);
-                                      setShowApproveModal(true);
-                                    }}
-                                    title="승인"
-                                    className="text-green-600 hover:text-green-700"
-                                  >
-                                    <Check className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedOrder(order);
-                                      setShowRejectModal(true);
-                                    }}
-                                    title="거절"
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
-                              {canEditOrder && order.status === 'pending' && (
+              </CardContent>
+            </Card>
+
+            {/* 주문 목록 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>발주 목록 ({filteredOrders.length}건)</span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-2" />
+                      내보내기
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin mr-2" />
+                    <span>로딩 중...</span>
+                  </div>
+                ) : isError ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                    <p className="text-red-600">데이터를 불러오는데 실패했습니다.</p>
+                    <Button onClick={loadOrders} className="mt-4">
+                      다시 시도
+                    </Button>
+                  </div>
+                ) : filteredOrders.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">발주 내역이 없습니다.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-3">발주번호</th>
+                          <th className="text-left p-3">품목</th>
+                          <th className="text-left p-3">수량</th>
+                          <th className="text-left p-3">공급업체</th>
+                          <th className="text-left p-3">금액</th>
+                          <th className="text-left p-3">상태</th>
+                          <th className="text-left p-3">우선순위</th>
+                          <th className="text-left p-3">요청자</th>
+                          <th className="text-left p-3">요청일</th>
+                          <th className="text-left p-3">작업</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredOrders.map((order) => (
+                          <tr key={order.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <td className="p-3">
+                              <span className="font-mono text-sm">{order.orderNumber}</span>
+                            </td>
+                            <td className="p-3">
+                              <div>
+                                <div className="font-medium">{order.item}</div>
+                                <div className="text-sm text-gray-500">{order.category}</div>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              {order.quantity} {order.unit}
+                            </td>
+                            <td className="p-3">{order.supplier}</td>
+                            <td className="p-3">
+                              <div>
+                                <div className="font-medium">₩{order.totalAmount.toLocaleString()}</div>
+                                <div className="text-sm text-gray-500">단가: ₩{order.price.toLocaleString()}</div>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <Badge className={getStatusColor(order.status)}>
+                                {order.status === 'pending' && '승인 대기'}
+                                {order.status === 'approved' && '승인됨'}
+                                {order.status === 'rejected' && '거절됨'}
+                                {order.status === 'processing' && '처리 중'}
+                                {order.status === 'delivered' && '배송 완료'}
+                                {order.status === 'cancelled' && '취소됨'}
+                              </Badge>
+                            </td>
+                            <td className="p-3">
+                              <Badge className={getPriorityColor(order.priority)}>
+                                {order.priority === 'high' && '높음'}
+                                {order.priority === 'medium' && '보통'}
+                                {order.priority === 'low' && '낮음'}
+                              </Badge>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center">
+                                <Avatar className="w-6 h-6 mr-2">
+                                  <AvatarFallback>{order.requester[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm">{order.requester}</span>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="text-sm">
+                                <div>{new Date(order.requestedAt).toLocaleDateString()}</div>
+                                <div className="text-gray-500">{new Date(order.requestedAt).toLocaleTimeString()}</div>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex gap-1">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
                                     setSelectedOrder(order);
-                                    setShowEditModal(true);
+                                    setShowDetailModal(true);
                                   }}
-                                  title="수정"
+                                  title="상세보기"
                                 >
-                                  <Edit className="w-4 h-4" />
+                                  <Eye className="w-4 h-4" />
                                 </Button>
-                              )}
-                              {canDeleteOrder && order.status === 'pending' && (
+                                {order.status === 'pending' && canApproveOrder && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedOrder(order);
+                                        setShowApproveModal(true);
+                                      }}
+                                      title="승인"
+                                      className="text-green-600 hover:text-green-700"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedOrder(order);
+                                        setShowRejectModal(true);
+                                      }}
+                                      title="거절"
+                                      className="text-red-600 hover:text-red-700"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                {canEditOrder && order.status === 'pending' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedOrder(order);
+                                      setShowEditModal(true);
+                                    }}
+                                    title="수정"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {canDeleteOrder && order.status === 'pending' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteOrder(order.id)}
+                                    title="삭제"
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDeleteOrder(order.id)}
-                                  title="삭제"
-                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => handleViewHistory(order.id)}
+                                  title="이력보기"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <History className="w-4 h-4" />
                                 </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewHistory(order.id)}
-                                title="이력보기"
-                              >
-                                <History className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
-    </AppLayout>
+      </AppLayout>
+    </PermissionGuard>
   );
 } 

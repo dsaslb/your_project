@@ -1,12 +1,11 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("rounded-xl border bg-white dark:bg-gray-900 shadow-sm", className)} {...props} />
+export function Card({ className, role, "aria-labelledby": ariaLabelledby, ...props }: React.HTMLAttributes<HTMLDivElement> & { role?: string; "aria-labelledby"?: string }) {
+  return (
+    <div className={cn("rounded-xl border bg-card text-card-foreground shadow", className)} role={role} aria-labelledby={ariaLabelledby} {...props} />
   )
-)
-Card.displayName = "Card"
+}
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
@@ -36,4 +35,4 @@ const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
 )
 CardContent.displayName = "CardContent"
 
-export { Card, CardHeader, CardTitle, CardDescription, CardContent } 
+export { CardHeader, CardTitle, CardDescription, CardContent } 

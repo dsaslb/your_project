@@ -23,7 +23,8 @@ import {
   Settings,
   FileText,
   CheckCircle,
-  Activity
+  Activity,
+  Calendar
 } from "lucide-react"
 import { useUser } from '@/components/UserContext'
 import { toast } from '@/lib/toast'

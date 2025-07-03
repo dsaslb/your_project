@@ -68,10 +68,10 @@ export function OrderDetailModal({ order, open, onClose, user }: OrderDetailModa
   if (!open || !order) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" aria-modal="true" role="dialog">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" aria-modal="true" role="dialog" aria-labelledby="order-detail-title">
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-2xl p-6 relative">
         <button className="absolute top-2 right-2 text-xl" onClick={onClose} aria-label="닫기">×</button>
-        <h2 className="text-2xl font-bold mb-4">발주 상세 정보</h2>
+        <h2 id="order-detail-title" className="text-2xl font-bold mb-4">발주 상세 정보</h2>
         {loading ? (
           <div className="text-center py-8">로딩 중...</div>
         ) : (

@@ -34,6 +34,8 @@ import {
 import { useUser, ActionGuard, useActionPermission } from "@/components/UserContext"
 import { Separator } from "@/components/ui/separator"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { Pie as PieChartJs } from 'react-chartjs-2'
+import { Alert } from "@/components/ui/alert"
 
 // 공지사항 타입 정의
 type Notice = {
@@ -66,12 +68,12 @@ type Feedback = {
 };
 
 // Toast 알림용
-function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
+function Toast({ message, type, onClose }: { message: string; type: "success" | "error" | "info"; onClose: () => void }) {
   return (
-    <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded shadow-lg text-white ${type === "success" ? "bg-green-600" : "bg-red-600"}`}
+    <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded shadow-lg text-white ${type === "success" ? "bg-green-600" : type === "error" ? "bg-red-600" : "bg-blue-600"}`}
       role="alert">
       <div className="flex items-center gap-2">
-        {type === "success" ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+        {type === "success" ? <CheckCircle className="w-5 h-5" /> : type === "error" ? <XCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
         <span>{message}</span>
         <button className="ml-2" onClick={onClose}><X className="w-4 h-4" /></button>
       </div>
@@ -97,44 +99,14 @@ const api = {
           'Content-Type': 'application/json',
         },
       });
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
       const result: ApiResponse<Notice[]> = await response.json();
       return result.data || [];
     } catch (error) {
       console.error('Failed to fetch notices:', error);
-      // API 실패 시 더미 데이터 반환 (개발용)
-      return [
-        {
-          id: 1,
-          title: "실시간 API 연동 - 시스템 점검 안내",
-          content: "6월 10일(월) 02:00~04:00 시스템 점검이 진행됩니다.",
-          type: "notice",
-          priority: "high",
-          author: "관리자",
-          createdAt: "2024-06-01 09:00",
-          isRead: false,
-          targetAudience: "all",
-          category: "시스템",
-          status: "unread"
-        },
-        {
-          id: 2,
-          title: "실시간 API 연동 - 재고 부족 경고",
-          content: "닭고기 10kg 재고가 부족합니다. 즉시 발주 바랍니다.",
-          type: "alert",
-          priority: "low",
-          author: "시스템",
-          createdAt: "2024-06-02 10:30",
-          isRead: false,
-          targetAudience: "kitchen",
-          category: "재고",
-          status: "unread"
-        }
-      ];
+      throw error;
     }
   },
 
@@ -261,14 +233,17 @@ export default function NoticePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   
   // 로딩 및 에러 상태
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [empty, setEmpty] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sseStatus, setSseStatus] = useState<'connected'|'disconnected'|'error'>('disconnected');
   const [showStats, setShowStats] = useState(false);
+  // 정렬 옵션
+  const [sortOption, setSortOption] = useState<'latest'|'oldest'|'priority'>('latest');
 
   // 권한 체크
   const canCreateNotice = useActionPermission('notices.create');
@@ -307,32 +282,45 @@ export default function NoticePage() {
     return { total, unread, read, byType, byCategory, byDate };
   }, [notices]);
 
+  // SSE 연결 상태 표시용 텍스트/아이콘
+  const sseStatusText = {
+    connected: '실시간 연결됨',
+    disconnected: '실시간 연결 끊김',
+    error: '실시간 연결 오류'
+  };
+  const sseStatusIcon = {
+    connected: '🟢',
+    disconnected: '🔴',
+    error: '⚠️'
+  };
+
   // 실시간 알림 구독
   useNoticeSSE(
     (notice) => {
-      setNotices(prev => [notice, ...prev]);
-      setToast({ message: '새로운 알림이 도착했습니다.', type: 'success' });
-      setSseStatus('connected');
+      setNotices((prev) => [notice, ...prev]);
+      setFilteredNotices((prev) => [notice, ...prev]);
+      setToast({ message: '새로운 알림이 도착했습니다.', type: 'info' });
     },
     (msg) => {
-      setToast({ message: msg, type: 'error' });
       setSseStatus('error');
+      setToast({ message: msg, type: 'error' });
     }
   );
 
   // 알림 목록 로드
   const loadNotices = async () => {
-    setIsLoading(true);
-    setIsError(false);
+    setLoading(true);
+    setError(null);
+    setEmpty(false);
     try {
       const data = await api.getNotices();
       setNotices(data);
-    } catch (error) {
-      console.error('Failed to load notices:', error);
-      setIsError(true);
-      setToast({ message: "알림 목록을 불러오는데 실패했습니다.", type: "error" });
+      if (data.length === 0) setEmpty(true);
+    } catch (err) {
+      setError('공지/알림을 불러오지 못했습니다. 네트워크 상태를 확인 후 재시도 해주세요.');
+      setToast({ message: '공지/알림을 불러오지 못했습니다.', type: 'error' });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -341,55 +329,38 @@ export default function NoticePage() {
     loadNotices();
   }, []);
 
-  // 검색/필터
+  // 필터/정렬 적용 함수
   useEffect(() => {
-    let filtered = notices;
-    
+    let filtered = [...notices];
     if (searchTerm) {
-      filtered = filtered.filter(n =>
-        n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        n.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        n.author.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(n => n.title.includes(searchTerm) || n.content.includes(searchTerm));
     }
-    
-    if (typeFilter !== "all") {
+    if (typeFilter !== 'all') {
       filtered = filtered.filter(n => n.type === typeFilter);
     }
-    
-    if (statusFilter !== "all") {
+    if (statusFilter !== 'all') {
       filtered = filtered.filter(n => n.status === statusFilter);
     }
-    
-    if (categoryFilter !== "all") {
+    if (categoryFilter !== 'all') {
       filtered = filtered.filter(n => n.category === categoryFilter);
     }
-    
-    if (dateFilter !== "all") {
-      const today = new Date().toISOString().split('T')[0];
-      const filterDate = new Date(dateFilter);
-      
-      filtered = filtered.filter(n => {
-        const noticeDate = new Date(n.createdAt.split(' ')[0]);
-        switch (dateFilter) {
-          case 'today':
-            return noticeDate.toDateString() === new Date().toDateString();
-          case 'week':
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return noticeDate >= weekAgo;
-          case 'month':
-            const monthAgo = new Date();
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            return noticeDate >= monthAgo;
-          default:
-            return true;
-        }
-      });
+    // 기간 필터(예시: 최근 7일)
+    if (dateFilter === '7days') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      filtered = filtered.filter(n => new Date(n.createdAt) >= weekAgo);
     }
-    
+    // 정렬
+    if (sortOption === 'latest') {
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sortOption === 'oldest') {
+      filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else if (sortOption === 'priority') {
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      filtered.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+    }
     setFilteredNotices(filtered);
-  }, [notices, searchTerm, typeFilter, statusFilter, categoryFilter, dateFilter]);
+  }, [notices, searchTerm, typeFilter, statusFilter, categoryFilter, dateFilter, sortOption]);
 
   // 타입별 색상
   const getTypeColor = (type: string) => {
@@ -461,44 +432,59 @@ export default function NoticePage() {
   // Toast 자동 닫기
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
+      const timer = setTimeout(() => setToast(null), 3500);
       return () => clearTimeout(timer);
     }
   }, [toast]);
 
+  // 통계 카드/그래프 UI 추가
+  // 카드 스타일
+  const cardClass = "flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded shadow p-4 w-32 h-24 m-2";
+  // 파이차트 데이터(유형별)
+  const pieData = {
+    labels: stats.byType.map((t) => t.type),
+    datasets: [
+      {
+        data: stats.byType.map((t) => t.count),
+        backgroundColor: ['#60a5fa', '#fbbf24', '#f87171', '#34d399', '#a78bfa'],
+      },
+    ],
+  };
+
   // 로딩 상태
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className="text-gray-600 dark:text-gray-400">알림 목록을 불러오는 중...</p>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center h-96 text-gray-500 dark:text-gray-400">
+        <span className="animate-spin text-3xl mb-2">⏳</span>
+        <span>공지/알림을 불러오는 중입니다...</span>
       </div>
     );
   }
 
   // 에러 상태
-  if (isError) {
+  if (error) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <AlertCircle className="w-8 h-8 mx-auto mb-4 text-red-600" />
-            <p className="text-gray-600 dark:text-gray-400 mb-4">알림 목록을 불러오는데 실패했습니다.</p>
-            <Button onClick={loadNotices} className="bg-blue-600 hover:bg-blue-700">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              다시 시도
-            </Button>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center h-96 text-red-500 dark:text-red-400">
+        <span className="text-3xl mb-2">⚠️</span>
+        <span>{error}</span>
+        <button
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          onClick={loadNotices}
+        >
+          재시도
+        </button>
       </div>
     );
   }
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  if (empty) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-gray-400 dark:text-gray-500">
+        <span className="text-4xl mb-2">📭</span>
+        <span>공지/알림이 없습니다.</span>
+      </div>
+    );
+  }
 
   return (
     <AppLayout>
@@ -557,53 +543,30 @@ export default function NoticePage() {
           {showStats && (
             <div className="space-y-6">
               {/* 통계 카드 */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">전체</p>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
-                      </div>
-                      <Bell className="w-8 h-8 text-blue-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">미확인</p>
-                        <p className="text-2xl font-bold text-yellow-600">{stats.unread}</p>
-                      </div>
-                      <AlertCircle className="w-8 h-8 text-yellow-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">확인</p>
-                        <p className="text-2xl font-bold text-green-600">{stats.read}</p>
-                      </div>
-                      <CheckCircle className="w-8 h-8 text-green-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">확인률</p>
-                        <p className="text-2xl font-bold text-purple-600">
-                          {stats.total > 0 ? Math.round((stats.read / stats.total) * 100) : 0}%
-                        </p>
-                      </div>
-                      <TrendingUp className="w-8 h-8 text-purple-600" />
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <div className={cardClass}>
+                  <span className="text-lg font-bold">전체</span>
+                  <span className="text-2xl">{stats.total}</span>
+                </div>
+                <div className={cardClass}>
+                  <span className="text-lg font-bold">미확인</span>
+                  <span className="text-2xl text-red-500">{stats.unread}</span>
+                </div>
+                <div className={cardClass}>
+                  <span className="text-lg font-bold">확인</span>
+                  <span className="text-2xl text-green-500">{stats.read}</span>
+                </div>
+                {stats.byType.map((t) => (
+                  <div className={cardClass} key={t.type}>
+                    <span className="text-sm font-semibold">{t.type}</span>
+                    <span className="text-xl">{t.count}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 파이차트(유형별) */}
+              <div className="w-64 h-64 mb-4">
+                <PieChartJs data={pieData} />
               </div>
 
               {/* 차트 */}
@@ -675,72 +638,43 @@ export default function NoticePage() {
             </CardContent>
           </Card>
 
-          {/* 검색/필터 */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" aria-hidden="true" />
-                    <Input
-                      placeholder="제목, 내용, 작성자 검색..."
-                      value={searchTerm}
-                      onChange={e => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                      aria-label="공지사항 검색"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    value={typeFilter}
-                    onChange={e => setTypeFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                    aria-label="유형별 필터"
-                  >
-                    <option value="all">전체 유형</option>
-                    <option value="notice">공지</option>
-                    <option value="alert">알림</option>
-                    <option value="info">정보</option>
-                  </select>
-                  <select
-                    value={statusFilter}
-                    onChange={e => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                    aria-label="상태별 필터"
-                  >
-                    <option value="all">전체 상태</option>
-                    <option value="unread">미확인</option>
-                    <option value="read">확인</option>
-                  </select>
-                  <select
-                    value={categoryFilter}
-                    onChange={e => setCategoryFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                    aria-label="카테고리별 필터"
-                  >
-                    <option value="all">전체 카테고리</option>
-                    <option value="시스템">시스템</option>
-                    <option value="재고">재고</option>
-                    <option value="일정">일정</option>
-                    <option value="회의">회의</option>
-                    <option value="메뉴">메뉴</option>
-                  </select>
-                  <select
-                    value={dateFilter}
-                    onChange={e => setDateFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                    aria-label="기간별 필터"
-                  >
-                    <option value="all">전체 기간</option>
-                    <option value="today">오늘</option>
-                    <option value="week">최근 7일</option>
-                    <option value="month">최근 30일</option>
-                  </select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* 필터바 */}
+          <div className="flex flex-wrap gap-2 mb-4 items-end">
+            <input
+              type="text"
+              placeholder="키워드 검색"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="border rounded px-2 py-1 w-40"
+            />
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="border rounded px-2 py-1">
+              <option value="all">유형 전체</option>
+              <option value="notice">공지</option>
+              <option value="alert">경고</option>
+              <option value="info">안내</option>
+            </select>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border rounded px-2 py-1">
+              <option value="all">상태 전체</option>
+              <option value="unread">미확인</option>
+              <option value="read">확인</option>
+            </select>
+            <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="border rounded px-2 py-1">
+              <option value="all">카테고리 전체</option>
+              {stats.byCategory.map(c => (
+                <option key={c.category} value={c.category}>{c.category}</option>
+              ))}
+            </select>
+            <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="border rounded px-2 py-1">
+              <option value="all">전체 기간</option>
+              <option value="7days">최근 7일</option>
+            </select>
+            {/* 정렬 드롭다운 */}
+            <select value={sortOption} onChange={e => setSortOption(e.target.value as any)} className="border rounded px-2 py-1">
+              <option value="latest">최신순</option>
+              <option value="oldest">오래된순</option>
+              <option value="priority">중요도순</option>
+            </select>
+          </div>
 
           {/* 공지사항 작성 폼 */}
           {showAddModal && (
@@ -952,6 +886,27 @@ export default function NoticePage() {
           <p>검색어: {searchTerm || '없음'}</p>
           <p>필터: 유형={typeFilter}, 상태={statusFilter}, 카테고리={categoryFilter}, 기간={dateFilter}</p>
         </div>
+
+        {/* 렌더링 상단에 SSE 상태 표시 및 연결 실패 시 재시도 버튼 */}
+        <div className="flex items-center gap-2 mb-2 text-sm">
+          <span>{sseStatusIcon[sseStatus]}</span>
+          <span>{sseStatusText[sseStatus]}</span>
+          {sseStatus === 'error' && (
+            <button
+              className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={() => { setSseStatus('disconnected'); loadNotices(); setToast(null); }}
+            >
+              실시간 재시도
+            </button>
+          )}
+        </div>
+
+        {/* Toast 메시지 */}
+        {toast && (
+          <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg text-white ${toast.type === 'error' ? 'bg-red-500' : toast.type === 'info' ? 'bg-blue-500' : 'bg-green-500'}`}>
+            {toast.message}
+          </div>
+        )}
       </div>
     </AppLayout>
   )

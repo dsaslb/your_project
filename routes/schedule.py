@@ -8,6 +8,7 @@ from sqlalchemy import and_
 from extensions import db
 from models import Schedule, User
 from utils.logger import log_action, log_error
+from services.notice_service import create_notice_for_event
 
 schedule_bp = Blueprint("schedule", __name__)
 
@@ -91,7 +92,16 @@ def api_add_schedule():
         )
         db.session.add(schedule)
         db.session.commit()
-        
+        # 알림 자동 등록
+        create_notice_for_event(
+            title="새 스케줄 등록",
+            content=f"{schedule.date} {schedule.category} 스케줄이 추가되었습니다.",
+            type="notice",
+            priority="medium",
+            author_id=current_user.id,
+            target_audience="all",
+            category=schedule.category
+        )
         log_action(current_user.id, "schedule_add", f"스케줄 추가: {schedule.id}")
         return jsonify({"success": True, "message": "스케줄이 추가되었습니다."})
     except Exception as e:

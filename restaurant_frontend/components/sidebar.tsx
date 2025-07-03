@@ -26,14 +26,14 @@ import {
 } from "lucide-react"
 
 const menuItems = [
-  { icon: Home, label: "대시보드", href: "/dashboard", description: "전체 현황 및 통계" },
-  { icon: Users, label: "직원 관리", href: "/staff", description: "직원 정보 및 권한 관리" },
-  { icon: ShoppingCart, label: "발주 관리", href: "/orders", description: "재료 발주 및 승인" },
-  { icon: Package, label: "재고 관리", href: "/inventory", description: "재고 현황 및 관리" },
-  { icon: Calendar, label: "스케줄", href: "/schedule", description: "근무 및 청소 스케줄" },
-  { icon: Bell, label: "알림/공지", href: "/notifications", description: "공지사항 및 알림" },
-  { icon: BarChart3, label: "보고서", href: "/reports", description: "매출 및 통계 보고서" },
-  { icon: Settings, label: "설정", href: "/settings", description: "시스템 설정" }
+  { icon: Home, label: "대시보드", href: "/dashboard", description: "전체 현황 및 통계", roles: ["admin", "manager", "employee"] },
+  { icon: Users, label: "직원 관리", href: "/staff", description: "직원 정보 및 권한 관리", roles: ["admin", "manager"] },
+  { icon: ShoppingCart, label: "발주 관리", href: "/orders", description: "재료 발주 및 승인", roles: ["admin", "manager"] },
+  { icon: Package, label: "재고 관리", href: "/inventory", description: "재고 현황 및 관리", roles: ["admin", "manager", "employee"] },
+  { icon: Calendar, label: "스케줄", href: "/schedule", description: "근무 및 청소 스케줄", roles: ["admin", "manager", "employee"] },
+  { icon: Bell, label: "알림/공지", href: "/notifications", description: "공지사항 및 알림", roles: ["admin", "manager", "employee"] },
+  { icon: BarChart3, label: "보고서", href: "/reports", description: "매출 및 통계 보고서", roles: ["admin", "manager"] },
+  { icon: Settings, label: "설정", href: "/settings", description: "시스템 설정", roles: ["admin"] }
 ]
 
 interface SidebarProps {
@@ -77,8 +77,9 @@ export function Sidebar({ isCollapsed = false, onToggle, className }: SidebarPro
   }
 
   const filteredMenuItems = menuItems.filter(item =>
-    item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase())
+    item.roles.includes(user.role) &&
+    (item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.description.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   return (

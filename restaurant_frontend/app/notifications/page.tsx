@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -52,6 +52,19 @@ interface Notification {
   data?: any;
 }
 
+interface NotificationItem {
+  id: number;
+  type: 'info' | 'warning' | 'error';
+  message: string;
+  date: string;
+}
+
+const dummyNotifications: NotificationItem[] = [
+  { id: 1, type: 'info', message: '정기 점검 안내', date: '2024-06-01' },
+  { id: 2, type: 'warning', message: '재고 부족 경고', date: '2024-06-02' },
+  { id: 3, type: 'error', message: '서버 오류 발생', date: '2024-06-03' },
+];
+
 // Toast 알림 컴포넌트
 function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
   useEffect(() => {
@@ -90,8 +103,9 @@ export default function NotificationsPage() {
 
   // 데이터 상태
   const [notices, setNotices] = useState<Notice[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string|null>(null);
 
   // 새 공지사항 폼 상태
   const [newNotice, setNewNotice] = useState({
@@ -329,6 +343,12 @@ export default function NotificationsPage() {
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
+
+  // 권한별 분기 예시
+  if (!user) return <div className="p-6">로그인 필요</div>;
+  if (user.role === 'employee') {
+    return <div className="p-6">직원은 본인 알림만 확인할 수 있습니다.</div>;
+  }
 
   return (
     <AppLayout>
