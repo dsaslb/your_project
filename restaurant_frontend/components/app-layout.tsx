@@ -13,15 +13,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
+    <div className="flex min-h-screen bg-background">
+      {/* Sidebar - 고정 너비, 최소 너비 보장 */}
       <Sidebar 
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        className={isSidebarCollapsed ? "w-16 min-w-[64px]" : "w-64 min-w-[256px]"}
       />
       
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative min-h-screen w-full">
+      {/* Main Content - 남은 공간 모두 사용, 최대 너비 */}
+      <main className="flex-1 w-full min-w-0 max-w-none bg-background">
         {/* 사이드바가 접혀있을 때 펼치기 버튼 */}
         {isSidebarCollapsed && (
           <div className="absolute top-4 left-4 z-10">
@@ -38,7 +39,10 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         )}
         
-        {children}
+        {/* 컨텐츠 영역 - 패딩과 스크롤, 전체 너비 사용 */}
+        <div className="w-full p-6 overflow-y-auto min-h-screen">
+          {children}
+        </div>
       </main>
     </div>
   )

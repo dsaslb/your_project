@@ -132,6 +132,36 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<Inventory | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  // 샘플 재고 데이터
+  const [inventoryData, setInventoryData] = useState<Inventory[]>([
+    {
+      id: 1,
+      name: "김치",
+      category: "반찬",
+      currentStock: 50,
+      minStock: 20,
+      maxStock: 100,
+      unit: "kg",
+      price: 5000,
+      supplier: "김치공장",
+      lastUpdated: "2024-01-15",
+      status: "normal"
+    },
+    {
+      id: 2,
+      name: "고기",
+      category: "육류",
+      currentStock: 15,
+      minStock: 20,
+      maxStock: 50,
+      unit: "kg",
+      price: 15000,
+      supplier: "정육점",
+      lastUpdated: "2024-01-14",
+      status: "low"
+    }
+  ]);
+
   // 필터/정렬 적용
   const filteredInventory = useMemo(() => {
     let filtered = [...inventoryData];

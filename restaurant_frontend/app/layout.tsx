@@ -6,6 +6,7 @@ import { UserProvider } from "@/components/UserContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { HistoryManager } from "@/components/HistoryManager";
 import { NotificationProvider } from "@/components/NotificationSystem";
+import { AppLayout } from "@/components/app-layout";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -14,11 +15,7 @@ export const metadata: Metadata = {
   description: "전문적인 레스토랑 관리 및 브랜드 홈페이지",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className={inter.className}>
@@ -32,7 +29,7 @@ export default function RootLayout({
             <NotificationProvider>
               <AuthGuard>
                 <HistoryManager />
-                {children}
+                <AppLayout>{children}</AppLayout>
               </AuthGuard>
             </NotificationProvider>
           </UserProvider>

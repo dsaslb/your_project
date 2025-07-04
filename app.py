@@ -24,8 +24,15 @@ from extensions import cache, csrf, db, limiter, login_manager, migrate
 from models import (Branch, CleaningPlan, FeedbackIssue, Notice, Notification,
                     Order, Report, Schedule, SystemLog, User)
 from routes.notifications import notifications_bp
+from routes.dashboard import dashboard_bp
+from routes.schedule import schedule_bp
+from routes.staff import staff_bp
+from routes.orders import orders_bp
+from routes.inventory import inventory_bp
+from routes.notice_api import notice_api_bp
 # Import Route Blueprints
 from routes.payroll import payroll_bp
+from routes.notice import notice_bp
 # Import notification functions
 from utils.notify import (send_admin_only_notification,
                           send_notification_enhanced,
@@ -68,6 +75,13 @@ app.register_blueprint(comment_report_bp)
 # Register Route Blueprints
 app.register_blueprint(payroll_bp)
 app.register_blueprint(notifications_bp)
+app.register_blueprint(dashboard_bp)
+app.register_blueprint(schedule_bp)
+app.register_blueprint(staff_bp)
+app.register_blueprint(orders_bp)
+app.register_blueprint(inventory_bp)
+app.register_blueprint(notice_api_bp)
+app.register_blueprint(notice_bp)
 
 # Login manager setup
 login_manager.login_view = "auth.login"
@@ -527,8 +541,37 @@ def admin_reports():
         flash("관리자 권한이 필요합니다.", "error")
         return redirect(url_for("index"))
 
+    # 더미 통계 데이터
+    total_stats = {
+        "total_users": 25,
+        "approved_users": 20,
+        "pending_users": 5,
+        "total_orders": 150
+    }
+    
+    branch_stats = [
+        {
+            "branch": {"id": 1, "name": "본점"},
+            "users": 12,
+            "orders": 80,
+            "schedules": 45
+        },
+        {
+            "branch": {"id": 2, "name": "지점1"},
+            "users": 8,
+            "orders": 45,
+            "schedules": 30
+        },
+        {
+            "branch": {"id": 3, "name": "지점2"},
+            "users": 5,
+            "orders": 25,
+            "schedules": 20
+        }
+    ]
+
     reports = Report.query.order_by(Report.created_at.desc()).all()
-    return render_template("admin/reports.html", reports=reports)
+    return render_template("admin/reports.html", reports=reports, total_stats=total_stats, branch_stats=branch_stats)
 
 
 @app.route("/admin/system_monitor")
@@ -708,4 +751,4 @@ def create_admin(username, password):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)

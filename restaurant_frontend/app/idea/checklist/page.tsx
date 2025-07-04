@@ -19,9 +19,13 @@ export default function ChecklistPage() {
     setChecked(newChecked);
     if (newChecked[idx]) {
       addNotification({
-        type: "success",
+        id: Date.now(),
         title: `${steps[idx]} 완료!`,
-        message: `${steps[idx]} 단계가 완료되었습니다.`
+        content: `${steps[idx]} 단계가 완료되었습니다.`,
+        category: 'success',
+        priority: '일반',
+        is_read: false,
+        created_at: new Date().toISOString(),
       });
     }
   };
@@ -30,15 +34,23 @@ export default function ChecklistPage() {
   const handleSubmit = () => {
     if (checked.every(Boolean)) {
       addNotification({
-        type: "success",
+        id: Date.now(),
         title: "업무 체크리스트 완료",
-        message: "모든 단계를 완료했습니다!"
+        content: "모든 단계를 완료했습니다!",
+        category: 'success',
+        priority: '일반',
+        is_read: false,
+        created_at: new Date().toISOString(),
       });
     } else {
       addNotification({
-        type: "warning",
+        id: Date.now(),
         title: "미완료 경고",
-        message: "아직 완료되지 않은 단계가 있습니다. 관리자에게 알림이 전송됩니다."
+        content: "아직 완료되지 않은 단계가 있습니다. 관리자에게 알림이 전송됩니다.",
+        category: 'warning',
+        priority: '중요',
+        is_read: false,
+        created_at: new Date().toISOString(),
       });
     }
   };

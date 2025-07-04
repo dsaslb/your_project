@@ -1,8 +1,9 @@
 import os
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for, jsonify
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 from models import Notice, NoticeComment, Report, db
 from services.notice_service import update_notice
@@ -203,7 +204,8 @@ def report():
     )
     db.session.add(new_report)
     db.session.commit()
-    log_action(current_user.id, "REPORT_CREATE", f"Reported {target_type} {target_id}")
-
+    log_action(
+        current_user.id, "REPORT_CREATE", f"Report created: {target_type} {target_id}"
+    )
     flash("신고가 접수되었습니다.", "success")
     return redirect(request.referrer)

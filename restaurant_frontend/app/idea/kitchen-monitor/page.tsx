@@ -25,9 +25,13 @@ export default function KitchenMonitorPage() {
         const newStatus = statusSteps[nextIdx] || order.status;
         if (newStatus !== order.status) {
           addNotification({
-            type: "info",
+            id: Date.now(),
             title: `${order.menu} ${newStatus}`,
-            message: `${order.table} 테이블 ${order.menu} ${newStatus} 처리됨.`
+            content: `${order.table} 테이블 ${order.menu} ${newStatus} 처리됨.`,
+            category: 'info',
+            priority: '일반',
+            is_read: false,
+            created_at: new Date().toISOString(),
           });
         }
         return { ...order, status: newStatus };

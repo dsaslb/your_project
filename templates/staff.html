@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>직원 관리 - 레스토랑 관리 시스템</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .staff-table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .staff-table th, .staff-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .staff-table th { background: #f8f9fa; font-weight: bold; }
+        .status-active { color: #28a745; }
+        .status-inactive { color: #dc3545; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 2px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>직원 관리</h1>
+            <p>직원 정보를 관리합니다.</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="showAddModal()">새 직원 추가</button>
+        </div>
+
+        <table class="staff-table">
+            <thead>
+                <tr>
+                    <th>이름</th>
+                    <th>이메일</th>
+                    <th>전화번호</th>
+                    <th>역할</th>
+                    <th>매장</th>
+                    <th>상태</th>
+                    <th>입사일</th>
+                    <th>액션</th>
+                </tr>
+            </thead>
+            <tbody id="staff-tbody">
+                <tr>
+                    <td colspan="8" style="text-align: center;">로딩 중...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 직원 목록 로드
+        async function loadStaff() {
+            try {
+                const response = await fetch('/api/staff');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const staff = data.data;
+                    const tbody = document.getElementById('staff-tbody');
+                    
+                    tbody.innerHTML = staff.map(employee => `
+                        <tr>
+                            <td>${employee.name}</td>
+                            <td>${employee.email}</td>
+                            <td>${employee.phone}</td>
+                            <td>${employee.role}</td>
+                            <td>${employee.branch}</td>
+                            <td class="status-${employee.status}">${employee.status}</td>
+                            <td>${employee.hire_date}</td>
+                            <td>
+                                <button class="btn btn-warning" onclick="editStaff(${employee.id})">수정</button>
+                                <button class="btn btn-danger" onclick="deleteStaff(${employee.id})">삭제</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('직원 목록 로드 실패:', error);
+            }
+        }
+
+        // 페이지 로드 시 직원 목록 로드
+        window.addEventListener('load', loadStaff);
+    </script>
+</body>
+</html> 

@@ -174,4 +174,147 @@ def api_get_schedule(schedule_id):
         })
     except Exception as e:
         log_error(e, current_user.id)
-        return jsonify({"success": False, "message": "스케줄 조회 중 오류가 발생했습니다."}) 
+        return jsonify({"success": False, "message": "스케줄 조회 중 오류가 발생했습니다."})
+
+
+@schedule_bp.route("/api/schedule")
+@login_required
+def get_schedules():
+    """스케줄 목록 조회 API"""
+    schedule_type = request.args.get('type', 'work')
+    
+    # 더미 스케줄 데이터
+    schedules = [
+        {
+            "id": 1,
+            "staff": "홍길동",
+            "date": "2024-01-15",
+            "shift": "오전",
+            "status": "confirmed",
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "type": schedule_type
+        },
+        {
+            "id": 2,
+            "staff": "김철수",
+            "date": "2024-01-15",
+            "shift": "오후",
+            "status": "pending",
+            "start_time": "17:00",
+            "end_time": "22:00",
+            "type": schedule_type
+        },
+        {
+            "id": 3,
+            "staff": "이영희",
+            "date": "2024-01-16",
+            "shift": "오전",
+            "status": "confirmed",
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "type": schedule_type
+        }
+    ]
+    
+    return jsonify({"success": True, "data": schedules})
+
+
+@schedule_bp.route("/api/schedule", methods=["POST"])
+@login_required
+def create_schedule():
+    """스케줄 생성 API"""
+    data = request.get_json()
+    
+    # 더미 응답
+    new_schedule = {
+        "id": 999,
+        "staff": data.get('staff', '새 직원'),
+        "date": data.get('date', '2024-01-15'),
+        "shift": data.get('shift', '오전'),
+        "status": "pending",
+        "start_time": data.get('start_time', '09:00'),
+        "end_time": data.get('end_time', '17:00'),
+        "type": data.get('type', 'work')
+    }
+    
+    return jsonify({"success": True, "data": new_schedule, "message": "스케줄이 생성되었습니다."})
+
+
+@schedule_bp.route("/api/schedule/<int:schedule_id>", methods=["PUT"])
+@login_required
+def update_schedule(schedule_id):
+    """스케줄 수정 API"""
+    data = request.get_json()
+    
+    # 더미 응답
+    updated_schedule = {
+        "id": schedule_id,
+        "staff": data.get('staff', '수정된 직원'),
+        "date": data.get('date', '2024-01-15'),
+        "shift": data.get('shift', '오전'),
+        "status": data.get('status', 'confirmed'),
+        "start_time": data.get('start_time', '09:00'),
+        "end_time": data.get('end_time', '17:00'),
+        "type": data.get('type', 'work')
+    }
+    
+    return jsonify({"success": True, "data": updated_schedule, "message": "스케줄이 수정되었습니다."})
+
+
+@schedule_bp.route("/api/schedule/<int:schedule_id>", methods=["DELETE"])
+@login_required
+def delete_schedule(schedule_id):
+    """스케줄 삭제 API"""
+    return jsonify({"success": True, "message": f"스케줄 {schedule_id}가 삭제되었습니다."})
+
+
+@schedule_bp.route("/api/schedule/<int:schedule_id>")
+@login_required
+def get_schedule_detail(schedule_id):
+    """스케줄 상세 조회 API"""
+    # 더미 상세 데이터
+    schedule_detail = {
+        "id": schedule_id,
+        "staff": "홍길동",
+        "date": "2024-01-15",
+        "shift": "오전",
+        "status": "confirmed",
+        "start_time": "09:00",
+        "end_time": "17:00",
+        "type": "work",
+        "memo": "특별한 업무가 있을 수 있습니다.",
+        "created_at": "2024-01-10T10:00:00Z",
+        "updated_at": "2024-01-12T15:30:00Z"
+    }
+    
+    return jsonify({"success": True, "data": schedule_detail})
+
+
+@schedule_bp.route("/api/schedule/calendar")
+@login_required
+def get_calendar_data():
+    """캘린더 데이터 API"""
+    # 더미 캘린더 데이터
+    calendar_data = {
+        "events": [
+            {
+                "id": 1,
+                "title": "홍길동 - 오전",
+                "start": "2024-01-15T09:00:00",
+                "end": "2024-01-15T17:00:00",
+                "type": "work",
+                "status": "confirmed"
+            },
+            {
+                "id": 2,
+                "title": "김철수 - 오후",
+                "start": "2024-01-15T17:00:00",
+                "end": "2024-01-15T22:00:00",
+                "type": "work",
+                "status": "pending"
+            }
+        ]
+    }
+    
+    return jsonify({"success": True, "data": calendar_data}) 

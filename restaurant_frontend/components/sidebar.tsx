@@ -51,7 +51,7 @@ export function Sidebar({ isCollapsed = false, onToggle, className }: SidebarPro
     return (
       <aside className={cn(
         "flex h-full flex-col border-r bg-background transition-all duration-300",
-        isCollapsed ? "w-16" : "w-80",
+        isCollapsed ? "w-16" : "w-64",
         className
       )}>
         <div className="flex h-16 items-center justify-between border-b px-4">
@@ -85,7 +85,7 @@ export function Sidebar({ isCollapsed = false, onToggle, className }: SidebarPro
   return (
     <aside className={cn(
       "flex h-full flex-col border-r bg-background transition-all duration-300",
-      isCollapsed ? "w-16" : "w-80",
+      isCollapsed ? "w-16 min-w-[64px]" : "w-64 min-w-[256px]",
       className
     )}>
       {/* Header */}

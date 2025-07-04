@@ -1,36 +1,37 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { Bell, X, CheckCircle, AlertCircle, Info, XCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
+import { toast } from '@/lib/toast';
+import notificationService from '@/lib/notification-service';
 
 // 알림 타입 정의
 export interface Notification {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
+  id: number;
   title: string;
-  message: string;
-  timestamp: Date;
-  read: boolean;
-  action?: {
-    label: string;
-    url: string;
-  };
+  content: string;
+  category: string;
+  priority: '긴급' | '중요' | '일반';
+  is_read: boolean;
+  created_at: string;
+  related_url?: string;
 }
 
 // 알림 컨텍스트
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
-  markAsRead: (id: string) => void;
+  addNotification: (notification: Notification) => void;
+  markAsRead: (id: number) => void;
   markAllAsRead: () => void;
-  removeNotification: (id: string) => void;
+  removeNotification: (id: number) => void;
   clearAll: () => void;
+  refreshNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -38,78 +39,99 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 // 알림 컨텍스트 프로바이더
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // 알림 목록 로드
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await notificationService.getNotifications({ limit: 50 });
+      setNotifications(response.notifications);
+      setUnreadCount(response.notifications.filter(n => !n.is_read).length);
+    } catch (error) {
+      console.error('알림 로드 실패:', error);
+    }
+  }, []);
 
-  const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Date.now().toString(),
-      timestamp: new Date(),
-      read: false,
-    };
+  // 알림 추가
+  const addNotification = useCallback((notification: Notification) => {
+    setNotifications(prev => [notification, ...prev]);
+    setUnreadCount(prev => prev + 1);
+    
+    // 토스트 알림 표시
+    const toastType = notification.priority === '긴급' ? 'error' : 
+                     notification.priority === '중요' ? 'warning' : 'info';
+    
+    toast[toastType](notification.title, {
+      action: notification.related_url ? {
+        label: '보기',
+        onClick: () => window.open(notification.related_url, '_blank'),
+      } : undefined,
+    });
+  }, []);
 
-    setNotifications(prev => [newNotification, ...prev]);
+  // 읽음 처리
+  const markAsRead = useCallback(async (id: number) => {
+    try {
+      await notificationService.markAsRead(id);
+    setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, is_read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('읽음 처리 실패:', error);
+    }
+  }, []);
 
-    // 브라우저 알림 표시
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(notification.title, {
-        body: notification.message,
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-72x72.png',
+  // 모든 알림 읽음 처리
+  const markAllAsRead = useCallback(async () => {
+    try {
+      await notificationService.markAllAsRead();
+    setNotifications(prev =>
+        prev.map(n => ({ ...n, is_read: true }))
+      );
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('전체 읽음 처리 실패:', error);
+    }
+  }, []);
+
+  // 알림 삭제
+  const removeNotification = useCallback(async (id: number) => {
+    try {
+      await notificationService.deleteNotification(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      setUnreadCount(prev => {
+        const notification = notifications.find(n => n.id === id);
+        return notification && !notification.is_read ? prev - 1 : prev;
       });
+    } catch (error) {
+      console.error('알림 삭제 실패:', error);
     }
+  }, [notifications]);
 
-    // 5초 후 자동으로 읽음 처리
-    setTimeout(() => {
-      markAsRead(newNotification.id);
-    }, 5000);
-  };
-
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(n => ({ ...n, read: true }))
-    );
-  };
-
-  const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const clearAll = () => {
+  // 모든 알림 삭제
+  const clearAll = useCallback(() => {
     setNotifications([]);
-  };
-
-  // 브라우저 알림 권한 요청
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    setUnreadCount(0);
   }, []);
 
-  // Service Worker 등록
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('SW registered: ', registration);
-        })
-        .catch(registrationError => {
-          console.log('SW registration failed: ', registrationError);
-        });
-    }
-  }, []);
+  // 알림 새로고침
+  const refreshNotifications = useCallback(async () => {
+    await loadNotifications();
+  }, [loadNotifications]);
 
-  return (
-    <NotificationContext.Provider
-      value={{
+  // 초기 로드
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  // 실시간 알림 구독
+  useEffect(() => {
+    const unsubscribe = notificationService.subscribeToNotifications(addNotification);
+    return unsubscribe;
+  }, [addNotification]);
+
+  const value: NotificationContextType = {
         notifications,
         unreadCount,
         addNotification,
@@ -117,10 +139,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         markAllAsRead,
         removeNotification,
         clearAll,
-      }}
-    >
+    refreshNotifications,
+  };
+
+  return (
+    <NotificationContext.Provider value={value}>
       {children}
-      <NotificationPanel isOpen={isOpen} setIsOpen={setIsOpen} />
     </NotificationContext.Provider>
   );
 }

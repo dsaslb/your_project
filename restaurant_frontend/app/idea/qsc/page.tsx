@@ -24,9 +24,13 @@ export default function QSCPage() {
     setChecked(newChecked);
     if (newChecked[catIdx][itemIdx]) {
       addNotification({
-        type: "success",
+        id: Date.now(),
         title: `${qscItems[catIdx].category} - ${qscItems[catIdx].items[itemIdx]} 점검 완료!`,
-        message: "점검이 완료되었습니다."
+        content: "점검이 완료되었습니다.",
+        category: 'success',
+        priority: '일반',
+        is_read: false,
+        created_at: new Date().toISOString(),
       });
     }
   };
@@ -35,15 +39,23 @@ export default function QSCPage() {
     const allChecked = checked.flat().every(Boolean);
     if (allChecked) {
       addNotification({
-        type: "success",
+        id: Date.now(),
         title: "QSC 점검 완료",
-        message: "모든 항목 점검이 완료되었습니다!"
+        content: "모든 항목 점검이 완료되었습니다!",
+        category: 'success',
+        priority: '일반',
+        is_read: false,
+        created_at: new Date().toISOString(),
       });
     } else {
       addNotification({
-        type: "warning",
+        id: Date.now(),
         title: "QSC 미흡 경고",
-        message: "미점검 항목이 있습니다. 관리자에게 알림이 전송됩니다."
+        content: "미점검 항목이 있습니다. 관리자에게 알림이 전송됩니다.",
+        category: 'warning',
+        priority: '중요',
+        is_read: false,
+        created_at: new Date().toISOString(),
       });
     }
   };

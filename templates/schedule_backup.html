@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid h-100">
+    <div class="row h-100">
+        <div class="col-12">
+            <!-- 헤더 섹션 -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-calendar-alt text-primary"></i> 스케줄 관리
+                    </h2>
+                    <p class="text-muted mb-0">근무 및 청소 스케줄 관리</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" onclick="exportSchedule()">
+                        <i class="fas fa-download"></i> 내보내기
+                    </button>
+                    <button class="btn btn-primary" onclick="addSchedule('work')">
+                        <i class="fas fa-plus"></i> 근무 추가
+                    </button>
+                    <button class="btn btn-success" onclick="addSchedule('clean')">
+                        <i class="fas fa-plus"></i> 청소 추가
+                    </button>
+                </div>
+            </div>
+
+            <!-- 통계 카드 -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ work_schedules|length }}</h4>
+                                    <small>전체 근무</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-clock fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ clean_schedules|length }}</h4>
+                                    <small>전체 청소</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-broom fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ (work_schedules + clean_schedules)|selectattr('status', 'equalto', 'pending')|list|length }}</h4>
+                                    <small>승인 대기</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-hourglass-half fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ (work_schedules + clean_schedules)|selectattr('status', 'equalto', 'approved')|list|length }}</h4>
+                                    <small>승인됨</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 탭 네비게이션 -->
+            <ul class="nav nav-tabs mb-4" id="scheduleTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="work-tab" data-bs-toggle="tab" data-bs-target="#work" type="button" role="tab" aria-controls="work" aria-selected="true">
+                        <i class="fas fa-clock me-2"></i>근무 스케줄
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="clean-tab" data-bs-toggle="tab" data-bs-target="#clean" type="button" role="tab" aria-controls="clean" aria-selected="false">
+                        <i class="fas fa-broom me-2"></i>청소 스케줄
+                    </button>
+                </li>
+            </ul>
+            
+            <!-- 탭 콘텐츠 -->
+            <div class="tab-content" id="scheduleTabContent">
+                <!-- 근무 스케줄 탭 -->
+                <div class="tab-pane fade show active" id="work" role="tabpanel" aria-labelledby="work-tab">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-clock me-2"></i>근무 스케줄</h5>
+                                <span class="badge bg-primary">{{ work_schedules|length }}</span>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-dark sticky-top">
+                                        <tr>
+                                            <th style="min-width: 120px;">날짜</th>
+                                            <th style="min-width: 100px;">시작 시간</th>
+                                            <th style="min-width: 100px;">종료 시간</th>
+                                            <th style="min-width: 100px;">직원</th>
+                                            <th style="min-width: 100px;">상태</th>
+                                            <th style="min-width: 120px;">작업</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sch in work_schedules %}
+                                        <tr>
+                                            <td>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar me-1"></i>
+                                                    {{ sch.date.strftime('%Y-%m-%d') if sch.date else '' }}
+                                                </small>
+                                            </td>
+                                            <td>{{ sch.start_time.strftime('%H:%M') if sch.start_time else '' }}</td>
+                                            <td>{{ sch.end_time.strftime('%H:%M') if sch.end_time else '' }}</td>
+                                            <td>
+                                                {% if sch.user %}
+                                                    <span class="badge bg-primary">
+                                                        <i class="fas fa-user me-1"></i>{{ sch.user.username }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">미배정</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if sch.status == 'approved' %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check me-1"></i>승인됨
+                                                    </span>
+                                                {% elif sch.status == 'pending' %}
+                                                    <span class="badge bg-warning">
+                                                        <i class="fas fa-clock me-1"></i>대기중
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-times me-1"></i>거절됨
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-outline-primary btn-sm" onclick="editSchedule('{{ sch.id }}')" title="편집">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteSchedule('{{ sch.id }}')" title="삭제">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <i class="fas fa-info-circle me-2"></i>등록된 근무 스케줄이 없습니다.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 청소 스케줄 탭 -->
+                <div class="tab-pane fade" id="clean" role="tabpanel" aria-labelledby="clean-tab">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-broom me-2"></i>청소 스케줄</h5>
+                                <span class="badge bg-success">{{ clean_schedules|length }}</span>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-dark sticky-top">
+                                        <tr>
+                                            <th style="min-width: 120px;">날짜</th>
+                                            <th style="min-width: 100px;">시작 시간</th>
+                                            <th style="min-width: 100px;">종료 시간</th>
+                                            <th style="min-width: 100px;">담당자</th>
+                                            <th style="min-width: 120px;">청소 영역</th>
+                                            <th style="min-width: 100px;">상태</th>
+                                            <th style="min-width: 120px;">작업</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sch in clean_schedules %}
+                                        <tr>
+                                            <td>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar me-1"></i>
+                                                    {{ sch.date.strftime('%Y-%m-%d') if sch.date else '' }}
+                                                </small>
+                                            </td>
+                                            <td>{{ sch.start_time.strftime('%H:%M') if sch.start_time else '' }}</td>
+                                            <td>{{ sch.end_time.strftime('%H:%M') if sch.end_time else '' }}</td>
+                                            <td>
+                                                {% if sch.user %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-user me-1"></i>{{ sch.user.username }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">미배정</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if sch.team %}
+                                                    <span class="badge bg-info">
+                                                        <i class="fas fa-map-marker-alt me-1"></i>{{ sch.team }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if sch.status == 'approved' %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check me-1"></i>승인됨
+                                                    </span>
+                                                {% elif sch.status == 'pending' %}
+                                                    <span class="badge bg-warning">
+                                                        <i class="fas fa-clock me-1"></i>대기중
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-times me-1"></i>거절됨
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-outline-primary btn-sm" onclick="editSchedule('{{ sch.id }}')" title="편집">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteSchedule('{{ sch.id }}')" title="삭제">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                <i class="fas fa-info-circle me-2"></i>등록된 청소 스케줄이 없습니다.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 스케줄 추가/편집 모달 -->
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleModalLabel">스케줄 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleForm">
+                    <input type="hidden" id="scheduleId" name="scheduleId">
+                    <input type="hidden" id="scheduleType" name="scheduleType">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="scheduleDate" class="form-label">날짜</label>
+                                <input type="date" class="form-control" id="scheduleDate" name="date" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="startTime" class="form-label">시작 시간</label>
+                                <input type="time" class="form-control" id="startTime" name="start_time" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="endTime" class="form-label">종료 시간</label>
+                                <input type="time" class="form-control" id="endTime" name="end_time" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="scheduleUser" class="form-label">담당자</label>
+                                <select class="form-select" id="scheduleUser" name="user_id">
+                                    <option value="">담당자 선택</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.username }} ({{ user.name or '이름 없음' }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="scheduleTeam" class="form-label">팀/영역 (청소용)</label>
+                                <input type="text" class="form-control" id="scheduleTeam" name="team" placeholder="청소 영역을 입력하세요">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="scheduleNote" class="form-label">메모</label>
+                        <textarea class="form-control" id="scheduleNote" name="note" rows="3" placeholder="스케줄 관련 메모를 입력하세요"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="saveSchedule()">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.sticky-top {
+    top: 0;
+    z-index: 1020;
+}
+
+.table-responsive::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.btn-group .btn {
+    border-radius: 0.375rem !important;
+    margin-right: 2px;
+}
+
+.btn-group .btn:last-child {
+    margin-right: 0;
+}
+</style>
+
+<script>
+function addSchedule(type) {
+    document.getElementById('scheduleType').value = type;
+    document.getElementById('scheduleModalLabel').textContent = type === 'work' ? '근무 스케줄 추가' : '청소 스케줄 추가';
+    document.getElementById('scheduleForm').reset();
+    document.getElementById('scheduleId').value = '';
+    
+    // 청소 스케줄인 경우 팀 필드 활성화
+    const teamField = document.getElementById('scheduleTeam');
+    if (type === 'clean') {
+        teamField.required = true;
+        teamField.parentElement.style.display = 'block';
+    } else {
+        teamField.required = false;
+        teamField.parentElement.style.display = 'none';
+    }
+    
+    new bootstrap.Modal(document.getElementById('scheduleModal')).show();
+}
+
+function editSchedule(id) {
+    // 편집 로직 구현
+    alert('편집 기능은 준비 중입니다.');
+}
+
+function deleteSchedule(id) {
+    if (confirm('정말로 이 스케줄을 삭제하시겠습니까?')) {
+        // 삭제 로직 구현
+        alert('삭제 기능은 준비 중입니다.');
+    }
+}
+
+function saveSchedule() {
+    // 저장 로직 구현
+    alert('저장 기능은 준비 중입니다.');
+}
+
+function exportSchedule() {
+    alert('내보내기 기능은 준비 중입니다.');
+}
+</script>
+{% endblock %} 

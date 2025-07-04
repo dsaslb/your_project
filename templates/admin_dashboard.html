@@ -1,902 +1,176 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>최고관리자 대시보드 - Core System</title>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 대시보드 - 맛있는집</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .container { 
-            max-width: 1400px; 
-            margin: 0 auto; 
-            background: white; 
-            border-radius: 20px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-            padding: 30px; 
-            text-align: center;
-            position: relative;
-        }
-        .header h1 { 
-            margin: 0; 
-            font-size: 2.5rem; 
-            font-weight: 300;
-        }
-        
-        /* 헤더 메뉴 영역 */
-        .header-menu-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-        }
-        
-        .topbar-right {
-            background: rgba(255,255,255,0.15);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 8px 16px;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        
-        .user-info {
-            color: white;
-        }
-        
-        .user-role {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-        
-        .logout-btn {
-            background: rgba(211, 47, 47, 0.8);
-            color: white;
-            border: 1px solid rgba(211, 47, 47, 0.6);
-        }
-        
-        .logout-btn:hover {
-            background: rgba(211, 47, 47, 1);
-            color: white;
-        }
-        
-        /* 통계 카드 스타일 */
-        .stats-section {
-            background: #f8f9fa; 
-            padding: 30px; 
-            border-bottom: 1px solid #e9ecef;
-        }
-        .stats-row {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-            min-width: 150px;
-            flex: 1;
-            max-width: 200px;
-        }
-        .stat-icon {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-        .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #495057;
-        }
-        .stat-label {
-            color: #6c757d;
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-        
-        /* 관리 메뉴 카드 스타일 */
-        .admin-menu-section {
-            padding: 30px;
-            background: white;
-        }
-        .admin-menu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
-        }
-        .admin-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 20px;
-            text-decoration: none;
-            text-align: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        .admin-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
-            color: white;
-            text-decoration: none;
-        }
-        .admin-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-        .admin-card:hover::before {
-            left: 100%;
-        }
-        .admin-card-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-        }
-        .admin-card-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        .admin-card-description {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-        .admin-card-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        
-        /* 시스템 상태 섹션 */
-        .system-status-section {
-            background: #f8f9fa;
-            padding: 30px;
-            border-top: 1px solid #e9ecef;
-        }
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        .status-card {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .status-title {
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 10px;
-        }
-        .status-value {
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-        .status-good { color: #28a745; }
-        .status-warning { color: #ffc107; }
-        .status-error { color: #dc3545; }
-        
-        /* 반응형 디자인 */
-        @media (max-width: 768px) {
-            .admin-menu-grid {
-                grid-template-columns: 1fr;
-            }
-            .stats-row {
-                flex-direction: column;
-                align-items: center;
-            }
-            .stat-card {
-                max-width: 100%;
-            }
-            .header h1 {
-                font-size: 2rem;
-            }
-            .header-menu-container {
-                position: static;
-                margin-top: 20px;
-            }
-        }
-        
-        /* 차트 섹션 스타일 */
-        .charts-section {
-            background: white;
-            padding: 30px;
-            border-bottom: 1px solid #e9ecef;
-        }
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 25px;
-            margin-bottom: 20px;
-        }
-        .chart-card {
-            background: white;
-            border: 1px solid #e9ecef;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .chart-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #495057;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .chart-container {
-            position: relative;
-            height: 300px;
-        }
-        .chart-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .chart-btn {
-            padding: 5px 15px;
-            border: 1px solid #dee2e6;
-            background: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .chart-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-        
-        /* 실시간 활동 섹션 */
-        .realtime-section {
-            background: #f8f9fa;
-            padding: 30px;
-        }
-        .activity-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .activity-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #e9ecef;
-            background: white;
-            margin-bottom: 5px;
-            border-radius: 8px;
-        }
-        .activity-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            font-size: 1.1rem;
-        }
-        .activity-content {
-            flex: 1;
-        }
-        .activity-user {
-            font-weight: 600;
-            color: #495057;
-        }
-        .activity-action {
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-        .activity-time {
-            color: #adb5bd;
-            font-size: 0.8rem;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <!-- 헤더 메뉴 영역 -->
-            <div class="header-menu-container">
-                <div class="topbar-right">
-                    <span class="user-info">
-                        <i class="fas fa-user"></i> {{ user.username }}
-                        <span class="user-role">{{ user.role|title }}</span>
-                    </span>
-                    <a class="logout-btn" href="/logout">로그아웃</a>
-      </div>
-    </div>
-            
-            <h1>🏢 최고관리자 대시보드</h1>
-            <p class="mb-0">전체 시스템 관리 및 모니터링</p>
-  </div>
-        
-        <!-- 통계 섹션 -->
-        <div class="stats-section">
-            <h3 class="text-center mb-4">
-                <i class="fas fa-chart-bar"></i> 시스템 현황
-            </h3>
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-icon text-primary">
-                        <i class="fas fa-users"></i>
-      </div>
-                    <div class="stat-number">{{ stats.pending_users }}</div>
-                    <div class="stat-label">승인 대기 직원</div>
-    </div>
-                <div class="stat-card">
-                    <div class="stat-icon text-warning">
-                        <i class="fas fa-bell"></i>
-  </div>
-                    <div class="stat-number">{{ stats.unread_notifications }}</div>
-                    <div class="stat-label">미읽 알림</div>
-    </div>
-                <div class="stat-card">
-                    <div class="stat-icon text-info">
-                        <i class="fas fa-comment"></i>
-  </div>
-                    <div class="stat-number">{{ stats.pending_feedback }}</div>
-                    <div class="stat-label">처리 대기 피드백</div>
-</div>
-                <div class="stat-card">
-                    <div class="stat-icon text-success">
-                        <i class="fas fa-store"></i>
-  </div>
-                    <div class="stat-number">{{ stats.total_branches }}</div>
-                    <div class="stat-label">전체 매장</div>
-  </div>
-  </div>
-        </div>
-        
-        <!-- 실시간 차트 섹션 -->
-        <div class="charts-section">
-            <h3 class="text-center mb-4">
-                <i class="fas fa-chart-line"></i> 실시간 모니터링 차트
-            </h3>
-            
-            <div class="charts-grid">
-                <!-- 출근 현황 차트 -->
-                <div class="chart-card">
-                    <div class="chart-title">
-                        <span><i class="fas fa-sign-in-alt"></i> 출근 현황</span>
-                        <div class="chart-controls">
-                            <button class="chart-btn active" onclick="loadChart('attendance', 7)">7일</button>
-                            <button class="chart-btn" onclick="loadChart('attendance', 30)">30일</button>
-  </div>
-  </div>
-                    <div class="chart-container">
-                        <canvas id="attendanceChart"></canvas>
-  </div>
-  </div>
-                
-                <!-- 알림 현황 차트 -->
-                <div class="chart-card">
-                    <div class="chart-title">
-                        <span><i class="fas fa-bell"></i> 알림 현황</span>
-                        <div class="chart-controls">
-                            <button class="chart-btn active" onclick="loadChart('notifications', 7)">7일</button>
-                            <button class="chart-btn" onclick="loadChart('notifications', 30)">30일</button>
-    </div>
-  </div>
-                    <div class="chart-container">
-                        <canvas id="notificationsChart"></canvas>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">관리자 대시보드</h1>
                     </div>
-</div>
-
-                <!-- 발주 현황 차트 -->
-                <div class="chart-card">
-                    <div class="chart-title">
-                        <span><i class="fas fa-shopping-cart"></i> 발주 현황</span>
-                        <div class="chart-controls">
-                            <button class="chart-btn active" onclick="loadChart('orders', 7)">7일</button>
-                            <button class="chart-btn" onclick="loadChart('orders', 30)">30일</button>
-    </div>
-  </div>
-                    <div class="chart-container">
-                        <canvas id="ordersChart"></canvas>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-500">관리자님 환영합니다</span>
+                        <a href="{{ url_for('auth.logout') }}" class="text-sm text-red-600 hover:text-red-800">로그아웃</a>
                     </div>
-</div>
-
-                <!-- 시스템 로그 차트 -->
-                <div class="chart-card">
-                    <div class="chart-title">
-                        <span><i class="fas fa-exclamation-triangle"></i> 시스템 로그</span>
-                        <div class="chart-controls">
-                            <button class="chart-btn active" onclick="loadChart('system_logs', 7)">7일</button>
-                            <button class="chart-btn" onclick="loadChart('system_logs', 30)">30일</button>
-      </div>
-                      </div>
-                    <div class="chart-container">
-                        <canvas id="systemLogsChart"></canvas>
-                  </div>
-        </div>
-        </div>
-      </div>
-        
-        <!-- 실시간 활동 섹션 -->
-        <div class="realtime-section">
-            <h3 class="text-center mb-4">
-                <i class="fas fa-clock"></i> 실시간 활동
-            </h3>
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="activity-list" id="activityList">
-                        <!-- 실시간 활동이 여기에 표시됩니다 -->
-    </div>
-  </div>
-                <div class="col-md-4">
-    <div class="card">
-      <div class="card-header">
-                            <h5><i class="fas fa-chart-pie"></i> 실시간 통계</h5>
-      </div>
-      <div class="card-body">
-                            <div class="mb-3">
-                                <strong>최근 1시간</strong>
-                                <div id="realtimeStats">
-                                    <!-- 실시간 통계가 여기에 표시됩니다 -->
-          </div>
-          </div>
-          </div>
-          </div>
-        </div>
-      </div>
-    </div>
-        
-        <!-- 최고관리자 전용 메뉴 -->
-        <div class="admin-menu-section">
-            <h3 class="text-center mb-4">
-                <i class="fas fa-cogs"></i> 최고관리자 전용 관리 메뉴
-            </h3>
-            
-            <div class="admin-menu-grid">
-                <!-- 직원 승인/관리 -->
-                <a href="{{ url_for('admin_users') }}" class="admin-card">
-                    <div class="admin-card-badge">{{ stats.pending_users }}</div>
-                    <div class="admin-card-icon">
-                        <i class="fas fa-user-check"></i>
-  </div>
-                    <div class="admin-card-title">직원 승인/관리</div>
-                    <div class="admin-card-description">
-                        신규 직원 승인, 계정 관리, 권한 설정
-</div>
-                </a>
-                
-                <!-- 권한 관리 -->
-                <a href="{{ url_for('admin_user_permissions') }}" class="admin-card">
-                    <div class="admin-card-icon">
-                        <i class="fas fa-user-shield"></i>
-      </div>
-                    <div class="admin-card-title">권한 관리</div>
-                    <div class="admin-card-description">
-                        역할별 권한 설정, 권한 위임/회수
-          </div>
-                </a>
-                
-                <!-- 전체 알림/공지 -->
-                <a href="{{ url_for('admin_notify_send') }}" class="admin-card">
-                    <div class="admin-card-badge">{{ stats.unread_notifications }}</div>
-                    <div class="admin-card-icon">
-                        <i class="fas fa-bullhorn"></i>
-          </div>
-                    <div class="admin-card-title">전체 알림/공지</div>
-                    <div class="admin-card-description">
-                        전체 직원 대상 알림 발송, 공지사항 관리
-          </div>
-            </a>
-                
-                <!-- 통합 보고서 -->
-                <a href="{{ url_for('admin_reports') }}" class="admin-card">
-                    <div class="admin-card-icon">
-                        <i class="fas fa-chart-line"></i>
-          </div>
-                    <div class="admin-card-title">통합 보고서</div>
-                    <div class="admin-card-description">
-                        매장별 통계, 출근 현황, 매출 분석
-        </div>
-                </a>
-                
-                <!-- 시스템/오류 보고서 -->
-                <a href="{{ url_for('admin_statistics') }}" class="admin-card">
-                    <div class="admin-card-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-      </div>
-                    <div class="admin-card-title">시스템/오류 보고서</div>
-                    <div class="admin-card-description">
-                        시스템 로그, 오류 현황, 성능 모니터링
-          </div>
-            </a>
-                
-                <!-- 백엔드 관리 -->
-                <a href="/admin/flask-admin" class="admin-card" target="_blank">
-                    <div class="admin-card-icon">
-                        <i class="fas fa-server"></i>
-          </div>
-                    <div class="admin-card-title">백엔드 관리</div>
-                    <div class="admin-card-description">
-                        Flask-Admin, 데이터베이스 직접 관리
-          </div>
-            </a>
-                
-                <!-- 시스템 모니터링 -->
-                <a href="{{ url_for('admin_system_monitor') }}" class="admin-card">
-                    <div class="admin-card-icon">
-                        <i class="fas fa-tachometer-alt"></i>
-          </div>
-                    <div class="admin-card-title">시스템 모니터링</div>
-                    <div class="admin-card-description">
-                        실시간 시스템 상태, 리소스 사용률
-        </div>
-                </a>
-                
-                <!-- 백업 관리 -->
-                <a href="{{ url_for('admin_backup_management') }}" class="admin-card">
-                    <div class="admin-card-icon">
-                        <i class="fas fa-database"></i>
-        </div>
-                    <div class="admin-card-title">백업 관리</div>
-                    <div class="admin-card-description">
-                        데이터 백업/복원, 시스템 백업 관리
-      </div>
-                </a>
-                
-                <!-- 대시보드 모드 설정 -->
-                <a href="{{ url_for('admin_dashboard') }}" class="admin-card">
-                    <div class="admin-card-icon">
-                        <i class="fas fa-cog"></i>
-      </div>
-                    <div class="admin-card-title">대시보드 모드 설정</div>
-                    <div class="admin-card-description">
-                        1인 사장님/그룹 프랜차이즈 모드 전환
-      </div>
-                </a>
-                
-                <!-- 피드백 관리 -->
-                <a href="{{ url_for('admin_notify_send') }}" class="admin-card">
-                    <div class="admin-card-badge">{{ stats.pending_feedback }}</div>
-                    <div class="admin-card-icon">
-                        <i class="fas fa-comments"></i>
-      </div>
-                    <div class="admin-card-title">피드백 관리</div>
-                    <div class="admin-card-description">
-                        직원 피드백/문의사항 처리 및 관리
-    </div>
-                </a>
-</div>
-
-            <!-- 최고관리자 전용 안내 -->
-            <div class="alert alert-info mt-4">
-                <i class="fas fa-info-circle"></i>
-                <strong>최고관리자 전용 대시보드</strong><br>
-                일반 매장 업무(발주, 스케줄, 재고 등)는 각 매장 관리자/직원 대시보드에서 처리됩니다.
-                이 페이지에서는 전체 시스템 관리 및 모니터링만 수행할 수 있습니다.
-  </div>
-</div>
-
-        <!-- 시스템 상태 섹션 -->
-        <div class="system-status-section">
-            <h3 class="text-center mb-4">
-                <i class="fas fa-info-circle"></i> 시스템 상태
-            </h3>
-            <div class="status-grid">
-                <div class="status-card">
-                    <div class="status-title">데이터베이스 상태</div>
-                    <div class="status-value status-good">
-                        <i class="fas fa-check-circle"></i> 정상
-      </div>
-      </div>
-                <div class="status-card">
-                    <div class="status-title">서버 업타임</div>
-                    <div class="status-value status-good">
-                        <i class="fas fa-clock"></i> {{ system_status.uptime }}
-    </div>
-  </div>
-                <div class="status-card">
-                    <div class="status-title">대시보드 모드</div>
-                    <div class="status-value status-info">
-                        <i class="fas fa-cog"></i> {{ system_status.dashboard_mode|title }}
-      </div>
+                </div>
             </div>
-                <div class="status-card">
-                    <div class="status-title">마지막 백업</div>
-                    <div class="status-value status-good">
-                        <i class="fas fa-save"></i> {{ system_status.last_backup }}
-          </div>
-      </div>
-    </div>
-  </div>
-</div>
+        </header>
 
-    <!-- Chart.js 라이브러리 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script>
-        // 차트 객체들을 저장할 변수
-        let charts = {};
-        
-        // 차트 색상 설정
-        const chartColors = {
-            attendance: {
-                border: 'rgb(75, 192, 192)',
-                background: 'rgba(75, 192, 192, 0.2)'
-            },
-            notifications: {
-                border: 'rgb(255, 99, 132)',
-                background: 'rgba(255, 99, 132, 0.2)'
-            },
-            orders: {
-                border: 'rgb(54, 162, 235)',
-                background: 'rgba(54, 162, 235, 0.2)'
-            },
-            system_logs: {
-                border: 'rgb(255, 205, 86)',
-                background: 'rgba(255, 205, 86, 0.2)'
-            }
-        };
-        
-        // 차트 로드 함수
-        function loadChart(type, days) {
-            // 기존 차트가 있으면 제거
-            if (charts[type]) {
-                charts[type].destroy();
-            }
-            
-            // 버튼 활성화 상태 변경
-            const chartCard = document.querySelector(`#${type}Chart`).closest('.chart-card');
-            chartCard.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // 차트 데이터 로드
-            fetch(`/api/dashboard/stats?period=${days}`)
-                .then(response => response.json())
-                .then(data => {
-                    const ctx = document.getElementById(`${type}Chart`).getContext('2d');
-                    
-                    // 날짜 라벨 포맷팅
-                    const labels = data.labels.map(date => {
-                        const d = new Date(date);
-                        return `${d.getMonth() + 1}/${d.getDate()}`;
-                    });
-                    
-                    charts[type] = new Chart(ctx, {
-  type: 'line',
-  data: {
-                            labels: labels,
-                            datasets: [{
-                                label: getChartLabel(type),
-                                data: data.datasets[type] || [],
-                                borderColor: chartColors[type].border,
-                                backgroundColor: chartColors[type].background,
-                                tension: 0.1,
-                                fill: true,
-                                borderWidth: 2
-                            }]
-  },
-  options: {
-    responsive: true,
-                            maintainAspectRatio: false,
-    plugins: { 
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    mode: 'index',
-                                    intersect: false
-      }
-    },
-    scales: { 
-      y: { 
-        beginAtZero: true,
-                                    ticks: {
-                                        stepSize: 1
-        }
-      },
-      x: {
-                                    grid: {
-                                        display: false
-        }
-      }
-                            },
-                            interaction: {
-                                mode: 'nearest',
-                                axis: 'x',
-                                intersect: false
-    }
-  }
-});
-                })
-                .catch(error => {
-                    console.error('차트 데이터 로드 실패:', error);
-                    // 에러 시 빈 차트 표시
-                    const ctx = document.getElementById(`${type}Chart`).getContext('2d');
-                    charts[type] = new Chart(ctx, {
-                        type: 'line',
-  data: {
-                            labels: [],
-    datasets: [{ 
-                                label: getChartLabel(type),
-                                data: [],
-                                borderColor: chartColors[type].border,
-                                backgroundColor: chartColors[type].background
-    }]
-  },
-  options: {
-    responsive: true,
-                            maintainAspectRatio: false
-                        }
-                    });
-                });
-        }
-        
-        // 차트 라벨 반환
-        function getChartLabel(type) {
-            const labels = {
-                'attendance': '출근',
-                'notifications': '알림',
-                'orders': '발주',
-                'system_logs': '시스템 로그'
-            };
-            return labels[type] || type;
-        }
-        
-        // 실시간 통계 업데이트
-        function updateRealtimeStats() {
-            fetch('/api/dashboard/stats?period=1')
-                .then(response => response.json())
-                .then(data => {
-                    const statsDiv = document.getElementById('realtimeStats');
-                    if (statsDiv && data.current_stats) {
-                        statsDiv.innerHTML = `
-                            <div class="mb-2">
-                                <i class="fas fa-users text-primary"></i> 활성 사용자: ${data.current_stats.active_users}명
-                            </div>
-                            <div class="mb-2">
-                                <i class="fas fa-bell text-warning"></i> 미읽 알림: ${data.current_stats.unread_notifications}건
-                            </div>
-                            <div class="mb-2">
-                                <i class="fas fa-shopping-cart text-info"></i> 대기 발주: ${data.current_stats.pending_orders}건
-                            </div>
-                            <div class="mb-2">
-                                <i class="fas fa-sign-in-alt text-success"></i> 오늘 출근: ${data.current_stats.today_attendance}명
-                            </div>
-                            <div class="mb-2">
-                                <i class="fas fa-exclamation-triangle text-danger"></i> 시스템 오류: ${data.current_stats.system_errors}건
-                            </div>
-                            <div class="mt-3">
-                                <small class="text-muted">
-                                    <i class="fas fa-clock"></i> 마지막 업데이트: ${new Date().toLocaleTimeString()}
-                                </small>
-                            </div>
-                        `;
-                    }
-                })
-                .catch(error => {
-                    console.error('실시간 통계 업데이트 실패:', error);
-                });
-        }
-        
-        // 실시간 활동 업데이트
-        function updateRealtimeActivities() {
-            fetch('/api/dashboard/realtime')
-                .then(response => response.json())
-                .then(data => {
-                    const activityList = document.getElementById('activityList');
-                    if (activityList && data.activities) {
-                        activityList.innerHTML = '';
-                        
-                        data.activities.forEach(activity => {
-                            const activityItem = document.createElement('div');
-                            activityItem.className = 'activity-item';
-                            
-                            // 활동 타입에 따른 아이콘과 색상 설정
-                            let iconClass = 'fas fa-info-circle';
-                            let bgColor = 'bg-info';
-                            
-                            if (activity.type === 'system_log') {
-                                if (activity.action.includes('error')) {
-                                    iconClass = 'fas fa-exclamation-triangle';
-                                    bgColor = 'bg-danger';
-                                } else if (activity.action.includes('login')) {
-                                    iconClass = 'fas fa-sign-in-alt';
-                                    bgColor = 'bg-success';
-                                } else {
-                                    iconClass = 'fas fa-cog';
-                                    bgColor = 'bg-primary';
-                                }
-                            } else if (activity.type === 'notification') {
-                                iconClass = 'fas fa-bell';
-                                bgColor = 'bg-warning';
-                            }
-                            
-                            activityItem.innerHTML = `
-                                <div class="activity-icon ${bgColor}">
-                                    <i class="${iconClass}"></i>
+        <!-- 메인 콘텐츠 -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- 통계 카드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                                    </svg>
                                 </div>
-                                <div class="activity-content">
-                                    <div class="activity-user">${activity.username}</div>
-                                    <div class="activity-action">${activity.action}</div>
-                                    ${activity.detail ? `<small class="text-muted">${activity.detail}</small>` : ''}
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">전체 직원</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ stats.total_staff if stats else 0 }}명</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
                                 </div>
-                                <div class="activity-time">${activity.time_ago}</div>
-                            `;
-                            activityList.appendChild(activityItem);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('실시간 활동 업데이트 실패:', error);
-                });
-        }
-        
-        // 실시간 알림 개수 업데이트
-        function updateNotificationCount() {
-            fetch('/notifications/count')
-                .then(response => response.json())
-                .then(data => {
-                    const badge = document.querySelector('.admin-card[href*="notify_send"] .admin-card-badge');
-                    if (badge) {
-                        if (data.count > 0) {
-                            badge.textContent = data.count;
-                            badge.style.display = 'flex';
-                        } else {
-                            badge.style.display = 'none';
-                        }
-                    }
-                })
-                .catch(error => console.error('알림 개수 조회 실패:', error));
-        }
-        
-        // 페이지 로드 시 초기화
-document.addEventListener('DOMContentLoaded', function() {
-            // 차트 초기 로드
-            loadChart('attendance', 7);
-            loadChart('notifications', 7);
-            loadChart('orders', 7);
-            loadChart('system_logs', 7);
-            
-            // 실시간 데이터 초기 로드
-            updateRealtimeStats();
-            updateRealtimeActivities();
-            updateNotificationCount();
-            
-            // 실시간 업데이트 설정
-            setInterval(updateRealtimeStats, 30000); // 30초마다
-            setInterval(updateRealtimeActivities, 10000); // 10초마다
-            setInterval(updateNotificationCount, 30000); // 30초마다
-});
-</script>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">출근 중</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ stats.active_staff if stats else 0 }}명</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">대기 주문</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ stats.pending_orders if stats else 0 }}건</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">오늘 매출</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ "₩{:,.0f}".format(stats.today_revenue) if stats and stats.today_revenue else "₩0" }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 빠른 액션 -->
+            <div class="bg-white shadow rounded-lg mb-8">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">빠른 액션</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <a href="{{ url_for('admin_users') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                            직원 관리
+                        </a>
+                        <a href="{{ url_for('schedule') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                            근무표 관리
+                        </a>
+                        <a href="{{ url_for('admin_reports') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
+                            리포트 보기
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 최근 활동 -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">최근 활동</h3>
+                    <div class="flow-root">
+                        <ul class="-mb-8">
+                            {% if recent_activities %}
+                                {% for activity in recent_activities %}
+                                <li>
+                                    <div class="relative pb-8">
+                                        {% if not loop.last %}
+                                        <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                                        {% endif %}
+                                        <div class="relative flex space-x-3">
+                                            <div>
+                                                <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                                                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                                                    </svg>
+                                                </span>
+                                            </div>
+                                            <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                <div>
+                                                    <p class="text-sm text-gray-500">{{ activity.description }}</p>
+                                                </div>
+                                                <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                                                    <time>{{ activity.timestamp }}</time>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            {% else %}
+                                <li class="text-center py-4 text-gray-500">최근 활동이 없습니다.</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </body>
 </html> 

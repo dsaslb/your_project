@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알림/공지사항 - 레스토랑 관리 시스템</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .tabs { display: flex; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; background: #e9ecef; border: none; cursor: pointer; }
+        .tab.active { background: #007bff; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .notice-table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .notice-table th, .notice-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .notice-table th { background: #f8f9fa; font-weight: bold; }
+        .priority-긴급 { color: #dc3545; }
+        .priority-중요 { color: #ffc107; }
+        .priority-일반 { color: #28a745; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 2px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>알림/공지사항</h1>
+            <p>알림과 공지사항을 관리합니다.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('notifications')">알림</button>
+            <button class="tab" onclick="showTab('notices')">공지사항</button>
+        </div>
+
+        <div id="notifications" class="tab-content active">
+            <div class="controls">
+                <button class="btn btn-primary" onclick="showAddNotificationModal()">새 알림 추가</button>
+                <button class="btn btn-success" onclick="markAllRead()">모두 읽음 처리</button>
+            </div>
+
+            <table class="notice-table">
+                <thead>
+                    <tr>
+                        <th>제목</th>
+                        <th>카테고리</th>
+                        <th>우선순위</th>
+                        <th>읽음여부</th>
+                        <th>생성일</th>
+                        <th>액션</th>
+                    </tr>
+                </thead>
+                <tbody id="notifications-tbody">
+                    <tr>
+                        <td colspan="6" style="text-align: center;">로딩 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="notices" class="tab-content">
+            <div class="controls">
+                <button class="btn btn-primary" onclick="showAddNoticeModal()">새 공지사항 추가</button>
+            </div>
+
+            <table class="notice-table">
+                <thead>
+                    <tr>
+                        <th>제목</th>
+                        <th>카테고리</th>
+                        <th>작성자</th>
+                        <th>생성일</th>
+                        <th>액션</th>
+                    </tr>
+                </thead>
+                <tbody id="notices-tbody">
+                    <tr>
+                        <td colspan="5" style="text-align: center;">로딩 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭 비활성화
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // 선택된 탭 활성화
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            // 해당 탭의 데이터 로드
+            if (tabName === 'notifications') {
+                loadNotifications();
+            } else {
+                loadNotices();
+            }
+        }
+
+        // 알림 목록 로드
+        async function loadNotifications() {
+            try {
+                const response = await fetch('/api/notifications');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const notifications = data.data;
+                    const tbody = document.getElementById('notifications-tbody');
+                    
+                    tbody.innerHTML = notifications.map(notification => `
+                        <tr>
+                            <td>${notification.title}</td>
+                            <td>${notification.category}</td>
+                            <td class="priority-${notification.priority}">${notification.priority}</td>
+                            <td>${notification.is_read ? '읽음' : '안읽음'}</td>
+                            <td>${new Date(notification.created_at).toLocaleDateString()}</td>
+                            <td>
+                                <button class="btn btn-warning" onclick="editNotification(${notification.id})">수정</button>
+                                <button class="btn btn-danger" onclick="deleteNotification(${notification.id})">삭제</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('알림 목록 로드 실패:', error);
+            }
+        }
+
+        // 공지사항 목록 로드
+        async function loadNotices() {
+            try {
+                const response = await fetch('/api/notices');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const notices = data.data;
+                    const tbody = document.getElementById('notices-tbody');
+                    
+                    tbody.innerHTML = notices.map(notice => `
+                        <tr>
+                            <td>${notice.title}</td>
+                            <td>${notice.category}</td>
+                            <td>${notice.author}</td>
+                            <td>${new Date(notice.created_at).toLocaleDateString()}</td>
+                            <td>
+                                <button class="btn btn-warning" onclick="editNotice(${notice.id})">수정</button>
+                                <button class="btn btn-danger" onclick="deleteNotice(${notice.id})">삭제</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('공지사항 목록 로드 실패:', error);
+            }
+        }
+
+        // 페이지 로드 시 알림 목록 로드
+        window.addEventListener('load', loadNotifications);
+    </script>
+</body>
+</html> 

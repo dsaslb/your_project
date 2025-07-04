@@ -17,16 +17,11 @@ dashboard_bp = Blueprint("dashboard", __name__)
 @dashboard_bp.route("/dashboard")
 @login_required
 def dashboard():
-    """통합 대시보드 - 권한별 다른 화면"""
-    try:
-        if current_user.is_admin():
-            return admin_dashboard()
-        else:
-            return employee_dashboard()
-    except Exception as e:
-        log_error(e, current_user.id)
-        flash("대시보드 로딩 중 오류가 발생했습니다.", "error")
-        return redirect(url_for("login"))
+    """대시보드 메인 페이지"""
+    if current_user.is_admin():
+        return admin_dashboard()
+    else:
+        return employee_dashboard()
 
 
 def admin_dashboard():
@@ -105,13 +100,13 @@ def get_admin_stats(today):
 
         # 오늘 출근한 직원 수
         today_attendance = Attendance.query.filter(
-            extract("date", Attendance.clock_in) == today
+            func.date(Attendance.clock_in) == today
         ).count()
 
         # 오늘 퇴근한 직원 수
         today_clockout = Attendance.query.filter(
             and_(
-                extract("date", Attendance.clock_in) == today,
+                func.date(Attendance.clock_in) == today,
                 Attendance.clock_out.isnot(None),
             )
         ).count()
@@ -166,17 +161,17 @@ def get_weekly_trends():
 
             # 출근자 수
             attendance_count = Attendance.query.filter(
-                extract("date", Attendance.clock_in) == target_date
+                func.date(Attendance.clock_in) == target_date
             ).count()
 
             # 교대 신청 수
             shift_requests = ShiftRequest.query.filter(
-                extract("date", ShiftRequest.created_at) == target_date
+                func.date(ShiftRequest.created_at) == target_date
             ).count()
 
             # 발주 수
             orders_count = Order.query.filter(
-                extract("date", Order.created_at) == target_date
+                func.date(Order.created_at) == target_date
             ).count()
 
             trends.append(
@@ -204,13 +199,13 @@ def get_monthly_trends():
 
             # 출근자 수
             attendance_count = Attendance.query.filter(
-                extract("date", Attendance.clock_in) == target_date
+                func.date(Attendance.clock_in) == target_date
             ).count()
 
             # 신규 사용자
             new_users = User.query.filter(
                 and_(
-                    extract("date", User.created_at) == target_date,
+                    func.date(User.created_at) == target_date,
                     User.status == "approved",
                 )
             ).count()
@@ -362,7 +357,7 @@ def get_attendance_status(user_id, today):
         today_attendance = Attendance.query.filter(
             and_(
                 Attendance.user_id == user_id,
-                extract("date", Attendance.clock_in) == today,
+                func.date(Attendance.clock_in) == today,
             )
         ).first()
 
@@ -418,3 +413,55 @@ def api_dashboard_trends():
     except Exception as e:
         log_error(e, current_user.id)
         return jsonify({"success": False, "error": str(e)})
+
+
+@dashboard_bp.route('/api/dashboard/activities')
+@login_required
+def dashboard_activities():
+    """최근 활동 데이터 API"""
+    # 더미 활동 데이터
+    activities = [
+        {
+            "id": 1,
+            "type": "order",
+            "title": "새 주문 등록",
+            "description": "테이블 5번에서 새로운 주문이 등록되었습니다.",
+            "timestamp": "2024-01-15T14:30:00Z",
+            "status": "success"
+        },
+        {
+            "id": 2,
+            "type": "inventory",
+            "title": "재고 부족 알림",
+            "description": "토마토 소스 재고가 부족합니다.",
+            "timestamp": "2024-01-15T13:45:00Z",
+            "status": "warning"
+        },
+        {
+            "id": 3,
+            "type": "staff",
+            "title": "직원 출근",
+            "description": "김철수 직원이 출근했습니다.",
+            "timestamp": "2024-01-15T09:00:00Z",
+            "status": "info"
+        }
+    ]
+    return jsonify({"success": True, "data": activities})
+
+
+@dashboard_bp.route('/api/dashboard/charts')
+@login_required
+def dashboard_charts():
+    """차트 데이터 API"""
+    # 더미 차트 데이터
+    charts = {
+        "sales_chart": {
+            "labels": ["1월", "2월", "3월", "4월", "5월", "6월"],
+            "data": [1200000, 1350000, 1420000, 1380000, 1550000, 1680000]
+        },
+        "orders_chart": {
+            "labels": ["월", "화", "수", "목", "금", "토", "일"],
+            "data": [45, 52, 38, 61, 78, 95, 67]
+        }
+    }
+    return jsonify({"success": True, "data": charts})
