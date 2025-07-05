@@ -46,7 +46,7 @@ def admin_dashboard():
         recent_notifications = get_recent_notifications()
 
         return render_template(
-            "admin/dashboard_enhanced.html",
+            "admin_dashboard.html",
             stats=stats,
             weekly_trends=weekly_trends,
             monthly_trends=monthly_trends,
@@ -57,7 +57,7 @@ def admin_dashboard():
     except Exception as e:
         log_error(e, current_user.id)
         flash("관리자 대시보드 로딩 중 오류가 발생했습니다.", "error")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
 
 def employee_dashboard():
@@ -79,7 +79,7 @@ def employee_dashboard():
         attendance_status = get_attendance_status(current_user.id, today)
 
         return render_template(
-            "employee/dashboard_enhanced.html",
+            "dashboard.html",
             stats=personal_stats,
             schedule=my_schedule,
             notifications=my_notifications,
@@ -89,7 +89,7 @@ def employee_dashboard():
     except Exception as e:
         log_error(e, current_user.id)
         flash("직원 대시보드 로딩 중 오류가 발생했습니다.", "error")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
 
 def get_admin_stats(today):

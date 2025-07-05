@@ -1526,9 +1526,131 @@ class Payroll(db.Model):
     
     # 복합 인덱스
     __table_args__ = (
-        db.Index("idx_payroll_user_period", "user_id", "year", "month"),
-        db.UniqueConstraint("user_id", "year", "month", name="uq_user_year_month"),
+        db.Index('idx_payroll_user_year_month', 'user_id', 'year', 'month'),
     )
     
     def __repr__(self):
-        return f"<Payroll {self.user_id} {self.year}-{self.month}: {self.net_salary}원>"
+        return f"<Payroll {self.user_id} {self.year}-{self.month}>"
+
+
+class Staff(db.Model):
+    """직원 모델"""
+    __tablename__ = "staff"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    position = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(120))
+    status = db.Column(db.String(20), default="active", index=True)  # active, on_leave, inactive
+    avatar = db.Column(db.String(255))  # 프로필 이미지 경로
+    join_date = db.Column(db.Date, nullable=False)
+    salary = db.Column(db.String(50))  # 급여 정보
+    department = db.Column(db.String(100))
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)  # 시스템 사용자와 연결
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    restaurant = db.relationship("Branch", backref="staff")
+    user = db.relationship("User", backref="staff_profile")
+    contracts = db.relationship("Contract", backref="staff", cascade="all, delete-orphan")
+    health_certificates = db.relationship("HealthCertificate", backref="staff", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<Staff {self.name}>"
+
+
+class Contract(db.Model):
+    """계약서 모델"""
+    __tablename__ = "contracts"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey("staff.id"), nullable=False, index=True)
+    contract_number = db.Column(db.String(50), unique=True, nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    expiry_date = db.Column(db.Date, nullable=False, index=True)
+    renewal_date = db.Column(db.Date, nullable=False)
+    contract_type = db.Column(db.String(50), default="정규직")  # 정규직, 계약직, 파트타임 등
+    salary_amount = db.Column(db.Integer)  # 계약 급여
+    file_path = db.Column(db.String(255))  # 계약서 파일 경로
+    file_name = db.Column(db.String(255))  # 원본 파일명
+    file_size = db.Column(db.Integer)  # 파일 크기 (bytes)
+    notification_sent = db.Column(db.Boolean, default=False, index=True)  # 만료 임박 알림 발송 여부
+    expired_notification_sent = db.Column(db.Boolean, default=False, index=True)  # 만료 알림 발송 여부
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_contract_expiry_notification', 'expiry_date', 'notification_sent'),
+        db.Index('idx_contract_expired_notification', 'expiry_date', 'expired_notification_sent'),
+    )
+    
+    @property
+    def is_expiring_soon(self):
+        """30일 이내에 만료되는지 확인"""
+        today = datetime.now().date()
+        return self.expiry_date <= today + timedelta(days=30) and self.expiry_date > today
+    
+    @property
+    def is_expired(self):
+        """만료되었는지 확인"""
+        return self.expiry_date <= datetime.now().date()
+    
+    @property
+    def days_until_expiry(self):
+        """만료까지 남은 일수"""
+        today = datetime.now().date()
+        return (self.expiry_date - today).days
+    
+    def __repr__(self):
+        return f"<Contract {self.contract_number} - {self.staff.name}>"
+
+
+class HealthCertificate(db.Model):
+    """보건증 모델"""
+    __tablename__ = "health_certificates"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey("staff.id"), nullable=False, index=True)
+    certificate_number = db.Column(db.String(50), unique=True, nullable=False)
+    issue_date = db.Column(db.Date, nullable=False)
+    expiry_date = db.Column(db.Date, nullable=False, index=True)
+    renewal_date = db.Column(db.Date, nullable=False)
+    issuing_authority = db.Column(db.String(100))  # 발급 기관
+    certificate_type = db.Column(db.String(50), default="식품위생교육")  # 보건증 유형
+    file_path = db.Column(db.String(255))  # 보건증 파일 경로
+    file_name = db.Column(db.String(255))  # 원본 파일명
+    file_size = db.Column(db.Integer)  # 파일 크기 (bytes)
+    notification_sent = db.Column(db.Boolean, default=False, index=True)  # 만료 임박 알림 발송 여부
+    expired_notification_sent = db.Column(db.Boolean, default=False, index=True)  # 만료 알림 발송 여부
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_health_cert_expiry_notification', 'expiry_date', 'notification_sent'),
+        db.Index('idx_health_cert_expired_notification', 'expiry_date', 'expired_notification_sent'),
+    )
+    
+    @property
+    def is_expiring_soon(self):
+        """30일 이내에 만료되는지 확인"""
+        today = datetime.now().date()
+        return self.expiry_date <= today + timedelta(days=30) and self.expiry_date > today
+    
+    @property
+    def is_expired(self):
+        """만료되었는지 확인"""
+        return self.expiry_date <= datetime.now().date()
+    
+    @property
+    def days_until_expiry(self):
+        """만료까지 남은 일수"""
+        today = datetime.now().date()
+        return (self.expiry_date - today).days
+    
+    def __repr__(self):
+        return f"<HealthCertificate {self.certificate_number} - {self.staff.name}>"

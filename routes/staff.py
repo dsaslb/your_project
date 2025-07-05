@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required, current_user
+from models import db, User, PermissionChangeLog, Notification
+from datetime import datetime
 
 staff_bp = Blueprint('staff', __name__)
 
@@ -184,4 +186,130 @@ def get_staff_stats():
         "attendance_rate": 95.5
     }
     
-    return jsonify({"success": True, "data": stats}) 
+    return jsonify({"success": True, "data": stats})
+
+@staff_bp.route('/api/staff/<int:staff_id>/permissions', methods=['GET'])
+@login_required
+def get_staff_permissions(staff_id):
+    """직원 권한 조회 API"""
+    try:
+        user = User.query.get(staff_id)
+        if not user:
+            return jsonify({"success": False, "message": "직원을 찾을 수 없습니다."}), 404
+        
+        # 현재 권한 정보 반환
+        permissions = {
+            "perm_employee_management": user.permissions.get("employee_management", {}).get("view", False),
+            "perm_schedule_management": user.permissions.get("schedule_management", {}).get("view", False),
+            "perm_order_management": user.permissions.get("order_management", {}).get("view", False),
+            "perm_inventory_management": user.permissions.get("inventory_management", {}).get("view", False),
+            "perm_notification_management": user.permissions.get("notification_management", {}).get("view", False),
+            "perm_reports": user.permissions.get("reports", {}).get("view", False),
+            "perm_system_management": user.permissions.get("system_management", {}).get("view", False)
+        }
+        
+        return jsonify({"success": True, "data": permissions})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"권한 조회 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@staff_bp.route('/api/staff/<int:staff_id>/permissions', methods=['PUT'])
+@login_required
+def update_staff_permissions(staff_id):
+    """직원 권한 변경 API"""
+    try:
+        user = User.query.get(staff_id)
+        if not user:
+            return jsonify({"success": False, "message": "직원을 찾을 수 없습니다."}), 404
+        
+        data = request.get_json()
+        
+        # 이전 권한 저장 (이력 기록용)
+        old_permissions = user.permissions.copy()
+        
+        # 새로운 권한 설정
+        new_permissions = {
+            "employee_management": {"view": data.get("perm_employee_management", False)},
+            "schedule_management": {"view": data.get("perm_schedule_management", False)},
+            "order_management": {"view": data.get("perm_order_management", False)},
+            "inventory_management": {"view": data.get("perm_inventory_management", False)},
+            "notification_management": {"view": data.get("perm_notification_management", False)},
+            "reports": {"view": data.get("perm_reports", False)},
+            "system_management": {"view": data.get("perm_system_management", False)}
+        }
+        
+        # 권한 변경 이력 기록
+        change_log = PermissionChangeLog(
+            user_id=staff_id,
+            changed_by=current_user.id,
+            change_type="permission",
+            before_value=str(old_permissions),
+            after_value=str(new_permissions),
+            reason=data.get("reason", "관리자 권한 변경"),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', '')
+        )
+        db.session.add(change_log)
+        
+        # 권한 업데이트
+        user.permissions = new_permissions
+        db.session.commit()
+        
+        # 권한 변경 알림 발송 (관리자에게)
+        notification = Notification(
+            user_id=current_user.id,
+            title="직원 권한 변경 알림",
+            message=f"{user.name} 직원의 권한이 변경되었습니다. 변경자: {current_user.name}",
+            type="permission_change",
+            priority="normal",
+            data={
+                "target_user_id": staff_id,
+                "target_user_name": user.name,
+                "changed_by": current_user.name,
+                "change_type": "permission"
+            }
+        )
+        db.session.add(notification)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "message": "권한이 성공적으로 변경되었습니다.",
+            "data": {
+                "user_id": staff_id,
+                "user_name": user.name,
+                "changed_by": current_user.name,
+                "changed_at": datetime.now().isoformat()
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": f"권한 변경 중 오류가 발생했습니다: {str(e)}"}), 500
+
+@staff_bp.route('/api/staff/<int:staff_id>/permission-history')
+@login_required
+def get_staff_permission_history(staff_id):
+    """직원 권한 변경 이력 조회 API"""
+    try:
+        # 최근 10개 권한 변경 이력 조회
+        history = PermissionChangeLog.query.filter_by(user_id=staff_id)\
+            .order_by(PermissionChangeLog.created_at.desc())\
+            .limit(10).all()
+        
+        history_data = []
+        for record in history:
+            changer = User.query.get(record.changed_by)
+            history_data.append({
+                "id": record.id,
+                "changed_by": changer.name if changer else "알 수 없음",
+                "change_type": record.change_type,
+                "before_value": record.before_value,
+                "after_value": record.after_value,
+                "reason": record.reason,
+                "changed_at": record.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return jsonify({"success": True, "data": history_data})
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": f"이력 조회 중 오류가 발생했습니다: {str(e)}"}), 500 

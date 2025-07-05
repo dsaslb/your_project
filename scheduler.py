@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import date, datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -7,7 +8,8 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import and_, extract, func
 
-from models import Attendance, AttendanceReport, SystemLog, User, db
+from models import Attendance, AttendanceReport, SystemLog, User, db, Notification
+from models import Staff, Contract, HealthCertificate
 from utils.auto_processor import auto_processor
 # from utils.backup_manager import backup_manager  # 삭제된 파일
 from utils.email_utils import email_service
@@ -371,57 +373,38 @@ class AttendanceScheduler:
 def schedule_auto_processing_rules():
     """자동 처리 규칙 스케줄링"""
     try:
-        # 자동 처리 규칙 설정
-        auto_processor.schedule_rules()
-        
-        logger.info("✅ 자동 처리 규칙 스케줄링 완료")
-        return True
-        
+        # 매일 오전 9시에 자동 처리 규칙 실행
+        auto_processor.process_all_rules()
+        logger.info("자동 처리 규칙 실행 완료")
     except Exception as e:
-        logger.error(f"❌ 자동 처리 규칙 스케줄링 실패: {str(e)}")
-        return False
+        logger.error(f"자동 처리 규칙 실행 중 오류: {str(e)}")
 
 
 def check_sla_warnings():
-    """SLA 경고 체크"""
+    """SLA 경고 확인"""
     try:
-        # SLA 경고 체크 로직
-        results = auto_processor.check_sla_warnings()
-        
-        logger.info(f"✅ SLA 경고 체크 완료: {results}")
-        return results
-        
+        result = auto_processor.process_sla_warnings()
+        logger.info(f"SLA 경고 확인 완료: {result}")
     except Exception as e:
-        logger.error(f"❌ SLA 경고 체크 실패: {str(e)}")
-        return []
+        logger.error(f"SLA 경고 확인 중 오류: {str(e)}")
 
 
 def check_repeat_reporters():
-    """반복 신고자 체크"""
+    """반복 신고자 확인"""
     try:
-        # 반복 신고자 체크 로직
-        result = auto_processor.check_repeat_reporters()
-        
-        logger.info(f"✅ 반복 신고자 체크 완료: {result}")
-        return result
-        
+        result = auto_processor.process_repeated_reports()
+        logger.info(f"반복 신고자 확인 완료: {result}")
     except Exception as e:
-        logger.error(f"❌ 반복 신고자 체크 실패: {str(e)}")
-        return []
+        logger.error(f"반복 신고자 확인 중 오류: {str(e)}")
 
 
 def process_auto_approvals():
     """자동 승인 처리"""
     try:
-        # 자동 승인 처리 로직
-        result = auto_processor.process_auto_approvals()
-        
-        logger.info(f"✅ 자동 승인 처리 완료: {result}")
-        return result
-        
+        result = auto_processor.process_auto_approval()
+        logger.info(f"자동 승인 처리 완료: {result}")
     except Exception as e:
-        logger.error(f"❌ 자동 승인 처리 실패: {str(e)}")
-        return []
+        logger.error(f"자동 승인 처리 중 오류: {str(e)}")
 
 
 # 전역 스케줄러 인스턴스
@@ -492,18 +475,21 @@ class BackupScheduler:
     def _daily_backup(self):
         """일일 백업 실행"""
         try:
-            with self.app.app_context():
-                logger.info("일일 백업을 시작합니다...")
+            if self.app:
+                with self.app.app_context():
+                    logger.info("일일 백업을 시작합니다...")
 
-                # 데이터베이스 백업 생성
-                backup_path = self.backup_manager.create_backup("db_only")
+                    # 데이터베이스 백업 생성
+                    backup_path = self.backup_manager.create_backup("db_only")
 
-                if backup_path:
-                    # 관리자들에게 백업 완료 알림
-                    self._notify_backup_completion("일일", backup_path)
-                    logger.info(f"일일 백업 완료: {backup_path}")
-                else:
-                    logger.error("일일 백업 실패")
+                    if backup_path:
+                        # 관리자들에게 백업 완료 알림
+                        self._notify_backup_completion("일일", backup_path)
+                        logger.info(f"일일 백업 완료: {backup_path}")
+                    else:
+                        logger.error("일일 백업 실패")
+            else:
+                logger.warning("Flask 앱이 설정되지 않아 백업을 건너뜁니다.")
 
         except Exception as e:
             logger.error(f"일일 백업 중 오류 발생: {str(e)}")
@@ -512,18 +498,21 @@ class BackupScheduler:
     def _weekly_backup(self):
         """주간 백업 실행"""
         try:
-            with self.app.app_context():
-                logger.info("주간 백업을 시작합니다...")
+            if self.app:
+                with self.app.app_context():
+                    logger.info("주간 백업을 시작합니다...")
 
-                # 전체 백업 생성
-                backup_path = self.backup_manager.create_backup("full")
+                    # 전체 백업 생성
+                    backup_path = self.backup_manager.create_backup("full")
 
-                if backup_path:
-                    # 관리자들에게 백업 완료 알림
-                    self._notify_backup_completion("주간", backup_path)
-                    logger.info(f"주간 백업 완료: {backup_path}")
-                else:
-                    logger.error("주간 백업 실패")
+                    if backup_path:
+                        # 관리자들에게 백업 완료 알림
+                        self._notify_backup_completion("주간", backup_path)
+                        logger.info(f"주간 백업 완료: {backup_path}")
+                    else:
+                        logger.error("주간 백업 실패")
+            else:
+                logger.warning("Flask 앱이 설정되지 않아 백업을 건너뜁니다.")
 
         except Exception as e:
             logger.error(f"주간 백업 중 오류 발생: {str(e)}")
@@ -532,13 +521,16 @@ class BackupScheduler:
     def _cleanup_backups(self):
         """백업 정리"""
         try:
-            with self.app.app_context():
-                logger.info("백업 정리를 시작합니다...")
+            if self.app:
+                with self.app.app_context():
+                    logger.info("백업 정리를 시작합니다...")
 
-                # 오래된 백업 삭제
-                self.backup_manager.cleanup_old_backups()
+                    # 오래된 백업 삭제
+                    self.backup_manager.cleanup_old_backups()
 
-                logger.info("백업 정리 완료")
+                    logger.info("백업 정리 완료")
+            else:
+                logger.warning("Flask 앱이 설정되지 않아 백업 정리를 건너뜁니다.")
 
         except Exception as e:
             logger.error(f"백업 정리 중 오류 발생: {str(e)}")
@@ -546,17 +538,17 @@ class BackupScheduler:
     def _notify_backup_completion(self, backup_type, backup_path):
         """백업 완료 알림"""
         try:
-            # 관리자들에게 알림
-            admins = User.query.filter_by(role="admin").all()
+            if self.app:
+                with self.app.app_context():
+                    # 관리자들에게 알림
+                    admins = User.query.filter_by(role="admin").all()
 
-            for admin in admins:
-                send_notification_enhanced(
-                    user_id=admin.id,
-                    title=f"{backup_type} 백업 완료",
-                    content=f"{backup_type} 자동 백업이 성공적으로 완료되었습니다.\n백업 파일: {os.path.basename(backup_path)}",
-                    category="시스템",
-                    priority="중요",
-                )
+                    for admin in admins:
+                        send_notification_enhanced(
+                            user_id=admin.id,
+                            content=f"{backup_type} 자동 백업이 성공적으로 완료되었습니다.\n백업 파일: {os.path.basename(backup_path)}",
+                            category="시스템"
+                        )
 
         except Exception as e:
             logger.error(f"백업 완료 알림 발송 실패: {str(e)}")
@@ -564,17 +556,17 @@ class BackupScheduler:
     def _notify_backup_error(self, backup_type, error_message):
         """백업 오류 알림"""
         try:
-            # 관리자들에게 오류 알림
-            admins = User.query.filter_by(role="admin").all()
+            if self.app:
+                with self.app.app_context():
+                    # 관리자들에게 오류 알림
+                    admins = User.query.filter_by(role="admin").all()
 
-            for admin in admins:
-                send_notification_enhanced(
-                    user_id=admin.id,
-                    title=f"{backup_type} 백업 실패",
-                    content=f"{backup_type} 자동 백업 중 오류가 발생했습니다.\n오류 내용: {error_message}",
-                    category="시스템",
-                    priority="긴급",
-                )
+                    for admin in admins:
+                        send_notification_enhanced(
+                            user_id=admin.id,
+                            content=f"{backup_type} 자동 백업 중 오류가 발생했습니다.\n오류 내용: {error_message}",
+                            category="시스템"
+                        )
 
         except Exception as e:
             logger.error(f"백업 오류 알림 발송 실패: {str(e)}")
@@ -609,18 +601,21 @@ class BackupScheduler:
     def _custom_backup(self, backup_type):
         """사용자 정의 백업 실행"""
         try:
-            with self.app.app_context():
-                logger.info(f"사용자 정의 {backup_type} 백업을 시작합니다...")
+            if self.app:
+                with self.app.app_context():
+                    logger.info(f"사용자 정의 {backup_type} 백업을 시작합니다...")
 
-                backup_path = self.backup_manager.create_backup(backup_type)
+                    backup_path = self.backup_manager.create_backup(backup_type)
 
-                if backup_path:
-                    self._notify_backup_completion(
-                        f"사용자 정의 {backup_type}", backup_path
-                    )
-                    logger.info(f"사용자 정의 백업 완료: {backup_path}")
-                else:
-                    logger.error("사용자 정의 백업 실패")
+                    if backup_path:
+                        self._notify_backup_completion(
+                            f"사용자 정의 {backup_type}", backup_path
+                        )
+                        logger.info(f"사용자 정의 백업 완료: {backup_path}")
+                    else:
+                        logger.error("사용자 정의 백업 실패")
+            else:
+                logger.warning("Flask 앱이 설정되지 않아 사용자 정의 백업을 건너뜁니다.")
 
         except Exception as e:
             logger.error(f"사용자 정의 백업 중 오류 발생: {str(e)}")
@@ -685,3 +680,162 @@ class BackupScheduler:
 
 # 전역 스케줄러 인스턴스
 backup_scheduler = BackupScheduler()
+
+
+def check_document_expiry():
+    """계약서와 보건증 만료일을 확인하고 알림을 발송합니다."""
+    try:
+        today = datetime.now().date()
+        thirty_days_later = today + timedelta(days=30)
+        
+        # 계약서 만료 임박 확인
+        expiring_contracts = Contract.query.filter(
+            and_(
+                Contract.expiry_date <= thirty_days_later,
+                Contract.expiry_date > today,
+                Contract.notification_sent == False
+            )
+        ).all()
+        
+        for contract in expiring_contracts:
+            staff = Staff.query.get(contract.staff_id)
+            if staff:
+                # 관리자에게 알림 발송
+                managers = User.query.filter_by(role='manager', restaurant_id=staff.restaurant_id).all()
+                for manager in managers:
+                    notification = Notification(
+                        user_id=manager.id,
+                        title="계약서 만료 임박 알림",
+                        content=f"{staff.name} 직원의 계약서가 {contract.expiry_date.strftime('%Y년 %m월 %d일')}에 만료됩니다. 갱신을 확인해주세요.",
+                        category="document_expiry",
+                        priority="중요"
+                    )
+                    db.session.add(notification)
+                
+                # 알림 발송 상태 업데이트
+                contract.notification_sent = True
+                logger.info(f"계약서 만료 알림 발송: {staff.name} (만료일: {contract.expiry_date})")
+        
+        # 보건증 만료 임박 확인
+        expiring_health_certs = HealthCertificate.query.filter(
+            and_(
+                HealthCertificate.expiry_date <= thirty_days_later,
+                HealthCertificate.expiry_date > today,
+                HealthCertificate.notification_sent == False
+            )
+        ).all()
+        
+        for health_cert in expiring_health_certs:
+            staff = Staff.query.get(health_cert.staff_id)
+            if staff:
+                # 관리자에게 알림 발송
+                managers = User.query.filter_by(role='manager', restaurant_id=staff.restaurant_id).all()
+                for manager in managers:
+                    notification = Notification(
+                        user_id=manager.id,
+                        title="보건증 만료 임박 알림",
+                        content=f"{staff.name} 직원의 보건증이 {health_cert.expiry_date.strftime('%Y년 %m월 %d일')}에 만료됩니다. 갱신을 확인해주세요.",
+                        category="document_expiry",
+                        priority="중요"
+                    )
+                    db.session.add(notification)
+                
+                # 알림 발송 상태 업데이트
+                health_cert.notification_sent = True
+                logger.info(f"보건증 만료 알림 발송: {staff.name} (만료일: {health_cert.expiry_date})")
+        
+        # 만료된 문서 확인 (당일)
+        expired_contracts = Contract.query.filter(
+            and_(
+                Contract.expiry_date == today,
+                Contract.expired_notification_sent == False
+            )
+        ).all()
+        
+        for contract in expired_contracts:
+            staff = Staff.query.get(contract.staff_id)
+            if staff:
+                managers = User.query.filter_by(role='manager', restaurant_id=staff.restaurant_id).all()
+                for manager in managers:
+                    notification = Notification(
+                        user_id=manager.id,
+                        title="계약서 만료 알림",
+                        content=f"{staff.name} 직원의 계약서가 오늘 만료되었습니다. 즉시 갱신이 필요합니다.",
+                        category="document_expired",
+                        priority="긴급"
+                    )
+                    db.session.add(notification)
+                
+                contract.expired_notification_sent = True
+                logger.info(f"계약서 만료 알림 발송: {staff.name} (만료일: {contract.expiry_date})")
+        
+        expired_health_certs = HealthCertificate.query.filter(
+            and_(
+                HealthCertificate.expiry_date == today,
+                HealthCertificate.expired_notification_sent == False
+            )
+        ).all()
+        
+        for health_cert in expired_health_certs:
+            staff = Staff.query.get(health_cert.staff_id)
+            if staff:
+                managers = User.query.filter_by(role='manager', restaurant_id=staff.restaurant_id).all()
+                for manager in managers:
+                    notification = Notification(
+                        user_id=manager.id,
+                        title="보건증 만료 알림",
+                        content=f"{staff.name} 직원의 보건증이 오늘 만료되었습니다. 즉시 갱신이 필요합니다.",
+                        category="document_expired",
+                        priority="긴급"
+                    )
+                    db.session.add(notification)
+                
+                health_cert.expired_notification_sent = True
+                logger.info(f"보건증 만료 알림 발송: {staff.name} (만료일: {health_cert.expiry_date})")
+        
+        db.session.commit()
+        logger.info("문서 만료 확인 완료")
+        
+    except Exception as e:
+        logger.error(f"문서 만료 확인 중 오류 발생: {str(e)}")
+        db.session.rollback()
+
+def run_scheduler():
+    """스케줄러를 실행합니다."""
+    # 문서 만료 확인을 위한 스케줄러 생성
+    document_scheduler = BackgroundScheduler()
+    
+    # 매일 오전 9시에 문서 만료 확인
+    document_scheduler.add_job(
+        check_document_expiry,
+        CronTrigger(hour=9, minute=0),
+        id="document_expiry_check",
+        name="문서 만료 확인",
+        replace_existing=True
+    )
+    
+    # 개발/테스트용: 1분마다 실행
+    if os.getenv('FLASK_ENV') == 'development':
+        document_scheduler.add_job(
+            check_document_expiry,
+            IntervalTrigger(minutes=1),
+            id="document_expiry_check_dev",
+            name="문서 만료 확인 (개발용)",
+            replace_existing=True
+        )
+    
+    # 스케줄러 시작
+    document_scheduler.start()
+    logger.info("문서 만료 알림 스케줄러 시작")
+    
+    try:
+        # 메인 스레드 유지
+        while True:
+            time.sleep(60)
+    except KeyboardInterrupt:
+        logger.info("스케줄러 종료 요청됨")
+        document_scheduler.shutdown()
+        logger.info("문서 만료 알림 스케줄러 종료")
+
+if __name__ == "__main__":
+    run_scheduler()

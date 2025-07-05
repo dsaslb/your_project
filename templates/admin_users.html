@@ -213,6 +213,7 @@
                                         </svg>
                                         삭제
                                     </button>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="openPermissionModal({{ user.id }})">권한 관리</button>
                                 </div>
                             </td>
                         </tr>
@@ -259,4 +260,135 @@
         </div>
     </div>
 </div>
+
+<!-- 권한 관리 모달 -->
+<div id="permission-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+    <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg relative">
+        <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700" onclick="closePermissionModal()">&times;</button>
+        <h3 class="text-xl font-bold mb-4">직원 권한 관리</h3>
+        <form id="permission-form">
+            <input type="hidden" name="user_id" id="modal_user_id">
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <label><input type="checkbox" name="perm_employee_management"> 직원 관리</label>
+                <label><input type="checkbox" name="perm_schedule_management"> 스케줄 관리</label>
+                <label><input type="checkbox" name="perm_order_management"> 발주 관리</label>
+                <label><input type="checkbox" name="perm_inventory_management"> 재고 관리</label>
+                <label><input type="checkbox" name="perm_notification_management"> 알림 관리</label>
+                <label><input type="checkbox" name="perm_reports"> 보고서</label>
+                <label><input type="checkbox" name="perm_system_management"> 시스템 관리</label>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="btn btn-secondary" onclick="closePermissionModal()">취소</button>
+                <button type="submit" class="btn btn-primary">저장</button>
+            </div>
+        </form>
+        <div class="mt-4 text-xs text-gray-500" id="permission-history">
+            <!-- 변경 이력 표시 영역 (추후 구현) -->
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+async function openPermissionModal(userId) {
+    document.getElementById('permission-modal').classList.remove('hidden');
+    document.getElementById('modal_user_id').value = userId;
+    
+    try {
+        // 해당 직원의 현재 권한 불러오기
+        const response = await fetch(`/api/staff/${userId}/permissions`);
+        const result = await response.json();
+        
+        if (result.success) {
+            // 체크박스 상태 반영
+            Object.keys(result.data).forEach(perm => {
+                const checkbox = document.querySelector(`input[name="${perm}"]`);
+                if (checkbox) {
+                    checkbox.checked = result.data[perm];
+                }
+            });
+            
+            // 권한 변경 이력 불러오기
+            loadPermissionHistory(userId);
+        } else {
+            alert('권한 정보를 불러오는데 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('권한 조회 오류:', error);
+        alert('권한 정보를 불러오는데 실패했습니다.');
+    }
+}
+
+async function loadPermissionHistory(userId) {
+    try {
+        const response = await fetch(`/api/staff/${userId}/permission-history`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const historyDiv = document.getElementById('permission-history');
+            if (result.data.length > 0) {
+                let historyHtml = '<h4 class="font-semibold mb-2">최근 변경 이력</h4>';
+                result.data.forEach(record => {
+                    historyHtml += `
+                        <div class="border-l-2 border-blue-200 pl-2 mb-1">
+                            <div class="text-xs">
+                                <strong>${record.changed_at}</strong> - ${record.changed_by}님이 변경
+                            </div>
+                            <div class="text-xs text-gray-600">${record.reason || '권한 변경'}</div>
+                        </div>
+                    `;
+                });
+                historyDiv.innerHTML = historyHtml;
+            } else {
+                document.getElementById('permission-history').innerHTML = '<div class="text-xs text-gray-500">변경 이력이 없습니다.</div>';
+            }
+        }
+    } catch (error) {
+        console.error('이력 조회 오류:', error);
+    }
+}
+
+function closePermissionModal() {
+    document.getElementById('permission-modal').classList.add('hidden');
+}
+
+document.getElementById('permission-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const userId = document.getElementById('modal_user_id').value;
+    const formData = new FormData(this);
+    
+    // 체크박스 값들을 JSON으로 변환
+    const permissions = {};
+    formData.forEach((value, key) => {
+        if (key.startsWith('perm_')) {
+            permissions[key] = value === 'on';
+        }
+    });
+    
+    try {
+        const response = await fetch(`/api/staff/${userId}/permissions`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(permissions)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('권한이 성공적으로 변경되었습니다.');
+            closePermissionModal();
+            // 페이지 새로고침 또는 테이블 업데이트
+            location.reload();
+        } else {
+            alert(`권한 변경 실패: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('권한 변경 오류:', error);
+        alert('권한 변경 중 오류가 발생했습니다.');
+    }
+});
+</script>
 {% endblock %} 

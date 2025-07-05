@@ -19,6 +19,7 @@ from api.comment import api_comment_bp
 from api.comment_report import comment_report_bp
 from api.notice import api_notice_bp
 from api.report import api_report_bp
+from api.staff import staff_bp
 from config import config_by_name
 from extensions import cache, csrf, db, limiter, login_manager, migrate
 from models import (Branch, CleaningPlan, FeedbackIssue, Notice, Notification,
@@ -26,7 +27,7 @@ from models import (Branch, CleaningPlan, FeedbackIssue, Notice, Notification,
 from routes.notifications import notifications_bp
 from routes.dashboard import dashboard_bp
 from routes.schedule import schedule_bp
-from routes.staff import staff_bp
+from routes.staff import staff_bp as routes_staff_bp
 from routes.orders import orders_bp
 from routes.inventory import inventory_bp
 from routes.notice_api import notice_api_bp
@@ -60,6 +61,7 @@ csrf.exempt(admin_report_bp)
 csrf.exempt(admin_log_bp)
 csrf.exempt(admin_report_stat_bp)
 csrf.exempt(comment_report_bp)
+csrf.exempt(staff_bp)
 
 # Register API Blueprints
 app.register_blueprint(api_auth_bp)
@@ -71,13 +73,14 @@ app.register_blueprint(admin_report_bp)
 app.register_blueprint(admin_log_bp)
 app.register_blueprint(admin_report_stat_bp)
 app.register_blueprint(comment_report_bp)
+app.register_blueprint(staff_bp)
 
 # Register Route Blueprints
 app.register_blueprint(payroll_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(schedule_bp)
-app.register_blueprint(staff_bp)
+app.register_blueprint(routes_staff_bp)
 app.register_blueprint(orders_bp)
 app.register_blueprint(inventory_bp)
 app.register_blueprint(notice_api_bp)
@@ -735,6 +738,254 @@ def api_get_users():
         } for user in users])
     except Exception as e:
         return jsonify({"success": False, "message": f"오류가 발생했습니다: {str(e)}"}), 400
+
+
+@app.route("/api/dashboard/stats")
+@login_required
+def api_dashboard_stats():
+    """대시보드 통계 데이터 API"""
+    try:
+        # 오늘 날짜
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        
+        # 주문 통계
+        today_orders = Order.query.filter(
+            Order.created_at >= today
+        ).count()
+        yesterday_orders = Order.query.filter(
+            Order.created_at >= yesterday,
+            Order.created_at < today
+        ).count()
+        
+        # 매출 통계 (더미 데이터)
+        today_revenue = 2350000
+        yesterday_revenue = 2180000
+        
+        # 직원 통계
+        total_staff = User.query.filter_by(role="employee").count()
+        online_staff = User.query.filter_by(role="employee", status="approved").count()
+        
+        # 테이블 통계 (더미 데이터)
+        total_tables = 20
+        occupied_tables = 12
+        available_tables = total_tables - occupied_tables
+        
+        # 재고 통계 (더미 데이터)
+        total_items = 156
+        low_stock_items = 12
+        critical_stock_items = 3
+        
+        stats = {
+            "orders": {
+                "today": today_orders,
+                "yesterday": yesterday_orders,
+                "change": round(((today_orders - yesterday_orders) / yesterday_orders * 100) if yesterday_orders > 0 else 0, 1),
+                "pending": 8,
+                "completed": 35,
+                "cancelled": 2
+            },
+            "revenue": {
+                "today": today_revenue,
+                "yesterday": yesterday_revenue,
+                "change": round(((today_revenue - yesterday_revenue) / yesterday_revenue * 100) if yesterday_revenue > 0 else 0, 1),
+                "average": 52222
+            },
+            "tables": {
+                "total": total_tables,
+                "occupied": occupied_tables,
+                "available": available_tables,
+                "reservation": 5
+            },
+            "staff": {
+                "total": total_staff,
+                "online": online_staff,
+                "onBreak": 2,
+                "offDuty": total_staff - online_staff - 2
+            },
+            "inventory": {
+                "totalItems": total_items,
+                "lowStock": low_stock_items,
+                "criticalStock": critical_stock_items,
+                "value": 8500000
+            },
+            "performance": {
+                "satisfaction": 4.8,
+                "efficiency": 92.5,
+                "attendance": 96.8
+            }
+        }
+        
+        return jsonify({"success": True, "data": stats})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dashboard/recent-activity")
+@login_required
+def api_recent_activity():
+    """최근 활동 로그 API"""
+    try:
+        # 실제 활동 데이터 (더미)
+        activities = [
+            {
+                "id": 1,
+                "type": "order",
+                "title": "새 주문 접수",
+                "description": "테이블 5 - 김치찌개 외 3개",
+                "time": "2분 전",
+                "status": "success",
+                "amount": 45500,
+                "table": 5
+            },
+            {
+                "id": 2,
+                "type": "reservation",
+                "title": "예약 확인",
+                "description": "4명 - 오후 7:30",
+                "time": "5분 전",
+                "status": "info"
+            },
+            {
+                "id": 3,
+                "type": "inventory",
+                "title": "재고 부족 알림",
+                "description": "연어 - 3인분 남음",
+                "time": "10분 전",
+                "status": "warning"
+            },
+            {
+                "id": 4,
+                "type": "staff",
+                "title": "직원 출근",
+                "description": "김철수 - 주방",
+                "time": "15분 전",
+                "status": "success"
+            },
+            {
+                "id": 5,
+                "type": "order",
+                "title": "주문 완료",
+                "description": "테이블 3 - 비빔밥 외 2개",
+                "time": "20분 전",
+                "status": "success",
+                "amount": 32000,
+                "table": 3
+            }
+        ]
+        
+        return jsonify({"success": True, "data": activities})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dashboard/staff-status")
+@login_required
+def api_staff_status():
+    """직원 현황 API"""
+    try:
+        # 실제 직원 데이터
+        staff_members = User.query.filter_by(role="employee").all()
+        
+        staff_data = []
+        for staff in staff_members:
+            staff_data.append({
+                "id": f"EMP-{staff.id:03d}",
+                "name": staff.username,
+                "status": "active" if staff.status == "approved" else "off",
+                "role": "주방장" if staff.id % 3 == 0 else "서버" if staff.id % 3 == 1 else "주방보조"
+            })
+        
+        # 더미 데이터 추가
+        staff_data.extend([
+            {"id": "EMP-101", "name": "김철수", "status": "active", "role": "주방장"},
+            {"id": "EMP-102", "name": "이영희", "status": "active", "role": "서버"},
+            {"id": "EMP-103", "name": "박민수", "status": "break", "role": "주방보조"},
+            {"id": "EMP-104", "name": "정수진", "status": "off", "role": "매니저"}
+        ])
+        
+        return jsonify({"success": True, "data": staff_data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dashboard/orders")
+@login_required
+def api_orders():
+    """주문 활동 API"""
+    try:
+        # 실제 주문 데이터
+        recent_orders = Order.query.order_by(Order.created_at.desc()).limit(10).all()
+        
+        orders_data = []
+        for order in recent_orders:
+            orders_data.append({
+                "time": order.created_at.strftime("%H:%M"),
+                "order": f"#{order.id}",
+                "action": "완료" if order.status == "completed" else "조리 중" if order.status == "cooking" else "대기 중",
+                "items": "주문 상품",
+                "status": order.status
+            })
+        
+        # 더미 데이터 추가
+        orders_data.extend([
+            {"time": "14:29", "order": "#2025-001", "action": "완료", "items": "스테이크, 파스타", "status": "completed"},
+            {"time": "14:12", "order": "#2025-002", "action": "조리 중", "items": "피자, 샐러드", "status": "cooking"},
+            {"time": "13:55", "order": "#2025-003", "action": "대기 중", "items": "스시, 미소국", "status": "waiting"},
+            {"time": "13:33", "order": "#2025-004", "action": "접수됨", "items": "파스타, 와인", "status": "received"},
+            {"time": "13:15", "order": "#2025-005", "action": "배달 완료", "items": "치킨, 콜라", "status": "delivered"}
+        ])
+        
+        return jsonify({"success": True, "data": orders_data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dashboard/kitchen-status")
+@login_required
+def api_kitchen_status():
+    """주방 상태 API"""
+    try:
+        kitchen_data = {
+            "timestamp": datetime.now().strftime("# %Y-%m-%d %H:%M KST"),
+            "status": "모든 시스템 정상",
+            "temperature": "180°C - 220°C... 정상",
+            "ventilation": "ON",
+            "message": "...주문 #2025-002 조리 시작... 예상 완료 15분"
+        }
+        
+        return jsonify({"success": True, "data": kitchen_data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dashboard/sales")
+@login_required
+def api_sales():
+    """매출 데이터 API"""
+    try:
+        sales_data = {
+            "today": {
+                "cash": 1800000,
+                "card": 4260000,
+                "total": 6060000
+            },
+            "orders": {
+                "waiting": 8,
+                "cooking": 12,
+                "completed": 45
+            },
+            "alerts": {
+                "urgent": 3,
+                "low_stock": 7,
+                "satisfaction": 4.8,
+                "reservations": 15
+            }
+        }
+        
+        return jsonify({"success": True, "data": sales_data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # --- CLI Commands ---
