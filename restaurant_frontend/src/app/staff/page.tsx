@@ -53,7 +53,6 @@ interface StaffMember {
 export default function StaffPage() {
   const router = useRouter();
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -74,7 +73,12 @@ export default function StaffPage() {
 
   const fetchStaffData = async () => {
     try {
-      const response = await fetch('/api/staff');
+      const response = await fetch('http://localhost:5000/api/staff', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setStaffMembers(data.staff || []);
@@ -94,7 +98,12 @@ export default function StaffPage() {
 
   const fetchExpiringDocuments = async () => {
     try {
-      const response = await fetch('/api/staff/expiring-documents');
+      const response = await fetch('http://localhost:5000/api/staff/expiring-documents', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setExpiringDocuments(data);
@@ -336,7 +345,7 @@ export default function StaffPage() {
 
             {/* Add Button */}
             <button 
-              onClick={() => setShowAddModal(true)}
+              onClick={() => router.push('/staff/add')}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />

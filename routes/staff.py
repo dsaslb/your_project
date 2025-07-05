@@ -1,9 +1,10 @@
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import db, User, PermissionChangeLog, Notification
-from datetime import datetime
+from models import db, User, PermissionChangeLog, Notification, Staff, Attendance
+from datetime import datetime, timedelta
+import json
 
-staff_bp = Blueprint('staff', __name__)
+staff_bp = Blueprint('routes_staff', __name__)
 
 @staff_bp.route('/staff')
 @login_required

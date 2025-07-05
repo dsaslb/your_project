@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ChevronLeft,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 export default function SchedulePage() {
+  const router = useRouter();
   const [isLoaded, setIsLoaded] = useState(false);
   const [showAIPopup, setShowAIPopup] = useState(false);
   const [typedText, setTypedText] = useState("");
@@ -478,6 +480,7 @@ export default function SchedulePage() {
 
             {/* Add Button */}
             <button
+              onClick={() => router.push('/schedule/add')}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />

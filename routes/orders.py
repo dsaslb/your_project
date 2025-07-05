@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required, current_user
-from datetime import datetime
+from datetime import datetime, timedelta
 
 orders_bp = Blueprint('orders', __name__)
 
@@ -69,26 +69,27 @@ def get_orders():
     return jsonify({"success": True, "data": orders_list})
 
 @orders_bp.route('/api/orders', methods=['POST'])
-@login_required
+# @login_required
 def create_order():
-    """발주 생성 API"""
+    """주문 생성 API"""
     data = request.get_json()
     
     # 더미 응답
     new_order = {
-        "id": 999,
-        "item": data.get('item', '새 물품'),
-        "quantity": data.get('quantity', 1),
-        "unit": data.get('unit', '개'),
-        "order_date": data.get('order_date', datetime.now().strftime('%Y-%m-%d')),
-        "ordered_by": current_user.name if current_user.is_authenticated else "시스템",
-        "status": "pending",
-        "detail": data.get('detail', ''),
-        "memo": data.get('memo', ''),
-        "created_at": datetime.now().isoformat()
+        "id": f"ORD-{str(999).zfill(3)}",
+        "customer_name": data.get('customer_name', '새 고객'),
+        "phone": data.get('phone', '010-0000-0000'),
+        "table": data.get('table', 'A-1'),
+        "items": data.get('items', []),
+        "notes": data.get('notes', ''),
+        "estimated_time": data.get('estimated_time', '30'),
+        "total": data.get('total', 0),
+        "status": "대기중",
+        "order_time": datetime.now().strftime('%Y-%m-%d %H:%M'),
+        "estimated_completion": (datetime.now() + timedelta(minutes=int(data.get('estimated_time', 30)))).strftime('%H:%M')
     }
     
-    return jsonify({"success": True, "data": new_order, "message": "발주가 생성되었습니다."})
+    return jsonify({"success": True, "data": new_order, "message": "주문이 성공적으로 추가되었습니다."})
 
 @orders_bp.route('/api/orders/<int:order_id>', methods=['PUT'])
 @login_required

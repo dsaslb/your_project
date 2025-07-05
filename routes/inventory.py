@@ -18,215 +18,133 @@ def get_inventory():
     inventory_list = [
         {
             "id": 1,
-            "name": "토마토",
-            "category": "농산물",
-            "quantity": 25,
+            "name": "소고기",
+            "category": "육류",
+            "current_stock": 15,
+            "min_stock": 20,
             "unit": "kg",
-            "min_quantity": 10,
-            "max_quantity": 100,
-            "status": "normal",
-            "last_updated": "2024-01-15T14:30:00Z",
-            "expiry_date": "2024-01-25",
-            "supplier": "농산물공급업체"
+            "price": 45000,
+            "supplier": "한우공급업체",
+            "last_updated": "2025-03-03",
+            "status": "부족"
         },
         {
             "id": 2,
-            "name": "치즈",
-            "category": "유제품",
-            "quantity": 5,
+            "name": "돼지고기",
+            "category": "육류",
+            "current_stock": 25,
+            "min_stock": 15,
             "unit": "kg",
-            "min_quantity": 8,
-            "max_quantity": 50,
-            "status": "low",
-            "last_updated": "2024-01-15T12:00:00Z",
-            "expiry_date": "2024-02-15",
-            "supplier": "유제품공급업체"
+            "price": 28000,
+            "supplier": "돈육공급업체",
+            "last_updated": "2025-03-03",
+            "status": "충분"
         },
         {
             "id": 3,
-            "name": "밀가루",
-            "category": "곡물",
-            "quantity": 80,
+            "name": "양파",
+            "category": "채소",
+            "current_stock": 8,
+            "min_stock": 10,
             "unit": "kg",
-            "min_quantity": 20,
-            "max_quantity": 200,
-            "status": "normal",
-            "last_updated": "2024-01-14T16:45:00Z",
-            "expiry_date": "2024-06-15",
-            "supplier": "곡물공급업체"
+            "price": 3000,
+            "supplier": "채소공급업체",
+            "last_updated": "2025-03-03",
+            "status": "부족"
         },
         {
             "id": 4,
-            "name": "올리브오일",
-            "category": "조미료",
-            "quantity": 15,
-            "unit": "L",
-            "min_quantity": 5,
-            "max_quantity": 30,
-            "status": "normal",
-            "last_updated": "2024-01-13T09:20:00Z",
-            "expiry_date": "2024-12-31",
-            "supplier": "조미료공급업체"
-        },
-        {
-            "id": 5,
-            "name": "소고기",
-            "category": "육류",
-            "quantity": 3,
+            "name": "김치",
+            "category": "반찬",
+            "current_stock": 5,
+            "min_stock": 8,
             "unit": "kg",
-            "min_quantity": 5,
-            "max_quantity": 25,
-            "status": "low",
-            "last_updated": "2024-01-15T08:15:00Z",
-            "expiry_date": "2024-01-18",
-            "supplier": "육류공급업체"
+            "price": 8000,
+            "supplier": "김치공급업체",
+            "last_updated": "2025-03-01",
+            "status": "부족"
         }
     ]
     
     return jsonify({"success": True, "data": inventory_list})
 
 @inventory_bp.route('/api/inventory', methods=['POST'])
-@login_required
+# @login_required
 def create_inventory_item():
-    """재고 항목 생성 API"""
+    """재고 품목 추가 API"""
     data = request.get_json()
     
     # 더미 응답
     new_item = {
         "id": 999,
-        "name": data.get('name', '새 재고'),
+        "name": data.get('name', '새 품목'),
         "category": data.get('category', '기타'),
-        "quantity": data.get('quantity', 0),
+        "current_stock": data.get('current_stock', 0),
+        "min_stock": data.get('min_stock', 0),
         "unit": data.get('unit', '개'),
-        "min_quantity": data.get('min_quantity', 0),
-        "max_quantity": data.get('max_quantity', 100),
-        "status": "normal",
-        "last_updated": datetime.now().isoformat(),
-        "expiry_date": data.get('expiry_date', ''),
-        "supplier": data.get('supplier', '')
+        "price": data.get('price', 0),
+        "supplier": data.get('supplier', '기타공급업체'),
+        "description": data.get('description', ''),
+        "status": data.get('status', '부족'),
+        "last_updated": datetime.now().strftime('%Y-%m-%d'),
+        "created_at": datetime.now().isoformat()
     }
     
-    return jsonify({"success": True, "data": new_item, "message": "재고 항목이 생성되었습니다."})
+    return jsonify({"success": True, "data": new_item, "message": "품목이 성공적으로 추가되었습니다."})
 
 @inventory_bp.route('/api/inventory/<int:item_id>', methods=['PUT'])
 @login_required
 def update_inventory_item(item_id):
-    """재고 항목 수정 API"""
+    """재고 품목 수정 API"""
     data = request.get_json()
     
     # 더미 응답
     updated_item = {
         "id": item_id,
-        "name": data.get('name', '수정된 재고'),
+        "name": data.get('name', '수정된 품목'),
         "category": data.get('category', '기타'),
-        "quantity": data.get('quantity', 0),
+        "current_stock": data.get('current_stock', 0),
+        "min_stock": data.get('min_stock', 0),
         "unit": data.get('unit', '개'),
-        "min_quantity": data.get('min_quantity', 0),
-        "max_quantity": data.get('max_quantity', 100),
-        "status": "normal",
-        "last_updated": datetime.now().isoformat(),
-        "expiry_date": data.get('expiry_date', ''),
-        "supplier": data.get('supplier', '')
+        "price": data.get('price', 0),
+        "supplier": data.get('supplier', '기타공급업체'),
+        "description": data.get('description', ''),
+        "status": data.get('status', '부족'),
+        "last_updated": datetime.now().strftime('%Y-%m-%d'),
+        "updated_at": datetime.now().isoformat()
     }
     
-    return jsonify({"success": True, "data": updated_item, "message": "재고 항목이 수정되었습니다."})
+    return jsonify({"success": True, "data": updated_item, "message": "품목이 수정되었습니다."})
 
 @inventory_bp.route('/api/inventory/<int:item_id>', methods=['DELETE'])
 @login_required
 def delete_inventory_item(item_id):
-    """재고 항목 삭제 API"""
-    return jsonify({"success": True, "message": f"재고 항목 {item_id}가 삭제되었습니다."})
+    """재고 품목 삭제 API"""
+    return jsonify({"success": True, "message": f"품목 {item_id}가 삭제되었습니다."})
 
 @inventory_bp.route('/api/inventory/<int:item_id>')
 @login_required
-def get_inventory_detail(item_id):
-    """재고 상세 조회 API"""
+def get_inventory_item(item_id):
+    """재고 품목 상세 조회 API"""
     # 더미 상세 데이터
     item_detail = {
         "id": item_id,
-        "name": "토마토",
-        "category": "농산물",
-        "quantity": 25,
+        "name": "소고기",
+        "category": "육류",
+        "current_stock": 15,
+        "min_stock": 20,
         "unit": "kg",
-        "min_quantity": 10,
-        "max_quantity": 100,
-        "status": "normal",
-        "last_updated": "2024-01-15T14:30:00Z",
-        "expiry_date": "2024-01-25",
-        "supplier": "농산물공급업체",
-        "description": "신선한 토마토",
-        "price_per_unit": 3000,
-        "total_value": 75000,
-        "location": "냉장고 A-1",
-        "barcode": "1234567890123"
+        "price": 45000,
+        "supplier": "한우공급업체",
+        "description": "한우 등급 소고기",
+        "status": "부족",
+        "last_updated": "2025-03-03",
+        "created_at": "2025-01-15T10:00:00Z",
+        "total_value": 675000,
+        "stock_ratio": 75
     }
     
     return jsonify({"success": True, "data": item_detail})
-
-@inventory_bp.route('/api/inventory/<int:item_id>/adjust', methods=['POST'])
-@login_required
-def adjust_inventory(item_id):
-    """재고 수량 조정 API"""
-    data = request.get_json()
-    adjustment = data.get('adjustment', 0)
-    reason = data.get('reason', '수량 조정')
-    
-    return jsonify({
-        "success": True, 
-        "message": f"재고 {item_id}의 수량이 {adjustment:+d} 조정되었습니다. 사유: {reason}"
-    })
-
-@inventory_bp.route('/api/inventory/low-stock')
-@login_required
-def get_low_stock_items():
-    """재고 부족 항목 조회 API"""
-    # 더미 재고 부족 데이터
-    low_stock_items = [
-        {
-            "id": 2,
-            "name": "치즈",
-            "quantity": 5,
-            "min_quantity": 8,
-            "unit": "kg",
-            "status": "low"
-        },
-        {
-            "id": 5,
-            "name": "소고기",
-            "quantity": 3,
-            "min_quantity": 5,
-            "unit": "kg",
-            "status": "low"
-        }
-    ]
-    
-    return jsonify({"success": True, "data": low_stock_items})
-
-@inventory_bp.route('/api/inventory/expiring')
-@login_required
-def get_expiring_items():
-    """유통기한 임박 항목 조회 API"""
-    # 더미 유통기한 임박 데이터
-    expiring_items = [
-        {
-            "id": 1,
-            "name": "토마토",
-            "expiry_date": "2024-01-25",
-            "days_left": 10,
-            "quantity": 25,
-            "unit": "kg"
-        },
-        {
-            "id": 5,
-            "name": "소고기",
-            "expiry_date": "2024-01-18",
-            "days_left": 3,
-            "quantity": 3,
-            "unit": "kg"
-        }
-    ]
-    
-    return jsonify({"success": True, "data": expiring_items})
 
 @inventory_bp.route('/api/inventory/stats')
 @login_required
@@ -234,34 +152,51 @@ def get_inventory_stats():
     """재고 통계 API"""
     # 더미 통계 데이터
     stats = {
-        "total_items": 45,
-        "low_stock_items": 3,
-        "expiring_items": 2,
-        "total_value": 1250000,
+        "total_items": 156,
+        "low_stock_items": 23,
+        "sufficient_items": 120,
+        "danger_items": 13,
+        "total_value": 8500000,
         "categories": {
-            "농산물": 15,
-            "육류": 8,
-            "유제품": 5,
-            "조미료": 12,
-            "곡물": 5
-        },
-        "monthly_usage": 850000,
-        "waste_value": 25000
+            "육류": 25,
+            "채소": 45,
+            "반찬": 20,
+            "곡물": 15,
+            "조미료": 30,
+            "유제품": 10,
+            "음료": 11
+        }
     }
     
     return jsonify({"success": True, "data": stats})
 
 @inventory_bp.route('/api/inventory/categories')
 @login_required
-def get_inventory_categories():
-    """재고 카테고리 목록 API"""
-    # 더미 카테고리 데이터
+def get_categories():
+    """카테고리 목록 API"""
     categories = [
-        {"id": 1, "name": "농산물", "description": "신선한 채소와 과일"},
-        {"id": 2, "name": "육류", "description": "신선한 고기류"},
-        {"id": 3, "name": "유제품", "description": "우유, 치즈 등"},
-        {"id": 4, "name": "조미료", "description": "소스, 향신료 등"},
-        {"id": 5, "name": "곡물", "description": "쌀, 밀가루 등"}
+        {"id": 1, "name": "육류", "count": 25},
+        {"id": 2, "name": "채소", "count": 45},
+        {"id": 3, "name": "반찬", "count": 20},
+        {"id": 4, "name": "곡물", "count": 15},
+        {"id": 5, "name": "조미료", "count": 30},
+        {"id": 6, "name": "유제품", "count": 10},
+        {"id": 7, "name": "음료", "count": 11}
     ]
     
-    return jsonify({"success": True, "data": categories}) 
+    return jsonify({"success": True, "data": categories})
+
+@inventory_bp.route('/api/inventory/suppliers')
+@login_required
+def get_suppliers():
+    """공급업체 목록 API"""
+    suppliers = [
+        {"id": 1, "name": "한우공급업체", "category": "육류", "contact": "010-1111-2222"},
+        {"id": 2, "name": "돈육공급업체", "category": "육류", "contact": "010-2222-3333"},
+        {"id": 3, "name": "채소공급업체", "category": "채소", "contact": "010-3333-4444"},
+        {"id": 4, "name": "김치공급업체", "category": "반찬", "contact": "010-4444-5555"},
+        {"id": 5, "name": "쌀공급업체", "category": "곡물", "contact": "010-5555-6666"},
+        {"id": 6, "name": "조미료공급업체", "category": "조미료", "contact": "010-6666-7777"}
+    ]
+    
+    return jsonify({"success": True, "data": suppliers}) 

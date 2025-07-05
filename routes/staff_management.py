@@ -9,7 +9,7 @@ from models import User, db
 from utils.decorators import admin_required
 from utils.logger import log_error
 
-staff_bp = Blueprint("staff", __name__)
+staff_bp = Blueprint("staff_management", __name__)
 
 
 @staff_bp.route("/staff-management")

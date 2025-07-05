@@ -6,6 +6,7 @@ import click
 from dateutil import parser as date_parser
 from flask import (Flask, current_app, flash, jsonify, redirect,
                    render_template, request, session, url_for)
+from flask_cors import CORS
 from flask_login import (AnonymousUserMixin, UserMixin, current_user,
                          login_required, login_user, logout_user)
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -28,6 +29,7 @@ from routes.notifications import notifications_bp
 from routes.dashboard import dashboard_bp
 from routes.schedule import schedule_bp
 from routes.staff import staff_bp as routes_staff_bp
+from routes.staff_management import staff_bp as staff_management_bp
 from routes.orders import orders_bp
 from routes.inventory import inventory_bp
 from routes.notice_api import notice_api_bp
@@ -43,6 +45,9 @@ config_name = os.getenv("FLASK_ENV", "default")
 
 app = Flask(__name__)
 app.config.from_object(config_by_name[config_name])
+
+# Initialize CORS
+CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'http://192.168.45.44:3003'])
 
 # Initialize extensions
 csrf.init_app(app)
@@ -81,6 +86,7 @@ app.register_blueprint(notifications_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(schedule_bp)
 app.register_blueprint(routes_staff_bp)
+app.register_blueprint(staff_management_bp)
 app.register_blueprint(orders_bp)
 app.register_blueprint(inventory_bp)
 app.register_blueprint(notice_api_bp)

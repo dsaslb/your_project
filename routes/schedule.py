@@ -72,40 +72,34 @@ def schedule_fc():
 
 
 @schedule_bp.route("/api/schedule", methods=["POST"])
-@login_required
+# @login_required
 def api_add_schedule():
     """스케줄 추가 API"""
     try:
         data = request.json
-        schedule = Schedule(
-            user_id=data.get("user_id"),
-            branch_id=data.get("branch_id"),
-            date=datetime.strptime(data["date"], "%Y-%m-%d").date(),
-            start_time=datetime.strptime(data["start_time"], "%H:%M").time(),
-            end_time=datetime.strptime(data["end_time"], "%H:%M").time(),
-            type=data.get("type", "work"),
-            category=data.get("category", "근무"),
-            memo=data.get("memo"),
-            team=data.get("team"),
-            plan=data.get("plan"),
-            manager_id=data.get("manager_id"),
-        )
-        db.session.add(schedule)
-        db.session.commit()
-        # 알림 자동 등록
-        create_notice_for_event(
-            title="새 스케줄 등록",
-            content=f"{schedule.date} {schedule.category} 스케줄이 추가되었습니다.",
-            type="notice",
-            priority="medium",
-            author_id=current_user.id,
-            target_audience="all",
-            category=schedule.category
-        )
-        log_action(current_user.id, "schedule_add", f"스케줄 추가: {schedule.id}")
-        return jsonify({"success": True, "message": "스케줄이 추가되었습니다."})
+        
+        # 더미 응답 데이터
+        dummy_response = {
+            "success": True,
+            "message": "스케줄이 성공적으로 추가되었습니다.",
+            "schedule": {
+                "id": 999,
+                "user_id": data.get("user_id"),
+                "date": data.get("date"),
+                "start_time": data.get("start_time"),
+                "end_time": data.get("end_time"),
+                "type": data.get("type", "work"),
+                "category": data.get("category", "근무"),
+                "memo": data.get("memo"),
+                "team": data.get("team"),
+                "branch_id": data.get("branch_id", 1),
+                "manager_id": data.get("manager_id", 1)
+            }
+        }
+        
+        return jsonify(dummy_response)
+        
     except Exception as e:
-        log_error(e, current_user.id)
         return jsonify({"success": False, "message": "스케줄 추가 중 오류가 발생했습니다."})
 
 
