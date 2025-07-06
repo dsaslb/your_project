@@ -56,6 +56,12 @@ export default function Sidebar({ menu }: { menu: SidebarMenuItem[] }) {
             )}
           </Link>
         ))}
+        <li>
+          <Link href="/attendance" className="sidebar-link">
+            <span className="icon">🕒</span>
+            <span>근태 관리</span>
+          </Link>
+        </li>
       </nav>
       
       <div className={`p-4 border-t border-zinc-800 ${isCollapsed ? "px-2" : ""}`}>

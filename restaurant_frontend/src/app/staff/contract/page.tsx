@@ -35,6 +35,21 @@ interface ContractForm {
   benefits: string[];
   responsibilities: string;
   terms: string;
+  // 보건증 및 서류 정보 추가
+  healthCertificate: {
+    issueDate: string;
+    expiryDate: string;
+    renewalDate: string;
+    issuingAuthority: string;
+    certificateType: string;
+  };
+  requiredDocuments: {
+    idCard: boolean;
+    healthCertificate: boolean;
+    bankbook: boolean;
+    resume: boolean;
+    contractAgreement: boolean;
+  };
 }
 
 export default function ContractPage() {
@@ -100,7 +115,21 @@ export default function ContractPage() {
     noticePeriod: 1,
     benefits: ["4대보험", "연차휴가"],
     responsibilities: "매장 운영 및 고객 서비스",
-    terms: "근로기준법에 따른 근무 조건 적용"
+    terms: "근로기준법에 따른 근무 조건 적용",
+    healthCertificate: {
+      issueDate: "",
+      expiryDate: "",
+      renewalDate: "",
+      issuingAuthority: "서울시 보건소",
+      certificateType: "일반보건증"
+    },
+    requiredDocuments: {
+      idCard: false,
+      healthCertificate: false,
+      bankbook: false,
+      resume: false,
+      contractAgreement: false
+    }
   });
 
   const workDayOptions = ["월", "화", "수", "목", "금", "토", "일"];
@@ -211,7 +240,21 @@ export default function ContractPage() {
             noticePeriod: 1,
             benefits: ["4대보험", "연차휴가"],
             responsibilities: "매장 운영 및 고객 서비스",
-            terms: "근로기준법에 따른 근무 조건 적용"
+            terms: "근로기준법에 따른 근무 조건 적용",
+            healthCertificate: {
+              issueDate: staff.health_certificates?.[0]?.issue_date || '',
+              expiryDate: staff.health_certificates?.[0]?.expiry_date || '',
+              renewalDate: staff.health_certificates?.[0]?.renewal_date || '',
+              issuingAuthority: staff.health_certificates?.[0]?.issuing_authority || '서울시 보건소',
+              certificateType: staff.health_certificates?.[0]?.certificate_type || '일반보건증'
+            },
+            requiredDocuments: {
+              idCard: false,
+              healthCertificate: false,
+              bankbook: false,
+              resume: false,
+              contractAgreement: false
+            }
           });
         }
       }

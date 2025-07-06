@@ -750,9 +750,9 @@ def send_weekly_report():
         for admin in admins:
             if admin.email:
                 # 실제 환경에서는 SMTP 설정 필요
-                        logger.info(f"이메일 발송 테스트: {admin.email}")
-        logger.info(f"제목: 주간 근태 리포트")
-        logger.info(f"내용: {email_body}")
+                logger.info(f"이메일 발송 테스트: {admin.email}")
+                logger.info(f"제목: 주간 근태 리포트")
+                logger.info(f"내용: {email_body}")
                 success_count += 1
 
         flash(f"주간 리포트 발송 완료: {success_count}/{len(admins)}명", "success")
@@ -834,9 +834,9 @@ def send_monthly_report():
         for admin in admins:
             if admin.email:
                 # 실제 환경에서는 SMTP 설정 필요
-                        logger.info(f"이메일 발송 테스트: {admin.email}")
-        logger.info(f"제목: 월간 근태 리포트")
-        logger.info(f"내용: {email_body}")
+                logger.info(f"이메일 발송 테스트: {admin.email}")
+                logger.info(f"제목: 월간 근태 리포트")
+                logger.info(f"내용: {email_body}")
                 success_count += 1
 
         flash(f"월간 리포트 발송 완료: {success_count}/{len(admins)}명", "success")
@@ -969,3 +969,115 @@ def test_monthly_email():
     except Exception as e:
         logger.error(f"월간 이메일 테스트 실패: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+@attendance_bp.route("/api/attendance", methods=["POST"])
+@login_required
+@admin_required
+def create_or_update_attendance():
+    """근태 추가/수정 API"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        date_str = data.get("date")
+        clock_in_str = data.get("clock_in")
+        clock_out_str = data.get("clock_out")
+        
+        if not user_id or not date_str:
+            return jsonify({"success": False, "error": "필수 정보가 누락되었습니다."}), 400
+        
+        # 날짜 파싱
+        try:
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return jsonify({"success": False, "error": "잘못된 날짜 형식입니다."}), 400
+        
+        # 시간 파싱
+        clock_in = None
+        clock_out = None
+        
+        if clock_in_str:
+            try:
+                clock_in = datetime.strptime(f"{date_str} {clock_in_str}", "%Y-%m-%d %H:%M")
+            except ValueError:
+                return jsonify({"success": False, "error": "잘못된 출근 시간 형식입니다."}), 400
+        
+        if clock_out_str:
+            try:
+                clock_out = datetime.strptime(f"{date_str} {clock_out_str}", "%Y-%m-%d %H:%M")
+            except ValueError:
+                return jsonify({"success": False, "error": "잘못된 퇴근 시간 형식입니다."}), 400
+        
+        # 기존 근태 기록 확인
+        existing_attendance = Attendance.query.filter(
+            and_(
+                Attendance.user_id == user_id,
+                func.date(Attendance.clock_in) == date_obj
+            )
+        ).first()
+        
+        if existing_attendance:
+            # 기존 기록 수정
+            existing_attendance.clock_in = clock_in
+            existing_attendance.clock_out = clock_out
+            existing_attendance.updated_at = datetime.utcnow()
+            attendance = existing_attendance
+        else:
+            # 새 기록 생성
+            attendance = Attendance(
+                user_id=user_id,
+                clock_in=clock_in,
+                clock_out=clock_out,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.session.add(attendance)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "message": "근태 정보가 저장되었습니다.",
+            "attendance_id": attendance.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"근태 저장 실패: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@attendance_bp.route("/api/users", methods=["GET"])
+@login_required
+def get_users():
+    """직원 목록 API"""
+    try:
+        # 승인된 직원만 조회
+        users = User.query.filter(
+            and_(
+                User.status == "approved",
+                User.deleted_at == None
+            )
+        ).order_by(User.name).all()
+        
+        user_list = []
+        for user in users:
+            user_list.append({
+                "id": user.id,
+                "name": user.name or user.username,
+                "username": user.username,
+                "position": user.position or "",
+                "department": user.department or "",
+                "role": user.role,
+                "status": user.status,
+                "email": user.email
+            })
+        
+        return jsonify({
+            "success": True,
+            "users": user_list
+        })
+        
+    except Exception as e:
+        logger.error(f"직원 목록 조회 실패: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500

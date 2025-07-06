@@ -21,8 +21,15 @@ def get_staff_list():
         department = request.args.get('department', '')
         status = request.args.get('status', '')
         
-        # User 테이블에서 직원 데이터 조회
+        # User 테이블에서 직원 데이터 조회 (승인된 직원만)
         query = User.query.filter(User.role.in_(['employee', 'manager']))
+        
+        # 상태 필터: 기본적으로 승인된 직원만 표시 (pending 제외)
+        if status:
+            query = query.filter(User.status == status)
+        else:
+            # 기본적으로 승인된 직원만 표시
+            query = query.filter(User.status.in_(['approved', 'active']))
         
         # 검색 필터 적용
         if search:
@@ -37,9 +44,6 @@ def get_staff_list():
         
         if department:
             query = query.filter(User.department == department)
-        
-        if status:
-            query = query.filter(User.status == status)
         
         # 매장별 필터링 (관리자가 아닌 경우)
         if not current_user.is_admin():

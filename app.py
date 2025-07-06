@@ -34,6 +34,7 @@ from routes.staff_management import staff_bp as staff_management_bp
 from routes.orders import orders_bp
 from routes.inventory import inventory_bp
 from routes.notice_api import notice_api_bp
+from routes.attendance import attendance_bp
 # Import Route Blueprints
 from routes.payroll import payroll_bp
 from routes.notice import notice_bp
@@ -92,6 +93,7 @@ app.register_blueprint(orders_bp)
 app.register_blueprint(inventory_bp)
 app.register_blueprint(notice_api_bp)
 app.register_blueprint(notice_bp)
+app.register_blueprint(attendance_bp)
 
 # Login manager setup
 login_manager.login_view = "auth.login"
