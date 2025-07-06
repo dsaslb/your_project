@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, User, Phone, Mail, Calendar, MapPin, FileText, Shield, Key, Eye, Edit, Trash2, Plus, Settings } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,9 +57,13 @@ const permissionActions = {
   assign_roles: { name: "권한 부여", icon: "🔑" },
 };
 
-export default function AddStaffPage() {
+export default function EditStaffPage() {
   const router = useRouter();
+  const params = useParams();
+  const staffId = params.id as string;
+  
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [permissionTemplates, setPermissionTemplates] = useState<PermissionTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [showAdvancedPermissions, setShowAdvancedPermissions] = useState(false);
@@ -91,10 +95,79 @@ export default function AddStaffPage() {
     }
   });
 
-  // 권한 템플릿 로드
+  // 직원 데이터 로드
   useEffect(() => {
-    loadPermissionTemplates();
-  }, []);
+    if (staffId) {
+      loadStaffData();
+      loadPermissionTemplates();
+    }
+  }, [staffId]);
+
+  const loadStaffData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:5000/api/staff/${staffId}`, {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.staff) {
+          const staff = data.staff;
+          
+          // 최신 계약서 정보
+          const latestContract = staff.contracts && staff.contracts.length > 0 
+            ? staff.contracts[staff.contracts.length - 1] 
+            : null;
+          
+          // 최신 보건증 정보
+          const latestHealthCert = staff.health_certificates && staff.health_certificates.length > 0 
+            ? staff.health_certificates[staff.health_certificates.length - 1] 
+            : null;
+          
+          setFormData({
+            name: staff.name || '',
+            position: staff.position || '',
+            department: staff.department || '',
+            email: staff.email || '',
+            phone: staff.phone || '',
+            join_date: staff.join_date || '',
+            salary: staff.salary?.toString() || '',
+            status: staff.status || 'active',
+            contract_type: latestContract?.contract_type || '정규직',
+            contract_start_date: latestContract?.start_date || '',
+            contract_expiry_date: latestContract?.expiry_date || '',
+            health_certificate_type: latestHealthCert?.certificate_type || '식품위생교육',
+            health_certificate_issue_date: latestHealthCert?.issue_date || '',
+            health_certificate_expiry_date: latestHealthCert?.expiry_date || '',
+            issuing_authority: latestHealthCert?.issuing_authority || '서울시보건소',
+            permissions: staff.permissions || {
+              dashboard: { view: true, edit: false, admin_only: false },
+              employee_management: { view: false, create: false, edit: false, delete: false, approve: false, assign_roles: false },
+              schedule_management: { view: false, create: false, edit: false, delete: false, approve: false },
+              order_management: { view: false, create: false, edit: false, delete: false, approve: false },
+              inventory_management: { view: false, create: false, edit: false, delete: false },
+              notification_management: { view: false, send: false, delete: false },
+              system_management: { view: false, backup: false, restore: false, settings: false, monitoring: false },
+              reports: { view: false, export: false, admin_only: false },
+            }
+          });
+        } else {
+          alert('직원 정보를 불러오는데 실패했습니다.');
+          router.push('/staff');
+        }
+      } else {
+        alert('직원 정보를 불러오는데 실패했습니다.');
+        router.push('/staff');
+      }
+    } catch (error) {
+      console.error('직원 데이터 로드 오류:', error);
+      alert('직원 정보를 불러오는데 실패했습니다.');
+      router.push('/staff');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadPermissionTemplates = async () => {
     try {
@@ -104,8 +177,6 @@ export default function AddStaffPage() {
       if (response.ok) {
         const data = await response.json();
         setPermissionTemplates(data.templates || []);
-      } else {
-        console.error('권한 템플릿 로드 실패:', response.status);
       }
     } catch (error) {
       console.error('권한 템플릿 로드 오류:', error);
@@ -217,11 +288,11 @@ export default function AddStaffPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/staff', {
-        method: 'POST',
+      const response = await fetch(`http://localhost:5000/api/staff/${staffId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -230,26 +301,39 @@ export default function AddStaffPage() {
       });
 
       if (response.ok) {
-        alert('직원이 성공적으로 추가되었습니다!');
-        router.push('/staff');
+        const data = await response.json();
+        if (data.success) {
+          alert('직원 정보가 성공적으로 수정되었습니다!');
+          router.push('/staff');
+        } else {
+          alert(`직원 수정 실패: ${data.error || '알 수 없는 오류'}`);
+        }
       } else {
         const errorData = await response.json();
-        alert(`직원 추가 실패: ${errorData.error || '알 수 없는 오류'}`);
+        alert(`직원 수정 실패: ${errorData.error || '알 수 없는 오류'}`);
       }
     } catch (error) {
-      console.error('직원 추가 오류:', error);
-      alert('직원 추가 중 오류가 발생했습니다.');
+      console.error('직원 수정 오류:', error);
+      alert('직원 수정 중 오류가 발생했습니다.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const departments = ['주방', '홀', '매니저', '청소', '배송', '기타'];
   const positions = ['주방장', '주방직원', '서버', '매니저', '청소직원', '배송원', '기타'];
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-lg">직원 정보를 불러오는 중...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
@@ -261,10 +345,10 @@ export default function AddStaffPage() {
               <ArrowLeft className="h-4 w-4" />
               뒤로가기
             </Button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">새 직원 추가</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">직원 정보 수정</h1>
           </div>
           <p className="text-gray-600 dark:text-gray-400">
-            새로운 직원의 정보를 입력하고 등록하세요.
+            직원의 정보를 수정하고 권한을 변경하세요.
           </p>
         </div>
 
@@ -277,7 +361,7 @@ export default function AddStaffPage() {
                 기본 정보
               </CardTitle>
               <CardDescription>
-                직원의 기본적인 개인 정보를 입력하세요.
+                직원의 기본적인 개인 정보를 수정하세요.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -407,7 +491,7 @@ export default function AddStaffPage() {
                 권한 설정
               </CardTitle>
               <CardDescription>
-                직원의 시스템 접근 권한을 설정하세요. 직책 선택 시 기본 권한이 자동 설정됩니다.
+                직원의 시스템 접근 권한을 수정하세요. 직책 선택 시 기본 권한이 자동 설정됩니다.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -536,7 +620,7 @@ export default function AddStaffPage() {
                 계약서 정보
               </CardTitle>
               <CardDescription>
-                직원의 계약서 정보를 입력하세요.
+                직원의 계약서 정보를 수정하세요.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -591,7 +675,7 @@ export default function AddStaffPage() {
                 보건증 정보
               </CardTitle>
               <CardDescription>
-                직원의 보건증 정보를 입력하세요.
+                직원의 보건증 정보를 수정하세요.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -654,17 +738,17 @@ export default function AddStaffPage() {
               type="button"
               variant="outline"
               onClick={() => router.back()}
-              disabled={loading}
+              disabled={saving}
             >
               취소
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              disabled={saving}
               className="flex items-center gap-2"
             >
               <Save className="h-4 w-4" />
-              {loading ? '저장 중...' : '직원 추가'}
+              {saving ? '저장 중...' : '직원 정보 수정'}
             </Button>
           </div>
         </form>

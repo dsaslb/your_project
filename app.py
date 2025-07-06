@@ -353,6 +353,38 @@ def admin_dashboard():
     return render_template("admin_dashboard.html", **context)
 
 
+@app.route("/admin_dashboard/<int:branch_id>")
+@login_required
+def admin_branch_dashboard(branch_id):
+    if not current_user.is_admin():
+        flash("관리자 권한이 필요합니다.")
+        return redirect(url_for("dashboard"))
+    
+    # 매장 정보 조회 (실제로는 Branch 모델에서 가져와야 함)
+    branch = {
+        "id": branch_id,
+        "name": f"매장 {branch_id}",
+        "status": "운영중"
+    }
+    
+    # 매장별 통계 데이터
+    stats = {
+        "total_users": User.query.filter_by(branch_id=branch_id).count() if hasattr(User, 'branch_id') else 0,
+        "active_users": User.query.filter_by(branch_id=branch_id, status="approved").count() if hasattr(User, 'branch_id') else 0,
+        "pending_users": User.query.filter_by(branch_id=branch_id, status="pending").count() if hasattr(User, 'branch_id') else 0,
+        "total_orders": Order.query.filter_by(branch_id=branch_id).count() if hasattr(Order, 'branch_id') else 0,
+        "total_schedules": Schedule.query.filter_by(branch_id=branch_id).count() if hasattr(Schedule, 'branch_id') else 0,
+    }
+    
+    context = {
+        "user": current_user,
+        "branch": branch,
+        "stats": stats,
+    }
+    
+    return render_template("admin_branch_dashboard.html", **context)
+
+
 # --- Schedule Routes ---
 @app.route("/schedule", methods=["GET"])
 @login_required
@@ -527,6 +559,36 @@ def api_update_user_permissions(user_id):
     db.session.commit()
 
     return jsonify({"success": True, "message": "권한이 업데이트되었습니다."})
+
+
+@app.route("/api/permissions/templates")
+@login_required
+def api_permission_templates():
+    """권한 템플릿 목록 API"""
+    if not current_user.has_permission("employee_management", "assign_roles"):
+        return jsonify({"error": "권한이 없습니다."}), 403
+
+    try:
+        from models import PermissionTemplate
+        templates = PermissionTemplate.query.filter_by(is_active=True).all()
+        
+        template_list = []
+        for template in templates:
+            template_list.append({
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'role_type': template.role_type,
+                'permissions': template.permissions,
+                'created_at': template.created_at.strftime('%Y-%m-%d %H:%M:%S') if template.created_at else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "templates": template_list
+        })
+    except Exception as e:
+        return jsonify({"error": f"템플릿 조회 중 오류가 발생했습니다: {str(e)}"}), 500
 
 
 @app.route("/admin/notify_send")

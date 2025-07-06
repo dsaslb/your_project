@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, User, Phone, Mail, Calendar, MapPin, Download, Eye, AlertTriangle, CheckCircle, Clock, FileText, Shield } from "lucide-react";
+import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, User, Phone, Mail, Calendar, MapPin, Download, Eye, AlertTriangle, CheckCircle, Clock, FileText, Shield, X, Building, CalendarDays, DollarSign, Award, Clock as ClockIcon } from "lucide-react";
 import NotificationPopup from "@/components/NotificationPopup";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Contract {
   id: number;
@@ -53,6 +54,7 @@ interface StaffMember {
 export default function StaffPage() {
   const router = useRouter();
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [showStaffModal, setShowStaffModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -89,7 +91,12 @@ export default function StaffPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setStaffMembers(data.staff || []);
+        if (data.success) {
+          setStaffMembers(data.staff || []);
+        } else {
+          console.error('직원 데이터 로드 실패:', data.error);
+          setStaffMembers(getDummyData());
+        }
       } else {
         console.error('직원 데이터 로드 실패:', response.status);
         // 더미 데이터로 폴백
@@ -125,7 +132,11 @@ export default function StaffPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setExpiringDocuments(data);
+        if (data.success) {
+          setExpiringDocuments(data);
+        } else {
+          console.error('만료 임박 문서 로드 실패:', data.error);
+        }
       } else {
         console.error('만료 임박 문서 로드 실패:', response.status);
       }
@@ -370,6 +381,13 @@ export default function StaffPage() {
             {/* Add Button */}
             <div className="flex gap-2">
               <button 
+                onClick={() => router.push('/staff/approval')}
+                className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center gap-2"
+              >
+                <Clock className="h-4 w-4" />
+                승인 관리
+              </button>
+              <button 
                 onClick={() => router.push('/staff/contract')}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
               >
@@ -434,7 +452,14 @@ export default function StaffPage() {
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredStaff.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr 
+                    key={member.id} 
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                    onClick={() => {
+                      setSelectedStaff(member);
+                      setShowStaffModal(true);
+                    }}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
@@ -505,16 +530,32 @@ export default function StaffPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <button 
-                          onClick={() => setSelectedStaff(member)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedStaff(member);
+                            setShowStaffModal(true);
+                          }}
                           className="text-blue-600 hover:text-blue-900 dark:hover:text-blue-400"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/staff/edit/${member.id}`);
+                          }}
+                          className="text-green-600 hover:text-green-900 dark:hover:text-green-400"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button className="text-red-600 hover:text-red-900 dark:hover:text-red-400">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // 삭제 확인 로직
+                          }}
+                          className="text-red-600 hover:text-red-900 dark:hover:text-red-400"
+                        >
                           <Trash2 className="h-4 w-4" />
-                        </button>
-                        <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                          <MoreHorizontal className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -525,6 +566,266 @@ export default function StaffPage() {
           </div>
         </div>
       </div>
+
+      {/* 직원 정보 모달 */}
+      <Dialog open={showStaffModal} onOpenChange={setShowStaffModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              직원 정보
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedStaff && (
+            <div className="space-y-6">
+              {/* 기본 정보 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    기본 정보
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                        <User className="h-8 w-8 text-gray-600 dark:text-gray-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {selectedStaff.name}
+                        </h3>
+                        <p className="text-gray-500 dark:text-gray-400">{selectedStaff.position}</p>
+                        <Badge variant={selectedStaff.status === "active" ? "default" : "secondary"}>
+                          {selectedStaff.status === "active" ? "재직중" : selectedStaff.status === "inactive" ? "퇴사" : "대기중"}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">부서:</span>
+                        <span className="text-sm font-medium">{selectedStaff.department}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">입사일:</span>
+                        <span className="text-sm font-medium">{selectedStaff.join_date}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">연락처:</span>
+                        <span className="text-sm font-medium">{selectedStaff.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">이메일:</span>
+                        <span className="text-sm font-medium">{selectedStaff.email}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 계약서 정보 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    계약서 정보
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedStaff.contracts.length > 0 ? (
+                    <div className="space-y-3">
+                      {selectedStaff.contracts.map((contract, index) => (
+                        <div key={contract.id} className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {contract.contract_number}
+                              </span>
+                              <Badge variant={contract.is_expired ? "destructive" : contract.is_expiring_soon ? "secondary" : "default"}>
+                                {contract.is_expired ? "만료" : contract.is_expiring_soon ? "만료임박" : "유효"}
+                              </Badge>
+                            </div>
+                            {contract.file_path && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownload(contract.id, 'contract', contract.file_name || 'contract.pdf')}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">계약 유형:</span>
+                              <span className="ml-2 font-medium">{contract.contract_type}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">시작일:</span>
+                              <span className="ml-2 font-medium">{contract.start_date}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">만료일:</span>
+                              <span className="ml-2 font-medium">{contract.expiry_date}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">갱신일:</span>
+                              <span className="ml-2 font-medium">{contract.renewal_date}</span>
+                            </div>
+                          </div>
+                          {contract.is_expiring_soon && (
+                            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-800 dark:text-yellow-200">
+                              ⚠️ {contract.days_until_expiry}일 후 만료됩니다.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                      등록된 계약서가 없습니다.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 보건증 정보 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    보건증 정보
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedStaff.health_certificates.length > 0 ? (
+                    <div className="space-y-3">
+                      {selectedStaff.health_certificates.map((cert, index) => (
+                        <div key={cert.id} className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {cert.certificate_number}
+                              </span>
+                              <Badge variant={cert.is_expired ? "destructive" : cert.is_expiring_soon ? "secondary" : "default"}>
+                                {cert.is_expired ? "만료" : cert.is_expiring_soon ? "만료임박" : "유효"}
+                              </Badge>
+                            </div>
+                            {cert.file_path && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownload(cert.id, 'health_certificate', cert.file_name || 'health_cert.pdf')}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">증명서 유형:</span>
+                              <span className="ml-2 font-medium">{cert.certificate_type}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">발급기관:</span>
+                              <span className="ml-2 font-medium">{cert.issuing_authority}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">발급일:</span>
+                              <span className="ml-2 font-medium">{cert.issue_date}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">만료일:</span>
+                              <span className="ml-2 font-medium">{cert.expiry_date}</span>
+                            </div>
+                          </div>
+                          {cert.is_expiring_soon && (
+                            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-800 dark:text-yellow-200">
+                              ⚠️ {cert.days_until_expiry}일 후 만료됩니다.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                      등록된 보건증이 없습니다.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 근무 통계 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ClockIcon className="h-4 w-4" />
+                    근무 통계
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">24</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">이번 달 근무일</div>
+                    </div>
+                    <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">192</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">이번 달 근무시간</div>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">2</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">연차 사용일</div>
+                    </div>
+                    <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">15</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">잔여 연차</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 액션 버튼 */}
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowStaffModal(false)}
+                  className="flex-1"
+                >
+                  닫기
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowStaffModal(false);
+                    router.push(`/staff/edit/${selectedStaff.id}`);
+                  }}
+                  className="flex-1"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  정보 수정
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowStaffModal(false);
+                    router.push('/staff/contract');
+                  }}
+                  className="flex-1"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  계약서 작성
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 알림창 */}
       <NotificationPopup 
