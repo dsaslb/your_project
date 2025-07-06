@@ -94,7 +94,10 @@ def monthly_summary_pdf():
         NIGHT_WORK_START = time(21, 0, 0)
 
         users_data = []
-        users = User.query.filter_by(status="approved").all()
+        users = User.query.filter(
+            User.role.in_(['employee', 'manager']),
+            User.status.in_(['approved', 'active'])
+        ).order_by(User.name).all()
 
         for user in users:
             attendances = Attendance.query.filter(
@@ -218,8 +221,11 @@ def attendance_stats():
         # 경고 사유 체크
         warning_reasons = ["지각", "결근", "무단결근", "경고"]
 
-        # 사용자 목록 (필터용)
-        users = User.query.filter_by(status="approved").order_by(User.name).all()
+        # 사용자 목록 (필터용) - 통합 API와 동일한 로직
+        users = User.query.filter(
+            User.role.in_(['employee', 'manager']),
+            User.status.in_(['approved', 'active'])
+        ).order_by(User.name).all()
 
         # 사유 템플릿 목록 (필터용)
         reason_templates = (
@@ -369,7 +375,10 @@ def notification_stats():
                 read_stats["안읽음"] += 1
 
         # 사용자 목록
-        users = User.query.filter_by(status="approved").order_by(User.name).all()
+        users = User.query.filter(
+            User.role.in_(['employee', 'manager']),
+            User.status.in_(['approved', 'active'])
+        ).order_by(User.name).all()
 
         return render_template(
             "admin/notification_stats.html",

@@ -189,8 +189,11 @@ def admin_notification_center():
         total_notifications = Notification.query.count()
         unread_count = Notification.query.filter_by(is_read=False).count()
 
-        # 사용자 목록 (필터용)
-        users = User.query.filter_by(status="approved").all()
+        # 사용자 목록 (필터용) - 통합 API와 동일한 로직
+        users = User.query.filter(
+            User.role.in_(['employee', 'manager']),
+            User.status.in_(['approved', 'active'])
+        ).order_by(User.name).all()
 
         return render_template(
             "admin/notifications.html",
@@ -273,7 +276,10 @@ def send_notification_page():
             if user_ids:
                 users = User.query.filter(User.id.in_(user_ids)).all()
             else:
-                users = User.query.filter_by(status="approved").all()
+                users = User.query.filter(
+                User.role.in_(['employee', 'manager']),
+                User.status.in_(['approved', 'active'])
+            ).order_by(User.name).all()
 
             success_count = 0
             for user in users:
@@ -295,8 +301,11 @@ def send_notification_page():
             flash("알림 발송 중 오류가 발생했습니다.", "error")
             return redirect(url_for("notifications.send_notification_page"))
 
-    # GET 요청: 알림 발송 페이지
-    users = User.query.filter_by(status="approved").all()
+    # GET 요청: 알림 발송 페이지 - 통합 API와 동일한 로직
+    users = User.query.filter(
+        User.role.in_(['employee', 'manager']),
+        User.status.in_(['approved', 'active'])
+    ).order_by(User.name).all()
     return render_template("admin/send_notification.html", users=users)
 
 

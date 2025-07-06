@@ -21,7 +21,10 @@ def bulk_transfer():
     """일괄 급여 이체 실행"""
     try:
         year, month = datetime.utcnow().year, datetime.utcnow().month
-        users = User.query.filter_by(status="approved").all()
+        users = User.query.filter(
+            User.role.in_(['employee', 'manager']),
+            User.status.in_(['approved', 'active'])
+        ).order_by(User.name).all()
 
         transfer_results = []
 

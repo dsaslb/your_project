@@ -914,6 +914,7 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     item = db.Column(db.String(200), nullable=False)  # 물품명
     quantity = db.Column(db.Integer, nullable=False, default=1)  # 수량
+    unit = db.Column(db.String(20), default="개")  # 단위 (kg, L, 개 등)
     order_date = db.Column(db.Date, nullable=False, default=date.today)  # 발주 날짜
     ordered_by = db.Column(
         db.Integer, db.ForeignKey("users.id"), nullable=False
@@ -931,11 +932,97 @@ class Order(db.Model):
     processing_minutes = db.Column(db.Integer)
     employee_id = db.Column(db.Integer, db.ForeignKey("users.id"))  # 직원
     store_id = db.Column(db.Integer, db.ForeignKey("branches.id"))  # 매장
+    
+    # 재고 연동 필드
+    inventory_item_id = db.Column(db.Integer, db.ForeignKey("inventory_items.id"), nullable=True)
+    supplier = db.Column(db.String(100))  # 공급업체
+    unit_price = db.Column(db.Integer)  # 단가
+    total_cost = db.Column(db.Integer)  # 총 비용
+    
     # 관계 설정
     user = db.relationship("User", foreign_keys=[ordered_by])
+    inventory_item = db.relationship("InventoryItem", backref="orders")
 
     def __repr__(self):
         return f"<Order {self.item} {self.quantity}>"
+
+
+class InventoryItem(db.Model):
+    """재고 품목 모델"""
+    
+    __tablename__ = "inventory_items"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False, index=True)  # 품목명
+    category = db.Column(db.String(100), nullable=False, index=True)  # 카테고리 (육류, 채소, 조미료 등)
+    current_stock = db.Column(db.Integer, default=0)  # 현재 재고량
+    min_stock = db.Column(db.Integer, default=0)  # 최소 재고량
+    max_stock = db.Column(db.Integer, default=1000)  # 최대 재고량
+    unit = db.Column(db.String(20), default="개")  # 단위
+    unit_price = db.Column(db.Integer, default=0)  # 단가
+    supplier = db.Column(db.String(100))  # 공급업체
+    description = db.Column(db.Text)  # 설명
+    expiry_date = db.Column(db.Date)  # 유통기한
+    location = db.Column(db.String(100))  # 보관 위치
+    status = db.Column(db.String(20), default="active", index=True)  # active, inactive, discontinued
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 매장 정보
+    branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=False)
+    branch = db.relationship("Branch", backref="inventory_items")
+    
+    # 재고 변동 이력
+    stock_movements = db.relationship("StockMovement", backref="inventory_item", cascade="all, delete-orphan")
+    
+    @property
+    def stock_status(self):
+        """재고 상태"""
+        if self.current_stock <= 0:
+            return "품절"
+        elif self.current_stock <= self.min_stock:
+            return "부족"
+        elif self.current_stock >= self.max_stock * 0.9:
+            return "과다"
+        else:
+            return "충분"
+    
+    @property
+    def total_value(self):
+        """총 재고 가치"""
+        return self.current_stock * self.unit_price
+    
+    @property
+    def stock_ratio(self):
+        """재고 비율 (최소 재고 대비)"""
+        if self.min_stock == 0:
+            return 100
+        return (self.current_stock / self.min_stock) * 100
+    
+    def __repr__(self):
+        return f"<InventoryItem {self.name} {self.current_stock}/{self.min_stock}>"
+
+
+class StockMovement(db.Model):
+    """재고 변동 이력 모델"""
+    
+    __tablename__ = "stock_movements"
+    id = db.Column(db.Integer, primary_key=True)
+    inventory_item_id = db.Column(db.Integer, db.ForeignKey("inventory_items.id"), nullable=False, index=True)
+    movement_type = db.Column(db.String(20), nullable=False, index=True)  # in, out, adjust
+    quantity = db.Column(db.Integer, nullable=False)  # 변동 수량 (양수: 입고, 음수: 출고)
+    before_stock = db.Column(db.Integer, nullable=False)  # 변동 전 재고
+    after_stock = db.Column(db.Integer, nullable=False)  # 변동 후 재고
+    reason = db.Column(db.String(200))  # 변동 사유
+    reference_type = db.Column(db.String(20))  # 참조 타입 (order, restaurant_order, manual)
+    reference_id = db.Column(db.Integer)  # 참조 ID
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # 관계 설정
+    created_by_user = db.relationship("User", backref="stock_movements")
+    
+    def __repr__(self):
+        return f"<StockMovement {self.inventory_item_id} {self.movement_type} {self.quantity}>"
 
 
 class AttendanceEvaluation(db.Model):
@@ -1403,6 +1490,9 @@ class RestaurantOrder(db.Model):
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+    # 재고 연동 필드
+    stock_consumed = db.Column(db.Boolean, default=False)  # 재고 소비 처리 여부
 
     # 관계 설정
     store = db.relationship("Branch", backref="restaurant_orders")

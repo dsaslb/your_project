@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
+from models import db, Order, InventoryItem, User, Branch
+import json
 
 orders_bp = Blueprint('orders', __name__)
 
@@ -14,186 +16,366 @@ def orders():
 @login_required
 def get_orders():
     """발주 목록 조회 API"""
-    # 더미 발주 데이터
-    orders_list = [
-        {
-            "id": 1,
-            "item": "토마토",
-            "quantity": 50,
-            "unit": "kg",
-            "order_date": "2024-01-15",
-            "ordered_by": "홍길동",
-            "status": "pending",
-            "detail": "신선한 토마토 필요",
-            "memo": "급하게 필요합니다",
-            "created_at": "2024-01-15T10:00:00Z"
-        },
-        {
-            "id": 2,
-            "item": "치즈",
-            "quantity": 20,
-            "unit": "kg",
-            "order_date": "2024-01-14",
-            "ordered_by": "김철수",
-            "status": "approved",
-            "detail": "모짜렐라 치즈",
-            "memo": "",
-            "created_at": "2024-01-14T14:30:00Z"
-        },
-        {
-            "id": 3,
-            "item": "밀가루",
-            "quantity": 100,
-            "unit": "kg",
-            "order_date": "2024-01-13",
-            "ordered_by": "이영희",
-            "status": "delivered",
-            "detail": "고급 밀가루",
-            "memo": "이미 배송완료",
-            "created_at": "2024-01-13T09:15:00Z"
-        },
-        {
-            "id": 4,
-            "item": "올리브오일",
-            "quantity": 10,
-            "unit": "L",
-            "order_date": "2024-01-12",
-            "ordered_by": "박민수",
-            "status": "rejected",
-            "detail": "엑스트라 버진",
-            "memo": "예산 초과로 거절",
-            "created_at": "2024-01-12T16:45:00Z"
-        }
-    ]
-    
-    return jsonify({"success": True, "data": orders_list})
+    try:
+        # 현재 사용자의 매장 ID 가져오기
+        branch_id = current_user.branch_id
+        
+        # 발주 목록 조회 (발주자 정보 포함)
+        orders = Order.query.filter_by(store_id=branch_id).order_by(Order.created_at.desc()).all()
+        
+        orders_list = []
+        for order in orders:
+            # 발주자 정보 조회
+            ordered_by_user = User.query.get(order.ordered_by)
+            ordered_by_name = ordered_by_user.name if ordered_by_user else "알 수 없음"
+            
+            orders_list.append({
+                "id": order.id,
+                "item": order.item,
+                "quantity": order.quantity,
+                "unit": order.unit,
+                "order_date": order.order_date.strftime('%Y-%m-%d'),
+                "ordered_by": ordered_by_name,  # 발주자 이름
+                "ordered_by_id": order.ordered_by,  # 발주자 ID
+                "status": order.status,
+                "detail": order.detail,
+                "memo": order.memo,
+                "supplier": order.supplier,
+                "unit_price": order.unit_price,
+                "total_cost": order.total_cost,
+                "created_at": order.created_at.strftime('%Y-%m-%d %H:%M'),
+                "completed_at": order.completed_at.strftime('%Y-%m-%d %H:%M') if order.completed_at else None
+            })
+        
+        return jsonify({"success": True, "data": orders_list})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @orders_bp.route('/api/orders', methods=['POST'])
-# @login_required
+@login_required
 def create_order():
-    """주문 생성 API"""
-    data = request.get_json()
-    
-    # 더미 응답
-    new_order = {
-        "id": f"ORD-{str(999).zfill(3)}",
-        "customer_name": data.get('customer_name', '새 고객'),
-        "phone": data.get('phone', '010-0000-0000'),
-        "table": data.get('table', 'A-1'),
-        "items": data.get('items', []),
-        "notes": data.get('notes', ''),
-        "estimated_time": data.get('estimated_time', '30'),
-        "total": data.get('total', 0),
-        "status": "대기중",
-        "order_time": datetime.now().strftime('%Y-%m-%d %H:%M'),
-        "estimated_completion": (datetime.now() + timedelta(minutes=int(data.get('estimated_time', 30)))).strftime('%H:%M')
-    }
-    
-    return jsonify({"success": True, "data": new_order, "message": "주문이 성공적으로 추가되었습니다."})
+    """발주 생성 API"""
+    try:
+        data = request.get_json()
+        
+        # 필수 필드 검증
+        if not data.get('item') or not data.get('quantity'):
+            return jsonify({"success": False, "error": "물품명과 수량은 필수입니다."}), 400
+        
+        # 재고 품목 확인 (기존 품목이 있는지)
+        inventory_item = None
+        if data.get('inventory_item_id'):
+            inventory_item = InventoryItem.query.get(data.get('inventory_item_id'))
+            if inventory_item and inventory_item.branch_id != current_user.branch_id:
+                return jsonify({"success": False, "error": "권한이 없습니다."}), 403
+        
+        # 새 발주 생성 (발주자 정보 자동 저장)
+        new_order = Order(
+            item=data.get('item'),
+            quantity=data.get('quantity'),
+            unit=data.get('unit', '개'),
+            order_date=datetime.strptime(data.get('order_date', datetime.now().strftime('%Y-%m-%d')), '%Y-%m-%d').date(),
+            ordered_by=current_user.id,  # 현재 로그인 사용자가 발주자
+            status='pending',
+            detail=data.get('detail', ''),
+            memo=data.get('memo', ''),
+            store_id=current_user.branch_id,
+            inventory_item_id=inventory_item.id if inventory_item else None,
+            supplier=data.get('supplier', ''),
+            unit_price=data.get('unit_price', 0),
+            total_cost=(data.get('quantity', 0) * data.get('unit_price', 0))
+        )
+        
+        db.session.add(new_order)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "data": {
+                "id": new_order.id,
+                "item": new_order.item,
+                "quantity": new_order.quantity,
+                "status": new_order.status,
+                "ordered_by": current_user.name,  # 발주자 이름 반환
+                "created_at": new_order.created_at.strftime('%Y-%m-%d %H:%M')
+            }, 
+            "message": "발주가 성공적으로 생성되었습니다."
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @orders_bp.route('/api/orders/<int:order_id>', methods=['PUT'])
 @login_required
 def update_order(order_id):
     """발주 수정 API"""
-    data = request.get_json()
-    
-    # 더미 응답
-    updated_order = {
-        "id": order_id,
-        "item": data.get('item', '수정된 물품'),
-        "quantity": data.get('quantity', 1),
-        "unit": data.get('unit', '개'),
-        "order_date": data.get('order_date', datetime.now().strftime('%Y-%m-%d')),
-        "ordered_by": data.get('ordered_by', '수정자'),
-        "status": data.get('status', 'pending'),
-        "detail": data.get('detail', ''),
-        "memo": data.get('memo', ''),
-        "updated_at": datetime.now().isoformat()
-    }
-    
-    return jsonify({"success": True, "data": updated_order, "message": "발주가 수정되었습니다."})
+    try:
+        data = request.get_json()
+        order = Order.query.get_or_404(order_id)
+        
+        # 권한 확인
+        if order.store_id != current_user.branch_id:
+            return jsonify({"success": False, "error": "권한이 없습니다."}), 403
+        
+        # 승인된 발주는 수정 불가
+        if order.status in ['approved', 'delivered']:
+            return jsonify({"success": False, "error": "승인된 발주는 수정할 수 없습니다."}), 400
+        
+        # 필드 업데이트
+        if 'item' in data:
+            order.item = data['item']
+        if 'quantity' in data:
+            order.quantity = data['quantity']
+        if 'unit' in data:
+            order.unit = data['unit']
+        if 'order_date' in data:
+            order.order_date = datetime.strptime(data['order_date'], '%Y-%m-%d').date()
+        if 'detail' in data:
+            order.detail = data['detail']
+        if 'memo' in data:
+            order.memo = data['memo']
+        if 'supplier' in data:
+            order.supplier = data['supplier']
+        if 'unit_price' in data:
+            order.unit_price = data['unit_price']
+            order.total_cost = order.quantity * data['unit_price']
+        
+        order.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "data": {
+                "id": order.id,
+                "item": order.item,
+                "quantity": order.quantity,
+                "status": order.status
+            }, 
+            "message": "발주가 수정되었습니다."
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @orders_bp.route('/api/orders/<int:order_id>', methods=['DELETE'])
 @login_required
 def delete_order(order_id):
     """발주 삭제 API"""
-    return jsonify({"success": True, "message": f"발주 {order_id}가 삭제되었습니다."})
+    try:
+        order = Order.query.get_or_404(order_id)
+        
+        # 권한 확인
+        if order.store_id != current_user.branch_id:
+            return jsonify({"success": False, "error": "권한이 없습니다."}), 403
+        
+        # 승인된 발주는 삭제 불가
+        if order.status in ['approved', 'delivered']:
+            return jsonify({"success": False, "error": "승인된 발주는 삭제할 수 없습니다."}), 400
+        
+        db.session.delete(order)
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": f"발주 {order_id}가 삭제되었습니다."})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @orders_bp.route('/api/orders/<int:order_id>')
 @login_required
 def get_order_detail(order_id):
     """발주 상세 조회 API"""
-    # 더미 상세 데이터
-    order_detail = {
-        "id": order_id,
-        "item": "토마토",
-        "quantity": 50,
-        "unit": "kg",
-        "order_date": "2024-01-15",
-        "ordered_by": "홍길동",
-        "status": "pending",
-        "detail": "신선한 토마토 필요",
-        "memo": "급하게 필요합니다",
-        "created_at": "2024-01-15T10:00:00Z",
-        "updated_at": "2024-01-15T10:00:00Z",
-        "approved_by": None,
-        "approved_at": None,
-        "delivered_at": None,
-        "supplier": "농산물공급업체",
-        "estimated_cost": 150000,
-        "actual_cost": None
-    }
-    
-    return jsonify({"success": True, "data": order_detail})
+    try:
+        order = Order.query.get_or_404(order_id)
+        
+        # 권한 확인
+        if order.store_id != current_user.branch_id:
+            return jsonify({"success": False, "error": "권한이 없습니다."}), 403
+        
+        order_detail = {
+            "id": order.id,
+            "item": order.item,
+            "quantity": order.quantity,
+            "unit": order.unit,
+            "order_date": order.order_date.strftime('%Y-%m-%d'),
+            "ordered_by": order.user.name if order.user else "알 수 없음",
+            "status": order.status,
+            "detail": order.detail,
+            "memo": order.memo,
+            "supplier": order.supplier,
+            "unit_price": order.unit_price,
+            "total_cost": order.total_cost,
+            "created_at": order.created_at.strftime('%Y-%m-%d %H:%M'),
+            "updated_at": order.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "completed_at": order.completed_at.strftime('%Y-%m-%d %H:%M') if order.completed_at else None,
+            "inventory_item_id": order.inventory_item_id,
+            "inventory_item_name": order.inventory_item.name if order.inventory_item else None
+        }
+        
+        return jsonify({"success": True, "data": order_detail})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @orders_bp.route('/api/orders/<int:order_id>/approve', methods=['POST'])
 @login_required
 def approve_order(order_id):
     """발주 승인 API"""
-    return jsonify({"success": True, "message": f"발주 {order_id}가 승인되었습니다."})
+    try:
+        order = Order.query.get_or_404(order_id)
+        
+        # 권한 확인 (매장 관리자 또는 최고 관리자만)
+        if current_user.branch_id != order.store_id and current_user.role != 'admin':
+            return jsonify({"success": False, "error": "권한이 없습니다."}), 403
+        
+        order.status = 'approved'
+        order.completed_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "message": "발주가 승인되었습니다."
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @orders_bp.route('/api/orders/<int:order_id>/reject', methods=['POST'])
 @login_required
 def reject_order(order_id):
     """발주 거절 API"""
-    data = request.get_json()
-    reason = data.get('reason', '사유 없음')
-    return jsonify({"success": True, "message": f"발주 {order_id}가 거절되었습니다. 사유: {reason}"})
+    try:
+        data = request.get_json()
+        order = Order.query.get_or_404(order_id)
+        
+        # 권한 확인 (매장 관리자 또는 최고 관리자만)
+        if current_user.branch_id != order.store_id and current_user.role != 'admin':
+            return jsonify({"success": False, "error": "권한이 없습니다."}), 403
+        
+        order.status = 'rejected'
+        order.memo = f"거절 사유: {data.get('reason', '관리자 거절')}"
+        order.completed_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "message": "발주가 거절되었습니다."
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @orders_bp.route('/api/orders/<int:order_id>/deliver', methods=['POST'])
 @login_required
 def deliver_order(order_id):
     """발주 배송완료 API"""
-    return jsonify({"success": True, "message": f"발주 {order_id}가 배송완료되었습니다."})
+    try:
+        order = Order.query.get_or_404(order_id)
+        
+        # 권한 확인 (매장 관리자 또는 최고 관리자만)
+        if current_user.branch_id != order.store_id and current_user.role != 'admin':
+            return jsonify({"success": False, "error": "권한이 없습니다."}), 403
+        
+        order.status = 'delivered'
+        order.completed_at = datetime.utcnow()
+        
+        # 재고에 자동 입고 처리
+        if order.inventory_item_id:
+            inventory_item = InventoryItem.query.get(order.inventory_item_id)
+            if inventory_item:
+                inventory_item.current_stock += order.quantity
+                inventory_item.updated_at = datetime.utcnow()
+                
+                # 재고 변동 이력 기록
+                stock_movement = StockMovement(
+                    inventory_item_id=inventory_item.id,
+                    movement_type='in',
+                    quantity=order.quantity,
+                    reason=f'발주 입고 (발주번호: {order.id})',
+                    created_by=current_user.id
+                )
+                db.session.add(stock_movement)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "message": "발주가 배송완료되었고 재고에 입고되었습니다."
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @orders_bp.route('/api/orders/stats')
 @login_required
 def get_orders_stats():
     """발주 통계 API"""
-    # 더미 통계 데이터
-    stats = {
-        "total_orders": 156,
-        "pending_orders": 23,
-        "approved_orders": 45,
-        "delivered_orders": 78,
-        "rejected_orders": 10,
-        "total_cost": 8500000,
-        "monthly_orders": 45,
-        "weekly_orders": 12
-    }
-    
-    return jsonify({"success": True, "data": stats})
+    try:
+        branch_id = current_user.branch_id
+        
+        # 전체 발주 수
+        total_orders = Order.query.filter_by(store_id=branch_id).count()
+        
+        # 상태별 통계
+        pending_orders = Order.query.filter_by(store_id=branch_id, status='pending').count()
+        approved_orders = Order.query.filter_by(store_id=branch_id, status='approved').count()
+        delivered_orders = Order.query.filter_by(store_id=branch_id, status='delivered').count()
+        rejected_orders = Order.query.filter_by(store_id=branch_id, status='rejected').count()
+        
+        # 총 비용
+        total_cost = db.session.query(db.func.sum(Order.total_cost)).filter_by(store_id=branch_id).scalar() or 0
+        
+        # 이번 달 발주 수
+        this_month = datetime.now().replace(day=1)
+        monthly_orders = Order.query.filter(
+            Order.store_id == branch_id,
+            Order.created_at >= this_month
+        ).count()
+        
+        # 이번 주 발주 수
+        this_week = datetime.now() - timedelta(days=datetime.now().weekday())
+        weekly_orders = Order.query.filter(
+            Order.store_id == branch_id,
+            Order.created_at >= this_week
+        ).count()
+        
+        stats = {
+            "total_orders": total_orders,
+            "pending_orders": pending_orders,
+            "approved_orders": approved_orders,
+            "delivered_orders": delivered_orders,
+            "rejected_orders": rejected_orders,
+            "total_cost": total_cost,
+            "monthly_orders": monthly_orders,
+            "weekly_orders": weekly_orders
+        }
+        
+        return jsonify({"success": True, "data": stats})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-@orders_bp.route('/api/orders/suppliers')
+@orders_bp.route('/api/orders/inventory-items')
 @login_required
-def get_suppliers():
-    """공급업체 목록 API"""
-    # 더미 공급업체 데이터
-    suppliers = [
-        {"id": 1, "name": "농산물공급업체", "contact": "010-1111-2222", "category": "농산물"},
-        {"id": 2, "name": "육류공급업체", "contact": "010-2222-3333", "category": "육류"},
-        {"id": 3, "name": "수산물공급업체", "contact": "010-3333-4444", "category": "수산물"},
-        {"id": 4, "name": "조미료공급업체", "contact": "010-4444-5555", "category": "조미료"}
-    ]
-    
-    return jsonify({"success": True, "data": suppliers}) 
+def get_inventory_items_for_order():
+    """발주용 재고 품목 목록 API"""
+    try:
+        branch_id = current_user.branch_id
+        
+        # 재고 품목 조회
+        items = InventoryItem.query.filter_by(branch_id=branch_id, status='active').all()
+        
+        items_list = []
+        for item in items:
+            items_list.append({
+                "id": item.id,
+                "name": item.name,
+                "category": item.category,
+                "current_stock": item.current_stock,
+                "min_stock": item.min_stock,
+                "unit": item.unit,
+                "unit_price": item.unit_price,
+                "supplier": item.supplier,
+                "status": item.stock_status
+            })
+        
+        return jsonify({"success": True, "data": items_list})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500 

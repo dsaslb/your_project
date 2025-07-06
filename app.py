@@ -819,14 +819,65 @@ def api_get_schedule(schedule_id):
 @app.route("/api/users")
 @login_required
 def api_get_users():
-    """사용자 목록 API (스케줄 배정용)"""
+    """사용자 목록 API (스케줄 배정용) - 통합 API 사용"""
     try:
-        users = User.query.filter_by(status='approved').all()
-        return jsonify([{
-            "id": user.id,
-            "username": user.username,
-            "role": user.role
-        } for user in users])
+        # 검색 파라미터
+        search = request.args.get('search', '')
+        department = request.args.get('department', '')
+        status = request.args.get('status', '')
+        
+        # User 테이블에서 직원 데이터 조회
+        query = User.query.filter(User.role.in_(['employee', 'manager']))
+        
+        # 상태 필터링 - 기본적으로 승인된 직원만
+        if status:
+            query = query.filter(User.status == status)
+        else:
+            query = query.filter(User.status.in_(['approved', 'active']))
+        
+        # 검색 필터 적용
+        if search:
+            query = query.filter(
+                or_(
+                    User.username.contains(search),
+                    User.name.contains(search),
+                    User.email.contains(search),
+                    User.phone.contains(search)
+                )
+            )
+        
+        if department:
+            query = query.filter(User.department == department)
+        
+        # 매장별 필터링 (관리자가 아닌 경우)
+        if not current_user.is_admin():
+            query = query.filter(
+                or_(
+                    User.branch_id == None,
+                    User.branch_id == current_user.branch_id
+                )
+            )
+        
+        users = query.order_by(User.name).all()
+        
+        user_list = []
+        for user in users:
+            user_list.append({
+                "id": user.id,
+                "name": user.name or user.username,
+                "username": user.username,
+                "position": user.position or "",
+                "department": user.department or "",
+                "role": user.role,
+                "status": user.status,
+                "email": user.email
+            })
+        
+        return jsonify({
+            "success": True,
+            "users": user_list
+        })
+        
     except Exception as e:
         return jsonify({"success": False, "message": f"오류가 발생했습니다: {str(e)}"}), 400
 
