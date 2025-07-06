@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "./UserContext";
-import { ChevronLeft, ChevronRight, Users, Calendar, Package, ShoppingCart, BarChart3, Settings, Clock, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users, Calendar, Package, ShoppingCart, BarChart3, Settings, Clock, FileText, Bell } from "lucide-react";
 
 export interface SidebarMenuItem {
   label: string;
@@ -22,15 +22,22 @@ export default function Sidebar({ menu }: { menu: SidebarMenuItem[] }) {
     { label: "직원 관리", href: "/staff", icon: <Users className="h-5 w-5" /> },
     { label: "스케줄 관리", href: "/schedule", icon: <Calendar className="h-5 w-5" /> },
     { label: "근태 관리", href: "/attendance", icon: <Clock className="h-5 w-5" /> },
-    { label: "발주 관리", href: "/orders", icon: <Package className="h-5 w-5" /> },
+    { label: "발주 관리", href: "/purchase", icon: <Package className="h-5 w-5" /> },
     { label: "재고 관리", href: "/inventory", icon: <ShoppingCart className="h-5 w-5" /> },
-    { label: "주문 관리", href: "/restaurant_orders", icon: <FileText className="h-5 w-5" /> },
+    { label: "주문 관리", href: "/orders", icon: <FileText className="h-5 w-5" /> },
     { label: "청소 관리", href: "/cleaning", icon: <Settings className="h-5 w-5" /> },
   ];
 
   // 대시보드 메뉴
   const dashboardMenu = [
     { label: "대시보드", href: "/dashboard", icon: <BarChart3 className="h-5 w-5" /> },
+  ];
+
+  // 기타 메뉴
+  const otherMenu = [
+    { label: "매장 종합 평가", href: "/evaluation", icon: <BarChart3 className="h-5 w-5" /> },
+    { label: "알림/공지", href: "/notifications", icon: <Bell className="h-5 w-5" /> },
+    { label: "설정", href: "/settings", icon: <Settings className="h-5 w-5" /> },
   ];
 
   return (
@@ -108,33 +115,31 @@ export default function Sidebar({ menu }: { menu: SidebarMenuItem[] }) {
           ))}
         </div>
 
-        {/* 기존 메뉴 (필요시) */}
-        {menu.length > 0 && (
-          <div className="mb-6">
-            {!isCollapsed && (
-              <div className="px-6 py-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                기타
+        {/* 기타 메뉴 */}
+        <div className="mb-6">
+          {!isCollapsed && (
+            <div className="px-6 py-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              기타
+            </div>
+          )}
+          {otherMenu.map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-2 px-6 py-3 hover:bg-zinc-800 transition ${
+                pathname === item.href ? "bg-zinc-800 font-bold" : ""
+              } ${isCollapsed ? "justify-center px-2" : ""}`}
+              title={isCollapsed ? item.label : ""}
+            >
+              <div className="flex-shrink-0">
+                {item.icon}
               </div>
-            )}
-            {menu.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 px-6 py-3 hover:bg-zinc-800 transition ${
-                  pathname === item.href ? "bg-zinc-800 font-bold" : ""
-                } ${isCollapsed ? "justify-center px-2" : ""}`}
-                title={isCollapsed ? item.label : ""}
-              >
-                <div className="flex-shrink-0">
-                  {item.icon}
-                </div>
-                {!isCollapsed && (
-                  <span className="truncate">{item.label}</span>
-                )}
-              </Link>
-            ))}
-          </div>
-        )}
+              {!isCollapsed && (
+                <span className="truncate">{item.label}</span>
+              )}
+            </Link>
+          ))}
+        </div>
       </nav>
       
       <div className={`p-4 border-t border-zinc-800 ${isCollapsed ? "px-2" : ""}`}>
