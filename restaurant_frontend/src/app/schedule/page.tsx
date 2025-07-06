@@ -53,6 +53,7 @@ export default function SchedulePage() {
   // 직원 데이터 불러오기
   const fetchStaffData = async () => {
     try {
+      setLoading(true);
       const response = await fetch('http://localhost:5000/api/staff', {
         credentials: 'include',
         headers: {
@@ -63,6 +64,7 @@ export default function SchedulePage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
+          console.log('스케줄: 직원 데이터 로드 성공', data.staff?.length || 0, '명');
           setStaffMembers(data.staff || []);
         } else {
           console.error('직원 데이터 로드 실패:', data.error);

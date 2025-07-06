@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, User, Phone, Mail, Calendar, MapPin, Download, Eye, AlertTriangle, CheckCircle, Clock, FileText, Shield, X, Building, CalendarDays, DollarSign, Award, Clock as ClockIcon } from "lucide-react";
+import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, User, Phone, Mail, Calendar, MapPin, Download, Eye, AlertTriangle, CheckCircle, Clock, FileText, Shield, X, Building, CalendarDays, DollarSign, Award, Clock as ClockIcon, UserX, UserCheck } from "lucide-react";
 import NotificationPopup from "@/components/NotificationPopup";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -151,10 +151,71 @@ export default function StaffPage() {
   // 직원 등록/수정/삭제 후 데이터 새로고침 함수
   const refreshStaffData = async () => {
     console.log('직원 데이터 새로고침 중...');
+    setLoading(true);
     await fetchStaffData();
     await fetchExpiringDocuments();
     // 스케줄 페이지도 새로고침 (전역 상태나 이벤트로 알림)
     window.dispatchEvent(new CustomEvent('staffDataUpdated'));
+    setLoading(false);
+  };
+
+  // 직원 상태 변경 함수
+  const updateStaffStatus = async (staffId: number, newStatus: string) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/staff/${staffId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          console.log(`직원 ${staffId} 상태 변경 성공: ${newStatus}`);
+          await refreshStaffData();
+        } else {
+          console.error('상태 변경 실패:', data.error);
+        }
+      } else {
+        console.error('상태 변경 실패:', response.status);
+      }
+    } catch (error) {
+      console.error('상태 변경 오류:', error);
+    }
+  };
+
+  // 직원 삭제 함수
+  const deleteStaff = async (staffId: number) => {
+    if (!confirm('정말로 이 직원을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/staff/${staffId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          console.log(`직원 ${staffId} 삭제 성공`);
+          await refreshStaffData();
+        } else {
+          console.error('삭제 실패:', data.error);
+        }
+      } else {
+        console.error('삭제 실패:', response.status);
+      }
+    } catch (error) {
+      console.error('삭제 오류:', error);
+    }
   };
 
   // 더미 데이터 (API 실패 시 사용)
@@ -535,6 +596,44 @@ export default function StaffPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {member.join_date}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/staff/edit/${member.id}`);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateStaffStatus(member.id, member.status === 'active' ? 'inactive' : 'active');
+                          }}
+                        >
+                          {member.status === 'active' ? (
+                            <UserX className="h-4 w-4 text-red-500" />
+                          ) : (
+                            <UserCheck className="h-4 w-4 text-green-500" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteStaff(member.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
