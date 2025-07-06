@@ -22,6 +22,23 @@ interface PendingStaff {
   role: string;
   branch_name?: string;
   salary?: string;
+  permissions?: any;
+}
+
+interface Permission {
+  view: boolean;
+  create?: boolean;
+  edit?: boolean;
+  delete?: boolean;
+  approve?: boolean;
+  assign_roles?: boolean;
+  send?: boolean;
+  backup?: boolean;
+  restore?: boolean;
+  settings?: boolean;
+  monitoring?: boolean;
+  export?: boolean;
+  admin_only?: boolean;
 }
 
 export default function StaffApprovalPage() {
@@ -32,6 +49,17 @@ export default function StaffApprovalPage() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<PendingStaff | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [permissionForm, setPermissionForm] = useState({
+    dashboard: { view: true, edit: false, admin_only: false },
+    employee_management: { view: false, create: false, edit: false, delete: false, approve: false, assign_roles: false },
+    schedule_management: { view: true, create: false, edit: false, delete: false, approve: false },
+    order_management: { view: true, create: false, edit: false, delete: false, approve: false },
+    inventory_management: { view: true, create: false, edit: false, delete: false },
+    notification_management: { view: true, send: false, delete: false },
+    system_management: { view: false, backup: false, restore: false, settings: false, monitoring: false },
+    reports: { view: false, export: false, admin_only: false },
+  });
 
   // 미승인 직원 목록 로드
   const fetchPendingStaff = async () => {
@@ -62,7 +90,51 @@ export default function StaffApprovalPage() {
     fetchPendingStaff();
   }, []);
 
-  // 직원 승인
+  // 권한 설정 다이얼로그 열기
+  const openPermissionDialog = (staff: PendingStaff) => {
+    setSelectedStaff(staff);
+    if (staff.permissions) {
+      setPermissionForm(staff.permissions);
+    }
+    setShowPermissionDialog(true);
+  };
+
+  // 권한 설정 저장
+  const handlePermissionSave = async () => {
+    if (!selectedStaff) return;
+
+    try {
+      setProcessing(selectedStaff.id);
+      const response = await fetch(`http://localhost:5000/api/staff/${selectedStaff.id}/permissions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ permissions: permissionForm }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          alert('권한이 설정되었습니다!');
+          setShowPermissionDialog(false);
+          fetchPendingStaff(); // 목록 새로고침
+        } else {
+          alert(`권한 설정 실패: ${data.error}`);
+        }
+      } else {
+        alert('권한 설정 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('권한 설정 오류:', error);
+      alert('권한 설정 중 오류가 발생했습니다.');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  // 직원 승인 (권한 포함)
   const handleApprove = async (staffId: number) => {
     try {
       setProcessing(staffId);
@@ -72,6 +144,7 @@ export default function StaffApprovalPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
+        body: JSON.stringify({ permissions: permissionForm }),
       });
 
       if (response.ok) {
@@ -79,6 +152,8 @@ export default function StaffApprovalPage() {
         if (data.success) {
           alert('직원이 승인되었습니다!');
           fetchPendingStaff(); // 목록 새로고침
+          // 직원 목록/스케줄 새로고침 이벤트 발생
+          window.dispatchEvent(new CustomEvent('staffDataUpdated'));
         } else {
           alert(`승인 실패: ${data.error}`);
         }
@@ -337,6 +412,15 @@ export default function StaffApprovalPage() {
                               <>
                                 <Button
                                   size="sm"
+                                  onClick={() => openPermissionDialog(staff)}
+                                  disabled={processing === staff.id}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  권한설정
+                                </Button>
+                                <Button
+                                  size="sm"
                                   onClick={() => handleApprove(staff.id)}
                                   disabled={processing === staff.id}
                                   className="bg-green-600 hover:bg-green-700 text-white"
@@ -411,6 +495,234 @@ export default function StaffApprovalPage() {
               className="bg-red-600 hover:bg-red-700"
             >
               {processing === selectedStaff?.id ? '처리중...' : '거절'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 권한 설정 다이얼로그 */}
+      <Dialog open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>권한 설정 - {selectedStaff?.name}</DialogTitle>
+            <DialogDescription>
+              {selectedStaff?.name} 직원의 권한을 설정하세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* 대시보드 권한 */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-semibold mb-3">대시보드</h3>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.dashboard.view}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      dashboard: { ...permissionForm.dashboard, view: e.target.checked }
+                    })}
+                  />
+                  <span>대시보드 보기</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.dashboard.edit}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      dashboard: { ...permissionForm.dashboard, edit: e.target.checked }
+                    })}
+                  />
+                  <span>대시보드 편집</span>
+                </label>
+              </div>
+            </div>
+
+            {/* 직원 관리 권한 */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-semibold mb-3">직원 관리</h3>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.employee_management.view}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      employee_management: { ...permissionForm.employee_management, view: e.target.checked }
+                    })}
+                  />
+                  <span>직원 목록 보기</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.employee_management.create}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      employee_management: { ...permissionForm.employee_management, create: e.target.checked }
+                    })}
+                  />
+                  <span>직원 등록</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.employee_management.edit}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      employee_management: { ...permissionForm.employee_management, edit: e.target.checked }
+                    })}
+                  />
+                  <span>직원 정보 수정</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.employee_management.approve}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      employee_management: { ...permissionForm.employee_management, approve: e.target.checked }
+                    })}
+                  />
+                  <span>직원 승인</span>
+                </label>
+              </div>
+            </div>
+
+            {/* 스케줄 관리 권한 */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-semibold mb-3">스케줄 관리</h3>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.schedule_management.view}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      schedule_management: { ...permissionForm.schedule_management, view: e.target.checked }
+                    })}
+                  />
+                  <span>스케줄 보기</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.schedule_management.create}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      schedule_management: { ...permissionForm.schedule_management, create: e.target.checked }
+                    })}
+                  />
+                  <span>스케줄 생성</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.schedule_management.edit}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      schedule_management: { ...permissionForm.schedule_management, edit: e.target.checked }
+                    })}
+                  />
+                  <span>스케줄 수정</span>
+                </label>
+              </div>
+            </div>
+
+            {/* 주문 관리 권한 */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-semibold mb-3">주문 관리</h3>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.order_management.view}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      order_management: { ...permissionForm.order_management, view: e.target.checked }
+                    })}
+                  />
+                  <span>주문 보기</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.order_management.create}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      order_management: { ...permissionForm.order_management, create: e.target.checked }
+                    })}
+                  />
+                  <span>주문 생성</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.order_management.edit}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      order_management: { ...permissionForm.order_management, edit: e.target.checked }
+                    })}
+                  />
+                  <span>주문 수정</span>
+                </label>
+              </div>
+            </div>
+
+            {/* 재고 관리 권한 */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-semibold mb-3">재고 관리</h3>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.inventory_management.view}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      inventory_management: { ...permissionForm.inventory_management, view: e.target.checked }
+                    })}
+                  />
+                  <span>재고 보기</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.inventory_management.create}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      inventory_management: { ...permissionForm.inventory_management, create: e.target.checked }
+                    })}
+                  />
+                  <span>재고 등록</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={permissionForm.inventory_management.edit}
+                    onChange={(e) => setPermissionForm({
+                      ...permissionForm,
+                      inventory_management: { ...permissionForm.inventory_management, edit: e.target.checked }
+                    })}
+                  />
+                  <span>재고 수정</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPermissionDialog(false)}
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handlePermissionSave}
+              disabled={processing === selectedStaff?.id}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {processing === selectedStaff?.id ? '저장중...' : '권한 저장'}
             </Button>
           </DialogFooter>
         </DialogContent>

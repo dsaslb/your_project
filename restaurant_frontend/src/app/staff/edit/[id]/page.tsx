@@ -304,6 +304,8 @@ export default function EditStaffPage() {
         const data = await response.json();
         if (data.success) {
           alert('직원 정보가 성공적으로 수정되었습니다!');
+          // 직원 목록/스케줄 새로고침 이벤트 발생
+          window.dispatchEvent(new CustomEvent('staffDataUpdated'));
           router.push('/staff');
         } else {
           alert(`직원 수정 실패: ${data.error || '알 수 없는 오류'}`);

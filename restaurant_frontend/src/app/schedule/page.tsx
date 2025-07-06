@@ -64,8 +64,12 @@ export default function SchedulePage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          console.log('스케줄: 직원 데이터 로드 성공', data.staff?.length || 0, '명');
-          setStaffMembers(data.staff || []);
+          // 퇴사/휴직자 제외하고 active/pending 상태만 필터링
+          const activeStaff = (data.staff || []).filter((staff: any) => 
+            staff.status === 'active' || staff.status === 'pending'
+          );
+          console.log('스케줄: 직원 데이터 로드 성공', activeStaff.length, '명 (활성 직원)');
+          setStaffMembers(activeStaff);
         } else {
           console.error('직원 데이터 로드 실패:', data.error);
         }
