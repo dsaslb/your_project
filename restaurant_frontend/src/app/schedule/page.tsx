@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useStaffStore, useScheduleStore } from '@/store';
 
 export default function SchedulePage() {
   const router = useRouter();
@@ -34,8 +35,6 @@ export default function SchedulePage() {
   const [showAIPopup, setShowAIPopup] = useState(false);
   const [typedText, setTypedText] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
-  const [staffMembers, setStaffMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [selectedCellDate, setSelectedCellDate] = useState<string>("");
   const [scheduleForm, setScheduleForm] = useState({
@@ -48,9 +47,24 @@ export default function SchedulePage() {
   });
   const [events, setEvents] = useState<any[]>([]);
 
+  // Store에서 데이터 가져오기
+  const { 
+    staffMembers, 
+    loading: staffLoading, 
+    fetchStaffData 
+  } = useStaffStore();
+
+  const { 
+    schedules, 
+    loading: scheduleLoading, 
+    fetchSchedules,
+    createSchedule 
+  } = useScheduleStore();
+
   useEffect(() => {
     setIsLoaded(true);
     fetchStaffData();
+    fetchSchedules();
     const popupTimer = setTimeout(() => {
       setShowAIPopup(true);
     }, 3000);
@@ -67,41 +81,6 @@ export default function SchedulePage() {
     window.addEventListener('staffDataUpdated', handleStaffDataUpdate);
     return () => window.removeEventListener('staffDataUpdated', handleStaffDataUpdate);
   }, []);
-
-  // 직원 데이터 불러오기
-  const fetchStaffData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('http://localhost:5000/api/staff', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // 퇴사/휴직자 제외하고 active/approved/pending 상태만 필터링
-          const activeStaff = (data.staff || []).filter((staff: any) => 
-            staff.status === 'active' || staff.status === 'approved' || staff.status === 'pending'
-          );
-          console.log('스케줄: 직원 데이터 로드 성공', activeStaff.length, '명 (활성 직원)');
-          setStaffMembers(activeStaff);
-        } else {
-          console.error('직원 데이터 로드 실패:', data.error);
-          setStaffMembers([]);
-        }
-      } else {
-        console.error('직원 데이터 로드 실패:', response.status);
-        setStaffMembers([]);
-      }
-    } catch (error) {
-      console.error('직원 데이터 로드 오류:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (showAIPopup) {

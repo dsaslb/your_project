@@ -8,48 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-interface Contract {
-  id: number;
-  contract_number: string;
-  start_date: string;
-  expiry_date: string;
-  renewal_date: string;
-  contract_type: string;
-  is_expiring_soon: boolean;
-  is_expired: boolean;
-  days_until_expiry: number;
-  file_path?: string;
-  file_name?: string;
-}
-
-interface HealthCertificate {
-  id: number;
-  certificate_number: string;
-  issue_date: string;
-  expiry_date: string;
-  renewal_date: string;
-  issuing_authority: string;
-  certificate_type: string;
-  is_expiring_soon: boolean;
-  is_expired: boolean;
-  days_until_expiry: number;
-  file_path?: string;
-  file_name?: string;
-}
-
-interface StaffMember {
-  id: number;
-  name: string;
-  position: string;
-  department: string;
-  email: string;
-  phone: string;
-  join_date: string;
-  status: 'active' | 'inactive' | 'pending';
-  contracts: Contract[];
-  health_certificates: HealthCertificate[];
-}
+import { useStaffStore, type StaffMember } from '@/store';
 
 export default function StaffPage() {
   const router = useRouter();
@@ -59,9 +18,19 @@ export default function StaffPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expiringDocuments, setExpiringDocuments] = useState<any>(null);
+  
+  // Store에서 데이터 가져오기
+  const { 
+    staffMembers, 
+    expiringDocuments, 
+    loading, 
+    error,
+    fetchStaffData, 
+    fetchExpiringDocuments, 
+    refreshAllData,
+    updateStaffStatus: updateStaffStatusStore,
+    deleteStaff: deleteStaffStore
+  } = useStaffStore();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -73,95 +42,10 @@ export default function StaffPage() {
     setIsPlaying(!isPlaying);
   };
 
-  const fetchStaffData = async () => {
-    try {
-      // 타임아웃 설정
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
-
-      const response = await fetch('http://localhost:5000/api/staff', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // 퇴사/휴직자 제외하고 active/pending 상태만 필터링
-          const activeStaff = (data.staff || []).filter((staff: any) => 
-            staff.status === 'active' || staff.status === 'pending'
-          );
-          console.log('직원 데이터 로드 성공:', activeStaff.length, '명 (활성 직원)');
-          setStaffMembers(activeStaff);
-        } else {
-          console.error('직원 데이터 로드 실패:', data.error);
-          setStaffMembers(getDummyData());
-        }
-      } else {
-        console.error('직원 데이터 로드 실패:', response.status);
-        // 더미 데이터로 폴백
-        setStaffMembers(getDummyData());
-      }
-    } catch (error) {
-      console.error('API 호출 오류:', error);
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('API 호출 타임아웃 - 더미 데이터 사용');
-      }
-      // 더미 데이터로 폴백
-      setStaffMembers(getDummyData());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchExpiringDocuments = async () => {
-    try {
-      // 타임아웃 설정
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
-
-      const response = await fetch('http://localhost:5000/api/staff/expiring-documents', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setExpiringDocuments(data);
-        } else {
-          console.error('만료 임박 문서 로드 실패:', data.error);
-        }
-      } else {
-        console.error('만료 임박 문서 로드 실패:', response.status);
-      }
-    } catch (error) {
-      console.error('만료 임박 문서 로드 실패:', error);
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('만료 임박 문서 API 호출 타임아웃');
-      }
-    }
-  };
-
   // 직원 등록/수정/삭제 후 데이터 새로고침 함수
   const refreshStaffData = async () => {
     console.log('직원 데이터 새로고침 중...');
-    setLoading(true);
-    await fetchStaffData();
-    await fetchExpiringDocuments();
-    // 스케줄 페이지도 새로고침 (전역 상태나 이벤트로 알림)
-    window.dispatchEvent(new CustomEvent('staffDataUpdated'));
-    setLoading(false);
+    await refreshAllData();
   };
 
   // 직원 상태 변경 함수
@@ -180,6 +64,7 @@ export default function StaffPage() {
         const data = await response.json();
         if (data.success) {
           console.log(`직원 ${staffId} 상태 변경 성공: ${newStatus}`);
+          updateStaffStatusStore(staffId, newStatus);
           await refreshStaffData();
         } else {
           console.error('상태 변경 실패:', data.error);
@@ -211,6 +96,7 @@ export default function StaffPage() {
         const data = await response.json();
         if (data.success) {
           console.log(`직원 ${staffId} 삭제 성공`);
+          deleteStaffStore(staffId);
           await refreshStaffData();
         } else {
           console.error('삭제 실패:', data.error);

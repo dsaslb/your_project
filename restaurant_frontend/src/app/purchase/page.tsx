@@ -9,28 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Package, User, Calendar, Clock, CheckCircle, AlertCircle, XCircle, Plus, Search } from "lucide-react";
 import NotificationPopup from "@/components/NotificationPopup";
-
-interface Order {
-  id: number;
-  item: string;
-  quantity: number;
-  unit: string;
-  order_date: string;
-  ordered_by: string;
-  ordered_by_id: number;
-  status: string;
-  detail: string;
-  memo: string;
-  supplier: string;
-  unit_price: number;
-  total_cost: number;
-  created_at: string;
-  completed_at?: string;
-}
+import { useOrderStore, type Order } from '@/store';
 
 export default function PurchasePage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -45,29 +26,24 @@ export default function PurchasePage() {
     unit_price: 0
   });
 
+  // Store에서 데이터 가져오기
+  const { 
+    orders, 
+    loading, 
+    error,
+    fetchOrders, 
+    createOrder, 
+    approveOrder, 
+    rejectOrder, 
+    deliverOrder 
+  } = useOrderStore();
+
   // 발주 목록 로드
   useEffect(() => {
-    loadOrders();
+    fetchOrders();
   }, []);
 
-  const loadOrders = async () => {
-    try {
-      const response = await fetch('/api/orders', {
-        credentials: 'include'
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        setOrders(data.data);
-      } else {
-        console.error('발주 목록 로드 실패:', data.error);
-      }
-    } catch (error) {
-      console.error('발주 목록 로드 오류:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleAddOrder = async () => {
     if (!newOrder.item || newOrder.quantity <= 0) {
@@ -75,79 +51,45 @@ export default function PurchasePage() {
       return;
     }
 
-    try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(newOrder)
+    const success = await createOrder(newOrder);
+    if (success) {
+      alert("발주가 성공적으로 생성되었습니다.");
+      setNewOrder({
+        item: "",
+        quantity: 1,
+        unit: "개",
+        order_date: new Date().toISOString().split('T')[0],
+        detail: "",
+        memo: "",
+        supplier: "",
+        unit_price: 0
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert("발주가 성공적으로 생성되었습니다.");
-        setNewOrder({
-          item: "",
-          quantity: 1,
-          unit: "개",
-          order_date: new Date().toISOString().split('T')[0],
-          detail: "",
-          memo: "",
-          supplier: "",
-          unit_price: 0
-        });
-        setShowAddModal(false);
-        loadOrders();
-      } else {
-        alert(result.error || "발주 생성 중 오류가 발생했습니다.");
-      }
-    } catch (error) {
-      console.error('발주 생성 오류:', error);
+      setShowAddModal(false);
+    } else {
       alert("발주 생성 중 오류가 발생했습니다.");
     }
   };
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
-    try {
-      let endpoint = '';
-      let method = 'POST';
-      
-      switch (newStatus) {
-        case 'approved':
-          endpoint = `/api/orders/${orderId}/approve`;
-          break;
-        case 'rejected':
-          endpoint = `/api/orders/${orderId}/reject`;
-          break;
-        case 'delivered':
-          endpoint = `/api/orders/${orderId}/deliver`;
-          break;
-        default:
-          return;
-      }
+    let success = false;
+    
+    switch (newStatus) {
+      case 'approved':
+        success = await approveOrder(orderId);
+        break;
+      case 'rejected':
+        success = await rejectOrder(orderId, '관리자 거절');
+        break;
+      case 'delivered':
+        success = await deliverOrder(orderId);
+        break;
+      default:
+        return;
+    }
 
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: newStatus === 'rejected' ? JSON.stringify({ reason: '관리자 거절' }) : undefined
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert(result.message);
-        loadOrders();
-      } else {
-        alert(result.error || "상태 변경 중 오류가 발생했습니다.");
-      }
-    } catch (error) {
-      console.error('상태 변경 오류:', error);
+    if (success) {
+      alert("상태가 성공적으로 변경되었습니다.");
+    } else {
       alert("상태 변경 중 오류가 발생했습니다.");
     }
   };

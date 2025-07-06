@@ -25,22 +25,43 @@ import {
   TrendingUp,
 } from "lucide-react";
 import NotificationPopup from "@/components/NotificationPopup";
+import { useInventoryStore } from '@/store';
 
 export default function InventoryPage() {
   const router = useRouter();
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Store에서 데이터 가져오기
+  const { 
+    inventoryItems, 
+    loading, 
+    error,
+    fetchInventory 
+  } = useInventoryStore();
+
   useEffect(() => {
     setIsLoaded(true);
+    fetchInventory();
   }, []);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
   };
 
-  // 재고 데이터
-  const inventory = [
+  // 재고 데이터 (Store에서 가져온 데이터가 없으면 더미 데이터 사용)
+  const inventory = inventoryItems.length > 0 ? inventoryItems.map(item => ({
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    currentStock: item.current_stock,
+    minStock: item.min_stock,
+    unit: item.unit,
+    price: item.unit_price,
+    supplier: item.supplier,
+    lastUpdated: new Date(item.updated_at).toLocaleDateString(),
+    status: getStockLevel(item.current_stock, item.min_stock),
+  })) : [
     {
       id: 1,
       name: "소고기",
