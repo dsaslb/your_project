@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Download, FileText, Calendar, Clock, User, Building, DollarSign, CheckCircle } from "lucide-react";
+import { ArrowLeft, Save, Download, FileText, Calendar, Clock, User, Building, DollarSign, CheckCircle, Settings, Plus, Check, AlertCircle, Edit, Trash2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,6 +13,11 @@ interface ContractForm {
   employeeId: string;
   position: string;
   department: string;
+  email: string;
+  phone: string;
+  username: string;
+  password: string;
+  confirmPassword: string;
   startDate: string;
   endDate: string;
   workDays: string[];
@@ -35,11 +40,47 @@ interface ContractForm {
 export default function ContractPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // 직책 관련 상태
+  const [positions, setPositions] = useState<string[]>([]);
+  const [showPositionDropdown, setShowPositionDropdown] = useState(false);
+  const [positionInput, setPositionInput] = useState("");
+  const [filteredPositions, setFilteredPositions] = useState<string[]>([]);
+  
+  // 부서 관련 상태
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
+  const [departmentInput, setDepartmentInput] = useState("");
+  const [filteredDepartments, setFilteredDepartments] = useState<string[]>([]);
+  
+  // 피드백 상태
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
+
+  // 설정 직접 작성 모달 상태
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSettingsListModal, setShowSettingsListModal] = useState(false);
+  const [customSettings, setCustomSettings] = useState({
+    name: '',
+    workDays: ["월", "화", "수", "목", "금"],
+    workHours: { start: "09:00", end: "18:00" },
+    salary: { base: 2500000, allowance: 200000, bonus: 0 },
+    benefits: ["4대보험", "연차휴가"]
+  });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [savedSettings, setSavedSettings] = useState<any[]>([]);
+
   const [contractForm, setContractForm] = useState<ContractForm>({
     employeeName: "",
     employeeId: "",
     position: "",
     department: "",
+    email: "",
+    phone: "",
+    username: "",
+    password: "",
+    confirmPassword: "",
     startDate: "",
     endDate: "",
     workDays: ["월", "화", "수", "목", "금"],
@@ -48,19 +89,333 @@ export default function ContractPage() {
       end: "18:00"
     },
     salary: {
-      base: 0,
-      allowance: 0,
+      base: 2500000,
+      allowance: 200000,
       bonus: 0
     },
     probationPeriod: 3,
-    noticePeriod: 30,
-    benefits: ["4대보험", "연차휴가", "식대지원"],
-    responsibilities: "",
-    terms: ""
+    noticePeriod: 1,
+    benefits: ["4대보험", "연차휴가"],
+    responsibilities: "매장 운영 및 고객 서비스",
+    terms: "근로기준법에 따른 근무 조건 적용"
   });
 
   const workDayOptions = ["월", "화", "수", "목", "금", "토", "일"];
   const benefitOptions = ["4대보험", "연차휴가", "식대지원", "교통비지원", "야근수당", "휴일수당", "상여금"];
+
+  // 직책 목록 불러오기
+  useEffect(() => {
+    const savedPositions = localStorage.getItem('positions');
+    if (savedPositions) {
+      setPositions(JSON.parse(savedPositions));
+    } else {
+      // 기본 직책 목록
+      const defaultPositions = [
+        "매니저", "주방장", "서버", "주방보조", "홀보조", "캐셔", "배달원", "청소원"
+      ];
+      setPositions(defaultPositions);
+      localStorage.setItem('positions', JSON.stringify(defaultPositions));
+    }
+  }, []);
+
+  // 부서 목록 불러오기
+  useEffect(() => {
+    const savedDepartments = localStorage.getItem('departments');
+    if (savedDepartments) {
+      setDepartments(JSON.parse(savedDepartments));
+    } else {
+      // 기본 부서 목록
+      const defaultDepartments = [
+        "주방", "홀서비스", "매니지먼트", "배달", "청소", "캐셔"
+      ];
+      setDepartments(defaultDepartments);
+      localStorage.setItem('departments', JSON.stringify(defaultDepartments));
+    }
+  }, []);
+
+  // 저장된 설정 불러오기 (모바일과 연동)
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('contractSettings');
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings);
+      if (settings.positions) {
+        setPositions(settings.positions);
+        localStorage.setItem('positions', JSON.stringify(settings.positions));
+      }
+      if (settings.departments) {
+        setDepartments(settings.departments);
+        localStorage.setItem('departments', JSON.stringify(settings.departments));
+      }
+    }
+  }, []);
+
+  // 사용자 정의 설정 목록 불러오기
+  useEffect(() => {
+    const settings = JSON.parse(localStorage.getItem('customSettings') || '[]');
+    setSavedSettings(settings);
+  }, []);
+
+  // 직책 필터링
+  useEffect(() => {
+    if (positionInput.trim() === '') {
+      setFilteredPositions(positions);
+    } else {
+      const filtered = positions.filter(pos => 
+        pos.toLowerCase().includes(positionInput.toLowerCase())
+      );
+      setFilteredPositions(filtered);
+    }
+  }, [positionInput, positions]);
+
+  // 부서 필터링
+  useEffect(() => {
+    if (departmentInput.trim() === '') {
+      setFilteredDepartments(departments);
+    } else {
+      const filtered = departments.filter(dept => 
+        dept.toLowerCase().includes(departmentInput.toLowerCase())
+      );
+      setFilteredDepartments(filtered);
+    }
+  }, [departmentInput, departments]);
+
+  // 새로운 직책 추가
+  const addNewPosition = () => {
+    const newPosition = positionInput.trim();
+    if (newPosition && !positions.includes(newPosition)) {
+      const updatedPositions = [...positions, newPosition];
+      setPositions(updatedPositions);
+      setContractForm(prev => ({ ...prev, position: newPosition }));
+      localStorage.setItem('positions', JSON.stringify(updatedPositions));
+      setPositionInput("");
+      setShowPositionDropdown(false);
+      showFeedbackMessage('새 직책이 추가되었습니다.', 'success');
+    }
+  };
+
+  // 새로운 부서 추가
+  const addNewDepartment = () => {
+    const newDepartment = departmentInput.trim();
+    if (newDepartment && !departments.includes(newDepartment)) {
+      const updatedDepartments = [...departments, newDepartment];
+      setDepartments(updatedDepartments);
+      setContractForm(prev => ({ ...prev, department: newDepartment }));
+      localStorage.setItem('departments', JSON.stringify(updatedDepartments));
+      setDepartmentInput("");
+      setShowDepartmentDropdown(false);
+      showFeedbackMessage('새 부서가 추가되었습니다.', 'success');
+    }
+  };
+
+  // 직책 선택
+  const selectPosition = (position: string) => {
+    setContractForm(prev => ({ ...prev, position }));
+    setPositionInput(position);
+    setShowPositionDropdown(false);
+  };
+
+  // 부서 선택
+  const selectDepartment = (department: string) => {
+    setContractForm(prev => ({ ...prev, department }));
+    setDepartmentInput(department);
+    setShowDepartmentDropdown(false);
+  };
+
+  // 직책 입력 처리
+  const handlePositionInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPositionInput(value);
+    setContractForm(prev => ({ ...prev, position: value }));
+    setShowPositionDropdown(true);
+  };
+
+  // 부서 입력 처리
+  const handleDepartmentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setDepartmentInput(value);
+    setContractForm(prev => ({ ...prev, department: value }));
+    setShowDepartmentDropdown(true);
+  };
+
+  // 직책 입력 포커스
+  const handlePositionFocus = () => {
+    setFilteredPositions(positions);
+    setShowPositionDropdown(true);
+  };
+
+  // 부서 입력 포커스
+  const handleDepartmentFocus = () => {
+    setFilteredDepartments(departments);
+    setShowDepartmentDropdown(true);
+  };
+
+  // 직책 입력 블러
+  const handlePositionBlur = () => {
+    setTimeout(() => {
+      setShowPositionDropdown(false);
+    }, 200);
+  };
+
+  // 부서 입력 블러
+  const handleDepartmentBlur = () => {
+    setTimeout(() => {
+      setShowDepartmentDropdown(false);
+    }, 200);
+  };
+
+  // 피드백 메시지 표시
+  const showFeedbackMessage = (message: string, type: 'success' | 'error' = 'success') => {
+    setFeedbackMessage(message);
+    setFeedbackType(type);
+    setShowFeedback(true);
+    setTimeout(() => {
+      setShowFeedback(false);
+    }, 3000);
+  };
+
+  // 계약 기간 빠른 설정 함수들
+  const setContractPeriod = (period: '1week' | '1month' | '3months' | '6months' | '1year' | '2years') => {
+    if (!contractForm.startDate) {
+      showFeedbackMessage('시작일을 먼저 설정해주세요.', 'error');
+      return;
+    }
+
+    const startDate = new Date(contractForm.startDate);
+    let endDate = new Date(startDate);
+
+    switch (period) {
+      case '1week':
+        endDate.setDate(startDate.getDate() + 7);
+        break;
+      case '1month':
+        endDate.setMonth(startDate.getMonth() + 1);
+        break;
+      case '3months':
+        endDate.setMonth(startDate.getMonth() + 3);
+        break;
+      case '6months':
+        endDate.setMonth(startDate.getMonth() + 6);
+        break;
+      case '1year':
+        endDate.setFullYear(startDate.getFullYear() + 1);
+        break;
+      case '2years':
+        endDate.setFullYear(startDate.getFullYear() + 2);
+        break;
+    }
+
+    setContractForm(prev => ({
+      ...prev,
+      endDate: endDate.toISOString().split('T')[0]
+    }));
+
+    showFeedbackMessage(`${period === '1week' ? '1주일' : period === '1month' ? '1개월' : period === '3months' ? '3개월' : period === '6months' ? '6개월' : period === '1year' ? '1년' : '2년'} 계약 기간이 설정되었습니다.`, 'success');
+  };
+
+  const clearEndDate = () => {
+    setContractForm(prev => ({ ...prev, endDate: "" }));
+    showFeedbackMessage('종료일이 초기화되었습니다.', 'success');
+  };
+
+  // 설정 직접 작성 함수들
+  const applyCustomSettings = () => {
+    setContractForm(prev => ({
+      ...prev,
+      workDays: customSettings.workDays,
+      workHours: customSettings.workHours,
+      salary: customSettings.salary,
+      benefits: customSettings.benefits
+    }));
+    setShowSettingsModal(false);
+    showFeedbackMessage('사용자 정의 설정이 적용되었습니다.', 'success');
+  };
+
+  const saveCustomSettings = () => {
+    if (!customSettings.name.trim()) {
+      showFeedbackMessage('설정 이름을 입력해주세요.', 'error');
+      return;
+    }
+
+    // 중복 이름 확인
+    const existingSettings = JSON.parse(localStorage.getItem('customSettings') || '[]');
+    const isDuplicate = existingSettings.some((setting: any) => setting.name === customSettings.name.trim());
+    
+    if (isDuplicate) {
+      showFeedbackMessage('이미 존재하는 설정 이름입니다.', 'error');
+      return;
+    }
+
+    const newSetting = {
+      id: Date.now(),
+      ...customSettings,
+      createdAt: new Date().toISOString()
+    };
+    
+    existingSettings.push(newSetting);
+    localStorage.setItem('customSettings', JSON.stringify(existingSettings));
+    setSavedSettings(existingSettings);
+    showFeedbackMessage(`"${customSettings.name}" 설정이 저장되었습니다.`, 'success');
+    
+    // 설정 이름 초기화
+    setCustomSettings(prev => ({ ...prev, name: '' }));
+  };
+
+  const loadCustomSettings = (setting: any) => {
+    setContractForm(prev => ({
+      ...prev,
+      workDays: setting.workDays,
+      workHours: setting.workHours,
+      salary: setting.salary,
+      benefits: setting.benefits
+    }));
+    showFeedbackMessage(`"${setting.name}" 설정이 적용되었습니다.`, 'success');
+  };
+
+  const deleteCustomSettings = (settingId: number) => {
+    const settingToDelete = savedSettings.find(s => s.id === settingId);
+    const filteredSettings = savedSettings.filter((s: any) => s.id !== settingId);
+    localStorage.setItem('customSettings', JSON.stringify(filteredSettings));
+    setSavedSettings(filteredSettings);
+    showFeedbackMessage(`"${settingToDelete?.name}" 설정이 삭제되었습니다.`, 'success');
+  };
+
+  const editCustomSettings = (setting: any) => {
+    setCustomSettings({
+      name: setting.name,
+      workDays: setting.workDays,
+      workHours: setting.workHours,
+      salary: setting.salary,
+      benefits: setting.benefits
+    });
+    setIsEditMode(true);
+    setShowSettingsModal(true);
+  };
+
+  const updateCustomSettings = () => {
+    if (!customSettings.name.trim()) {
+      showFeedbackMessage('설정 이름을 입력해주세요.', 'error');
+      return;
+    }
+
+    const updatedSettings = savedSettings.map(setting => {
+      if (setting.name === customSettings.name) {
+        return {
+          ...setting,
+          workDays: customSettings.workDays,
+          workHours: customSettings.workHours,
+          salary: customSettings.salary,
+          benefits: customSettings.benefits,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return setting;
+    });
+
+    localStorage.setItem('customSettings', JSON.stringify(updatedSettings));
+    setSavedSettings(updatedSettings);
+    showFeedbackMessage(`"${customSettings.name}" 설정이 수정되었습니다.`, 'success');
+    setShowSettingsModal(false);
+  };
 
   const handleWorkDayToggle = (day: string) => {
     setContractForm(prev => ({
@@ -113,6 +468,24 @@ export default function ContractPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* 피드백 메시지 */}
+      {showFeedback && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+          feedbackType === 'success' 
+            ? 'bg-green-500 text-white' 
+            : 'bg-red-500 text-white'
+        }`}>
+          <div className="flex items-center gap-2">
+            {feedbackType === 'success' ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            <span>{feedbackMessage}</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -190,25 +563,143 @@ export default function ContractPage() {
                       placeholder="사원번호"
                     />
                   </div>
-                  <div>
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       직책 *
                     </label>
                     <Input
-                      value={contractForm.position}
-                      onChange={(e) => setContractForm(prev => ({ ...prev, position: e.target.value }))}
-                      placeholder="직책을 입력하세요"
+                      value={positionInput}
+                      onChange={handlePositionInputChange}
+                      onFocus={handlePositionFocus}
+                      onBlur={handlePositionBlur}
+                      placeholder="직책을 입력하거나 선택하세요"
                     />
+                    {showPositionDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {filteredPositions.map((position) => (
+                          <div
+                            key={position}
+                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                            onClick={() => selectPosition(position)}
+                          >
+                            {position}
+                          </div>
+                        ))}
+                        {positionInput.trim() && !positions.includes(positionInput.trim()) && (
+                          <div
+                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-t border-gray-200 dark:border-gray-700"
+                            onClick={addNewPosition}
+                          >
+                            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                              <Plus className="h-4 w-4" />
+                              "{positionInput.trim()}" 추가
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div>
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       부서 *
                     </label>
                     <Input
-                      value={contractForm.department}
-                      onChange={(e) => setContractForm(prev => ({ ...prev, department: e.target.value }))}
-                      placeholder="부서를 입력하세요"
+                      value={departmentInput}
+                      onChange={handleDepartmentInputChange}
+                      onFocus={handleDepartmentFocus}
+                      onBlur={handleDepartmentBlur}
+                      placeholder="부서를 입력하거나 선택하세요"
                     />
+                    {showDepartmentDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {filteredDepartments.map((department) => (
+                          <div
+                            key={department}
+                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                            onClick={() => selectDepartment(department)}
+                          >
+                            {department}
+                          </div>
+                        ))}
+                        {departmentInput.trim() && !departments.includes(departmentInput.trim()) && (
+                          <div
+                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-t border-gray-200 dark:border-gray-700"
+                            onClick={addNewDepartment}
+                          >
+                            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                              <Plus className="h-4 w-4" />
+                              "{departmentInput.trim()}" 추가
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 계정 정보 섹션 */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    계정 정보 (직원이 직접 생성)
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        이메일 *
+                      </label>
+                      <Input
+                        type="email"
+                        value={contractForm.email}
+                        onChange={(e) => setContractForm(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="이메일을 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        전화번호 *
+                      </label>
+                      <Input
+                        type="tel"
+                        value={contractForm.phone}
+                        onChange={(e) => setContractForm(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="전화번호를 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        아이디 *
+                      </label>
+                      <Input
+                        value={contractForm.username}
+                        onChange={(e) => setContractForm(prev => ({ ...prev, username: e.target.value }))}
+                        placeholder="로그인용 아이디를 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        비밀번호 *
+                      </label>
+                      <Input
+                        type="password"
+                        value={contractForm.password}
+                        onChange={(e) => setContractForm(prev => ({ ...prev, password: e.target.value }))}
+                        placeholder="비밀번호를 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        비밀번호 확인 *
+                      </label>
+                      <Input
+                        type="password"
+                        value={contractForm.confirmPassword}
+                        onChange={(e) => setContractForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        placeholder="비밀번호를 다시 입력하세요"
+                      />
+                      {contractForm.password && contractForm.confirmPassword && contractForm.password !== contractForm.confirmPassword && (
+                        <p className="text-red-500 text-xs mt-1">비밀번호가 일치하지 않습니다.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -245,6 +736,96 @@ export default function ContractPage() {
                     />
                   </div>
                 </div>
+
+                {/* 빠른 설정 버튼들 */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    빠른 설정
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setContractPeriod('1week')}
+                      className="text-xs"
+                    >
+                      1주일
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setContractPeriod('1month')}
+                      className="text-xs"
+                    >
+                      1개월
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setContractPeriod('1year')}
+                      className="text-xs"
+                    >
+                      1년
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setContractPeriod('3months')}
+                      className="text-xs"
+                    >
+                      3개월
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setContractPeriod('6months')}
+                      className="text-xs"
+                    >
+                      6개월
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setContractPeriod('2years')}
+                      className="text-xs"
+                    >
+                      2년
+                    </Button>
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearEndDate}
+                    className="w-full text-xs text-gray-500"
+                  >
+                    종료일 초기화
+                  </Button>
+                </div>
+
+                {/* 계약 기간 표시 */}
+                {contractForm.startDate && contractForm.endDate && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                    <div className="text-sm text-blue-900 dark:text-blue-100">
+                      <div className="font-medium">계약 기간</div>
+                      <div className="text-xs mt-1">
+                        {new Date(contractForm.startDate).toLocaleDateString('ko-KR')} ~ {new Date(contractForm.endDate).toLocaleDateString('ko-KR')}
+                      </div>
+                      <div className="text-xs mt-1 text-blue-700 dark:text-blue-200">
+                        총 {Math.ceil((new Date(contractForm.endDate).getTime() - new Date(contractForm.startDate).getTime()) / (1000 * 60 * 60 * 24))}일
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -487,65 +1068,587 @@ export default function ContractPage() {
               </CardContent>
             </Card>
 
-            {/* 빠른 설정 */}
+            {/* 설정 관리 */}
             <Card>
               <CardHeader>
-                <CardTitle>빠른 설정</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  설정 관리
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    setContractForm(prev => ({
-                      ...prev,
-                      workDays: ["월", "화", "수", "목", "금"],
-                      workHours: { start: "09:00", end: "18:00" },
-                      salary: { base: 2500000, allowance: 200000, bonus: 0 },
-                      benefits: ["4대보험", "연차휴가", "식대지원"]
-                    }));
-                  }}
-                >
-                  정규직 기본 설정
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    setContractForm(prev => ({
-                      ...prev,
-                      workDays: ["월", "화", "수", "목", "금", "토"],
-                      workHours: { start: "10:00", end: "19:00" },
-                      salary: { base: 2000000, allowance: 150000, bonus: 0 },
-                      benefits: ["4대보험", "연차휴가"]
-                    }));
-                  }}
-                >
-                  주방직 기본 설정
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    setContractForm(prev => ({
-                      ...prev,
-                      workDays: ["월", "화", "수", "목", "금", "토", "일"],
-                      workHours: { start: "11:00", end: "20:00" },
-                      salary: { base: 1800000, allowance: 100000, bonus: 0 },
-                      benefits: ["4대보험"]
-                    }));
-                  }}
-                >
-                  파트타임 기본 설정
-                </Button>
+              <CardContent className="space-y-4">
+                {/* 직책 관리 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    직책 관리
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="새 직책 추가"
+                        value={positionInput}
+                        onChange={handlePositionInputChange}
+                        className="flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={addNewPosition}
+                        disabled={!positionInput.trim() || positions.includes(positionInput.trim())}
+                      >
+                        추가
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {positions.map((position) => (
+                        <Badge key={position} variant="secondary" className="text-xs">
+                          {position}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 부서 관리 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    부서 관리
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="새 부서 추가"
+                        value={departmentInput}
+                        onChange={handleDepartmentInputChange}
+                        className="flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={addNewDepartment}
+                        disabled={!departmentInput.trim() || departments.includes(departmentInput.trim())}
+                      >
+                        추가
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {departments.map((department) => (
+                        <Badge key={department} variant="secondary" className="text-xs">
+                          {department}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 빠른 설정 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    빠른 설정
+                  </label>
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        setContractForm(prev => ({
+                          ...prev,
+                          workDays: ["월", "화", "수", "목", "금"],
+                          workHours: { start: "09:00", end: "18:00" },
+                          salary: { base: 2500000, allowance: 200000, bonus: 0 },
+                          benefits: ["4대보험", "연차휴가", "식대지원"]
+                        }));
+                        showFeedbackMessage('정규직 기본 설정이 적용되었습니다.', 'success');
+                      }}
+                    >
+                      정규직 기본 설정
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        setContractForm(prev => ({
+                          ...prev,
+                          workDays: ["월", "화", "수", "목", "금", "토"],
+                          workHours: { start: "10:00", end: "19:00" },
+                          salary: { base: 2000000, allowance: 150000, bonus: 0 },
+                          benefits: ["4대보험", "연차휴가"]
+                        }));
+                        showFeedbackMessage('주방직 기본 설정이 적용되었습니다.', 'success');
+                      }}
+                    >
+                      주방직 기본 설정
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        setContractForm(prev => ({
+                          ...prev,
+                          workDays: ["월", "화", "수", "목", "금", "토", "일"],
+                          workHours: { start: "11:00", end: "20:00" },
+                          salary: { base: 1800000, allowance: 100000, bonus: 0 },
+                          benefits: ["4대보험"]
+                        }));
+                        showFeedbackMessage('파트타임 기본 설정이 적용되었습니다.', 'success');
+                      }}
+                    >
+                      파트타임 기본 설정
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 설정 직접 작성 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    설정 직접 작성
+                  </label>
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setShowSettingsModal(true)}
+                    >
+                      설정 직접 작성
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setShowSettingsListModal(true)}
+                    >
+                      저장된 설정 관리
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 설정 저장/불러오기 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    설정 저장/불러오기
+                  </label>
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        const settings = {
+                          positions,
+                          departments,
+                          contractForm
+                        };
+                        localStorage.setItem('contractSettings', JSON.stringify(settings));
+                        showFeedbackMessage('설정이 저장되었습니다. (모바일과 연동)', 'success');
+                      }}
+                    >
+                      현재 설정 저장
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        const savedSettings = localStorage.getItem('contractSettings');
+                        if (savedSettings) {
+                          const settings = JSON.parse(savedSettings);
+                          setPositions(settings.positions || []);
+                          setDepartments(settings.departments || []);
+                          setContractForm(settings.contractForm || contractForm);
+                          showFeedbackMessage('저장된 설정을 불러왔습니다.', 'success');
+                        } else {
+                          showFeedbackMessage('저장된 설정이 없습니다.', 'error');
+                        }
+                      }}
+                    >
+                      저장된 설정 불러오기
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      {/* 설정 목록 관리 모달 */}
+      {showSettingsListModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">저장된 설정 관리</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSettingsListModal(false)}
+                className="p-2"
+              >
+                ✕
+              </Button>
+            </div>
+
+            {savedSettings.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-gray-500 dark:text-gray-400 mb-4">
+                  <Settings className="h-12 w-12 mx-auto mb-2" />
+                  <p>저장된 설정이 없습니다.</p>
+                </div>
+                <Button
+                  onClick={() => {
+                    setShowSettingsListModal(false);
+                    setIsEditMode(false);
+                    setCustomSettings({
+                      name: '',
+                      workDays: ["월", "화", "수", "목", "금"],
+                      workHours: { start: "09:00", end: "18:00" },
+                      salary: { base: 2500000, allowance: 200000, bonus: 0 },
+                      benefits: ["4대보험", "연차휴가"]
+                    });
+                    setShowSettingsModal(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  첫 번째 설정 만들기
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {savedSettings.map((setting) => (
+                    <div
+                      key={setting.id}
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-medium text-gray-900 dark:text-white">{setting.name}</h3>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => editCustomSettings(setting)}
+                            className="p-1 h-8 w-8"
+                            title="수정"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteCustomSettings(setting.id)}
+                            className="p-1 h-8 w-8 text-red-600 hover:text-red-700"
+                            title="삭제"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div>
+                          <span className="font-medium">근무일:</span> {setting.workDays.join(', ')}
+                        </div>
+                        <div>
+                          <span className="font-medium">근무시간:</span> {setting.workHours.start} ~ {setting.workHours.end}
+                        </div>
+                        <div>
+                          <span className="font-medium">급여:</span> {setting.salary.base.toLocaleString()}원
+                          {setting.salary.allowance > 0 && ` + ${setting.salary.allowance.toLocaleString()}원 수당`}
+                          {setting.salary.bonus > 0 && ` + ${setting.salary.bonus.toLocaleString()}원 보너스`}
+                        </div>
+                        <div>
+                          <span className="font-medium">복리후생:</span> {setting.benefits.join(', ')}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <Button
+                          onClick={() => {
+                            loadCustomSettings(setting);
+                            setShowSettingsListModal(false);
+                          }}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                        >
+                          이 설정 적용
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-center pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <Button
+                    onClick={() => {
+                      setShowSettingsListModal(false);
+                      setIsEditMode(false);
+                      setCustomSettings({
+                        name: '',
+                        workDays: ["월", "화", "수", "목", "금"],
+                        workHours: { start: "09:00", end: "18:00" },
+                        salary: { base: 2500000, allowance: 200000, bonus: 0 },
+                        benefits: ["4대보험", "연차휴가"]
+                      });
+                      setShowSettingsModal(true);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    새 설정 만들기
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 설정 직접 작성 모달 */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {isEditMode ? '설정 수정' : '설정 직접 작성'}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowSettingsModal(false);
+                  setIsEditMode(false);
+                }}
+                className="p-2"
+              >
+                ✕
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {/* 설정 이름 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  설정 이름 *
+                </label>
+                <Input
+                  value={customSettings.name}
+                  onChange={(e) => setCustomSettings(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="설정 이름을 입력하세요 (예: 고급 정규직)"
+                  disabled={isEditMode}
+                />
+                {isEditMode && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    설정 이름은 수정할 수 없습니다.
+                  </p>
+                )}
+              </div>
+
+              {/* 근무일 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  근무일
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {workDayOptions.map(day => (
+                    <Button
+                      key={day}
+                      variant={customSettings.workDays.includes(day) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setCustomSettings(prev => ({
+                          ...prev,
+                          workDays: prev.workDays.includes(day)
+                            ? prev.workDays.filter(d => d !== day)
+                            : [...prev.workDays, day]
+                        }));
+                      }}
+                      className="w-12 h-10"
+                    >
+                      {day}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 근무 시간 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    출근 시간
+                  </label>
+                  <Input
+                    type="time"
+                    value={customSettings.workHours.start}
+                    onChange={(e) => setCustomSettings(prev => ({
+                      ...prev,
+                      workHours: { ...prev.workHours, start: e.target.value }
+                    }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    퇴근 시간
+                  </label>
+                  <Input
+                    type="time"
+                    value={customSettings.workHours.end}
+                    onChange={(e) => setCustomSettings(prev => ({
+                      ...prev,
+                      workHours: { ...prev.workHours, end: e.target.value }
+                    }))}
+                  />
+                </div>
+              </div>
+
+              {/* 급여 */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    기본급
+                  </label>
+                  <Input
+                    type="number"
+                    value={customSettings.salary.base}
+                    onChange={(e) => setCustomSettings(prev => ({
+                      ...prev,
+                      salary: { ...prev.salary, base: Number(e.target.value) }
+                    }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    수당
+                  </label>
+                  <Input
+                    type="number"
+                    value={customSettings.salary.allowance}
+                    onChange={(e) => setCustomSettings(prev => ({
+                      ...prev,
+                      salary: { ...prev.salary, allowance: Number(e.target.value) }
+                    }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    상여금
+                  </label>
+                  <Input
+                    type="number"
+                    value={customSettings.salary.bonus}
+                    onChange={(e) => setCustomSettings(prev => ({
+                      ...prev,
+                      salary: { ...prev.salary, bonus: Number(e.target.value) }
+                    }))}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              {/* 복리후생 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  복리후생
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {benefitOptions.map(benefit => (
+                    <Button
+                      key={benefit}
+                      variant={customSettings.benefits.includes(benefit) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setCustomSettings(prev => ({
+                          ...prev,
+                          benefits: prev.benefits.includes(benefit)
+                            ? prev.benefits.filter(b => b !== benefit)
+                            : [...prev.benefits, benefit]
+                        }));
+                      }}
+                    >
+                      {benefit}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 저장된 설정 목록 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  저장된 설정
+                </label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {(() => {
+                    const savedSettings = JSON.parse(localStorage.getItem('customSettings') || '[]');
+                    return savedSettings.length > 0 ? (
+                      savedSettings.map((setting: any) => (
+                        <div key={setting.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                          <span className="text-sm">{setting.name}</span>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => loadCustomSettings(setting)}
+                            >
+                              적용
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteCustomSettings(setting.id)}
+                            >
+                              삭제
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">저장된 설정이 없습니다.</p>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <Button
+                onClick={applyCustomSettings}
+                disabled={!customSettings.name.trim()}
+                className="flex-1"
+              >
+                설정 적용
+              </Button>
+              {isEditMode ? (
+                <Button
+                  variant="outline"
+                  onClick={updateCustomSettings}
+                  disabled={!customSettings.name.trim()}
+                  className="flex-1"
+                >
+                  설정 수정
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={saveCustomSettings}
+                  disabled={!customSettings.name.trim()}
+                  className="flex-1"
+                >
+                  설정 저장
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowSettingsModal(false);
+                  setIsEditMode(false);
+                }}
+              >
+                취소
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

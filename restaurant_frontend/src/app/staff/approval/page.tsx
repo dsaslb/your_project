@@ -16,6 +16,7 @@ interface PendingStaff {
   department: string;
   email: string;
   phone: string;
+  username: string;
   join_date: string;
   status: string;
   role: string;
@@ -281,6 +282,9 @@ export default function StaffApprovalPage() {
                         연락처
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        계정 정보
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         상태
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -316,6 +320,10 @@ export default function StaffApprovalPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">{staff.phone}</div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">{staff.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">ID: {staff.username}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">계정 생성됨</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {getStatusBadge(staff.status)}

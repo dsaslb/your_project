@@ -32,6 +32,14 @@ import {
   Package,
   Bell,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -45,6 +53,9 @@ export default function DashboardPage() {
     windSpeed: 3.2,
     icon: "sun"
   });
+  // 모달 상태
+  const [openStaffModal, setOpenStaffModal] = useState(false);
+  const [openOrderModal, setOpenOrderModal] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -404,26 +415,73 @@ export default function DashboardPage() {
               <h2 className="text-xl font-semibold text-gray-900 mb-6">오늘의 통계</h2>
               
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Users className="h-6 w-6 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">출근 직원</p>
-                      <p className="text-2xl font-bold text-blue-600">8명</p>
+                {/* 출근 직원 카드 */}
+                <Dialog open={openStaffModal} onOpenChange={setOpenStaffModal}>
+                  <DialogTrigger asChild>
+                    <div
+                      className="flex items-center justify-between p-4 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition"
+                      onClick={() => setOpenStaffModal(true)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Users className="h-6 w-6 text-blue-600" />
+                        <div>
+                          <p className="text-sm text-gray-600">출근 직원</p>
+                          <p className="text-2xl font-bold text-blue-600">{events.length}명</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <ShoppingCart className="h-6 w-6 text-green-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">총 주문</p>
-                      <p className="text-2xl font-bold text-green-600">24건</p>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>오늘 출근한 직원 명단</DialogTitle>
+                    </DialogHeader>
+                    <ul className="divide-y divide-gray-200">
+                      {events.map((event) => (
+                        <li key={event.id} className="py-2 flex flex-col">
+                          <span className="font-medium">{event.title}</span>
+                          <span className="text-xs text-gray-500">{event.startTime}~{event.endTime} / {event.position} / {event.phone}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <DialogClose asChild>
+                      <button className="mt-4 w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700">닫기</button>
+                    </DialogClose>
+                  </DialogContent>
+                </Dialog>
+                {/* 총주문 카드 */}
+                <Dialog open={openOrderModal} onOpenChange={setOpenOrderModal}>
+                  <DialogTrigger asChild>
+                    <div
+                      className="flex items-center justify-between p-4 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition"
+                      onClick={() => setOpenOrderModal(true)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <ShoppingCart className="h-6 w-6 text-green-600" />
+                        <div>
+                          <p className="text-sm text-gray-600">총 주문</p>
+                          <p className="text-2xl font-bold text-green-600">{orders.length}건</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>오늘 주문 현황</DialogTitle>
+                    </DialogHeader>
+                    <ul className="divide-y divide-gray-200">
+                      {orders.map((order) => (
+                        <li key={order.id} className="py-2 flex flex-col">
+                          <span className="font-medium">{order.customerName} ({order.items.join(", ")})</span>
+                          <span className="text-xs text-gray-500">{order.time} / {order.total.toLocaleString()}원 / {getStatusText(order.status)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <DialogClose asChild>
+                      <button className="mt-4 w-full py-2 bg-green-600 text-white rounded hover:bg-green-700">닫기</button>
+                    </DialogClose>
+                  </DialogContent>
+                </Dialog>
+                {/* 매출, 평균 주문 카드는 기존대로 유지 */}
                 <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <DollarSign className="h-6 w-6 text-yellow-600" />
@@ -433,7 +491,6 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-                
                 <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <TrendingUp className="h-6 w-6 text-purple-600" />

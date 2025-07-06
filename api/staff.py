@@ -423,75 +423,88 @@ def create_staff():
         data = request.get_json()
         
         # 필수 필드 검증
-        required_fields = ['name', 'email', 'phone', 'position', 'department', 'join_date']
+        required_fields = ['name', 'email', 'phone', 'position', 'department', 'join_date', 'username', 'password']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'{field} 필드는 필수입니다.'}), 400
+        
+        # 비밀번호 길이 검증
+        if len(data['password']) < 6:
+            return jsonify({'error': '비밀번호는 최소 6자 이상이어야 합니다.'}), 400
         
         # 이메일 중복 확인
         existing_user = User.query.filter_by(email=data['email']).first()
         if existing_user:
             return jsonify({'error': '이미 존재하는 이메일입니다.'}), 400
         
+        # 사용자명 중복 확인
+        existing_username = User.query.filter_by(username=data['username']).first()
+        if existing_username:
+            return jsonify({'error': '이미 존재하는 사용자명입니다.'}), 400
+        
         # 새 사용자 생성
         new_user = User(
-            username=data['email'].split('@')[0],  # 이메일에서 사용자명 생성
+            username=data['username'],
             name=data['name'],
             email=data['email'],
             phone=data['phone'],
             role='employee',
             department=data['department'],
             position=data['position'],
-            status='active',
+            status='pending',  # 승인 대기 상태로 변경
             branch_id=current_user.branch_id,
             permissions=data.get('permissions', {})
         )
         
-        # 임시 비밀번호 설정 (이메일로 전송 예정)
-        new_user.set_password('temp123456')
+        # 사용자가 설정한 비밀번호로 설정
+        new_user.set_password(data['password'])
         
         db.session.add(new_user)
         db.session.flush()  # ID 생성
         
         # Staff 프로필 생성
-        staff_profile = Staff(
-            name=data['name'],
-            position=data['position'],
-            phone=data['phone'],
-            email=data['email'],
-            status='active',
-            join_date=datetime.strptime(data['join_date'], '%Y-%m-%d').date(),
-            salary=data.get('salary'),
-            department=data['department'],
-            restaurant_id=current_user.branch_id,
-            user_id=new_user.id
-        )
-        
-        db.session.add(staff_profile)
-        db.session.flush()  # ID 생성
+        try:
+            staff_profile = Staff()
+            staff_profile.name = data['name']
+            staff_profile.position = data['position']
+            staff_profile.phone = data['phone']
+            staff_profile.email = data['email']
+            staff_profile.status = 'pending'  # 승인 대기 상태로 변경
+            staff_profile.join_date = datetime.strptime(data['join_date'], '%Y-%m-%d').date()
+            staff_profile.salary = data.get('salary')
+            staff_profile.department = data['department']
+            staff_profile.restaurant_id = current_user.branch_id
+            staff_profile.user_id = new_user.id
+            
+            db.session.add(staff_profile)
+            db.session.flush()  # ID 생성
+        except Exception as e:
+            current_app.logger.error(f"Staff 프로필 생성 오류: {str(e)}")
+            db.session.rollback()
+            return jsonify({'error': f'Staff 프로필 생성 실패: {str(e)}'}), 500
         
         # 계약서 정보가 있으면 추가
         if data.get('contract_type') and data.get('contract_start_date') and data.get('contract_expiry_date'):
-            contract = Contract(
-                staff_id=staff_profile.id,
-                contract_number=f"CT-{datetime.now().year}-{new_user.id:03d}",
-                start_date=datetime.strptime(data['contract_start_date'], '%Y-%m-%d').date(),
-                expiry_date=datetime.strptime(data['contract_expiry_date'], '%Y-%m-%d').date(),
-                contract_type=data['contract_type'],
-                salary_amount=data.get('salary', 0)
-            )
+            contract = Contract()
+            contract.staff_id = staff_profile.id
+            contract.contract_number = f"CT-{datetime.now().year}-{new_user.id:03d}"
+            contract.start_date = datetime.strptime(data['contract_start_date'], '%Y-%m-%d').date()
+            contract.expiry_date = datetime.strptime(data['contract_expiry_date'], '%Y-%m-%d').date()
+            contract.renewal_date = datetime.strptime(data['contract_expiry_date'], '%Y-%m-%d').date()  # 기본값으로 설정
+            contract.contract_type = data['contract_type']
+            contract.salary_amount = data.get('salary', 0)
             db.session.add(contract)
         
         # 보건증 정보가 있으면 추가
         if data.get('health_certificate_type') and data.get('health_certificate_issue_date') and data.get('health_certificate_expiry_date'):
-            health_cert = HealthCertificate(
-                staff_id=staff_profile.id,
-                certificate_number=f"HC-{datetime.now().year}-{new_user.id:03d}",
-                issue_date=datetime.strptime(data['health_certificate_issue_date'], '%Y-%m-%d').date(),
-                expiry_date=datetime.strptime(data['health_certificate_expiry_date'], '%Y-%m-%d').date(),
-                issuing_authority=data.get('issuing_authority', '서울시보건소'),
-                certificate_type=data['health_certificate_type']
-            )
+            health_cert = HealthCertificate()
+            health_cert.staff_id = staff_profile.id
+            health_cert.certificate_number = f"HC-{datetime.now().year}-{new_user.id:03d}"
+            health_cert.issue_date = datetime.strptime(data['health_certificate_issue_date'], '%Y-%m-%d').date()
+            health_cert.expiry_date = datetime.strptime(data['health_certificate_expiry_date'], '%Y-%m-%d').date()
+            health_cert.renewal_date = datetime.strptime(data['health_certificate_expiry_date'], '%Y-%m-%d').date()  # 기본값으로 설정
+            health_cert.issuing_authority = data.get('issuing_authority', '서울시보건소')
+            health_cert.certificate_type = data['health_certificate_type']
             db.session.add(health_cert)
         
         db.session.commit()
@@ -499,13 +512,14 @@ def create_staff():
         return jsonify({
             'success': True,
             'message': '직원이 성공적으로 추가되었습니다.',
-            'staff_id': new_user.id
+            'staff_id': new_user.id,
+            'user_id': new_user.id
         }), 201
     
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"직원 추가 오류: {str(e)}")
-        return jsonify({'error': '직원 추가에 실패했습니다.'}), 500
+        return jsonify({'error': f'직원 추가에 실패했습니다: {str(e)}'}), 500
 
 @staff_bp.route('/api/staff/<int:staff_id>', methods=['PUT'])
 @login_required
@@ -705,6 +719,7 @@ def get_pending_staff():
                 'department': user.department or '미지정',
                 'email': user.email,
                 'phone': user.phone,
+                'username': user.username,
                 'join_date': user.created_at.strftime('%Y-%m-%d') if user.created_at else None,
                 'status': user.status or 'pending',
                 'role': user.role,
@@ -732,7 +747,10 @@ def approve_staff(staff_id):
         user.updated_at = datetime.utcnow()
         db.session.commit()
         # 승인 로그 남기기
-        log = ApproveLog(user_id=user.id, action='approved', admin_id=current_user.id)
+        log = ApproveLog()
+        log.user_id = user.id
+        log.action = 'approved'
+        log.admin_id = current_user.id
         db.session.add(log)
         db.session.commit()
         return jsonify({'success': True, 'message': '직원이 승인되었습니다.'})
@@ -756,7 +774,11 @@ def reject_staff(staff_id):
         user.updated_at = datetime.utcnow()
         db.session.commit()
         # 거절 로그 남기기
-        log = ApproveLog(user_id=user.id, action='rejected', admin_id=current_user.id, reason=reason)
+        log = ApproveLog()
+        log.user_id = user.id
+        log.action = 'rejected'
+        log.admin_id = current_user.id
+        log.reason = reason
         db.session.add(log)
         db.session.commit()
         return jsonify({'success': True, 'message': '직원이 거절되었습니다.'})
