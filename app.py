@@ -20,7 +20,7 @@ from api.comment import api_comment_bp
 from api.comment_report import comment_report_bp
 from api.notice import api_notice_bp
 from api.report import api_report_bp
-from api.staff import staff_bp
+from api.staff import staff_bp as api_staff_bp
 from config import config_by_name
 from extensions import cache, csrf, db, limiter, login_manager, migrate
 from models import (Branch, CleaningPlan, FeedbackIssue, Notice, Notification,
@@ -66,7 +66,7 @@ csrf.exempt(admin_report_bp)
 csrf.exempt(admin_log_bp)
 csrf.exempt(admin_report_stat_bp)
 csrf.exempt(comment_report_bp)
-csrf.exempt(staff_bp)
+csrf.exempt(api_staff_bp)
 
 # Register API Blueprints
 app.register_blueprint(api_auth_bp)
@@ -78,15 +78,13 @@ app.register_blueprint(admin_report_bp)
 app.register_blueprint(admin_log_bp)
 app.register_blueprint(admin_report_stat_bp)
 app.register_blueprint(comment_report_bp)
-app.register_blueprint(staff_bp)
+app.register_blueprint(api_staff_bp)
 
 # Register Route Blueprints
 app.register_blueprint(payroll_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(schedule_bp)
-app.register_blueprint(routes_staff_bp)
-app.register_blueprint(staff_management_bp)
 app.register_blueprint(orders_bp)
 app.register_blueprint(inventory_bp)
 app.register_blueprint(notice_api_bp)
@@ -881,36 +879,6 @@ def api_recent_activity():
         ]
         
         return jsonify({"success": True, "data": activities})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/dashboard/staff-status")
-@login_required
-def api_staff_status():
-    """직원 현황 API"""
-    try:
-        # 실제 직원 데이터
-        staff_members = User.query.filter_by(role="employee").all()
-        
-        staff_data = []
-        for staff in staff_members:
-            staff_data.append({
-                "id": f"EMP-{staff.id:03d}",
-                "name": staff.username,
-                "status": "active" if staff.status == "approved" else "off",
-                "role": "주방장" if staff.id % 3 == 0 else "서버" if staff.id % 3 == 1 else "주방보조"
-            })
-        
-        # 더미 데이터 추가
-        staff_data.extend([
-            {"id": "EMP-101", "name": "김철수", "status": "active", "role": "주방장"},
-            {"id": "EMP-102", "name": "이영희", "status": "active", "role": "서버"},
-            {"id": "EMP-103", "name": "박민수", "status": "break", "role": "주방보조"},
-            {"id": "EMP-104", "name": "정수진", "status": "off", "role": "매니저"}
-        ])
-        
-        return jsonify({"success": True, "data": staff_data})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

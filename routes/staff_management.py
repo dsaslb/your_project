@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
+from flask import (Blueprint, flash, redirect, render_template,
                    request, url_for)
 from flask_login import current_user, login_required
 from sqlalchemy import or_
@@ -161,37 +161,3 @@ def toggle_staff_status(user_id):
         flash("상태 변경 중 오류가 발생했습니다.", "error")
 
     return redirect(url_for("staff.staff_management"))
-
-
-@staff_bp.route("/api/staff-stats")
-@login_required
-@admin_required
-def api_staff_stats():
-    """직원 통계 API"""
-    try:
-        total_staff = User.query.count()
-        active_staff = User.query.filter_by(is_active=True).count()
-        inactive_staff = total_staff - active_staff
-
-        # 부서별 통계
-        department_stats = (
-            db.session.query(User.department, db.func.count(User.id).label("count"))
-            .group_by(User.department)
-            .all()
-        )
-
-        return jsonify(
-            {
-                "total_staff": total_staff,
-                "active_staff": active_staff,
-                "inactive_staff": inactive_staff,
-                "department_stats": [
-                    {"department": d.department, "count": d.count}
-                    for d in department_stats
-                ],
-            }
-        )
-
-    except Exception as e:
-        log_error(e, current_user.id)
-        return jsonify({"error": "통계 조회 중 오류가 발생했습니다."}), 500

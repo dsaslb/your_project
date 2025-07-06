@@ -3,7 +3,7 @@ import { UserProvider } from "@/components/UserContext";
 import AuthGuard from "@/components/AuthGuard";
 import { Toaster } from "@/components/ui/sonner";
 import "@/styles/globals.css";
-import { Home, Users, Calendar, ClipboardList, Boxes, Bell, Settings } from "lucide-react";
+import { Home, Users, Calendar, ClipboardList, Boxes, Bell, Settings, Sparkles, BarChart3 } from "lucide-react";
 
 const menu: SidebarMenuItem[] = [
   { label: "대시보드", href: "/dashboard", icon: <Home size={18} /> },
@@ -12,6 +12,8 @@ const menu: SidebarMenuItem[] = [
   { label: "주문 관리", href: "/orders", icon: <ClipboardList size={18} /> },
   { label: "발주 관리", href: "/purchase", icon: <Boxes size={18} /> },
   { label: "재고 관리", href: "/inventory", icon: <Boxes size={18} /> },
+  { label: "청소 관리", href: "/cleaning", icon: <Sparkles size={18} /> },
+  { label: "매장 종합 평가", href: "/evaluation", icon: <BarChart3 size={18} /> },
   { label: "알림/공지", href: "/notifications", icon: <Bell size={18} /> },
   { label: "설정", href: "/settings", icon: <Settings size={18} /> },
 ];

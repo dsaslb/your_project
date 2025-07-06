@@ -260,95 +260,97 @@ export default function OrdersPage() {
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">주문 목록</h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    주문번호
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    고객정보
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    주문내용
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    금액
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    상태
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    주문시간
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    테이블
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    작업
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {order.id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">{order.customerName}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{order.phone}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {order.items.map(item => `${item.name} x${item.quantity}`).join(", ")}
-                      </div>
-                      {order.notes && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          요청사항: {order.notes}
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {orders.map((order) => (
+                <div key={order.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+                  {/* 주문 헤더 */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{order.id}</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{order.orderTime}</p>
+                    </div>
+                    <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                      {getStatusIcon(order.status)}
+                      <span className="ml-1">{order.status}</span>
+                    </span>
+                  </div>
+
+                  {/* 고객 정보 */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{order.customerName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{order.phone}</span>
+                    </div>
+                  </div>
+
+                  {/* 주문 내용 - 가로 배치 */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">주문 내용</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {order.items.map((item, index) => (
+                        <div key={index} className="bg-white dark:bg-gray-600 rounded-md px-3 py-2 border border-gray-200 dark:border-gray-500">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {item.quantity}개 × ₩{item.price.toLocaleString()}
+                          </div>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      ₩{order.total.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {getStatusIcon(order.status)}
-                        <span className="ml-1">{order.status}</span>
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">{order.orderTime}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        예상완료: {order.estimatedTime}
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 요청사항 */}
+                  {order.notes && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">요청사항</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-md">
+                        {order.notes}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 하단 정보 */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{order.table}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {order.table}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        {order.status === "대기중" && (
-                          <button className="text-blue-600 hover:text-blue-900 dark:hover:text-blue-400">
-                            조리시작
-                          </button>
-                        )}
-                        {order.status === "조리중" && (
-                          <button className="text-green-600 hover:text-green-900 dark:hover:text-green-400">
-                            완료
-                          </button>
-                        )}
-                        <button className="text-gray-600 hover:text-gray-900 dark:hover:text-gray-400">
-                          상세보기
-                        </button>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{order.estimatedTime}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">
+                        ₩{order.total.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 작업 버튼 */}
+                  <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    {order.status === "대기중" && (
+                      <button className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700 transition-colors">
+                        조리시작
+                      </button>
+                    )}
+                    {order.status === "조리중" && (
+                      <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 transition-colors">
+                        완료
+                      </button>
+                    )}
+                    <button className="text-gray-600 hover:text-gray-900 dark:hover:text-gray-400 text-sm">
+                      상세보기
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -73,22 +73,33 @@ export default function StaffPage() {
 
   const fetchStaffData = async () => {
     try {
+      // 타임아웃 설정
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
+
       const response = await fetch('http://localhost:5000/api/staff', {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const data = await response.json();
         setStaffMembers(data.staff || []);
       } else {
-        console.error('직원 데이터 로드 실패');
+        console.error('직원 데이터 로드 실패:', response.status);
         // 더미 데이터로 폴백
         setStaffMembers(getDummyData());
       }
     } catch (error) {
       console.error('API 호출 오류:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('API 호출 타임아웃 - 더미 데이터 사용');
+      }
       // 더미 데이터로 폴백
       setStaffMembers(getDummyData());
     } finally {
@@ -98,18 +109,31 @@ export default function StaffPage() {
 
   const fetchExpiringDocuments = async () => {
     try {
+      // 타임아웃 설정
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
+
       const response = await fetch('http://localhost:5000/api/staff/expiring-documents', {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const data = await response.json();
         setExpiringDocuments(data);
+      } else {
+        console.error('만료 임박 문서 로드 실패:', response.status);
       }
     } catch (error) {
       console.error('만료 임박 문서 로드 실패:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('만료 임박 문서 API 호출 타임아웃');
+      }
     }
   };
 
@@ -344,13 +368,29 @@ export default function StaffPage() {
             </div>
 
             {/* Add Button */}
-            <button 
-              onClick={() => router.push('/staff/add')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              직원 추가
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => router.push('/staff/contract')}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                계약서 작성
+              </button>
+              <button 
+                onClick={() => router.push('/staff/contract/mobile')}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                모바일 계약서
+              </button>
+              <button 
+                onClick={() => router.push('/staff/add')}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                직원 추가
+              </button>
+            </div>
           </div>
         </div>
 

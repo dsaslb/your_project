@@ -59,6 +59,7 @@ class User(db.Model, UserMixin):
     )  # 'approved', 'pending', 'rejected'
     branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), index=True)
     team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), index=True)  # 팀 ID 추가
+    department = db.Column(db.String(50), index=True)  # 부서 필드 추가
     deleted_at = db.Column(db.DateTime, nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(

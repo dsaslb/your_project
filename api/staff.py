@@ -229,6 +229,58 @@ def create_staff():
         current_app.logger.error(f"직원 추가 오류: {str(e)}")
         return jsonify({'error': '직원 추가에 실패했습니다.'}), 500
 
+@staff_bp.route('/api/staff-stats', methods=['GET'])
+@login_required
+def staff_stats():
+    """직원 통계 API (routes/staff_management.py에서 통합)"""
+    try:
+        total_staff = User.query.count()
+        active_staff = User.query.filter_by(is_active=True).count()
+        inactive_staff = total_staff - active_staff
+        # 부서별 통계
+        department_stats = (
+            db.session.query(User.department, db.func.count(User.id).label("count"))
+            .group_by(User.department)
+            .all()
+        )
+        return jsonify({
+            "total_staff": total_staff,
+            "active_staff": active_staff,
+            "inactive_staff": inactive_staff,
+            "department_stats": [
+                {"department": d.department, "count": d.count} for d in department_stats
+            ],
+        })
+    except Exception as e:
+        current_app.logger.error(f"직원 통계 조회 오류: {str(e)}")
+        return jsonify({"error": "통계 조회 중 오류가 발생했습니다."}), 500
+
+@staff_bp.route('/api/staff-status', methods=['GET'])
+@login_required
+def staff_status():
+    """직원 현황 API (app.py에서 통합)"""
+    try:
+        staff_members = User.query.filter_by(role="employee").all()
+        staff_data = []
+        for staff in staff_members:
+            staff_data.append({
+                "id": f"EMP-{staff.id:03d}",
+                "name": staff.username,
+                "status": "active" if getattr(staff, 'status', None) == "approved" else "off",
+                "role": getattr(staff, 'position', '직원')
+            })
+        # 더미 데이터 추가
+        staff_data.extend([
+            {"id": "EMP-101", "name": "김철수", "status": "active", "role": "주방장"},
+            {"id": "EMP-102", "name": "이영희", "status": "active", "role": "서버"},
+            {"id": "EMP-103", "name": "박민수", "status": "break", "role": "주방보조"},
+            {"id": "EMP-104", "name": "정수진", "status": "off", "role": "매니저"}
+        ])
+        return jsonify({"success": True, "data": staff_data})
+    except Exception as e:
+        current_app.logger.error(f"직원 현황 조회 오류: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 def get_dummy_staff_data():
     """더미 직원 데이터 반환"""
     return [
