@@ -1656,3 +1656,120 @@ class HealthCertificate(db.Model):
     
     def __repr__(self):
         return f"<HealthCertificate {self.certificate_number} - {self.staff.name}>"
+
+
+class StaffTemplate(db.Model):
+    """직원 등록 템플릿 모델"""
+    __tablename__ = 'staff_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    position = db.Column(db.String(50), nullable=False)
+    department = db.Column(db.String(50), nullable=False)
+    template_type = db.Column(db.String(20), default='position')  # position, store, custom
+    
+    # 급여 정보
+    salary_min = db.Column(db.Integer)
+    salary_max = db.Column(db.Integer)
+    salary_base = db.Column(db.Integer)
+    
+    # 근무 조건
+    work_days = db.Column(db.JSON)  # ["월", "화", "수", "목", "금"]
+    work_hours_start = db.Column(db.String(5))  # "09:00"
+    work_hours_end = db.Column(db.String(5))  # "18:00"
+    
+    # 복리후생
+    benefits = db.Column(db.JSON)  # ["4대보험", "연차휴가", "식대지원"]
+    
+    # 권한 설정
+    permissions = db.Column(db.JSON)
+    
+    # 필수 서류
+    required_documents = db.Column(db.JSON)  # ["health_certificate", "id_card"]
+    
+    # 기타 설정
+    probation_period = db.Column(db.Integer, default=3)  # 수습기간 (개월)
+    notice_period = db.Column(db.Integer, default=1)  # 예고기간 (개월)
+    
+    # 메타데이터
+    description = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+
+class StaffRegistrationStep(db.Model):
+    """직원 등록 단계별 임시 저장 모델"""
+    __tablename__ = 'staff_registration_steps'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(100), nullable=False, unique=True)
+    
+    # 1단계: 기본 정보
+    step1_completed = db.Column(db.Boolean, default=False)
+    name = db.Column(db.String(100))
+    email = db.Column(db.String(120))
+    phone = db.Column(db.String(20))
+    position = db.Column(db.String(50))
+    department = db.Column(db.String(50))
+    username = db.Column(db.String(80))
+    password_hash = db.Column(db.String(255))
+    
+    # 2단계: 근무 조건
+    step2_completed = db.Column(db.Boolean, default=False)
+    work_days = db.Column(db.JSON)
+    work_hours_start = db.Column(db.String(5))
+    work_hours_end = db.Column(db.String(5))
+    salary_base = db.Column(db.Integer)
+    salary_allowance = db.Column(db.Integer)
+    salary_bonus = db.Column(db.Integer)
+    benefits = db.Column(db.JSON)
+    
+    # 3단계: 서류 정보
+    step3_completed = db.Column(db.Boolean, default=False)
+    health_certificate_issue_date = db.Column(db.Date)
+    health_certificate_expiry_date = db.Column(db.Date)
+    health_certificate_renewal_date = db.Column(db.Date)
+    required_documents = db.Column(db.JSON)
+    
+    # 4단계: 권한 설정
+    step4_completed = db.Column(db.Boolean, default=False)
+    permissions = db.Column(db.JSON)
+    role = db.Column(db.String(20), default='employee')
+    
+    # 메타데이터
+    template_id = db.Column(db.Integer, db.ForeignKey('staff_templates.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime)  # 세션 만료 시간
+    
+    def is_expired(self):
+        """세션이 만료되었는지 확인"""
+        return datetime.utcnow() > self.expires_at
+    
+    def to_employee_data(self):
+        """직원 데이터로 변환"""
+        return {
+            'name': self.name,
+            'email': self.email,
+            'phone': self.phone,
+            'position': self.position,
+            'department': self.department,
+            'username': self.username,
+            'password_hash': self.password_hash,
+            'role': self.role,
+            'permissions': self.permissions,
+            'work_days': self.work_days,
+            'work_hours_start': self.work_hours_start,
+            'work_hours_end': self.work_hours_end,
+            'salary_base': self.salary_base,
+            'salary_allowance': self.salary_allowance,
+            'salary_bonus': self.salary_bonus,
+            'benefits': self.benefits,
+            'health_certificate_issue_date': self.health_certificate_issue_date,
+            'health_certificate_expiry_date': self.health_certificate_expiry_date,
+            'health_certificate_renewal_date': self.health_certificate_renewal_date,
+            'required_documents': self.required_documents
+        }

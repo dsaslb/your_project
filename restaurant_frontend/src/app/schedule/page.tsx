@@ -46,6 +46,7 @@ export default function SchedulePage() {
     location: "홀",
     memo: "",
   });
+  const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -81,17 +82,19 @@ export default function SchedulePage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // 퇴사/휴직자 제외하고 active/pending 상태만 필터링
+          // 퇴사/휴직자 제외하고 active/approved/pending 상태만 필터링
           const activeStaff = (data.staff || []).filter((staff: any) => 
-            staff.status === 'active' || staff.status === 'pending'
+            staff.status === 'active' || staff.status === 'approved' || staff.status === 'pending'
           );
           console.log('스케줄: 직원 데이터 로드 성공', activeStaff.length, '명 (활성 직원)');
           setStaffMembers(activeStaff);
         } else {
           console.error('직원 데이터 로드 실패:', data.error);
+          setStaffMembers([]);
         }
       } else {
         console.error('직원 데이터 로드 실패:', response.status);
+        setStaffMembers([]);
       }
     } catch (error) {
       console.error('직원 데이터 로드 오류:', error);
@@ -123,190 +126,6 @@ export default function SchedulePage() {
   const handleEventClick = (event: any) => {
     setSelectedEvent(event);
   };
-
-  // 매장 직원 스케줄 데이터
-  const events = [
-    {
-      id: 1,
-      title: "김철수 (주방)",
-      startTime: "09:00",
-      endTime: "17:00",
-      color: "bg-blue-500",
-      day: 1,
-      date: "2025-03-03",
-      description: "주방 근무",
-      location: "주방",
-      attendees: ["김철수"],
-      organizer: "매니저",
-      position: "주방장",
-      phone: "010-1234-5678",
-    },
-    {
-      id: 2,
-      title: "이영희 (서빙)",
-      startTime: "10:00",
-      endTime: "18:00",
-      color: "bg-green-500",
-      day: 1,
-      date: "2025-03-03",
-      description: "서빙 근무",
-      location: "홀",
-      attendees: ["이영희"],
-      organizer: "매니저",
-      position: "서빙",
-      phone: "010-2345-6789",
-    },
-    {
-      id: 3,
-      title: "박민수 (카운터)",
-      startTime: "11:00",
-      endTime: "19:00",
-      color: "bg-purple-500",
-      day: 2,
-      date: "2025-03-04",
-      description: "카운터 근무",
-      location: "카운터",
-      attendees: ["박민수"],
-      organizer: "매니저",
-      position: "카운터",
-      phone: "010-3456-7890",
-    },
-    {
-      id: 4,
-      title: "최지영 (서빙)",
-      startTime: "12:00",
-      endTime: "20:00",
-      color: "bg-yellow-500",
-      day: 2,
-      date: "2025-03-04",
-      description: "서빙 근무",
-      location: "홀",
-      attendees: ["최지영"],
-      organizer: "매니저",
-      position: "서빙",
-      phone: "010-4567-8901",
-    },
-    {
-      id: 5,
-      title: "정현우 (주방)",
-      startTime: "13:00",
-      endTime: "21:00",
-      color: "bg-indigo-500",
-      day: 3,
-      date: "2025-03-05",
-      description: "주방 근무",
-      location: "주방",
-      attendees: ["정현우"],
-      organizer: "매니저",
-      position: "부주방장",
-      phone: "010-5678-9012",
-    },
-    {
-      id: 6,
-      title: "한소영 (서빙)",
-      startTime: "14:00",
-      endTime: "22:00",
-      color: "bg-pink-500",
-      day: 3,
-      date: "2025-03-05",
-      description: "서빙 근무",
-      location: "홀",
-      attendees: ["한소영"],
-      organizer: "매니저",
-      position: "서빙",
-      phone: "010-6789-0123",
-    },
-    {
-      id: 7,
-      title: "강동현 (카운터)",
-      startTime: "15:00",
-      endTime: "23:00",
-      color: "bg-teal-500",
-      day: 4,
-      date: "2025-03-06",
-      description: "카운터 근무",
-      location: "카운터",
-      attendees: ["강동현"],
-      organizer: "매니저",
-      position: "카운터",
-      phone: "010-7890-1234",
-    },
-    {
-      id: 8,
-      title: "윤미영 (서빙)",
-      startTime: "16:00",
-      endTime: "24:00",
-      color: "bg-cyan-500",
-      day: 4,
-      date: "2025-03-06",
-      description: "서빙 근무",
-      location: "홀",
-      attendees: ["윤미영"],
-      organizer: "매니저",
-      position: "서빙",
-      phone: "010-8901-2345",
-    },
-    {
-      id: 9,
-      title: "임태호 (주방)",
-      startTime: "08:30",
-      endTime: "16:30",
-      color: "bg-blue-400",
-      day: 5,
-      date: "2025-03-07",
-      description: "주방 근무",
-      location: "주방",
-      attendees: ["임태호"],
-      organizer: "매니저",
-      position: "주방보조",
-      phone: "010-9012-3456",
-    },
-    {
-      id: 10,
-      title: "송은지 (서빙)",
-      startTime: "09:30",
-      endTime: "17:30",
-      color: "bg-purple-400",
-      day: 5,
-      date: "2025-03-07",
-      description: "서빙 근무",
-      location: "홀",
-      attendees: ["송은지"],
-      organizer: "매니저",
-      position: "서빙",
-      phone: "010-0123-4567",
-    },
-    {
-      id: 11,
-      title: "조성민 (카운터)",
-      startTime: "10:30",
-      endTime: "18:30",
-      color: "bg-red-400",
-      day: 6,
-      date: "2025-03-08",
-      description: "카운터 근무",
-      location: "카운터",
-      attendees: ["조성민"],
-      organizer: "매니저",
-      position: "카운터",
-      phone: "010-1234-5678",
-    },
-    {
-      id: 12,
-      title: "김수진 (서빙)",
-      startTime: "11:30",
-      endTime: "19:30",
-      color: "bg-green-400",
-      day: 6,
-      date: "2025-03-08",
-      description: "서빙 근무",
-      location: "홀",
-      attendees: ["김수진"],
-      organizer: "매니저",
-      position: "서빙",
-      phone: "010-2345-6789",
-    },
-  ];
 
   const calculateEventStyle = (startTime: string, endTime: string) => {
     const start = parseInt(startTime.split(":")[0]);
@@ -437,12 +256,15 @@ export default function SchedulePage() {
       toast.error("필수 정보를 모두 입력해주세요.");
       return;
     }
-
+    const staff = staffMembers.find(s => s.id.toString() === scheduleForm.staff_id);
+    if (!staff) {
+      toast.error("직원 목록이 없습니다. 직원 등록 후 이용해주세요.");
+      return;
+    }
     try {
-      // 실제 API 호출 (현재는 더미 데이터에 추가)
       const newSchedule = {
         id: Date.now(),
-        title: `${scheduleForm.staff_name} (${scheduleForm.location})`,
+        title: `${staff.name || staff.username} (${scheduleForm.location})`,
         startTime: scheduleForm.startTime,
         endTime: scheduleForm.endTime,
         color: getRandomColor(),
@@ -450,15 +272,12 @@ export default function SchedulePage() {
         date: selectedCellDate,
         description: scheduleForm.memo || `${scheduleForm.location} 근무`,
         location: scheduleForm.location,
-        attendees: [scheduleForm.staff_name],
+        attendees: [staff.name || staff.username],
         organizer: "매니저",
-        position: staffMembers.find(s => s.id.toString() === scheduleForm.staff_id)?.position || "",
-        phone: staffMembers.find(s => s.id.toString() === scheduleForm.staff_id)?.phone || "",
+        position: staff.position || "",
+        phone: staff.phone || "",
       };
-
-      // 더미 데이터에 추가 (실제로는 API 호출)
-      events.push(newSchedule);
-      
+      setEvents(prev => [...prev, newSchedule]);
       toast.success("스케줄이 등록되었습니다.");
       setShowScheduleDialog(false);
       setScheduleForm({
@@ -602,75 +421,83 @@ export default function SchedulePage() {
           <DialogTitle>스케줄 등록</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <Label>직원 선택</Label>
-            <Select value={scheduleForm.staff_id} onValueChange={handleStaffSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder="직원을 선택하세요" />
-              </SelectTrigger>
-              <SelectContent>
-                {staffMembers.map((staff) => (
-                  <SelectItem key={staff.id} value={staff.id.toString()}>
-                    {staff.name || staff.username} ({staff.position})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="startTime">시작 시간</Label>
-              <Input
-                name="startTime"
-                type="time"
-                value={scheduleForm.startTime}
-                onChange={handleScheduleFormChange}
-              />
+          {staffMembers.length === 0 ? (
+            <div className="text-red-500 text-center py-8">
+              등록 가능한 직원이 없습니다.<br />
+              먼저 직원 관리 페이지에서 직원을 등록/승인해 주세요.
             </div>
-            <div>
-              <Label htmlFor="endTime">종료 시간</Label>
-              <Input
-                name="endTime"
-                type="time"
-                value={scheduleForm.endTime}
-                onChange={handleScheduleFormChange}
-              />
-            </div>
-          </div>
+          ) : (
+            <>
+              <div>
+                <Label>직원 선택</Label>
+                <Select value={scheduleForm.staff_id} onValueChange={handleStaffSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="직원을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffMembers.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id.toString()}>
+                        {staff.name || staff.username} ({staff.position})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div>
-            <Label htmlFor="location">근무 위치</Label>
-            <Select value={scheduleForm.location} onValueChange={handleLocationSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder="위치를 선택하세요" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="홀">홀</SelectItem>
-                <SelectItem value="주방">주방</SelectItem>
-                <SelectItem value="카운터">카운터</SelectItem>
-                <SelectItem value="배달">배달</SelectItem>
-                <SelectItem value="청소">청소</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startTime">시작 시간</Label>
+                  <Input
+                    name="startTime"
+                    type="time"
+                    value={scheduleForm.startTime}
+                    onChange={handleScheduleFormChange}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="endTime">종료 시간</Label>
+                  <Input
+                    name="endTime"
+                    type="time"
+                    value={scheduleForm.endTime}
+                    onChange={handleScheduleFormChange}
+                  />
+                </div>
+              </div>
 
-          <div>
-            <Label htmlFor="memo">메모</Label>
-            <Textarea
-              name="memo"
-              placeholder="추가 사항을 입력하세요"
-              value={scheduleForm.memo}
-              onChange={handleScheduleFormChange}
-              rows={3}
-            />
-          </div>
+              <div>
+                <Label htmlFor="location">근무 위치</Label>
+                <Select value={scheduleForm.location} onValueChange={handleLocationSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="위치를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="홀">홀</SelectItem>
+                    <SelectItem value="주방">주방</SelectItem>
+                    <SelectItem value="카운터">카운터</SelectItem>
+                    <SelectItem value="배달">배달</SelectItem>
+                    <SelectItem value="청소">청소</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
+              <div>
+                <Label htmlFor="memo">메모</Label>
+                <Textarea
+                  name="memo"
+                  placeholder="추가 사항을 입력하세요"
+                  value={scheduleForm.memo}
+                  onChange={handleScheduleFormChange}
+                  rows={3}
+                />
+              </div>
+            </>
+          )}
           <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={() => setShowScheduleDialog(false)}>
               취소
             </Button>
-            <Button onClick={handleScheduleSubmit}>
+            <Button onClick={handleScheduleSubmit} disabled={staffMembers.length === 0}>
               등록
             </Button>
           </div>

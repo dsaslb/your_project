@@ -217,8 +217,8 @@ const sampleAttendances: Attendance[] = [
 ];
 
 const AttendancePage = () => {
-  const [users, setUsers] = useState<User[]>(sampleUsers);
-  const [attendances, setAttendances] = useState<Attendance[]>(sampleAttendances);
+  const [users, setUsers] = useState<User[]>([]);
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [selectedUser, setSelectedUser] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -289,6 +289,46 @@ const AttendancePage = () => {
       avg_hours_per_day: totalDays > 0 ? totalHours / totalDays : 0
     });
   }, [filteredAttendances]);
+
+  // 직원 데이터 불러오기
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('http://localhost:5000/api/staff', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // 승인된 직원만 필터링
+          const approvedUsers = (data.staff || []).filter((staff: any) => 
+            staff.status === 'approved' || staff.status === 'active'
+          );
+          setUsers(approvedUsers);
+        } else {
+          console.error('직원 데이터 로드 실패:', data.error);
+          setUsers([]);
+        }
+      } else {
+        console.error('직원 데이터 로드 실패:', response.status);
+        setUsers([]);
+      }
+    } catch (error) {
+      console.error('직원 데이터 로드 오류:', error);
+      setUsers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   // 근태 수정/추가
   const saveAttendance = async (attendanceData: Partial<Attendance>) => {

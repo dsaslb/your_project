@@ -10,23 +10,23 @@ staff_bp = Blueprint('api_staff', __name__)
 @staff_bp.route('/api/staff', methods=['GET'])
 @login_required
 def get_staff_list():
-    """통합 직원 목록 조회 API"""
+    """통합 직원 목록 조회 API - 모든 페이지에서 사용"""
     try:
-        # 권한 확인
-        if not current_user.has_permission('employee_management', 'view'):
-            return jsonify({'error': '권한이 없습니다.'}), 403
-        
         # 검색 파라미터
         search = request.args.get('search', '')
         department = request.args.get('department', '')
         status = request.args.get('status', '')
+        include_pending = request.args.get('include_pending', 'false').lower() == 'true'
         
-        # User 테이블에서 직원 데이터 조회 (승인된 직원만)
+        # User 테이블에서 직원 데이터 조회
         query = User.query.filter(User.role.in_(['employee', 'manager']))
         
-        # 상태 필터: 기본적으로 승인된 직원만 표시 (pending 제외)
+        # 상태 필터링
         if status:
             query = query.filter(User.status == status)
+        elif include_pending:
+            # pending 포함하여 모든 활성 직원 조회
+            query = query.filter(User.status.in_(['approved', 'active', 'pending']))
         else:
             # 기본적으로 승인된 직원만 표시
             query = query.filter(User.status.in_(['approved', 'active']))
@@ -47,9 +47,15 @@ def get_staff_list():
         
         # 매장별 필터링 (관리자가 아닌 경우)
         if not current_user.is_admin():
-            query = query.filter(User.branch_id == current_user.branch_id)
+            # branch_id가 None이거나 현재 사용자의 branch_id와 일치하는 경우
+            query = query.filter(
+                or_(
+                    User.branch_id == None,
+                    User.branch_id == current_user.branch_id
+                )
+            )
         
-        users = query.all()
+        users = query.order_by(User.name).all()
         
         # 통합된 직원 데이터 구성
         staff_data = []
@@ -126,8 +132,9 @@ def get_staff_list():
         
         # 통계 정보 계산
         total_count = len(staff_data)
-        active_count = len([s for s in staff_data if s['status'] == 'active'])
-        inactive_count = total_count - active_count
+        active_count = len([s for s in staff_data if s['status'] in ['active', 'approved']])
+        pending_count = len([s for s in staff_data if s['status'] == 'pending'])
+        inactive_count = total_count - active_count - pending_count
         
         # 부서별 통계
         department_stats = {}
@@ -143,6 +150,7 @@ def get_staff_list():
             'stats': {
                 'total': total_count,
                 'active': active_count,
+                'pending': pending_count,
                 'inactive': inactive_count,
                 'departments': department_stats
             }

@@ -62,6 +62,12 @@ export default function Sidebar({ menu }: { menu: SidebarMenuItem[] }) {
             <span>근태 관리</span>
           </Link>
         </li>
+        <li>
+          <Link href="/clean_manage" className="sidebar-link">
+            <span className="icon">🧹</span>
+            <span>청소 관리</span>
+          </Link>
+        </li>
       </nav>
       
       <div className={`p-4 border-t border-zinc-800 ${isCollapsed ? "px-2" : ""}`}>

@@ -442,6 +442,26 @@ def clean():
     plans = Schedule.query.filter_by(type='clean').order_by(Schedule.date.desc()).all()
     return render_template("clean.html", plans=plans)
 
+@app.route("/clean_manage")
+@login_required
+def clean_manage():
+    """청소 관리 페이지"""
+    try:
+        # 승인된 직원 목록 조회
+        employees = User.query.filter(
+            User.role.in_(['employee', 'manager']),
+            User.status.in_(['approved', 'active'])
+        ).order_by(User.name).all()
+        
+        # 청소 스케줄 조회
+        cleanings = Schedule.query.filter_by(type='clean').order_by(Schedule.date.desc()).all()
+        
+        return render_template("clean_manage.html", employees=employees, cleanings=cleanings)
+        
+    except Exception as e:
+        flash("청소 관리 페이지 로딩 중 오류가 발생했습니다.", "error")
+        return redirect(url_for("dashboard"))
+
 
 # --- Notification Routes ---
 @app.route("/notifications")
