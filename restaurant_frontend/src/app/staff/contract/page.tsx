@@ -40,6 +40,8 @@ interface ContractForm {
 export default function ContractPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editStaffId, setEditStaffId] = useState<number | null>(null);
   
   // 직책 관련 상태
   const [positions, setPositions] = useState<string[]>([]);
@@ -57,6 +59,8 @@ export default function ContractPage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showError, setShowError] = useState(false);
 
   // 설정 직접 작성 모달 상태
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -68,7 +72,6 @@ export default function ContractPage() {
     salary: { base: 2500000, allowance: 200000, bonus: 0 },
     benefits: ["4대보험", "연차휴가"]
   });
-  const [isEditMode, setIsEditMode] = useState(false);
   const [savedSettings, setSavedSettings] = useState<any[]>([]);
 
   const [contractForm, setContractForm] = useState<ContractForm>({
@@ -154,6 +157,68 @@ export default function ContractPage() {
     const settings = JSON.parse(localStorage.getItem('customSettings') || '[]');
     setSavedSettings(settings);
   }, []);
+
+  // URL 파라미터 확인하여 수정 모드 설정
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const staffId = urlParams.get('staffId');
+    const mode = urlParams.get('mode');
+    
+    if (staffId && mode === 'edit') {
+      setIsEditMode(true);
+      setEditStaffId(Number(staffId));
+      loadStaffData(Number(staffId));
+    }
+  }, []);
+
+  // 직원 데이터 불러오기 (수정 모드)
+  const loadStaffData = async (staffId: number) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/staff/${staffId}`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const staff = data.staff;
+          setContractForm({
+            employeeName: staff.name || '',
+            employeeId: staff.id?.toString() || '',
+            position: staff.position || '',
+            department: staff.department || '',
+            email: staff.email || '',
+            phone: staff.phone || '',
+            username: staff.username || '',
+            password: '',
+            confirmPassword: '',
+            startDate: staff.contracts?.[0]?.start_date || '',
+            endDate: staff.contracts?.[0]?.expiry_date || '',
+            workDays: ["월", "화", "수", "목", "금"],
+            workHours: {
+              start: "09:00",
+              end: "18:00"
+            },
+            salary: {
+              base: staff.contracts?.[0]?.salary_amount || 2500000,
+              allowance: 200000,
+              bonus: 0
+            },
+            probationPeriod: 3,
+            noticePeriod: 1,
+            benefits: ["4대보험", "연차휴가"],
+            responsibilities: "매장 운영 및 고객 서비스",
+            terms: "근로기준법에 따른 근무 조건 적용"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('직원 데이터 로드 실패:', error);
+    }
+  };
 
   // 직책 필터링
   useEffect(() => {
@@ -436,29 +501,126 @@ export default function ContractPage() {
   };
 
   const generateContract = async () => {
+    // 필수 필드 검증
+    if (!contractForm.employeeName.trim()) {
+      setErrorMessage('직원명을 입력해주세요.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+    if (!contractForm.position.trim()) {
+      setErrorMessage('직책을 입력해주세요.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+    if (!contractForm.department.trim()) {
+      setErrorMessage('부서를 입력해주세요.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+    if (!contractForm.email.trim()) {
+      setErrorMessage('이메일을 입력해주세요.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+    if (!contractForm.phone.trim()) {
+      setErrorMessage('전화번호를 입력해주세요.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+    if (!isEditMode && !contractForm.username.trim()) {
+      setErrorMessage('아이디를 입력해주세요.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+    if (!isEditMode && !contractForm.password.trim()) {
+      setErrorMessage('비밀번호를 입력해주세요.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+    if (!isEditMode && contractForm.password !== contractForm.confirmPassword) {
+      setErrorMessage('비밀번호가 일치하지 않습니다.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      // 계약서 생성 로직
-      await new Promise(resolve => setTimeout(resolve, 2000)); // 시뮬레이션
-      
-      // PDF 생성 및 다운로드
-      const contractData = {
-        ...contractForm,
-        totalSalary: contractForm.salary.base + contractForm.salary.allowance + contractForm.salary.bonus,
-        generatedDate: new Date().toISOString()
+      // 직원 등록/수정 API 호출
+      const employeeData = {
+        name: contractForm.employeeName,
+        position: contractForm.position,
+        department: contractForm.department,
+        email: contractForm.email,
+        phone: contractForm.phone,
+        username: contractForm.username,
+        password: contractForm.password,
+        join_date: contractForm.startDate,
+        salary: contractForm.salary.base.toString(),
+        status: 'pending',
+        contract_type: '정규직',
+        contract_start_date: contractForm.startDate,
+        contract_expiry_date: contractForm.endDate,
+        permissions: {
+          dashboard: { view: true, edit: false, admin_only: false },
+          employee_management: { view: false, create: false, edit: false, delete: false, approve: false, assign_roles: false },
+          schedule_management: { view: true, create: false, edit: false, delete: false, approve: false },
+          order_management: { view: true, create: false, edit: false, delete: false, approve: false },
+          inventory_management: { view: true, create: false, edit: false, delete: false },
+          notification_management: { view: true, send: false, delete: false },
+          system_management: { view: false, backup: false, restore: false, settings: false, monitoring: false },
+          reports: { view: false, export: false, admin_only: false },
+        }
       };
+
+      const url = isEditMode && editStaffId 
+        ? `http://localhost:5000/api/staff/${editStaffId}`
+        : 'http://localhost:5000/api/staff';
       
-      console.log("계약서 생성:", contractData);
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(employeeData)
+      });
+
+      const responseData = await response.json();
       
-      // 실제로는 PDF 생성 API 호출
-      // const response = await fetch('/api/contracts/generate', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(contractData)
-      // });
+      if (response.ok && responseData.success) {
+        showFeedbackMessage(
+          isEditMode ? '직원 정보가 성공적으로 수정되었습니다.' : '직원이 성공적으로 등록되었습니다.',
+          'success'
+        );
+        
+        // 직원 목록/스케줄 새로고침 이벤트 발생
+        window.dispatchEvent(new CustomEvent('staffDataUpdated'));
+        
+        // 수정 모드가 아닌 경우 승인 페이지로 이동
+        if (!isEditMode) {
+          setTimeout(() => {
+            router.push("/staff/approval");
+          }, 2000);
+        }
+      } else {
+        throw new Error(responseData.error || '등록/수정에 실패했습니다.');
+      }
       
     } catch (error) {
-      console.error("계약서 생성 실패:", error);
+      console.error("직원 등록/수정 실패:", error);
+      setErrorMessage(error instanceof Error ? error.message : '등록/수정에 실패했습니다.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 5000);
     } finally {
       setIsGenerating(false);
     }
@@ -486,6 +648,16 @@ export default function ContractPage() {
         </div>
       )}
 
+      {/* 에러 메시지 */}
+      {showError && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-lg shadow-lg bg-red-500 text-white">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            <span>{errorMessage}</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -500,8 +672,12 @@ export default function ContractPage() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">근로계약서 작성</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">직원과의 근로계약서를 작성하세요</p>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {isEditMode ? '근로계약서 수정' : '근로계약서 작성'}
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {isEditMode ? '기존 계약서 내용을 수정하세요' : '직원과의 근로계약서를 작성하세요'}
+                </p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -522,7 +698,7 @@ export default function ContractPage() {
                 className="flex items-center gap-2"
               >
                 <Save className="h-4 w-4" />
-                저장
+                {isEditMode ? '수정 저장' : '저장'}
               </Button>
             </div>
           </div>

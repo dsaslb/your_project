@@ -458,6 +458,40 @@ export default function MobileContractPage() {
 
   // 직원 등록 및 계약서 생성
   const generateContract = async () => {
+    // 필수 필드 검증
+    if (!contractForm.employeeName.trim()) {
+      showErrorMessage('직원명을 입력해주세요.');
+      return;
+    }
+    if (!contractForm.position.trim()) {
+      showErrorMessage('직책을 입력해주세요.');
+      return;
+    }
+    if (!contractForm.department.trim()) {
+      showErrorMessage('부서를 입력해주세요.');
+      return;
+    }
+    if (!contractForm.email.trim()) {
+      showErrorMessage('이메일을 입력해주세요.');
+      return;
+    }
+    if (!contractForm.phone.trim()) {
+      showErrorMessage('전화번호를 입력해주세요.');
+      return;
+    }
+    if (!contractForm.username.trim()) {
+      showErrorMessage('아이디를 입력해주세요.');
+      return;
+    }
+    if (!contractForm.password.trim()) {
+      showErrorMessage('비밀번호를 입력해주세요.');
+      return;
+    }
+    if (contractForm.password !== contractForm.confirmPassword) {
+      showErrorMessage('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
     setIsGenerating(true);
     setIsRegistering(true);
     
@@ -534,6 +568,9 @@ export default function MobileContractPage() {
       
       showFeedbackMessage("직원 등록 및 계약서가 성공적으로 생성되었습니다!");
       
+      // 직원 목록/스케줄 새로고침 이벤트 발생
+      window.dispatchEvent(new CustomEvent('staffDataUpdated'));
+      
       // 3. 승인 관리 페이지로 이동
       setTimeout(() => {
         router.push("/staff/approval");
@@ -541,7 +578,7 @@ export default function MobileContractPage() {
       
     } catch (error) {
       console.error("계약서 생성 실패:", error);
-      showFeedbackMessage(`오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`, 'error');
+      showErrorMessage(`오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     } finally {
       setIsGenerating(false);
       setIsRegistering(false);
@@ -567,6 +604,17 @@ export default function MobileContractPage() {
     setFeedbackType(type);
     setShowFeedback(true);
     setTimeout(() => setShowFeedback(false), 3000);
+  };
+
+  // 에러 메시지 상태
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showError, setShowError] = useState(false);
+
+  // 에러 메시지 표시 함수
+  const showErrorMessage = (message: string) => {
+    setErrorMessage(message);
+    setShowError(true);
+    setTimeout(() => setShowError(false), 5000);
   };
 
   // 기본 설정 적용 함수 개선
@@ -1401,6 +1449,14 @@ export default function MobileContractPage() {
             <AlertCircle className="h-4 w-4" />
           )}
           <span className="text-sm font-medium">{feedbackMessage}</span>
+        </div>
+      )}
+
+      {/* 에러 메시지 */}
+      {showError && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg bg-red-500 text-white flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          <span className="text-sm font-medium">{errorMessage}</span>
         </div>
       )}
 

@@ -148,6 +148,15 @@ export default function StaffPage() {
     }
   };
 
+  // 직원 등록/수정/삭제 후 데이터 새로고침 함수
+  const refreshStaffData = async () => {
+    console.log('직원 데이터 새로고침 중...');
+    await fetchStaffData();
+    await fetchExpiringDocuments();
+    // 스케줄 페이지도 새로고침 (전역 상태나 이벤트로 알림)
+    window.dispatchEvent(new CustomEvent('staffDataUpdated'));
+  };
+
   // 더미 데이터 (API 실패 시 사용)
   const getDummyData = (): StaffMember[] => [
     {
@@ -814,12 +823,12 @@ export default function StaffPage() {
                 <Button
                   onClick={() => {
                     setShowStaffModal(false);
-                    router.push('/staff/contract');
+                    router.push(`/staff/contract?staffId=${selectedStaff.id}&mode=edit`);
                   }}
                   className="flex-1"
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  계약서 작성
+                  계약서 수정
                 </Button>
               </div>
             </div>

@@ -27,14 +27,55 @@ export default function SchedulePage() {
   const [showAIPopup, setShowAIPopup] = useState(false);
   const [typedText, setTypedText] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setIsLoaded(true);
+    fetchStaffData();
     const popupTimer = setTimeout(() => {
       setShowAIPopup(true);
     }, 3000);
     return () => clearTimeout(popupTimer);
   }, []);
+
+  // 직원 데이터 변경 이벤트 리스너
+  useEffect(() => {
+    const handleStaffDataUpdate = () => {
+      console.log('스케줄: 직원 데이터 업데이트 감지');
+      fetchStaffData();
+    };
+
+    window.addEventListener('staffDataUpdated', handleStaffDataUpdate);
+    return () => window.removeEventListener('staffDataUpdated', handleStaffDataUpdate);
+  }, []);
+
+  // 직원 데이터 불러오기
+  const fetchStaffData = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/staff', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setStaffMembers(data.staff || []);
+        } else {
+          console.error('직원 데이터 로드 실패:', data.error);
+        }
+      } else {
+        console.error('직원 데이터 로드 실패:', response.status);
+      }
+    } catch (error) {
+      console.error('직원 데이터 로드 오류:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (showAIPopup) {
