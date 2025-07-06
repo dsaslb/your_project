@@ -20,6 +20,13 @@ import {
   Phone,
   Mail,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 export default function SchedulePage() {
   const router = useRouter();
@@ -29,6 +36,16 @@ export default function SchedulePage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [staffMembers, setStaffMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [selectedCellDate, setSelectedCellDate] = useState<string>("");
+  const [scheduleForm, setScheduleForm] = useState({
+    staff_id: "",
+    staff_name: "",
+    startTime: "09:00",
+    endTime: "17:00",
+    location: "홀",
+    memo: "",
+  });
 
   useEffect(() => {
     setIsLoaded(true);
@@ -333,6 +350,23 @@ export default function SchedulePage() {
     <div className="space-y-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <h3 className="text-lg font-semibold mb-4">일간 스케줄</h3>
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {currentDate.toLocaleDateString('ko-KR', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              weekday: 'long'
+            })}
+          </span>
+          <button
+            onClick={() => openScheduleDialog(currentDate.toISOString().split('T')[0])}
+            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors flex items-center gap-1"
+          >
+            <Plus className="h-3 w-3" />
+            스케줄 추가
+          </button>
+        </div>
         <div className="space-y-4">
           {events
             .filter(event => {
@@ -356,10 +390,98 @@ export default function SchedulePage() {
                 </button>
               </div>
             ))}
+          {events.filter(event => {
+            const eventDate = new Date(event.date);
+            return eventDate.toDateString() === currentDate.toDateString();
+          }).length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+              <p>등록된 스케줄이 없습니다.</p>
+              <button
+                onClick={() => openScheduleDialog(currentDate.toISOString().split('T')[0])}
+                className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+              >
+                첫 번째 스케줄을 등록해보세요
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+
+  const openScheduleDialog = (date: string) => {
+    setSelectedCellDate(date);
+    setShowScheduleDialog(true);
+  };
+
+  const handleScheduleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setScheduleForm({ ...scheduleForm, [e.target.name]: e.target.value });
+  };
+
+  const handleStaffSelect = (staffId: string) => {
+    const selectedStaff = staffMembers.find(staff => staff.id.toString() === staffId);
+    setScheduleForm({
+      ...scheduleForm,
+      staff_id: staffId,
+      staff_name: selectedStaff ? (selectedStaff.name || selectedStaff.username) : "",
+    });
+  };
+
+  const handleLocationSelect = (location: string) => {
+    setScheduleForm({ ...scheduleForm, location });
+  };
+
+  const handleScheduleSubmit = async () => {
+    if (!scheduleForm.staff_id || !scheduleForm.startTime || !scheduleForm.endTime) {
+      toast.error("필수 정보를 모두 입력해주세요.");
+      return;
+    }
+
+    try {
+      // 실제 API 호출 (현재는 더미 데이터에 추가)
+      const newSchedule = {
+        id: Date.now(),
+        title: `${scheduleForm.staff_name} (${scheduleForm.location})`,
+        startTime: scheduleForm.startTime,
+        endTime: scheduleForm.endTime,
+        color: getRandomColor(),
+        day: new Date(selectedCellDate).getDay() || 7,
+        date: selectedCellDate,
+        description: scheduleForm.memo || `${scheduleForm.location} 근무`,
+        location: scheduleForm.location,
+        attendees: [scheduleForm.staff_name],
+        organizer: "매니저",
+        position: staffMembers.find(s => s.id.toString() === scheduleForm.staff_id)?.position || "",
+        phone: staffMembers.find(s => s.id.toString() === scheduleForm.staff_id)?.phone || "",
+      };
+
+      // 더미 데이터에 추가 (실제로는 API 호출)
+      events.push(newSchedule);
+      
+      toast.success("스케줄이 등록되었습니다.");
+      setShowScheduleDialog(false);
+      setScheduleForm({
+        staff_id: "",
+        staff_name: "",
+        startTime: "09:00",
+        endTime: "17:00",
+        location: "홀",
+        memo: "",
+      });
+    } catch (error) {
+      toast.error("스케줄 등록 중 오류가 발생했습니다.");
+    }
+  };
+
+  const getRandomColor = () => {
+    const colors = [
+      "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-yellow-500", 
+      "bg-indigo-500", "bg-pink-500", "bg-teal-500", "bg-cyan-500",
+      "bg-blue-400", "bg-green-400", "bg-purple-400", "bg-yellow-400"
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
 
   const renderWeeklyView = () => (
     <div className="space-y-4">
@@ -372,6 +494,12 @@ export default function SchedulePage() {
                 {day}
               </div>
               <div className="space-y-1">
+                <div
+                  className="min-h-[40px] bg-gray-100 dark:bg-gray-700 rounded cursor-pointer flex items-center justify-center text-xs text-gray-500"
+                  onClick={() => openScheduleDialog(/* 날짜 계산 로직 필요 */ new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + dayIndex).toISOString().split('T')[0])}
+                >
+                  + 스케줄 등록
+                </div>
                 {events
                   .filter(event => event.day === dayIndex + 1)
                   .map(event => (
@@ -409,14 +537,39 @@ export default function SchedulePage() {
               const eventDate = new Date(event.date);
               return eventDate.getDate() === i + 1;
             });
+            
+            // 현재 월의 날짜 계산
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            const currentDayDate = new Date(startDate);
+            currentDayDate.setDate(startDate.getDate() + i);
+            const isCurrentMonth = currentDayDate.getMonth() === month;
+            const dateString = currentDayDate.toISOString().split('T')[0];
+            
             return (
-              <div key={i} className="min-h-[80px] p-1 border border-gray-200 dark:border-gray-600">
-                <div className="text-xs text-gray-500 mb-1">{i + 1}</div>
+              <div 
+                key={i} 
+                className={`min-h-[80px] p-1 border border-gray-200 dark:border-gray-600 ${
+                  isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'
+                }`}
+                onClick={() => isCurrentMonth && openScheduleDialog(dateString)}
+              >
+                <div className={`text-xs mb-1 ${isCurrentMonth ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                  {currentDayDate.getDate()}
+                </div>
                 <div className="space-y-1">
                   {dayEvents.slice(0, 2).map(event => (
                     <div
                       key={event.id}
-                      onClick={() => handleEventClick(event)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEventClick(event);
+                      }}
                       className={`p-1 rounded text-xs text-white cursor-pointer ${event.color}`}
                     >
                       <div className="truncate">{event.title}</div>
@@ -427,6 +580,11 @@ export default function SchedulePage() {
                       +{dayEvents.length - 2}개 더
                     </div>
                   )}
+                  {isCurrentMonth && dayEvents.length === 0 && (
+                    <div className="text-xs text-gray-400 text-center cursor-pointer hover:text-blue-500">
+                      + 등록
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -434,6 +592,91 @@ export default function SchedulePage() {
         </div>
       </div>
     </div>
+  );
+
+  // 등록 다이얼로그 개선
+  const renderScheduleDialog = () => (
+    <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>스케줄 등록</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>직원 선택</Label>
+            <Select value={scheduleForm.staff_id} onValueChange={handleStaffSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="직원을 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {staffMembers.map((staff) => (
+                  <SelectItem key={staff.id} value={staff.id.toString()}>
+                    {staff.name || staff.username} ({staff.position})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="startTime">시작 시간</Label>
+              <Input
+                name="startTime"
+                type="time"
+                value={scheduleForm.startTime}
+                onChange={handleScheduleFormChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="endTime">종료 시간</Label>
+              <Input
+                name="endTime"
+                type="time"
+                value={scheduleForm.endTime}
+                onChange={handleScheduleFormChange}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="location">근무 위치</Label>
+            <Select value={scheduleForm.location} onValueChange={handleLocationSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="위치를 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="홀">홀</SelectItem>
+                <SelectItem value="주방">주방</SelectItem>
+                <SelectItem value="카운터">카운터</SelectItem>
+                <SelectItem value="배달">배달</SelectItem>
+                <SelectItem value="청소">청소</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="memo">메모</Label>
+            <Textarea
+              name="memo"
+              placeholder="추가 사항을 입력하세요"
+              value={scheduleForm.memo}
+              onChange={handleScheduleFormChange}
+              rows={3}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setShowScheduleDialog(false)}>
+              취소
+            </Button>
+            <Button onClick={handleScheduleSubmit}>
+              등록
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 
   return (
@@ -524,15 +767,6 @@ export default function SchedulePage() {
                 </button>
               </div>
             </div>
-
-            {/* Add Button */}
-            <button
-              onClick={() => router.push('/schedule/add')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              스케줄 추가
-            </button>
           </div>
         </div>
 
@@ -675,6 +909,9 @@ export default function SchedulePage() {
           </div>
         </div>
       )}
+
+      {/* 개선된 등록 다이얼로그 */}
+      {renderScheduleDialog()}
     </div>
   );
 } 
