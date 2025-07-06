@@ -551,30 +551,70 @@ export default function MobileContractPage() {
         throw new Error(`직원 등록 실패: ${responseData.error || '서버 오류'}`);
       }
 
-      // 2. 계약서 생성
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 2. 계약서 PDF 생성 및 저장
       const contractData = {
-        ...contractForm,
-        totalSalary: contractForm.salary.base + contractForm.salary.allowance + contractForm.salary.bonus,
-        generatedDate: new Date().toISOString(),
+        employee_name: contractForm.employeeName,
+        position: contractForm.position,
+        department: contractForm.department,
+        email: contractForm.email,
+        phone: contractForm.phone,
+        start_date: contractForm.startDate,
+        end_date: contractForm.endDate,
+        work_days: contractForm.workDays,
+        work_hours: contractForm.workHours,
+        salary: {
+          base: contractForm.salary.base,
+          allowance: contractForm.salary.allowance,
+          bonus: contractForm.salary.bonus,
+          total: contractForm.salary.base + contractForm.salary.allowance + contractForm.salary.bonus
+        },
+        probation_period: contractForm.probationPeriod,
+        notice_period: contractForm.noticePeriod,
+        benefits: contractForm.benefits,
+        responsibilities: contractForm.responsibilities,
+        terms: contractForm.terms,
+        generated_date: new Date().toISOString(),
+        staff_id: responseData.staff_id,
         signatures: {
           employee: contractForm.employeeSignature,
           manager: contractForm.managerSignature,
-          signedAt: new Date().toISOString()
+          signed_at: new Date().toISOString()
         }
       };
-      
-      console.log("계약서 생성:", contractData);
-      
-      showFeedbackMessage("직원 등록 및 계약서가 성공적으로 생성되었습니다!");
-      
-      // 직원 목록/스케줄 새로고침 이벤트 발생
-      window.dispatchEvent(new CustomEvent('staffDataUpdated'));
-      
-      // 3. 승인 관리 페이지로 이동
-      setTimeout(() => {
-        router.push("/staff/approval");
-      }, 2000);
+
+      // 계약서 생성 API 호출
+      const contractResponse = await fetch('http://localhost:5000/api/contracts/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(contractData)
+      });
+
+      if (contractResponse.ok) {
+        const contractResult = await contractResponse.json();
+        if (contractResult.success) {
+          showFeedbackMessage("직원 등록 및 계약서가 성공적으로 생성되었습니다!");
+          
+          // 계약서 다운로드 (모바일에서는 새 창으로 열기)
+          if (contractResult.download_url) {
+            window.open(`http://localhost:5000${contractResult.download_url}`, '_blank');
+          }
+          
+          // 직원 목록/스케줄 새로고침 이벤트 발생
+          window.dispatchEvent(new CustomEvent('staffDataUpdated'));
+          
+          // 3. 승인 관리 페이지로 이동
+          setTimeout(() => {
+            router.push("/staff/approval");
+          }, 3000);
+        } else {
+          throw new Error(contractResult.error || '계약서 생성에 실패했습니다.');
+        }
+      } else {
+        throw new Error('계약서 생성 API 호출에 실패했습니다.');
+      }
       
     } catch (error) {
       console.error("계약서 생성 실패:", error);

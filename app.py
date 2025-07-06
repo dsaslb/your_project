@@ -18,6 +18,7 @@ from api.admin_report_stat import admin_report_stat_bp
 from api.auth import api_auth_bp, auth_bp
 from api.comment import api_comment_bp
 from api.comment_report import comment_report_bp
+from api.contracts import contracts_bp
 from api.notice import api_notice_bp
 from api.report import api_report_bp
 from api.staff import staff_bp as api_staff_bp
@@ -67,6 +68,7 @@ csrf.exempt(admin_log_bp)
 csrf.exempt(admin_report_stat_bp)
 csrf.exempt(comment_report_bp)
 csrf.exempt(api_staff_bp)
+csrf.exempt(contracts_bp)
 
 # Register API Blueprints
 app.register_blueprint(api_auth_bp)
@@ -79,6 +81,7 @@ app.register_blueprint(admin_log_bp)
 app.register_blueprint(admin_report_stat_bp)
 app.register_blueprint(comment_report_bp)
 app.register_blueprint(api_staff_bp)
+app.register_blueprint(contracts_bp)
 
 # Register Route Blueprints
 app.register_blueprint(payroll_bp)
