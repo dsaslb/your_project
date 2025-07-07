@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Filter, Calendar, Clock, Users, TrendingUp, Download, Plus, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -1159,35 +1159,50 @@ const AttendancePage = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:5000/api/staff', {
+      console.log('근태 관리: 직원 데이터 로딩 시작');
+      
+      const response = await fetch('http://localhost:5000/api/staff?page_type=attendance', {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
       });
       
+      console.log('근태 관리: API 응답 상태:', response.status);
+      console.log('근태 관리: API 응답 헤더:', response.headers);
+      
       if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // 승인된 직원만 필터링
-          const approvedUsers = (data.staff || []).filter((staff: any) => 
-            staff.status === 'approved' || staff.status === 'active'
-          );
-          setUsers(approvedUsers);
+        const contentType = response.headers.get('content-type');
+        console.log('근태 관리: Content-Type:', contentType);
+        
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          console.log('근태 관리: API 응답 데이터:', data);
+          console.log('근태 관리: staff 배열 길이:', (data.staff || []).length);
+          console.log('근태 관리: staff 배열 내용:', data.staff);
+          
+          if (data.success) {
+            // 백엔드에서 이미 필터링된 데이터 사용
+            console.log('근태 관리: 직원 수:', (data.staff || []).length);
+            setUsers(data.staff || []);
+          } else {
+            console.error('근태 관리: 직원 데이터 로드 실패:', data.error);
+            setUsers([]);
+          }
         } else {
-          console.error('직원 데이터 로드 실패:', data.error);
-          // API 실패 시 예시 데이터 사용
-          setUsers(sampleUsers);
+          // HTML(로그인 페이지 등) 응답 시
+          const textResponse = await response.text();
+          console.log('근태 관리: HTML 응답 (처음 200자):', textResponse.substring(0, 200));
+          toast.error('로그인이 필요합니다. 먼저 로그인 후 다시 시도해 주세요.');
+          setUsers([]);
         }
       } else {
-        console.error('직원 데이터 로드 실패:', response.status);
-        // API 실패 시 예시 데이터 사용
-        setUsers(sampleUsers);
+        console.error('근태 관리: 직원 데이터 로드 실패:', response.status);
+        setUsers([]);
       }
     } catch (error) {
-      console.error('직원 데이터 로드 오류:', error);
-      // API 실패 시 예시 데이터 사용
-      setUsers(sampleUsers);
+      console.error('근태 관리: 직원 데이터 로드 오류:', error);
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -1348,6 +1363,12 @@ const AttendancePage = () => {
       default:
         return <Badge variant="default">예정</Badge>;
     }
+  };
+
+  // 직원 정보 표시 시 기본값 처리 함수 추가
+  const getDisplayValue = (value: string | null | undefined, fallback: string) => {
+    if (value === null || value === undefined || value === "") return fallback;
+    return value;
   };
 
   return (
@@ -1577,12 +1598,12 @@ const AttendancePage = () => {
                           <td className="p-3">
                             <div>
                               <div className="font-medium">{attendance.user_name}</div>
-                              <div className="text-sm text-gray-500">{user?.position}</div>
+                              <div className="text-sm text-gray-500">{getDisplayValue(user?.position, "직원")}</div>
                             </div>
                           </td>
                           <td className="p-3">
-                            <Badge className={getDepartmentColor(user?.department || "")}>
-                              {user?.department}
+                            <Badge className={getDepartmentColor(getDisplayValue(user?.department, "미지정"))}>
+                              {getDisplayValue(user?.department, "미지정")}
                             </Badge>
                           </td>
                           <td className="p-3">{attendance.date}</td>
@@ -1762,13 +1783,13 @@ const AttendancePage = () => {
                           <td className="p-3">
                             <div>
                               <div className="font-medium">{schedule.user_name}</div>
-                              <div className="text-sm text-gray-500">{user?.email}</div>
+                              <div className="text-sm text-gray-500">{getDisplayValue(user?.email, "-")}</div>
                             </div>
                           </td>
-                          <td className="p-3">{schedule.position}</td>
+                          <td className="p-3">{getDisplayValue(schedule.position, "직원")}</td>
                           <td className="p-3">
-                            <Badge className={getDepartmentColor(schedule.department)}>
-                              {schedule.department}
+                            <Badge className={getDepartmentColor(getDisplayValue(schedule.department, "미지정"))}>
+                              {getDisplayValue(schedule.department, "미지정")}
                             </Badge>
                           </td>
                           <td className="p-3">{schedule.date}</td>
@@ -1857,18 +1878,18 @@ const AttendancePage = () => {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{user.name}</h3>
-                          <p className="text-sm text-gray-600">{user.position}</p>
-                          <Badge className={`mt-2 ${getDepartmentColor(user.department)}`}>
-                            {user.department}
+                          <h3 className="font-semibold text-lg">{getDisplayValue(user.name, "이름없음")}</h3>
+                          <p className="text-sm text-gray-600">{getDisplayValue(user.position, "직원")}</p>
+                          <Badge className={`mt-2 ${getDepartmentColor(getDisplayValue(user.department, "미지정"))}`}>
+                            {getDisplayValue(user.department, "미지정")}
                           </Badge>
                           <div className="mt-2 space-y-1 text-sm text-gray-500">
-                            <p>{user.email}</p>
-                            <p>{user.phone}</p>
+                            <p>{getDisplayValue(user.email, "-")}</p>
+                            <p>{getDisplayValue(user.phone, "-")}</p>
                           </div>
                         </div>
                         <Badge variant={user.status === "approved" ? "default" : "secondary"}>
-                          {user.status === "approved" ? "승인됨" : "미승인"}
+                          {getDisplayValue(user.status, "승인됨")}
                         </Badge>
                       </div>
                     </CardContent>
@@ -1887,6 +1908,9 @@ const AttendancePage = () => {
             <DialogTitle>
               스케줄 확인
             </DialogTitle>
+            <DialogDescription>
+              근태 정보를 수정하거나 추가할 수 있습니다.
+            </DialogDescription>
           </DialogHeader>
           <AttendanceEditForm
             attendance={editingAttendance}

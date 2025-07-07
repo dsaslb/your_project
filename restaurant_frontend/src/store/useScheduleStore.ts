@@ -217,16 +217,55 @@ export const useScheduleStore = create<ScheduleStore>()(
       fetchSchedules: async () => {
         set({ loading: true, error: null });
         try {
-          const response = await fetch('/api/schedule', {
+          const response = await fetch('http://localhost:5000/api/schedule', {
             credentials: 'include'
           });
-          const data = await response.json();
           
-          if (data.success) {
-            set({ schedules: data.data, loading: false });
-            console.log('스케줄 데이터 로드 성공:', data.data.length, '건');
+          console.log('스케줄 API 응답 상태:', response.status);
+          
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('스케줄 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+              const textResponse = await response.text();
+              console.error('응답 내용:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return;
+              }
+              
+              set({ schedules: getDummyScheduleData(), loading: false });
+              return;
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+              set({ schedules: data.data, loading: false });
+              console.log('스케줄 데이터 로드 성공:', data.data.length, '건');
+            } else {
+              console.error('스케줄 목록 로드 실패:', data.error);
+              set({ schedules: getDummyScheduleData(), loading: false });
+            }
           } else {
-            console.error('스케줄 목록 로드 실패:', data.error);
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              console.error('스케줄 API 호출 실패:', response.status, errorData);
+            } else {
+              const textResponse = await response.text();
+              console.error('스케줄 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return;
+              }
+            }
             set({ schedules: getDummyScheduleData(), loading: false });
           }
         } catch (error) {
@@ -237,16 +276,55 @@ export const useScheduleStore = create<ScheduleStore>()(
 
       fetchShiftRequests: async () => {
         try {
-          const response = await fetch('/api/schedule/shift-requests', {
+          const response = await fetch('http://localhost:5000/api/schedule/shift-requests', {
             credentials: 'include'
           });
-          const data = await response.json();
           
-          if (data.success) {
-            set({ shiftRequests: data.data });
-            console.log('교대 요청 데이터 로드 성공:', data.data.length, '건');
+          console.log('교대 요청 API 응답 상태:', response.status);
+          
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('교대 요청 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+              const textResponse = await response.text();
+              console.error('응답 내용:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return;
+              }
+              
+              set({ shiftRequests: getDummyShiftRequests() });
+              return;
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+              set({ shiftRequests: data.data });
+              console.log('교대 요청 데이터 로드 성공:', data.data.length, '건');
+            } else {
+              console.error('교대 요청 목록 로드 실패:', data.error);
+              set({ shiftRequests: getDummyShiftRequests() });
+            }
           } else {
-            console.error('교대 요청 목록 로드 실패:', data.error);
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              console.error('교대 요청 API 호출 실패:', response.status, errorData);
+            } else {
+              const textResponse = await response.text();
+              console.error('교대 요청 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return;
+              }
+            }
             set({ shiftRequests: getDummyShiftRequests() });
           }
         } catch (error) {
@@ -257,7 +335,7 @@ export const useScheduleStore = create<ScheduleStore>()(
 
       createSchedule: async (scheduleData) => {
         try {
-          const response = await fetch('/api/schedule', {
+          const response = await fetch('http://localhost:5000/api/schedule', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -266,15 +344,56 @@ export const useScheduleStore = create<ScheduleStore>()(
             body: JSON.stringify(scheduleData)
           });
 
-          const result = await response.json();
+          console.log('스케줄 생성 API 응답 상태:', response.status);
 
-          if (result.success) {
-            get().addSchedule(result.data);
-            console.log('스케줄 생성 성공');
-            return true;
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('스케줄 생성 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+              const textResponse = await response.text();
+              console.error('응답 내용:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+              return false;
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              get().addSchedule(result.data);
+              console.log('스케줄 생성 성공');
+              return true;
+            } else {
+              console.error('스케줄 생성 실패:', result.error);
+              set({ error: result.error });
+              return false;
+            }
           } else {
-            console.error('스케줄 생성 실패:', result.error);
-            set({ error: result.error });
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              console.error('스케줄 생성 API 호출 실패:', response.status, errorData);
+              set({ error: errorData.error || '알 수 없는 오류' });
+            } else {
+              const textResponse = await response.text();
+              console.error('스케줄 생성 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+            }
             return false;
           }
         } catch (error) {
@@ -286,7 +405,7 @@ export const useScheduleStore = create<ScheduleStore>()(
 
       updateScheduleAPI: async (id, scheduleData) => {
         try {
-          const response = await fetch(`/api/schedule/${id}`, {
+          const response = await fetch(`http://localhost:5000/api/schedule/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -295,15 +414,56 @@ export const useScheduleStore = create<ScheduleStore>()(
             body: JSON.stringify(scheduleData)
           });
 
-          const result = await response.json();
+          console.log('스케줄 수정 API 응답 상태:', response.status);
 
-          if (result.success) {
-            get().updateSchedule(id, result.data);
-            console.log('스케줄 수정 성공');
-            return true;
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('스케줄 수정 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+              const textResponse = await response.text();
+              console.error('응답 내용:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+              return false;
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              get().updateSchedule(id, result.data);
+              console.log('스케줄 수정 성공');
+              return true;
+            } else {
+              console.error('스케줄 수정 실패:', result.error);
+              set({ error: result.error });
+              return false;
+            }
           } else {
-            console.error('스케줄 수정 실패:', result.error);
-            set({ error: result.error });
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              console.error('스케줄 수정 API 호출 실패:', response.status, errorData);
+              set({ error: errorData.error || '알 수 없는 오류' });
+            } else {
+              const textResponse = await response.text();
+              console.error('스케줄 수정 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+            }
             return false;
           }
         } catch (error) {
@@ -315,7 +475,7 @@ export const useScheduleStore = create<ScheduleStore>()(
 
       deleteScheduleAPI: async (id) => {
         try {
-          const response = await fetch(`/api/schedule/${id}`, {
+          const response = await fetch(`http://localhost:5000/api/schedule/${id}`, {
             method: 'DELETE',
             headers: {
               'Content-Type': 'application/json',
@@ -323,15 +483,56 @@ export const useScheduleStore = create<ScheduleStore>()(
             credentials: 'include'
           });
 
-          const result = await response.json();
+          console.log('스케줄 삭제 API 응답 상태:', response.status);
 
-          if (result.success) {
-            get().deleteSchedule(id);
-            console.log('스케줄 삭제 성공');
-            return true;
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('스케줄 삭제 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+              const textResponse = await response.text();
+              console.error('응답 내용:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+              return false;
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              get().deleteSchedule(id);
+              console.log('스케줄 삭제 성공');
+              return true;
+            } else {
+              console.error('스케줄 삭제 실패:', result.error);
+              set({ error: result.error });
+              return false;
+            }
           } else {
-            console.error('스케줄 삭제 실패:', result.error);
-            set({ error: result.error });
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              console.error('스케줄 삭제 API 호출 실패:', response.status, errorData);
+              set({ error: errorData.error || '알 수 없는 오류' });
+            } else {
+              const textResponse = await response.text();
+              console.error('스케줄 삭제 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+            }
             return false;
           }
         } catch (error) {
@@ -343,7 +544,7 @@ export const useScheduleStore = create<ScheduleStore>()(
 
       createShiftRequest: async (requestData) => {
         try {
-          const response = await fetch('/api/schedule/shift-requests', {
+          const response = await fetch('http://localhost:5000/api/schedule/shift-requests', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -352,17 +553,58 @@ export const useScheduleStore = create<ScheduleStore>()(
             body: JSON.stringify(requestData)
           });
 
-          const result = await response.json();
+          console.log('교대 요청 생성 API 응답 상태:', response.status);
 
-          if (result.success) {
-            set((state) => ({
-              shiftRequests: [...state.shiftRequests, result.data]
-            }));
-            console.log('교대 요청 생성 성공');
-            return true;
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('교대 요청 생성 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+              const textResponse = await response.text();
+              console.error('응답 내용:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+              return false;
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              set((state) => ({
+                shiftRequests: [...state.shiftRequests, result.data]
+              }));
+              console.log('교대 요청 생성 성공');
+              return true;
+            } else {
+              console.error('교대 요청 생성 실패:', result.error);
+              set({ error: result.error });
+              return false;
+            }
           } else {
-            console.error('교대 요청 생성 실패:', result.error);
-            set({ error: result.error });
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              console.error('교대 요청 생성 API 호출 실패:', response.status, errorData);
+              set({ error: errorData.error || '알 수 없는 오류' });
+            } else {
+              const textResponse = await response.text();
+              console.error('교대 요청 생성 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+            }
             return false;
           }
         } catch (error) {
@@ -374,7 +616,7 @@ export const useScheduleStore = create<ScheduleStore>()(
 
       approveShiftRequest: async (requestId) => {
         try {
-          const response = await fetch(`/api/schedule/shift-requests/${requestId}/approve`, {
+          const response = await fetch(`http://localhost:5000/api/schedule/shift-requests/${requestId}/approve`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -382,19 +624,60 @@ export const useScheduleStore = create<ScheduleStore>()(
             credentials: 'include'
           });
 
-          const result = await response.json();
+          console.log('교대 요청 승인 API 응답 상태:', response.status);
 
-          if (result.success) {
-            set((state) => ({
-              shiftRequests: state.shiftRequests.map(request =>
-                request.id === requestId ? { ...request, status: 'approved', updated_at: new Date().toISOString() } : request
-              )
-            }));
-            console.log('교대 요청 승인 성공');
-            return true;
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('교대 요청 승인 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+              const textResponse = await response.text();
+              console.error('응답 내용:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+              return false;
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              set((state) => ({
+                shiftRequests: state.shiftRequests.map(request =>
+                  request.id === requestId ? { ...request, status: 'approved', updated_at: new Date().toISOString() } : request
+                )
+              }));
+              console.log('교대 요청 승인 성공');
+              return true;
+            } else {
+              console.error('교대 요청 승인 실패:', result.error);
+              set({ error: result.error });
+              return false;
+            }
           } else {
-            console.error('교대 요청 승인 실패:', result.error);
-            set({ error: result.error });
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              console.error('교대 요청 승인 API 호출 실패:', response.status, errorData);
+              set({ error: errorData.error || '알 수 없는 오류' });
+            } else {
+              const textResponse = await response.text();
+              console.error('교대 요청 승인 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+            }
             return false;
           }
         } catch (error) {
@@ -406,7 +689,7 @@ export const useScheduleStore = create<ScheduleStore>()(
 
       rejectShiftRequest: async (requestId, reason = '관리자 거절') => {
         try {
-          const response = await fetch(`/api/schedule/shift-requests/${requestId}/reject`, {
+          const response = await fetch(`http://localhost:5000/api/schedule/shift-requests/${requestId}/reject`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -415,19 +698,60 @@ export const useScheduleStore = create<ScheduleStore>()(
             body: JSON.stringify({ reason })
           });
 
-          const result = await response.json();
+          console.log('교대 요청 거절 API 응답 상태:', response.status);
 
-          if (result.success) {
-            set((state) => ({
-              shiftRequests: state.shiftRequests.map(request =>
-                request.id === requestId ? { ...request, status: 'rejected', updated_at: new Date().toISOString() } : request
-              )
-            }));
-            console.log('교대 요청 거절 성공');
-            return true;
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('교대 요청 거절 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+              const textResponse = await response.text();
+              console.error('응답 내용:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+              return false;
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              set((state) => ({
+                shiftRequests: state.shiftRequests.map(request =>
+                  request.id === requestId ? { ...request, status: 'rejected', updated_at: new Date().toISOString() } : request
+                )
+              }));
+              console.log('교대 요청 거절 성공');
+              return true;
+            } else {
+              console.error('교대 요청 거절 실패:', result.error);
+              set({ error: result.error });
+              return false;
+            }
           } else {
-            console.error('교대 요청 거절 실패:', result.error);
-            set({ error: result.error });
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              console.error('교대 요청 거절 API 호출 실패:', response.status, errorData);
+              set({ error: errorData.error || '알 수 없는 오류' });
+            } else {
+              const textResponse = await response.text();
+              console.error('교대 요청 거절 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+              
+              // HTML 응답인 경우 로그인 페이지로 리다이렉트
+              if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+                alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+                window.location.href = 'http://localhost:5000/login';
+                return false;
+              }
+              
+              set({ error: '서버에서 잘못된 응답을 받았습니다.' });
+            }
             return false;
           }
         } catch (error) {

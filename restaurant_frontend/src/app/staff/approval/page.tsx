@@ -69,18 +69,57 @@ export default function StaffApprovalPage() {
         credentials: 'include',
       });
       
+      console.log('미승인 직원 API 응답 상태:', response.status);
+      console.log('미승인 직원 API 응답 헤더:', Object.fromEntries(response.headers.entries()));
+      
       if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('미승인 직원 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+          const textResponse = await response.text();
+          console.error('응답 내용:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+          return;
+        }
+        
         const data = await response.json();
         if (data.success) {
           setPendingStaff(data.staff || []);
         } else {
           console.error('미승인 직원 목록 로드 실패:', data.error);
+          alert(`미승인 직원 목록을 불러오는데 실패했습니다: ${data.error}`);
         }
       } else {
-        console.error('미승인 직원 목록 로드 실패:', response.status);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          console.error('미승인 직원 API 호출 실패:', response.status, errorData);
+          alert(`미승인 직원 목록 로드 실패: ${errorData.error || '알 수 없는 오류'}`);
+        } else {
+          const textResponse = await response.text();
+          console.error('미승인 직원 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+        }
       }
     } catch (error) {
       console.error('미승인 직원 목록 로드 오류:', error);
+      alert('미승인 직원 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -114,7 +153,26 @@ export default function StaffApprovalPage() {
         body: JSON.stringify({ permissions: permissionForm }),
       });
 
+      console.log('권한 설정 API 응답 상태:', response.status);
+
       if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('권한 설정 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+          const textResponse = await response.text();
+          console.error('응답 내용:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+          return;
+        }
+
         const data = await response.json();
         if (data.success) {
           alert('권한이 설정되었습니다!');
@@ -124,7 +182,16 @@ export default function StaffApprovalPage() {
           alert(`권한 설정 실패: ${data.error}`);
         }
       } else {
-        alert('권한 설정 중 오류가 발생했습니다.');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          console.error('권한 설정 API 호출 실패:', response.status, errorData);
+          alert(`권한 설정 실패: ${errorData.error || '알 수 없는 오류'}`);
+        } else {
+          const textResponse = await response.text();
+          console.error('권한 설정 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+        }
       }
     } catch (error) {
       console.error('권한 설정 오류:', error);
@@ -147,7 +214,26 @@ export default function StaffApprovalPage() {
         body: JSON.stringify({ permissions: permissionForm }),
       });
 
+      console.log('직원 승인 API 응답 상태:', response.status);
+
       if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('직원 승인 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+          const textResponse = await response.text();
+          console.error('응답 내용:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+          return;
+        }
+
         const data = await response.json();
         if (data.success) {
           alert('직원이 승인되었습니다!');
@@ -158,7 +244,24 @@ export default function StaffApprovalPage() {
           alert(`승인 실패: ${data.error}`);
         }
       } else {
-        alert('승인 처리 중 오류가 발생했습니다.');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          console.error('직원 승인 API 호출 실패:', response.status, errorData);
+          alert(`승인 실패: ${errorData.error || '알 수 없는 오류'}`);
+        } else {
+          const textResponse = await response.text();
+          console.error('직원 승인 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+        }
       }
     } catch (error) {
       console.error('승인 처리 오류:', error);
@@ -183,7 +286,26 @@ export default function StaffApprovalPage() {
         body: JSON.stringify({ reason: rejectReason }),
       });
 
+      console.log('직원 거절 API 응답 상태:', response.status);
+
       if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('직원 거절 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+          const textResponse = await response.text();
+          console.error('응답 내용:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+          return;
+        }
+
         const data = await response.json();
         if (data.success) {
           alert('직원이 거절되었습니다!');
@@ -195,7 +317,24 @@ export default function StaffApprovalPage() {
           alert(`거절 실패: ${data.error}`);
         }
       } else {
-        alert('거절 처리 중 오류가 발생했습니다.');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          console.error('직원 거절 API 호출 실패:', response.status, errorData);
+          alert(`거절 실패: ${errorData.error || '알 수 없는 오류'}`);
+        } else {
+          const textResponse = await response.text();
+          console.error('직원 거절 API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+        }
       }
     } catch (error) {
       console.error('거절 처리 오류:', error);

@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import PermissionNav from "@/components/PermissionNav";
+import useUserStore from "@/store/useUserStore";
 import {
   ChevronLeft,
   ChevronRight,
@@ -36,6 +38,7 @@ import {
   Dialog,
   DialogTrigger,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogClose,
@@ -43,9 +46,11 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user, permissions } = useUserStore();
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [showPermissionNav, setShowPermissionNav] = useState(false);
   const [weather, setWeather] = useState({
     temperature: 22,
     condition: "맑음",
@@ -56,6 +61,7 @@ export default function DashboardPage() {
   // 모달 상태
   const [openStaffModal, setOpenStaffModal] = useState(false);
   const [openOrderModal, setOpenOrderModal] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -85,6 +91,23 @@ export default function DashboardPage() {
       clearInterval(weatherInterval);
     };
   }, []);
+
+  // Hydration 오류 방지를 위한 클라이언트 사이드 렌더링
+  useEffect(() => {
+    setIsClient(true);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // 슈퍼 관리자인 경우 권한별 네비게이션 표시
+  useEffect(() => {
+    if (user && permissions.canAccessSuperAdmin) {
+      setShowPermissionNav(true);
+    }
+  }, [user, permissions]);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
@@ -289,14 +312,15 @@ export default function DashboardPage() {
   };
 
   const calculateEventStyle = (startTime: string, endTime: string) => {
-    const start = parseInt(startTime.split(":")[0]);
-    const end = parseInt(endTime.split(":")[0]);
-    const duration = end - start;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const startHour = parseInt(startTime.split(":")[0]);
+    const endHour = parseInt(endTime.split(":")[0]);
     
-    return {
-      height: `${duration * 60}px`,
-      top: `${(start - 8) * 60}px`,
-    };
+    if (currentHour >= startHour && currentHour < endHour) {
+      return 'border-l-4 border-green-500 bg-green-50';
+    }
+    return '';
   };
 
   return (
@@ -308,20 +332,24 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">매장 대시보드</h1>
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                <Clock className="h-4 w-4" />
-                <span>{formatTime(currentTime)}</span>
-                <span>•</span>
-                <span>{formatDate(currentTime)}</span>
-              </div>
+              {isClient && (
+                <div className="flex items-center space-x-2 text-sm text-gray-500">
+                  <Clock className="h-4 w-4" />
+                  <span>{formatTime(currentTime)}</span>
+                  <span>•</span>
+                  <span>{formatDate(currentTime)}</span>
+                </div>
+              )}
             </div>
             
-            {/* 날씨 정보 */}
-            <div className="flex items-center space-x-3 bg-gray-100 rounded-lg px-3 py-2">
-              {getWeatherIcon(weather.icon)}
-              <div className="text-sm">
-                <div className="font-medium">{weather.temperature}°C</div>
-                <div className="text-gray-500">{weather.condition}</div>
+            <div className="flex items-center space-x-3">
+              {/* 날씨 정보 */}
+              <div className="flex items-center space-x-3 bg-gray-100 rounded-lg px-3 py-2">
+                {getWeatherIcon(weather.icon)}
+                <div className="text-sm">
+                  <div className="font-medium">{weather.temperature}°C</div>
+                  <div className="text-gray-500">{weather.condition}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -367,7 +395,7 @@ export default function DashboardPage() {
               
               <div className="space-y-4">
                 {events.map((event) => (
-                  <div key={event.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                  <div key={event.id} className={`flex items-center space-x-4 p-4 bg-gray-50 rounded-lg ${calculateEventStyle(event.startTime, event.endTime)}`}>
                     <div className={`w-3 h-3 ${event.color} rounded-full`}></div>
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{event.title}</h3>
@@ -434,6 +462,9 @@ export default function DashboardPage() {
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>오늘 출근한 직원 명단</DialogTitle>
+                      <DialogDescription>
+                        오늘 출근한 직원들의 상세 정보를 확인할 수 있습니다.
+                      </DialogDescription>
                     </DialogHeader>
                     <ul className="divide-y divide-gray-200">
                       {events.map((event) => (
@@ -467,6 +498,9 @@ export default function DashboardPage() {
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>오늘 주문 현황</DialogTitle>
+                      <DialogDescription>
+                        오늘의 주문 현황과 상세 정보를 확인할 수 있습니다.
+                      </DialogDescription>
                     </DialogHeader>
                     <ul className="divide-y divide-gray-200">
                       {orders.map((order) => (

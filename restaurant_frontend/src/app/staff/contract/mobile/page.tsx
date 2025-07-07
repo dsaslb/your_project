@@ -38,6 +38,24 @@ interface ContractForm {
   terms: string;
   employeeSignature: string | null;
   managerSignature: string | null;
+  healthCertificate: {
+    issueDate: string;
+    expiryDate: string;
+    renewalDate: string;
+    issuingAuthority: string;
+    certificateType: string;
+    file: File | null;
+  };
+  requiredDocuments: {
+    idCard: boolean;
+    healthCertificate: boolean;
+    bankbook: boolean;
+    resume: boolean;
+    contractAgreement: boolean;
+    idCardFile: File | null;
+    bankbookFile: File | null;
+    resumeFile: File | null;
+  };
 }
 
 export default function MobileContractPage() {
@@ -73,7 +91,25 @@ export default function MobileContractPage() {
     responsibilities: "매장 운영 및 고객 서비스",
     terms: "근로기준법에 따른 근무 조건 적용",
     employeeSignature: null,
-    managerSignature: null
+    managerSignature: null,
+    healthCertificate: {
+      issueDate: "",
+      expiryDate: "",
+      renewalDate: "",
+      issuingAuthority: "",
+      certificateType: "",
+      file: null,
+    },
+    requiredDocuments: {
+      idCard: true,
+      healthCertificate: true,
+      bankbook: true,
+      resume: true,
+      contractAgreement: true,
+      idCardFile: null,
+      bankbookFile: null,
+      resumeFile: null,
+    },
   });
 
   // 직책 관련 상태
@@ -110,13 +146,15 @@ export default function MobileContractPage() {
   const benefitOptions = ["4대보험", "연차휴가", "식대지원", "교통비지원", "야근수당", "성과급", "교육지원"];
 
   const steps = [
-    { id: 1, title: "기본 정보", icon: User },
-    { id: 2, title: "계약 기간", icon: Calendar },
-    { id: 3, title: "근무 조건", icon: Clock },
-    { id: 4, title: "급여 조건", icon: DollarSign },
-    { id: 5, title: "복리후생", icon: CheckCircle },
-    { id: 6, title: "기타 조건", icon: FileText },
-    { id: 7, title: "사인", icon: PenTool },
+    "기본 정보",
+    "계약 기간",
+    "근무 조건",
+    "보건증 정보",
+    "필수 서류",
+    "급여 조건",
+    "복리후생",
+    "기타 조건",
+    "계약서 사인"
   ];
 
   // 직책 목록 불러오기
@@ -1116,60 +1154,67 @@ export default function MobileContractPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                급여 조건
+                <Calendar className="h-5 w-5" />
+                보건증 정보
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  기본급
+                  보건증 발급일 *
                 </label>
                 <Input
-                  type="number"
-                  value={contractForm.salary.base}
-                  onChange={(e) => setContractForm(prev => ({ 
-                    ...prev, 
-                    salary: { ...prev.salary, base: Number(e.target.value) }
-                  }))}
-                  placeholder="0"
+                  type="date"
+                  value={contractForm.healthCertificate.issueDate}
+                  onChange={(e) => setContractForm(prev => ({ ...prev, healthCertificate: { ...prev.healthCertificate, issueDate: e.target.value } }))}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  수당
+                  보건증 만료일 *
                 </label>
                 <Input
-                  type="number"
-                  value={contractForm.salary.allowance}
-                  onChange={(e) => setContractForm(prev => ({ 
-                    ...prev, 
-                    salary: { ...prev.salary, allowance: Number(e.target.value) }
-                  }))}
-                  placeholder="0"
+                  type="date"
+                  value={contractForm.healthCertificate.expiryDate}
+                  onChange={(e) => {
+                    setContractForm(prev => ({
+                      ...prev,
+                      healthCertificate: {
+                        ...prev.healthCertificate,
+                        expiryDate: e.target.value,
+                        renewalDate: calculateRenewalDate(e.target.value)
+                      }
+                    }));
+                  }}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  상여금
+                  보건증 갱신일
                 </label>
                 <Input
-                  type="number"
-                  value={contractForm.salary.bonus}
-                  onChange={(e) => setContractForm(prev => ({ 
-                    ...prev, 
-                    salary: { ...prev.salary, bonus: Number(e.target.value) }
-                  }))}
-                  placeholder="0"
+                  type="date"
+                  value={contractForm.healthCertificate.renewalDate}
+                  onChange={(e) => setContractForm(prev => ({ ...prev, healthCertificate: { ...prev.healthCertificate, renewalDate: e.target.value } }))}
                 />
               </div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-blue-900 dark:text-blue-100">총 급여</span>
-                  <span className="text-lg font-bold text-blue-900 dark:text-blue-100">
-                    ₩{totalSalary.toLocaleString()}
-                  </span>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  보건증 발급기관
+                </label>
+                <Input
+                  value={contractForm.healthCertificate.issuingAuthority}
+                  onChange={(e) => setContractForm(prev => ({ ...prev, healthCertificate: { ...prev.healthCertificate, issuingAuthority: e.target.value } }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  보건증 유형
+                </label>
+                <Input
+                  value={contractForm.healthCertificate.certificateType}
+                  onChange={(e) => setContractForm(prev => ({ ...prev, healthCertificate: { ...prev.healthCertificate, certificateType: e.target.value } }))}
+                />
               </div>
             </CardContent>
           </Card>
@@ -1180,117 +1225,43 @@ export default function MobileContractPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
-                복리후생
+                <FileText className="h-5 w-5" />
+                필수 서류
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-2">
-                {benefitOptions.map(benefit => (
-                  <Button
-                    key={benefit}
-                    variant={contractForm.benefits.includes(benefit) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleBenefitToggle(benefit)}
-                    className="text-sm"
-                  >
-                    {benefit}
-                  </Button>
-                ))}
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  아이디증명서
+                </label>
+                                 <Input
+                   type="file"
+                   onChange={(e) => handleFileUpload('requiredDocuments.idCardFile', e.target.files?.[0] || null)}
+                 />
+               </div>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                   은행잔고표
+                 </label>
+                 <Input
+                   type="file"
+                   onChange={(e) => handleFileUpload('requiredDocuments.bankbookFile', e.target.files?.[0] || null)}
+                 />
+               </div>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                   이력서
+                 </label>
+                 <Input
+                   type="file"
+                   onChange={(e) => handleFileUpload('requiredDocuments.resumeFile', e.target.files?.[0] || null)}
+                />
               </div>
             </CardContent>
           </Card>
         );
 
       case 6:
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle>기타 조건</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  주요 업무
-                </label>
-                <Textarea
-                  value={contractForm.responsibilities}
-                  onChange={(e) => setContractForm(prev => ({ ...prev, responsibilities: e.target.value }))}
-                  placeholder="주요 업무 내용을 입력하세요"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  특별 조건
-                </label>
-                <Textarea
-                  value={contractForm.terms}
-                  onChange={(e) => setContractForm(prev => ({ ...prev, terms: e.target.value }))}
-                  placeholder="특별한 계약 조건이 있다면 입력하세요"
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        );
-
-      case 7:
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PenTool className="h-5 w-5" />
-                  계약서 사인
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 mb-4">
-                  계약서에 동의하시면 아래에 사인을 해주세요.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* 직원 사인 */}
-            <SignaturePad
-              title="직원 사인"
-              width={320}
-              height={150}
-              onSignatureChange={(signature) => 
-                setContractForm(prev => ({ ...prev, employeeSignature: signature }))
-              }
-            />
-
-            {/* 관리자 사인 */}
-            <SignaturePad
-              title="관리자 사인"
-              width={320}
-              height={150}
-              onSignatureChange={(signature) => 
-                setContractForm(prev => ({ ...prev, managerSignature: signature }))
-              }
-            />
-
-            {/* 계약 동의 체크박스 */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    id="contract-agreement"
-                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="contract-agreement" className="text-sm text-gray-700">
-                    위 계약 조건을 모두 읽고 이해했으며, 이에 동의합니다.
-                  </label>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 4:
         return (
           <Card>
             <CardHeader>
@@ -1354,7 +1325,7 @@ export default function MobileContractPage() {
           </Card>
         );
 
-      case 5:
+      case 7:
         return (
           <Card>
             <CardHeader>
@@ -1381,7 +1352,7 @@ export default function MobileContractPage() {
           </Card>
         );
 
-      case 6:
+      case 8:
         return (
           <Card>
             <CardHeader>
@@ -1414,7 +1385,7 @@ export default function MobileContractPage() {
           </Card>
         );
 
-      case 7:
+      case 9:
         return (
           <div className="space-y-6">
             <Card>
@@ -1472,6 +1443,52 @@ export default function MobileContractPage() {
       default:
         return null;
     }
+  };
+
+  // 파일 업로드 핸들러
+  const handleFileUpload = (field: string, file: File | null) => {
+    if (field.startsWith('healthCertificate.')) {
+      const subField = field.split('.')[1];
+      setContractForm(prev => ({
+        ...prev,
+        healthCertificate: {
+          ...prev.healthCertificate,
+          [subField]: file
+        }
+      }));
+    } else if (field.startsWith('requiredDocuments.')) {
+      const subField = field.split('.')[1];
+      setContractForm(prev => ({
+        ...prev,
+        requiredDocuments: {
+          ...prev.requiredDocuments,
+          [subField]: file
+        }
+      }));
+    }
+  };
+
+  // 보건증 만료일 자동 계산
+  const calculateRenewalDate = (expiryDate: string) => {
+    if (expiryDate) {
+      const expiry = new Date(expiryDate);
+      const renewal = new Date(expiry);
+      renewal.setDate(renewal.getDate() - 30); // 만료 30일 전
+      return renewal.toISOString().split('T')[0];
+    }
+    return '';
+  };
+
+  // 보건증 만료일 변경 시 갱신일 자동 설정
+  const handleExpiryDateChange = (expiryDate: string) => {
+    setContractForm(prev => ({
+      ...prev,
+      healthCertificate: {
+        ...prev.healthCertificate,
+        expiryDate,
+        renewalDate: calculateRenewalDate(expiryDate)
+      }
+    }));
   };
 
   return (
@@ -1534,17 +1551,17 @@ export default function MobileContractPage() {
         <div className="px-4 pb-4">
           <div className="flex items-center justify-between">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
+              <div key={step} className="flex items-center">
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                  step.id <= currentStep 
+                  index < currentStep 
                     ? 'bg-blue-600 text-white' 
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
                 }`}>
-                  {step.id < currentStep ? '✓' : step.id}
+                  {index + 1}
                 </div>
                 {index < steps.length - 1 && (
                   <div className={`w-8 h-0.5 mx-2 ${
-                    step.id < currentStep ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                    index < currentStep ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
                   }`} />
                 )}
               </div>
@@ -1575,7 +1592,7 @@ export default function MobileContractPage() {
               disabled={
                 (currentStep === 1 && (!contractForm.employeeName || !contractForm.position || !contractForm.department || !contractForm.email || !contractForm.phone || !contractForm.username || !contractForm.password || !contractForm.confirmPassword || contractForm.password !== contractForm.confirmPassword)) ||
                 (currentStep === 2 && (!contractForm.startDate || !contractForm.endDate)) ||
-                (currentStep === 7 && (!contractForm.employeeSignature || !contractForm.managerSignature))
+                (currentStep === 9 && (!contractForm.employeeSignature || !contractForm.managerSignature))
               }
             >
               다음

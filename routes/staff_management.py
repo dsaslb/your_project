@@ -12,6 +12,25 @@ from utils.logger import log_error
 staff_bp = Blueprint("staff_management", __name__)
 
 
+@staff_bp.route("/admin/staff/approval")
+@login_required
+@admin_required
+def staff_approval():
+    """직원 승인 페이지"""
+    try:
+        # 대기 중인 직원 조회
+        pending_staff = User.query.filter_by(status='pending').all()
+        
+        return render_template(
+            "staff_approval.html",
+            pending_staff=pending_staff
+        )
+    except Exception as e:
+        log_error(e, current_user.id)
+        flash("직원 승인 페이지 로딩 중 오류가 발생했습니다.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+
 @staff_bp.route("/staff-management")
 @login_required
 @admin_required

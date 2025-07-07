@@ -19,87 +19,39 @@ def api_login():
     ---
     tags:
       - Auth
-    summary: 사용자 인증 및 JWT 토큰 발급
-    description: 사용자명과 비밀번호를 받아 인증 후 JWT 토큰을 반환합니다.
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          required:
-            - username
-            - password
-          properties:
-            username:
-              type: string
-              description: 사용자명
-              example: "admin"
-            password:
-              type: string
-              description: 비밀번호
-              example: "password123"
-    responses:
-      200:
-        description: 로그인 성공
-        schema:
-          type: object
-          properties:
-            token:
-              type: string
-              description: JWT 토큰
-              example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
-      400:
-        description: 잘못된 요청
-        schema:
-          type: object
-          properties:
-            msg:
-              type: string
-              example: "Username and password are required"
-      401:
-        description: 인증 실패
-        schema:
-          type: object
-          properties:
-            msg:
-              type: string
-              example: "Invalid credentials"
-      500:
-        description: 서버 오류
-        schema:
-          type: object
-          properties:
-            msg:
-              type: string
-              example: "Could not generate token"
+    summary: 사용자 인증 및 세션 로그인
+    description: 사용자명과 비밀번호를 받아 인증 후 사용자 정보를 반환합니다.
     """
     data = request.json
     if not data or not data.get("username") or not data.get("password"):
-        return jsonify({"msg": "Username and password are required"}), 400
+        return jsonify({"message": "사용자명과 비밀번호를 입력해주세요."}), 400
 
     user = User.query.filter_by(username=data["username"]).first()
 
     if not user or not user.check_password(data["password"]):
-        return jsonify({"msg": "Invalid credentials"}), 401
+        return jsonify({"message": "잘못된 사용자명 또는 비밀번호입니다."}), 401
 
-    try:
-        now = datetime.datetime.utcnow()
-        token = jwt.encode(
-            {
-                "user_id": user.id,
-                "role": user.role,
-                "iat": now,  # 발급 시간 (마이크로초 단위)
-                "jti": secrets.token_hex(16),  # 고유 토큰 ID
-                "exp": now + datetime.timedelta(hours=24),
-            },
-            current_app.config["JWT_SECRET_KEY"],
-            algorithm="HS256",
-        )
+    if user.status != "approved":
+        return jsonify({"message": "승인 대기 중인 계정입니다."}), 401
 
-        return jsonify({"token": token})
-    except Exception as e:
-        return jsonify({"msg": "Could not generate token", "error": str(e)}), 500
+    # Flask-Login으로 세션 로그인
+    from flask_login import login_user
+    login_user(user)
+
+    # 사용자 정보 반환 (비밀번호 제외)
+    user_data = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "role": user.role,
+        "status": user.status,
+        "branch_id": user.branch_id,
+    }
+
+    return jsonify({
+        "message": "로그인 성공",
+        "user": user_data
+    }), 200
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])

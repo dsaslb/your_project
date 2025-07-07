@@ -2,6 +2,7 @@ from functools import wraps
 
 import jwt
 from flask import current_app, jsonify, request
+from flask_login import login_required
 
 from models import User
 

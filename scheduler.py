@@ -14,6 +14,7 @@ from utils.auto_processor import auto_processor
 # from utils.backup_manager import backup_manager  # 삭제된 파일
 from utils.email_utils import email_service
 from utils.notify import send_notification_enhanced
+import schedule
 
 logger = logging.getLogger(__name__)
 
@@ -800,42 +801,97 @@ def check_document_expiry():
         logger.error(f"문서 만료 확인 중 오류 발생: {str(e)}")
         db.session.rollback()
 
-def run_scheduler():
-    """스케줄러를 실행합니다."""
-    # 문서 만료 확인을 위한 스케줄러 생성
-    document_scheduler = BackgroundScheduler()
-    
-    # 매일 오전 9시에 문서 만료 확인
-    document_scheduler.add_job(
-        check_document_expiry,
-        CronTrigger(hour=9, minute=0),
-        id="document_expiry_check",
-        name="문서 만료 확인",
-        replace_existing=True
-    )
-    
-    # 개발/테스트용: 1분마다 실행
-    if os.getenv('FLASK_ENV') == 'development':
-        document_scheduler.add_job(
-            check_document_expiry,
-            IntervalTrigger(minutes=1),
-            id="document_expiry_check_dev",
-            name="문서 만료 확인 (개발용)",
-            replace_existing=True
-        )
-    
-    # 스케줄러 시작
-    document_scheduler.start()
-    logger.info("문서 만료 알림 스케줄러 시작")
-    
+def check_health_certificate_expiry():
+    """보건증 만료 임박 체크 및 알림 발송"""
     try:
-        # 메인 스레드 유지
-        while True:
-            time.sleep(60)
-    except KeyboardInterrupt:
-        logger.info("스케줄러 종료 요청됨")
-        document_scheduler.shutdown()
-        logger.info("문서 만료 알림 스케줄러 종료")
+        # 30일 이내 만료되는 보건증 조회
+        expiry_date = datetime.now().date() + timedelta(days=30)
+        
+        expiring_certs = HealthCertificate.query.filter(
+            HealthCertificate.expiry_date <= expiry_date,
+            HealthCertificate.expiry_date > datetime.now().date(),
+            HealthCertificate.notification_sent == False
+        ).all()
+        
+        for cert in expiring_certs:
+            staff = Staff.query.get(cert.staff_id)
+            if staff and staff.user_id:
+                user = User.query.get(staff.user_id)
+                if user:
+                    # 알림 생성
+                    notification = Notification()
+                    notification.user_id = user.id
+                    notification.title = "보건증 만료 임박 알림"
+                    notification.content = f"보건증이 {cert.expiry_date.strftime('%Y년 %m월 %d일')}에 만료됩니다. 갱신을 준비해주세요."
+                    notification.category = "보건증"
+                    notification.priority = "중요"
+                    notification.is_admin_only = False
+                    
+                    db.session.add(notification)
+                    
+                    # 알림 발송 표시
+                    cert.notification_sent = True
+        
+        db.session.commit()
+        logger.info(f"보건증 만료 알림 {len(expiring_certs)}건 발송 완료")
+        
+    except Exception as e:
+        logger.error(f"보건증 만료 알림 발송 오류: {str(e)}")
+        db.session.rollback()
+
+def check_contract_expiry():
+    """계약서 만료 임박 체크 및 알림 발송"""
+    try:
+        # 30일 이내 만료되는 계약서 조회
+        expiry_date = datetime.now().date() + timedelta(days=30)
+        
+        expiring_contracts = Contract.query.filter(
+            Contract.expiry_date <= expiry_date,
+            Contract.expiry_date > datetime.now().date(),
+            Contract.notification_sent == False
+        ).all()
+        
+        for contract in expiring_contracts:
+            staff = Staff.query.get(contract.staff_id)
+            if staff and staff.user_id:
+                user = User.query.get(staff.user_id)
+                if user:
+                    # 알림 생성
+                    notification = Notification()
+                    notification.user_id = user.id
+                    notification.title = "계약서 만료 임박 알림"
+                    notification.content = f"계약서가 {contract.expiry_date.strftime('%Y년 %m월 %d일')}에 만료됩니다. 갱신을 준비해주세요."
+                    notification.category = "계약서"
+                    notification.priority = "중요"
+                    notification.is_admin_only = False
+                    
+                    db.session.add(notification)
+                    
+                    # 알림 발송 표시
+                    contract.notification_sent = True
+        
+        db.session.commit()
+        logger.info(f"계약서 만료 알림 {len(expiring_contracts)}건 발송 완료")
+        
+    except Exception as e:
+        logger.error(f"계약서 만료 알림 발송 오류: {str(e)}")
+        db.session.rollback()
+
+def setup_scheduler():
+    """스케줄러 설정"""
+    # 매일 오전 9시에 보건증 만료 체크
+    schedule.every().day.at("09:00").do(check_health_certificate_expiry)
+    
+    # 매일 오전 9시에 계약서 만료 체크
+    schedule.every().day.at("09:00").do(check_contract_expiry)
+    
+    logger.info("스케줄러 설정 완료")
+
+def run_scheduler():
+    """스케줄러 실행"""
+    while True:
+        schedule.run_pending()
+        time.sleep(60)  # 1분마다 체크
 
 if __name__ == "__main__":
     run_scheduler()

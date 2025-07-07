@@ -19,11 +19,37 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
-    <!-- SocketIO Client -->
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    
     <!-- Theme Provider -->
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    
+    <style>
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+        .nav-section-title {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .sidebar.collapsed {
+            width: 4rem;
+        }
+        .sidebar.collapsed .sidebar-text {
+            display: none;
+        }
+        .main-content {
+            transition: margin-left 0.3s ease;
+        }
+        .sidebar.collapsed + .main-content {
+            margin-left: 4rem;
+        }
+    </style>
     
     {% block head %}{% endblock %}
 </head>
@@ -65,114 +91,128 @@
         </div>
         
         <!-- Sidebar -->
-        <aside class="sidebar bg-card border-r border-border">
-            <div class="sidebar-header">
-                <h1 class="restaurant-logo text-primary">🍽️ 레스토랑 관리</h1>
+        <aside class="sidebar bg-card border-r border-border w-64">
+            <div class="sidebar-header p-4 border-b border-border">
+                <h1 class="restaurant-logo text-primary text-xl font-bold">🍽️ 레스토랑 관리</h1>
                 <p class="text-sm text-muted-foreground mt-1">현대적인 관리 솔루션</p>
             </div>
             
-            <nav class="sidebar-nav">
-                <!-- 공통 메뉴 -->
+            <nav class="sidebar-nav p-4 flex-1 overflow-y-auto">
+                <!-- 메인 메뉴 -->
+                <div class="nav-section">
+                    <div class="nav-section-title">메인</div>
                     <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                        <i class="fas fa-tachometer-alt mr-2"></i>
-                        대시보드
+                        <i class="fas fa-home mr-2"></i>
+                        홈
                     </a>
-                    
-                <!-- 권한별 메뉴 분기 -->
+                </div>
+                
+                <!-- 슈퍼 관리자 메뉴 -->
                 {% if current_user.is_authenticated and current_user.role == 'admin' %}
-                    <!-- 최고관리자 메뉴 -->
+                <div class="nav-section">
+                    <div class="nav-section-title">슈퍼 관리</div>
                     <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
-                        <i class="fas fa-chart-line mr-2"></i>
-                        관리자 대시보드
-                    </a>
-                    <a href="{{ url_for('admin_user_permissions') }}" class="nav-link {% if request.endpoint == 'admin_user_permissions' %}active{% endif %}">
-                        <i class="fas fa-user-shield mr-2"></i>
-                        권한 관리
-                    </a>
-                    <a href="{{ url_for('admin_notify_send') }}" class="nav-link {% if request.endpoint == 'admin_notify_send' %}active{% endif %}">
-                        <i class="fas fa-bullhorn mr-2"></i>
-                        전체 알림 발송
-                    </a>
-                    <a href="{{ url_for('admin_reports') }}" class="nav-link {% if request.endpoint == 'admin_reports' %}active{% endif %}">
-                        <i class="fas fa-chart-bar mr-2"></i>
-                        통합 보고서
+                        <i class="fas fa-crown mr-2"></i>
+                        슈퍼 관리자 대시보드
                     </a>
                     <a href="{{ url_for('admin_system_monitor') }}" class="nav-link {% if request.endpoint == 'admin_system_monitor' %}active{% endif %}">
-                        <i class="fas fa-server mr-2"></i>
+                        <i class="fas fa-shield-alt mr-2"></i>
                         시스템 모니터링
                     </a>
-                    <a href="{{ url_for('admin_backup_management') }}" class="nav-link {% if request.endpoint == 'admin_backup_management' %}active{% endif %}">
-                        <i class="fas fa-database mr-2"></i>
-                        백업 관리
+                    <a href="{{ url_for('admin_reports') }}" class="nav-link {% if request.endpoint == 'admin_reports' %}active{% endif %}">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        전체 통계
                     </a>
-                    
-                {% elif current_user.is_authenticated and current_user.role == 'manager' %}
-                    <!-- 매장관리자 메뉴 -->
-                    {% if current_user.has_permission('employee_management', 'view') %}
+                </div>
+                {% endif %}
+                
+                <!-- 브랜드 관리자 메뉴 -->
+                {% if current_user.is_authenticated and current_user.role in ['admin', 'brand_admin'] %}
+                <div class="nav-section">
+                    <div class="nav-section-title">브랜드 관리</div>
+                    <a href="{{ url_for('admin_brand_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_brand_dashboard' %}active{% endif %}">
+                        <i class="fas fa-building mr-2"></i>
+                        브랜드 대시보드
+                    </a>
+                    <a href="{{ url_for('admin_store_management') }}" class="nav-link {% if request.endpoint == 'admin_store_management' %}active{% endif %}">
+                        <i class="fas fa-store mr-2"></i>
+                        매장 관리
+                    </a>
+                    <a href="{{ url_for('admin_brand_analytics') }}" class="nav-link {% if request.endpoint == 'admin_brand_analytics' %}active{% endif %}">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        브랜드 통계
+                    </a>
+                </div>
+                {% endif %}
+                
+                <!-- 매장 관리자 메뉴 -->
+                {% if current_user.is_authenticated and current_user.role in ['admin', 'brand_admin', 'manager'] %}
+                <div class="nav-section">
+                    <div class="nav-section-title">매장 관리</div>
                     <a href="{{ url_for('admin_users') }}" class="nav-link {% if request.endpoint == 'admin_users' %}active{% endif %}">
                         <i class="fas fa-users mr-2"></i>
                         직원 관리
                     </a>
-                        {% endif %}
-                    
-                    {% if current_user.has_permission('schedule_management', 'view') %}
                     <a href="{{ url_for('schedule') }}" class="nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
                         <i class="fas fa-calendar-alt mr-2"></i>
-                        근무표 관리
+                        스케줄 관리
                     </a>
-                    {% endif %}
-                    
-                    {% if current_user.has_permission('order_management', 'view') %}
+                    <a href="{{ url_for('attendance') }}" class="nav-link {% if request.endpoint == 'attendance' %}active{% endif %}">
+                        <i class="fas fa-clock mr-2"></i>
+                        근태 관리
+                    </a>
                     <a href="{{ url_for('order_list') }}" class="nav-link {% if request.endpoint == 'order_list' %}active{% endif %}">
-                        <i class="fas fa-shopping-cart mr-2"></i>
+                        <i class="fas fa-box mr-2"></i>
                         발주 관리
                     </a>
-                    {% endif %}
-                    
-                    {% if current_user.has_permission('reports', 'view') %}
-                    <a href="{{ url_for('admin_reports') }}" class="nav-link {% if request.endpoint == 'admin_reports' %}active{% endif %}">
-                        <i class="fas fa-chart-bar mr-2"></i>
-                        매장 보고서
+                    <a href="{{ url_for('inventory') }}" class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}">
+                        <i class="fas fa-archive mr-2"></i>
+                        재고 관리
                     </a>
-                    {% endif %}
-                    
-                {% elif current_user.is_authenticated %}
-                    <!-- 직원 메뉴 -->
-                    {% if current_user.has_permission('schedule_management', 'view') %}
-                    <a href="{{ url_for('schedule') }}" class="nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
-                        <i class="fas fa-calendar-alt mr-2"></i>
-                        내 근무표
-                    </a>
-                    {% endif %}
-                    
-                    {% if current_user.has_permission('order_management', 'view') %}
-                    <a href="{{ url_for('order_new') }}" class="nav-link {% if request.endpoint == 'order_new' %}active{% endif %}">
+                    <a href="{{ url_for('orders.orders') }}" class="nav-link {% if request.endpoint == 'orders.orders' %}active{% endif %}">
                         <i class="fas fa-shopping-cart mr-2"></i>
-                        발주 신청
-                        </a>
-                        {% endif %}
+                        주문 관리
+                    </a>
+                </div>
                 {% endif %}
                 
-                <!-- 공통 메뉴 (모든 권한에서 표시) -->
-                <a href="{{ url_for('notifications') }}" class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
-                    <i class="fas fa-bell mr-2"></i>
-                    알림
-                    {% if unread_notification_count > 0 %}
-                        <span class="badge bg-danger ml-auto">{{ unread_notification_count }}</span>
-                    {% endif %}
-                </a>
+                <!-- 일반 직원 메뉴 -->
+                {% if current_user.is_authenticated %}
+                <div class="nav-section">
+                    <div class="nav-section-title">업무</div>
+                    <a href="{{ url_for('my_attendance') }}" class="nav-link {% if request.endpoint == 'my_attendance' %}active{% endif %}">
+                        <i class="fas fa-clock mr-2"></i>
+                        내 근태
+                    </a>
+                    <a href="{{ url_for('my_schedule') }}" class="nav-link {% if request.endpoint == 'my_schedule' %}active{% endif %}">
+                        <i class="fas fa-calendar-alt mr-2"></i>
+                        내 스케줄
+                    </a>
+                </div>
+                {% endif %}
                 
-                <a href="{{ url_for('profile') }}" class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}">
-                    <i class="fas fa-user mr-2"></i>
-                    내 정보
-                </a>
-
-                {# <a href="{{ url_for('change_password') }}" class="nav-link {% if request.endpoint == 'change_password' %}active{% endif %}">비밀번호 변경</a> #}
+                <!-- 공통 메뉴 -->
+                {% if current_user.is_authenticated %}
+                <div class="nav-section">
+                    <div class="nav-section-title">기타</div>
+                    <a href="{{ url_for('notifications') }}" class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
+                        <i class="fas fa-bell mr-2"></i>
+                        알림/공지
+                        {% if unread_notification_count > 0 %}
+                            <span class="badge bg-danger ml-auto">{{ unread_notification_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{{ url_for('profile') }}" class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}">
+                        <i class="fas fa-cog mr-2"></i>
+                        설정
+                    </a>
+                </div>
+                {% endif %}
             </nav>
             
-            <div class="sidebar-bottom">
+            <div class="sidebar-bottom p-4 border-t border-border">
                 {% if current_user.is_authenticated %}
-                <div class="sidebar-user-info">
+                <div class="sidebar-user-info mb-2">
                     <i class="fas fa-user-circle"></i>
                     {{ current_user.name or current_user.username }}
                 </div>
@@ -193,125 +233,72 @@
     <!-- JavaScript -->
     <script>
         // SocketIO 실시간 알림 시스템
-        {% if current_user.is_authenticated %}
-        let socket = io();
+        // {% if current_user.is_authenticated %}
+        // let socket = null;
+        // try {
+        //     socket = io();
+        //     socket.on('connect', function() {
+        //         console.log('SocketIO 연결됨');
+        //         socket.emit('join', {room: 'user_{{ current_user.id }}'});
+        //     });
+        //     
+        //     socket.on('notification', function(data) {
+        //         console.log('새 알림:', data);
+        //         showNotification(data.message, data.type);
+        //         updateNotificationBadge();
+        //     });
+        // } catch (e) {
+        //     console.log('SocketIO 연결 실패:', e);
+        // }
+        // {% endif %}
         
-        // 연결 시 사용자 룸 입장
-        socket.on('connect', function() {
-            console.log('SocketIO 연결됨');
-            socket.emit('join', {room: 'user_{{ current_user.id }}'});
-        });
-        
-        // 실시간 알림 수신
-        socket.on('notify', function(data) {
-            if (data.user_id == {{ current_user.id }}) {
-                // 알림 배지 표시
-                showNotificationBadge(data.content);
-                
-                // 토스트 알림 표시
-                showToastNotification(data.content, data.category, data.url);
-                
-                // 알림 카운트 업데이트
-                updateNotificationCount();
-            }
-        });
-        
-        // 알림 배지 표시
-        function showNotificationBadge(content) {
-            const badge = document.getElementById('realtime-notification-badge');
-            const count = document.getElementById('notification-count');
-            
-            badge.classList.remove('hidden');
-            count.textContent = 'N';
-            
-            // 5초 후 숨김
-            setTimeout(() => {
-                badge.classList.add('hidden');
-            }, 5000);
-        }
-        
-        // 토스트 알림 표시
-        function showToastNotification(content, category, url) {
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50 max-w-sm';
-            toast.innerHTML = `
-                <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-bell text-blue-500"></i>
-                    </div>
-                    <div class="ml-3 flex-1">
-                        <p class="text-sm font-medium text-gray-900">${category}</p>
-                        <p class="text-sm text-gray-500 mt-1">${content}</p>
-                        ${url ? `<a href="${url}" class="text-blue-600 text-sm hover:underline mt-2 inline-block">확인하기</a>` : ''}
-                    </div>
-                    <div class="ml-4 flex-shrink-0">
-                        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
+        // 알림 표시 함수
+        function showNotification(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} fade-in-up`;
+            alertDiv.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${type === 'success' ? 'check-circle text-green-600' : 
+                                      type === 'error' ? 'exclamation-circle text-red-600' : 
+                                      type === 'warning' ? 'exclamation-triangle text-yellow-600' : 
+                                      'info-circle text-blue-600'} mr-2"></i>
+                    <span>${message}</span>
                 </div>
             `;
             
-            document.body.appendChild(toast);
-            
-            // 5초 후 자동 제거
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 5000);
-        }
-        
-        // 알림 카운트 업데이트
-        function updateNotificationCount() {
-            fetch('/notifications/count')
-                .then(response => response.json())
-                .then(data => {
-                    const badge = document.querySelector('.badge-destructive');
-                    if (badge && data.count > 0) {
-                        badge.textContent = data.count;
-                    } else if (badge && data.count === 0) {
-                        badge.style.display = 'none';
-                    }
-                })
-                .catch(error => console.error('알림 카운트 업데이트 실패:', error));
-        }
-        {% endif %}
-        
-        // Sidebar group toggle
-        function toggleGroup(groupName) {
-            const group = document.getElementById(groupName + '-group');
-            const chevron = document.getElementById(groupName + '-chevron');
-            
-            if (group.style.display === 'none') {
-                group.style.display = 'block';
-                chevron.style.transform = 'rotate(180deg)';
-            } else {
-                group.style.display = 'none';
-                chevron.style.transform = 'rotate(0deg)';
+            const container = document.querySelector('.fixed.top-4.right-4');
+            if (container) {
+                container.appendChild(alertDiv);
+                
+                setTimeout(() => {
+                    alertDiv.remove();
+                }, 5000);
             }
         }
-
-        // Flash message auto-hide
+        
+        // 알림 배지 업데이트
+        function updateNotificationBadge() {
+            fetch('/api/notifications/unread-count')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('realtime-notification-badge');
+                    const count = document.getElementById('notification-count');
+                    if (data.count > 0) {
+                        badge.classList.remove('hidden');
+                        count.textContent = data.count;
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                })
+                .catch(error => console.error('알림 카운트 조회 실패:', error));
+        }
+        
+        // 페이지 로드 시 알림 배지 업데이트
         document.addEventListener('DOMContentLoaded', function() {
-            const flashMessages = document.querySelectorAll('.alert');
-            flashMessages.forEach(function(message) {
-                setTimeout(function() {
-                    message.style.opacity = '0';
-                    setTimeout(function() {
-                        message.remove();
-                    }, 300);
-                }, 5000);
-            });
-        });
-
-        // Theme change event listener
-        window.addEventListener('themeChange', function(e) {
-            console.log('Theme changed to:', e.detail.theme);
-            // Add any theme-specific logic here
+            updateNotificationBadge();
         });
     </script>
-
+    
     {% block scripts %}{% endblock %}
 </body>
 </html> 

@@ -17,7 +17,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, pathname, router]);
 
-  if (!user && pathname !== "/login") return null;
-  if (user && pathname === "/login") return null;
+  if (!user && pathname !== "/login") {
+    return null;
+  }
+  
+  if (user && pathname === "/login") {
+    return null;
+  }
+  
   return <>{children}</>;
 } 

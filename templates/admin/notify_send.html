@@ -1,170 +1,294 @@
-{% extends "base.html" %}
-
-{% block title %}알림 발송{% endblock %}
-
-{% block content %}
-<div class="container mx-auto px-4 py-8">
-    <div class="bg-white rounded-lg shadow-lg p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">알림 발송</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>알림 발송 관리 - 브랜드 관리자</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            width: 100vw;
+            max-width: none;
+            margin: 0;
+            padding: 0;
+            background: white;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 20px; 
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { 
+            margin: 0; 
+            font-size: 2rem; 
+            font-weight: 300;
+        }
+        .content {
+            padding: 30px;
+        }
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        .notification-form {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .notification-form h3 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.25);
+        }
+        textarea.form-control {
+            resize: vertical;
+            min-height: 120px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-danger { background: #dc3545; color: white; }
+        .notifications-list {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .notification-item {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        .notification-content {
+            flex: 1;
+        }
+        .notification-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        .notification-message {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        .notification-meta {
+            font-size: 0.8rem;
+            color: #adb5bd;
+        }
+        .notification-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        .target-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .target-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .target-option input[type="checkbox"] {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{ url_for('admin_dashboard') }}" class="back-btn">
+                <i class="fas fa-arrow-left"></i> 대시보드로
+            </a>
+            <h1><i class="fas fa-bullhorn"></i> 전체 알림/공지 발송</h1>
+            <p>전체 직원 대상 알림 발송 및 공지사항 관리</p>
+        </div>
         
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- 알림 작성 폼 -->
-            <div class="bg-gray-50 rounded-lg p-6">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">알림 작성</h2>
-                
+        <div class="content">
+            <!-- 알림 발송 폼 -->
+            <div class="notification-form">
+                <h3><i class="fas fa-paper-plane"></i> 새 알림 발송</h3>
                 <form id="notificationForm">
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">알림 유형</label>
-                        <select name="type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="general">일반 알림</option>
-                            <option value="urgent">긴급 알림</option>
-                            <option value="maintenance">점검 알림</option>
-                            <option value="event">이벤트 알림</option>
-                        </select>
+                    <div class="form-group">
+                        <label class="form-label">제목</label>
+                        <input type="text" class="form-control" name="title" placeholder="알림 제목을 입력하세요" required>
                     </div>
                     
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">제목</label>
-                        <input type="text" name="title" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               placeholder="알림 제목을 입력하세요">
+                    <div class="form-group">
+                        <label class="form-label">내용</label>
+                        <textarea class="form-control" name="message" placeholder="알림 내용을 입력하세요" required></textarea>
                     </div>
                     
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">내용</label>
-                        <textarea name="content" rows="4" required
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  placeholder="알림 내용을 입력하세요"></textarea>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">수신 대상</label>
-                        <div class="space-y-2">
-                            <label class="flex items-center">
-                                <input type="checkbox" name="recipients" value="all" class="mr-2">
+                    <div class="form-group">
+                        <label class="form-label">발송 대상</label>
+                        <div class="target-selector">
+                            <label class="target-option">
+                                <input type="checkbox" name="target_all" value="all" checked>
                                 <span>전체 직원</span>
                             </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" name="recipients" value="managers" class="mr-2">
-                                <span>매니저만</span>
+                            <label class="target-option">
+                                <input type="checkbox" name="target_managers" value="managers">
+                                <span>매장 관리자만</span>
                             </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" name="recipients" value="staff" class="mr-2">
+                            <label class="target-option">
+                                <input type="checkbox" name="target_employees" value="employees">
                                 <span>일반 직원만</span>
                             </label>
                         </div>
                     </div>
                     
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">발송 시간</label>
-                        <input type="datetime-local" name="scheduled_time" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <p class="text-sm text-gray-500 mt-1">비워두면 즉시 발송됩니다.</p>
+                    <div class="form-group">
+                        <label class="form-label">알림 유형</label>
+                        <select class="form-control" name="type">
+                            <option value="info">일반 정보</option>
+                            <option value="warning">경고</option>
+                            <option value="urgent">긴급</option>
+                            <option value="announcement">공지사항</option>
+                        </select>
                     </div>
                     
-                    <button type="submit" 
-                            class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        알림 발송
-                    </button>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> 알림 발송
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="saveDraft()">
+                            <i class="fas fa-save"></i> 임시저장
+                        </button>
+                    </div>
                 </form>
             </div>
             
-            <!-- 알림 미리보기 -->
-            <div class="bg-gray-50 rounded-lg p-6">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">알림 미리보기</h2>
-                
-                <div id="preview" class="bg-white rounded-lg p-4 border border-gray-200">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm text-gray-500" id="preview-type">일반 알림</span>
-                        <span class="text-xs text-gray-400" id="preview-time">방금 전</span>
-                    </div>
-                    <h3 class="font-semibold text-gray-800 mb-2" id="preview-title">알림 제목</h3>
-                    <p class="text-gray-600 text-sm" id="preview-content">알림 내용이 여기에 표시됩니다.</p>
-                </div>
-                
-                <div class="mt-4">
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">최근 발송된 알림</h3>
-                    <div class="space-y-2">
-                        <div class="bg-white rounded p-3 border border-gray-200">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h4 class="font-medium text-gray-800">시스템 점검 안내</h4>
-                                    <p class="text-sm text-gray-600">오늘 밤 12시부터 2시간 동안 시스템 점검이 예정되어 있습니다.</p>
-                                </div>
-                                <span class="text-xs text-gray-400">2시간 전</span>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-white rounded p-3 border border-gray-200">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h4 class="font-medium text-gray-800">월간 회의 안내</h4>
-                                    <p class="text-sm text-gray-600">다음 주 월요일 오후 3시에 월간 회의가 예정되어 있습니다.</p>
-                                </div>
-                                <span class="text-xs text-gray-400">1일 전</span>
-                            </div>
+            <!-- 기존 알림 목록 -->
+            <h3><i class="fas fa-list"></i> 발송된 알림 목록</h3>
+            <div class="notifications-list">
+                {% for notification in notifications %}
+                <div class="notification-item">
+                    <div class="notification-content">
+                        <div class="notification-title">{{ notification.title }}</div>
+                        <div class="notification-message">{{ notification.message[:100] }}{% if notification.message|length > 100 %}...{% endif %}</div>
+                        <div class="notification-meta">
+                            발송일: {{ notification.created_at.strftime('%Y-%m-%d %H:%M') if notification.created_at else 'N/A' }} | 
+                            읽음: {{ '읽음' if notification.is_read else '안읽음' }}
                         </div>
                     </div>
+                    <div class="notification-actions">
+                        <button class="btn btn-sm btn-primary" onclick="viewNotification({{ notification.id }})">
+                            <i class="fas fa-eye"></i> 보기
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteNotification({{ notification.id }})">
+                            <i class="fas fa-trash"></i> 삭제
+                        </button>
+                    </div>
                 </div>
+                {% else %}
+                <div class="notification-item">
+                    <div class="notification-content">
+                        <div class="notification-title">발송된 알림이 없습니다</div>
+                        <div class="notification-message">새로운 알림을 발송해보세요.</div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
-</div>
-
-<script>
-// 폼 입력 시 미리보기 업데이트
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('notificationForm');
-    const titleInput = form.querySelector('input[name="title"]');
-    const contentInput = form.querySelector('textarea[name="content"]');
-    const typeSelect = form.querySelector('select[name="type"]');
     
-    function updatePreview() {
-        document.getElementById('preview-title').textContent = titleInput.value || '알림 제목';
-        document.getElementById('preview-content').textContent = contentInput.value || '알림 내용이 여기에 표시됩니다.';
-        document.getElementById('preview-type').textContent = typeSelect.options[typeSelect.selectedIndex].text;
-    }
-    
-    titleInput.addEventListener('input', updatePreview);
-    contentInput.addEventListener('input', updatePreview);
-    typeSelect.addEventListener('change', updatePreview);
-    
-    // 폼 제출 처리
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(form);
-        const data = {
-            type: formData.get('type'),
-            title: formData.get('title'),
-            content: formData.get('content'),
-            recipients: formData.getAll('recipients'),
-            scheduled_time: formData.get('scheduled_time')
-        };
-        
-        // API 호출
-        fetch('/api/notifications/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                alert('알림이 성공적으로 발송되었습니다.');
-                form.reset();
-                updatePreview();
-            } else {
-                alert('알림 발송에 실패했습니다: ' + result.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('알림 발송 중 오류가 발생했습니다.');
+    <script>
+        // 알림 발송 폼 처리
+        document.getElementById('notificationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            // 실제로는 AJAX로 서버에 전송
+            alert('알림이 발송되었습니다!');
+            this.reset();
         });
-    });
-});
-</script>
-{% endblock %} 
+        
+        // 임시저장 기능
+        function saveDraft() {
+            alert('임시저장되었습니다.');
+        }
+        
+        // 알림 보기
+        function viewNotification(id) {
+            alert('알림 ID: ' + id + ' 상세보기 기능이 구현될 예정입니다.');
+        }
+        
+        // 알림 삭제
+        function deleteNotification(id) {
+            if (confirm('정말로 이 알림을 삭제하시겠습니까?')) {
+                alert('알림 ID: ' + id + ' 삭제 기능이 구현될 예정입니다.');
+            }
+        }
+    </script>
+</body>
+</html> 

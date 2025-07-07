@@ -1,11 +1,22 @@
 import re
 from datetime import date, datetime, timedelta
+from enum import Enum
 
 from flask_login import AnonymousUserMixin as BaseAnonymousUserMixin
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from extensions import db
+
+
+# UserRole enum 추가
+class UserRole(Enum):
+    SUPER_ADMIN = "super_admin"
+    ADMIN = "admin"
+    BRAND_MANAGER = "brand_manager"
+    STORE_MANAGER = "store_manager"
+    MANAGER = "manager"
+    EMPLOYEE = "employee"
 
 
 # AnonymousUserMixin에 has_permission 메서드 추가
@@ -271,8 +282,7 @@ class User(db.Model, UserMixin):
 
         send_notification_enhanced(
             user_id=target_user.id,
-            title="권한이 위임되었습니다",
-            content=f"{self.username}님이 {expires_in_days}일간 권한을 위임했습니다.",
+            content=f"[권한 위임] {self.username}님이 {expires_in_days}일간 권한을 위임했습니다.",
         )
 
     def revoke_delegated_permissions(self, target_user):
@@ -293,8 +303,7 @@ class User(db.Model, UserMixin):
 
         send_notification_enhanced(
             user_id=target_user.id,
-            title="위임된 권한이 회수되었습니다",
-            content=f"{self.username}님이 위임된 권한을 회수했습니다.",
+            content=f"[권한 회수] {self.username}님이 위임된 권한을 회수했습니다.",
         )
 
     def get_delegated_users(self):
@@ -354,15 +363,15 @@ class User(db.Model, UserMixin):
 
     def is_group_admin(self):
         """그룹/프랜차이즈 최고관리자 여부 확인"""
-        return self.role == "admin" and self.has_permission("group_admin")
+        return self.role == "admin" and self.has_permission("group_admin", "view")
 
     def is_solo_mode(self):
         """1인 사장님 모드에서 모든 메뉴 접근 가능 여부"""
-        return self.is_owner() or self.has_permission("solo_mode")
+        return self.is_owner() or self.has_permission("solo_mode", "view")
 
     def is_franchise_mode(self):
         """그룹/프랜차이즈 모드에서 최고관리자 메뉴만 접근 가능 여부"""
-        return self.is_group_admin() or self.has_permission("franchise_mode")
+        return self.is_group_admin() or self.has_permission("franchise_mode", "view")
 
     def can_access_all_menus(self):
         """모든 메뉴에 접근 가능한지 확인 (1인 사장님 모드)"""
@@ -393,12 +402,12 @@ class User(db.Model, UserMixin):
         """권한 추가"""
         if not self.permissions:
             self.permissions = {}
-        self.permissions[permission_name] = True
+        self.permissions[permission_name] = {"view": True}
 
     def remove_permission(self, permission_name):
         """권한 제거"""
         if self.permissions and permission_name in self.permissions:
-            self.permissions[permission_name] = False
+            self.permissions.pop(permission_name, None)
 
     @property
     def is_locked(self):
@@ -1698,7 +1707,7 @@ class Contract(db.Model):
         return (self.expiry_date - today).days
     
     def __repr__(self):
-        return f"<Contract {self.contract_number} - {self.staff.name}>"
+        return f"<Contract {self.contract_number} - {self.staff.name if self.staff else 'Unknown'}>"
 
 
 class HealthCertificate(db.Model):
@@ -1745,7 +1754,7 @@ class HealthCertificate(db.Model):
         return (self.expiry_date - today).days
     
     def __repr__(self):
-        return f"<HealthCertificate {self.certificate_number} - {self.staff.name}>"
+        return f"<HealthCertificate {self.certificate_number} - {self.staff.name if self.staff else 'Unknown'}>"
 
 
 class StaffTemplate(db.Model):

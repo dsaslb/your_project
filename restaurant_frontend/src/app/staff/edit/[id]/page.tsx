@@ -106,14 +106,40 @@ export default function EditStaffPage() {
   const loadStaffData = async () => {
     try {
       setLoading(true);
+      console.log('직원 데이터 로딩 시작:', staffId);
+      
       const response = await fetch(`http://localhost:5000/api/staff/${staffId}`, {
         credentials: 'include',
       });
       
+      console.log('API 응답 상태:', response.status);
+      console.log('API 응답 헤더:', Object.fromEntries(response.headers.entries()));
+      
       if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+          const textResponse = await response.text();
+          console.error('응답 내용:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+          router.push('/staff');
+          return;
+        }
+        
         const data = await response.json();
+        console.log('API 응답 데이터:', data);
+        
         if (data.success && data.staff) {
           const staff = data.staff;
+          console.log('직원 데이터:', staff);
           
           // 최신 계약서 정보
           const latestContract = staff.contracts && staff.contracts.length > 0 
@@ -125,7 +151,7 @@ export default function EditStaffPage() {
             ? staff.health_certificates[staff.health_certificates.length - 1] 
             : null;
           
-          setFormData({
+          const formDataToSet = {
             name: staff.name || '',
             position: staff.position || '',
             department: staff.department || '',
@@ -151,17 +177,37 @@ export default function EditStaffPage() {
               system_management: { view: false, backup: false, restore: false, settings: false, monitoring: false },
               reports: { view: false, export: false, admin_only: false },
             }
-          });
+          };
+          
+          console.log('설정할 폼 데이터:', formDataToSet);
+          setFormData(formDataToSet);
+          console.log('직원 데이터 로딩 완료');
         } else {
-          alert('직원 정보를 불러오는데 실패했습니다.');
+          console.error('API 응답 실패:', data);
+          alert(`직원 정보를 불러오는데 실패했습니다: ${data.error || '알 수 없는 오류'}`);
           router.push('/staff');
         }
       } else {
-        alert('직원 정보를 불러오는데 실패했습니다.');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          console.error('API 호출 실패:', response.status, errorData);
+          alert(`직원 정보 로드 실패: ${errorData.error || '알 수 없는 오류'}`);
+        } else {
+          const textResponse = await response.text();
+          console.error('API가 HTML 응답을 반환했습니다:', textResponse.substring(0, 500));
+          alert('서버에서 잘못된 응답을 받았습니다. 관리자에게 문의하세요.');
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+        }
         router.push('/staff');
       }
     } catch (error) {
-      console.error('직원 데이터 로드 오류:', error);
+      console.error('직원 정보 로드 오류:', error);
       alert('직원 정보를 불러오는데 실패했습니다.');
       router.push('/staff');
     } finally {
@@ -174,9 +220,30 @@ export default function EditStaffPage() {
       const response = await fetch('http://localhost:5000/api/permissions/templates', {
         credentials: 'include',
       });
+      
+      console.log('권한 템플릿 API 응답 상태:', response.status);
+      
       if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('권한 템플릿 API가 JSON이 아닌 응답을 반환했습니다:', contentType);
+          const textResponse = await response.text();
+          console.error('응답 내용:', textResponse.substring(0, 500));
+          
+          // HTML 응답인 경우 로그인 페이지로 리다이렉트
+          if (textResponse.includes('<!DOCTYPE html>') || textResponse.includes('<html>')) {
+            alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+            window.location.href = 'http://localhost:5000/login';
+            return;
+          }
+          
+          return;
+        }
+        
         const data = await response.json();
         setPermissionTemplates(data.templates || []);
+      } else {
+        console.error('권한 템플릿 API 호출 실패:', response.status);
       }
     } catch (error) {
       console.error('권한 템플릿 로드 오류:', error);

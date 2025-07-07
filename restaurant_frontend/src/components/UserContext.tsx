@@ -3,6 +3,10 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface User {
   id: string;
+  username?: string;
+  name?: string;
+  role?: string;
+  branch_id?: number;
 }
 
 interface UserContextType {
@@ -16,10 +20,11 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) setUser(JSON.parse(stored));
-  }, []);
+  // localStorage에서 자동 로드 기능을 임시로 비활성화
+  // useEffect(() => {
+  //   const stored = localStorage.getItem("user");
+  //   if (stored) setUser(JSON.parse(stored));
+  // }, []);
 
   const login = (user: User) => {
     setUser(user);

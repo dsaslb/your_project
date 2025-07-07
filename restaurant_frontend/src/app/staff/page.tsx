@@ -1,13 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, User, Phone, Mail, Calendar, MapPin, Download, Eye, AlertTriangle, CheckCircle, Clock, FileText, Shield, X, Building, CalendarDays, DollarSign, Award, Clock as ClockIcon, UserX, UserCheck } from "lucide-react";
+import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, User, Phone, Mail, Calendar, MapPin, Download, Eye, AlertTriangle, CheckCircle, Clock, FileText, Shield, X, Building, CalendarDays, DollarSign, Award, Clock as ClockIcon, UserX, UserCheck, AlertCircle } from "lucide-react";
 import NotificationPopup from "@/components/NotificationPopup";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useStaffStore, type StaffMember } from '@/store';
 
 export default function StaffPage() {
@@ -18,11 +18,14 @@ export default function StaffPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [expiringDocuments, setExpiringDocuments] = useState<any[]>([]);
+  const [showExpiringModal, setShowExpiringModal] = useState(false);
   
   // Store에서 데이터 가져오기
   const { 
     staffMembers, 
-    expiringDocuments, 
     loading, 
     error,
     fetchStaffData, 
@@ -34,7 +37,7 @@ export default function StaffPage() {
 
   useEffect(() => {
     setIsLoaded(true);
-    fetchStaffData();
+    fetchStaffData('management');
     fetchExpiringDocuments();
   }, []);
 
@@ -106,6 +109,51 @@ export default function StaffPage() {
       }
     } catch (error) {
       console.error('삭제 오류:', error);
+    }
+  };
+
+  // 만료 임박 서류 조회 (로컬 상태용)
+  const fetchExpiringDocumentsLocal = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/staff/expiring-documents', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setExpiringDocuments(data.documents || []);
+        }
+      }
+    } catch (error) {
+      console.error('만료 임박 서류 조회 실패:', error);
+    }
+  };
+
+  // 보건증 만료 알림 발송
+  const sendHealthCertificateNotification = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/staff/health-certificate/notify', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          alert(data.message);
+          fetchExpiringDocumentsLocal(); // 목록 새로고침
+        }
+      }
+    } catch (error) {
+      console.error('보건증 알림 발송 실패:', error);
+      alert('알림 발송에 실패했습니다.');
     }
   };
 
@@ -550,11 +598,12 @@ export default function StaffPage() {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            // 삭제 확인 로직
+                            router.push(`/staff/contract?edit=${member.id}`);
                           }}
-                          className="text-red-600 hover:text-red-900 dark:hover:text-red-400"
+                          className="text-blue-600 hover:text-blue-900 dark:hover:text-blue-400"
+                          title="계약서 수정"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -564,6 +613,56 @@ export default function StaffPage() {
             </table>
           </div>
         </div>
+
+        {/* 만료 임박 서류 알림 */}
+        {expiringDocuments.length > 0 && (
+          <Card className="mb-6 border-orange-200 bg-orange-50 dark:bg-orange-900/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                <AlertCircle className="h-5 w-5" />
+                만료 임박 서류 알림
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {expiringDocuments.slice(0, 3).map((doc, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded">
+                    <div>
+                      <p className="font-medium">{doc.staff_name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {doc.document_type}: {doc.expiry_date} 만료
+                      </p>
+                    </div>
+                    <Badge variant="destructive">
+                      {doc.days_until_expiry}일 남음
+                    </Badge>
+                  </div>
+                ))}
+                {expiringDocuments.length > 3 && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    외 {expiringDocuments.length - 3}건의 서류가 만료 임박입니다.
+                  </p>
+                )}
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    onClick={() => setShowExpiringModal(true)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    전체 보기
+                  </Button>
+                  <Button
+                    onClick={sendHealthCertificateNotification}
+                    size="sm"
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
+                    알림 발송
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* 직원 정보 모달 */}
@@ -574,6 +673,9 @@ export default function StaffPage() {
               <User className="h-5 w-5" />
               직원 정보
             </DialogTitle>
+            <DialogDescription>
+              직원의 상세 정보, 계약서, 보건증, 근무 통계를 확인할 수 있습니다.
+            </DialogDescription>
           </DialogHeader>
           
           {selectedStaff && (

@@ -19,8 +19,12 @@ import {
   User,
   Phone,
   Mail,
+  Edit,
+  Trash2,
+  CheckCircle,
+  AlertTriangle
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,6 +32,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useStaffStore, useScheduleStore } from '@/store';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function SchedulePage() {
   const router = useRouter();
@@ -63,7 +69,7 @@ export default function SchedulePage() {
 
   useEffect(() => {
     setIsLoaded(true);
-    fetchStaffData();
+    fetchStaffData('schedule');
     fetchSchedules();
     const popupTimer = setTimeout(() => {
       setShowAIPopup(true);
@@ -75,7 +81,7 @@ export default function SchedulePage() {
   useEffect(() => {
     const handleStaffDataUpdate = () => {
       console.log('스케줄: 직원 데이터 업데이트 감지');
-      fetchStaffData();
+      fetchStaffData('schedule');
     };
 
     window.addEventListener('staffDataUpdated', handleStaffDataUpdate);
@@ -398,6 +404,9 @@ export default function SchedulePage() {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>스케줄 등록</DialogTitle>
+          <DialogDescription>
+            새로운 근무 스케줄을 추가합니다. 직원, 날짜, 시간을 선택해주세요.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           {staffMembers.length === 0 ? (
@@ -484,6 +493,99 @@ export default function SchedulePage() {
       </DialogContent>
     </Dialog>
   );
+
+  // 더미 데이터
+  const scheduleData = {
+    today: "2024-01-15",
+    totalShifts: 28,
+    completedShifts: 25,
+    pendingShifts: 3,
+    schedules: [
+      {
+        id: 1,
+        employeeName: "김철수",
+        position: "매니저",
+        date: "2024-01-15",
+        startTime: "09:00",
+        endTime: "18:00",
+        status: "completed",
+        hours: 9
+      },
+      {
+        id: 2,
+        employeeName: "이영희",
+        position: "직원",
+        date: "2024-01-15",
+        startTime: "10:00",
+        endTime: "19:00",
+        status: "completed",
+        hours: 9
+      },
+      {
+        id: 3,
+        employeeName: "박민수",
+        position: "직원",
+        date: "2024-01-15",
+        startTime: "11:00",
+        endTime: "20:00",
+        status: "in-progress",
+        hours: 9
+      },
+      {
+        id: 4,
+        employeeName: "정수진",
+        position: "직원",
+        date: "2024-01-15",
+        startTime: "12:00",
+        endTime: "21:00",
+        status: "pending",
+        hours: 9
+      },
+      {
+        id: 5,
+        employeeName: "최동현",
+        position: "직원",
+        date: "2024-01-16",
+        startTime: "09:00",
+        endTime: "18:00",
+        status: "pending",
+        hours: 9
+      }
+    ],
+    weeklyStats: [
+      { day: "월", shifts: 25, completed: 24 },
+      { day: "화", shifts: 26, completed: 25 },
+      { day: "수", shifts: 24, completed: 23 },
+      { day: "목", shifts: 27, completed: 26 },
+      { day: "금", shifts: 28, completed: 25 },
+      { day: "토", shifts: 30, completed: 28 },
+      { day: "일", shifts: 22, completed: 20 }
+    ]
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <Badge variant="default" className="bg-green-600"><CheckCircle className="w-3 h-3 mr-1" />완료</Badge>;
+      case "in-progress":
+        return <Badge variant="secondary">진행 중</Badge>;
+      case "pending":
+        return <Badge variant="outline">대기</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getTimeStatus = (startTime: string, endTime: string) => {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
+    const endMinutes = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
+    
+    if (currentTime < startMinutes) return "upcoming";
+    if (currentTime >= startMinutes && currentTime <= endMinutes) return "current";
+    return "completed";
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -583,56 +685,200 @@ export default function SchedulePage() {
 
         {/* Stats */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">오늘 근무</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {events.filter(e => new Date(e.date).toDateString() === currentDate.toDateString()).length}
-                </p>
-              </div>
-            </div>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">오늘 스케줄</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{scheduleData.totalShifts}</div>
+              <p className="text-xs text-muted-foreground">
+                {scheduleData.today}
+              </p>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                <Clock className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 근무시간</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">72시간</p>
-              </div>
-            </div>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">완료된 근무</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{scheduleData.completedShifts}</div>
+              <p className="text-xs text-muted-foreground">
+                정상 출근 완료
+              </p>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
-                <Calendar className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">휴가 신청</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">3건</p>
-              </div>
-            </div>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">대기 중</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-600">{scheduleData.pendingShifts}</div>
+              <p className="text-xs text-muted-foreground">
+                아직 출근하지 않음
+              </p>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
-                <X className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">미배정</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">2명</p>
-              </div>
-            </div>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">평균 근무시간</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">8.5시간</div>
+              <p className="text-xs text-muted-foreground">
+                일일 평균
+              </p>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* 오늘의 스케줄 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5" />
+              <span>오늘의 스케줄</span>
+            </CardTitle>
+            <CardDescription>
+              {scheduleData.today} 근무 스케줄
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {scheduleData.schedules.filter(s => s.date === scheduleData.today).map((schedule) => (
+                <div key={schedule.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        {schedule.employeeName.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="font-medium">{schedule.employeeName}</h3>
+                      <p className="text-sm text-muted-foreground">{schedule.position}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                    <div className="text-center">
+                      <p className="font-medium">{schedule.startTime} - {schedule.endTime}</p>
+                      <p className="text-sm text-muted-foreground">{schedule.hours}시간</p>
+                    </div>
+                    {getStatusBadge(schedule.status)}
+                    <div className="flex items-center space-x-2">
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 주간 통계 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>주간 출근 현황</CardTitle>
+              <CardDescription>
+                이번 주 일별 출근 완료율
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {scheduleData.weeklyStats.map((day) => (
+                  <div key={day.day} className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{day.day}</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full" 
+                          style={{width: `${(day.completed / day.shifts) * 100}%`}}
+                        ></div>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {day.completed}/{day.shifts}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>시간대별 근무 현황</CardTitle>
+              <CardDescription>
+                오늘 시간대별 출근 직원 수
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">오전 (09:00-12:00)</span>
+                  <Badge variant="default" className="bg-blue-600">8명</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">오후 (12:00-18:00)</span>
+                  <Badge variant="default" className="bg-green-600">12명</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">저녁 (18:00-21:00)</span>
+                  <Badge variant="secondary">8명</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">야간 (21:00-24:00)</span>
+                  <Badge variant="outline">0명</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 알림 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5" />
+              <span>스케줄 알림</span>
+            </CardTitle>
+            <CardDescription>
+              주의가 필요한 스케줄 관련 알림
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <div className="flex-1">
+                  <p className="font-medium text-sm">정수진 직원 출근 지연</p>
+                  <p className="text-xs text-muted-foreground">예정: 12:00, 현재: 12:30</p>
+                </div>
+                <Badge variant="destructive">지연</Badge>
+              </div>
+              <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <CheckCircle className="h-4 w-4 text-blue-600" />
+                <div className="flex-1">
+                  <p className="font-medium text-sm">내일 스케줄 등록 완료</p>
+                  <p className="text-xs text-muted-foreground">2024-01-16 스케줄이 등록되었습니다</p>
+                </div>
+                <Badge variant="secondary">완료</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* AI Popup */}

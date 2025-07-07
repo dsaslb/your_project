@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api';
 
 export interface InventoryItem {
   id: number;
@@ -65,74 +66,74 @@ interface InventoryStore {
   getStockMovementsByDateRange: (startDate: string, endDate: string) => StockMovement[];
 }
 
-// 더미 데이터 (API 실패 시 사용)
+// 더미 재고 데이터
 const getDummyInventoryData = (): InventoryItem[] => [
   {
     id: 1,
-    name: "소고기",
-    category: "육류",
-    current_stock: 25,
+    name: '소고기',
+    category: '육류',
+    current_stock: 50,
     min_stock: 10,
     max_stock: 100,
-    unit: "kg",
+    unit: 'kg',
     unit_price: 45000,
-    supplier: "한우공급업체",
-    description: "한우 등급 소고기",
-    location: "냉동고 A",
-    status: "active",
-    created_at: "2024-01-15T10:00:00Z",
-    updated_at: "2024-01-16T14:30:00Z",
+    supplier: '한우공급업체',
+    description: '한우 등급 소고기',
+    location: '냉동고 A-1',
+    status: 'active',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-16T14:30:00Z',
     branch_id: 1
   },
   {
     id: 2,
-    name: "양파",
-    category: "채소",
-    current_stock: 80,
+    name: '양파',
+    category: '채소',
+    current_stock: 100,
     min_stock: 20,
     max_stock: 200,
-    unit: "kg",
+    unit: 'kg',
     unit_price: 3000,
-    supplier: "채소공급업체",
-    description: "신선한 양파",
-    location: "야채보관실",
-    status: "active",
-    created_at: "2024-01-16T14:30:00Z",
-    updated_at: "2024-01-16T14:30:00Z",
+    supplier: '채소공급업체',
+    description: '신선한 양파',
+    location: '야채실 B-2',
+    status: 'active',
+    created_at: '2024-01-15T14:30:00Z',
+    updated_at: '2024-01-16T14:30:00Z',
     branch_id: 1
   },
   {
     id: 3,
-    name: "고추장",
-    category: "조미료",
-    current_stock: 15,
+    name: '고추장',
+    category: '조미료',
+    current_stock: 20,
     min_stock: 5,
     max_stock: 50,
-    unit: "kg",
+    unit: 'kg',
     unit_price: 12000,
-    supplier: "조미료공급업체",
-    description: "전통 고추장",
-    location: "조미료보관실",
-    status: "active",
-    created_at: "2024-01-17T09:15:00Z",
-    updated_at: "2024-01-17T09:15:00Z",
+    supplier: '조미료공급업체',
+    description: '전통 고추장',
+    location: '조미료실 C-3',
+    status: 'active',
+    created_at: '2024-01-15T09:15:00Z',
+    updated_at: '2024-01-17T09:15:00Z',
     branch_id: 1
   },
   {
     id: 4,
-    name: "김치",
-    category: "반찬",
-    current_stock: 8,
+    name: '김치',
+    category: '반찬',
+    current_stock: 30,
     min_stock: 10,
-    max_stock: 30,
-    unit: "kg",
+    max_stock: 80,
+    unit: 'kg',
     unit_price: 8000,
-    supplier: "김치공급업체",
-    description: "맛김치",
-    location: "냉장고 B",
-    status: "active",
-    created_at: "2024-01-18T16:45:00Z",
-    updated_at: "2024-01-18T16:45:00Z",
+    supplier: '김치공급업체',
+    description: '맛있는 김치',
+    location: '냉장고 D-4',
+    status: 'active',
+    created_at: '2024-01-15T11:45:00Z',
+    updated_at: '2024-01-18T16:45:00Z',
     branch_id: 1
   }
 ];
@@ -238,48 +239,92 @@ export const useInventoryStore = create<InventoryStore>()(
       // API 호출
       fetchInventory: async () => {
         set({ loading: true, error: null });
+        
         try {
-          const response = await fetch('/api/inventory', {
-            credentials: 'include'
-          });
-          const data = await response.json();
+          const result = await apiGet<InventoryItem[]>('/api/inventory');
           
-          if (data.success) {
-            set({ inventoryItems: data.data, loading: false });
-            console.log('재고 데이터 로드 성공:', data.data.length, '건');
-          } else {
-            console.error('재고 목록 로드 실패:', data.error);
-            set({ inventoryItems: getDummyInventoryData(), loading: false });
+          if (!result.isConnected) {
+            // 백엔드 연결 안 됨 - 더미 데이터 사용
+            console.log('백엔드 연결 안 됨, 더미 재고 데이터 사용');
+            const dummyData = getDummyInventoryData();
+            set({ 
+              inventoryItems: dummyData,
+              loading: false 
+            });
+            return;
           }
+          
+          if (result.error) {
+            set({ error: result.error, loading: false });
+            return;
+          }
+          
+          set({ inventoryItems: result.data || [], loading: false });
         } catch (error) {
-          console.error('재고 목록 로드 오류:', error);
-          set({ inventoryItems: getDummyInventoryData(), loading: false });
+          console.error('재고 데이터 가져오기 오류:', error);
+          // 오류 시에도 더미 데이터 사용
+          const dummyData = getDummyInventoryData();
+          set({ 
+            inventoryItems: dummyData,
+            loading: false,
+            error: '데이터를 가져올 수 없어 더미 데이터를 표시합니다.'
+          });
         }
       },
 
       fetchStockMovements: async () => {
+        set({ loading: true, error: null });
+        
         try {
-          const response = await fetch('/api/inventory/movements', {
-            credentials: 'include'
-          });
-          const data = await response.json();
+          const result = await apiGet<StockMovement[]>('/api/inventory/movements');
           
-          if (data.success) {
-            set({ stockMovements: data.data });
-            console.log('재고 변동 이력 로드 성공:', data.data.length, '건');
-          } else {
-            console.error('재고 변동 이력 로드 실패:', data.error);
-            set({ stockMovements: getDummyStockMovements() });
+          if (!result.isConnected) {
+            // 백엔드 연결 안 됨 - 더미 이동 데이터
+            const dummyMovements: StockMovement[] = [
+              {
+                id: 1,
+                inventory_item_id: 1,
+                movement_type: 'in',
+                quantity: 50,
+                reason: '입고',
+                created_by: 1,
+                created_at: '2024-01-15T10:00:00Z'
+              },
+              {
+                id: 2,
+                inventory_item_id: 2,
+                movement_type: 'out',
+                quantity: 10,
+                reason: '사용',
+                created_by: 2,
+                created_at: '2024-01-15T14:30:00Z'
+              }
+            ];
+            set({ 
+              stockMovements: dummyMovements,
+              loading: false 
+            });
+            return;
           }
+          
+          if (result.error) {
+            set({ error: result.error, loading: false });
+            return;
+          }
+          
+          set({ stockMovements: result.data || [], loading: false });
         } catch (error) {
-          console.error('재고 변동 이력 로드 오류:', error);
-          set({ stockMovements: getDummyStockMovements() });
+          console.error('재고 이동 데이터 가져오기 오류:', error);
+          set({ 
+            loading: false,
+            error: '재고 이동 데이터를 가져올 수 없습니다.'
+          });
         }
       },
 
       createInventoryItem: async (itemData) => {
         try {
-          const response = await fetch('/api/inventory', {
+          const response = await fetch('http://localhost:5000/api/inventory', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -287,7 +332,16 @@ export const useInventoryStore = create<InventoryStore>()(
             credentials: 'include',
             body: JSON.stringify(itemData)
           });
-
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
+              alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+              window.location.href = 'http://localhost:5000/login';
+              return false;
+            }
+            // 기타 에러 처리
+          }
           const result = await response.json();
 
           if (result.success) {
@@ -308,7 +362,7 @@ export const useInventoryStore = create<InventoryStore>()(
 
       updateInventoryItemAPI: async (id, itemData) => {
         try {
-          const response = await fetch(`/api/inventory/${id}`, {
+          const response = await fetch(`http://localhost:5000/api/inventory/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -316,7 +370,16 @@ export const useInventoryStore = create<InventoryStore>()(
             credentials: 'include',
             body: JSON.stringify(itemData)
           });
-
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
+              alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+              window.location.href = 'http://localhost:5000/login';
+              return false;
+            }
+            // 기타 에러 처리
+          }
           const result = await response.json();
 
           if (result.success) {
@@ -337,14 +400,23 @@ export const useInventoryStore = create<InventoryStore>()(
 
       deleteInventoryItemAPI: async (id) => {
         try {
-          const response = await fetch(`/api/inventory/${id}`, {
+          const response = await fetch(`http://localhost:5000/api/inventory/${id}`, {
             method: 'DELETE',
             headers: {
               'Content-Type': 'application/json',
             },
             credentials: 'include'
           });
-
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
+              alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+              window.location.href = 'http://localhost:5000/login';
+              return false;
+            }
+            // 기타 에러 처리
+          }
           const result = await response.json();
 
           if (result.success) {
@@ -400,7 +472,7 @@ export const useInventoryStore = create<InventoryStore>()(
       },
     }),
     {
-      name: 'inventory-store',
+      name: 'inventory-store'
     }
   )
 ); 

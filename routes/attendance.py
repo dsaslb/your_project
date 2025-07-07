@@ -1050,64 +1050,11 @@ def create_or_update_attendance():
 @attendance_bp.route("/api/users", methods=["GET"])
 @login_required
 def get_users():
-    """직원 목록 API - 근태 관리용"""
+    """직원 목록 API - 근태 관리용 (통합 API 사용)"""
     try:
-        # 검색 파라미터
-        search = request.args.get('search', '')
-        department = request.args.get('department', '')
-        status = request.args.get('status', '')
-        
-        # User 테이블에서 직원 데이터 조회
-        query = User.query.filter(User.role.in_(['employee', 'manager']))
-        
-        # 상태 필터링 - 근태 관리에서는 승인된 직원만
-        if status:
-            query = query.filter(User.status == status)
-        else:
-            query = query.filter(User.status.in_(['approved', 'active']))
-        
-        # 검색 필터 적용
-        if search:
-            query = query.filter(
-                or_(
-                    User.username.contains(search),
-                    User.name.contains(search),
-                    User.email.contains(search),
-                    User.phone.contains(search)
-                )
-            )
-        
-        if department:
-            query = query.filter(User.department == department)
-        
-        # 매장별 필터링 (관리자가 아닌 경우)
-        if not current_user.is_admin():
-            query = query.filter(
-                or_(
-                    User.branch_id == None,
-                    User.branch_id == current_user.branch_id
-                )
-            )
-        
-        users = query.order_by(User.name).all()
-        
-        user_list = []
-        for user in users:
-            user_list.append({
-                "id": user.id,
-                "name": user.name or user.username,
-                "username": user.username,
-                "position": user.position or "",
-                "department": user.department or "",
-                "role": user.role,
-                "status": user.status,
-                "email": user.email
-            })
-        
-        return jsonify({
-            "success": True,
-            "users": user_list
-        })
+        # 통합 API로 리다이렉트
+        from api.staff import get_staff_list
+        return get_staff_list()
         
     except Exception as e:
         logger.error(f"직원 목록 조회 실패: {str(e)}")

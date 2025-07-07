@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { apiGet } from '../lib/api';
 
 export interface Contract {
   id: number;
@@ -67,7 +68,7 @@ interface StaffStore {
   updateStaffStatus: (id: number, status: string) => void;
   
   // API 호출
-  fetchStaffData: () => Promise<void>;
+  fetchStaffData: (pageType: string) => Promise<void>;
   fetchPendingStaff: () => Promise<void>;
   fetchExpiringDocuments: () => Promise<void>;
   refreshAllData: () => Promise<void>;
@@ -210,143 +211,172 @@ export const useStaffStore = create<StaffStore>()(
 
       updateStaffStatus: (id, status) => set((state) => ({
         staffMembers: state.staffMembers.map(staff =>
-          staff.id === id ? { ...staff, status: status as any } : staff
+          staff.id === id ? { ...staff, status } : staff
         )
       })),
 
       // API 호출
-      fetchStaffData: async () => {
+      fetchStaffData: async (pageType: string) => {
         set({ loading: true, error: null });
+        
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-          const response = await fetch('http://localhost:5000/api/staff', {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            signal: controller.signal,
-          });
+          const result = await apiGet<any[]>(`/api/staff/${pageType}`);
           
-          clearTimeout(timeoutId);
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              const activeStaff = (data.staff || []).filter((staff: any) => 
-                staff.status === 'active' || staff.status === 'pending'
-              );
-              set({ staffMembers: activeStaff, loading: false });
-              console.log('직원 데이터 로드 성공:', activeStaff.length, '명');
-            } else {
-              console.error('직원 데이터 로드 실패:', data.error);
-              set({ staffMembers: getDummyStaffData(), loading: false });
-            }
-          } else {
-            console.error('직원 데이터 로드 실패:', response.status);
-            set({ staffMembers: getDummyStaffData(), loading: false });
+          if (!result.isConnected) {
+            // 백엔드 연결 안 됨 - 더미 데이터 사용
+            console.log('백엔드 연결 안 됨, 더미 데이터 사용');
+            const dummyData = getDummyStaffData();
+            set({ 
+              staffMembers: dummyData,
+              loading: false 
+            });
+            return;
           }
+          
+          if (result.error) {
+            set({ error: result.error, loading: false });
+            return;
+          }
+          
+          set({ staffMembers: result.data || [], loading: false });
         } catch (error) {
-          console.error('API 호출 오류:', error);
-          if (error instanceof Error && error.name === 'AbortError') {
-            console.log('API 호출 타임아웃 - 더미 데이터 사용');
-          }
-          set({ staffMembers: getDummyStaffData(), loading: false });
+          console.error('직원 데이터 가져오기 오류:', error);
+          // 오류 시에도 더미 데이터 사용
+          const dummyData = getDummyStaffData();
+          set({ 
+            staffMembers: dummyData,
+            loading: false,
+            error: '데이터를 가져올 수 없어 더미 데이터를 표시합니다.'
+          });
         }
       },
 
       fetchPendingStaff: async () => {
+        set({ loading: true, error: null });
+        
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-          const response = await fetch('http://localhost:5000/api/staff/pending', {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            signal: controller.signal,
-          });
+          const result = await apiGet<any[]>('/api/staff/pending');
           
-          clearTimeout(timeoutId);
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              set({ pendingStaff: data.staff || [] });
-            } else {
-              console.error('미승인 직원 로드 실패:', data.error);
-            }
-          } else {
-            console.error('미승인 직원 로드 실패:', response.status);
+          if (!result.isConnected) {
+            // 백엔드 연결 안 됨 - 더미 데이터에서 pending 상태만 필터링
+            const dummyData = getDummyStaffData();
+            const pendingData = dummyData.filter(staff => staff.status === 'pending');
+            set({ 
+              pendingStaff: pendingData,
+              loading: false 
+            });
+            return;
           }
+          
+          if (result.error) {
+            set({ error: result.error, loading: false });
+            return;
+          }
+          
+          set({ pendingStaff: result.data || [], loading: false });
         } catch (error) {
-          console.error('미승인 직원 로드 오류:', error);
+          console.error('대기 중인 직원 데이터 가져오기 오류:', error);
+          const dummyData = getDummyStaffData();
+          const pendingData = dummyData.filter(staff => staff.status === 'pending');
+          set({ 
+            pendingStaff: pendingData,
+            loading: false,
+            error: '데이터를 가져올 수 없어 더미 데이터를 표시합니다.'
+          });
         }
       },
 
       fetchExpiringDocuments: async () => {
+        set({ loading: true, error: null });
+        
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-          const response = await fetch('http://localhost:5000/api/staff/expiring-documents', {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            signal: controller.signal,
-          });
+          const result = await apiGet<any>('/api/staff/expiring-documents');
           
-          clearTimeout(timeoutId);
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              set({ expiringDocuments: data });
-            } else {
-              console.error('만료 임박 문서 로드 실패:', data.error);
-            }
-          } else {
-            console.error('만료 임박 문서 로드 실패:', response.status);
+          if (!result.isConnected) {
+            // 백엔드 연결 안 됨 - 더미 만료 문서 데이터
+            const dummyExpiringDocs = {
+              contracts: [
+                {
+                  id: 1,
+                  staff_name: '김철수',
+                  document_type: '계약서',
+                  expiry_date: '2024-12-31',
+                  days_until_expiry: 25
+                },
+                {
+                  id: 2,
+                  staff_name: '이영희',
+                  document_type: '계약서',
+                  expiry_date: '2024-12-31',
+                  days_until_expiry: 25
+                }
+              ],
+              health_certificates: [
+                {
+                  id: 1,
+                  staff_name: '김철수',
+                  document_type: '보건증',
+                  expiry_date: '2024-11-15',
+                  days_until_expiry: 15
+                },
+                {
+                  id: 2,
+                  staff_name: '이영희',
+                  document_type: '보건증',
+                  expiry_date: '2024-11-20',
+                  days_until_expiry: 20
+                }
+              ]
+            };
+            set({ 
+              expiringDocuments: dummyExpiringDocs,
+              loading: false 
+            });
+            return;
           }
+          
+          if (result.error) {
+            set({ error: result.error, loading: false });
+            return;
+          }
+          
+          set({ expiringDocuments: result.data, loading: false });
         } catch (error) {
-          console.error('만료 임박 문서 로드 오류:', error);
+          console.error('만료 문서 데이터 가져오기 오류:', error);
+          set({ 
+            loading: false,
+            error: '만료 문서 데이터를 가져올 수 없습니다.'
+          });
         }
       },
 
       refreshAllData: async () => {
-        console.log('직원 데이터 전체 새로고침 중...');
+        const { fetchStaffData, fetchPendingStaff, fetchExpiringDocuments } = get();
         await Promise.all([
-          get().fetchStaffData(),
-          get().fetchPendingStaff(),
-          get().fetchExpiringDocuments()
+          fetchStaffData('all'),
+          fetchPendingStaff(),
+          fetchExpiringDocuments()
         ]);
-        // 다른 Store들에게 알림
-        window.dispatchEvent(new CustomEvent('staffDataUpdated'));
       },
 
       // 유틸리티
       getActiveStaff: () => {
         const { staffMembers } = get();
-        return staffMembers.filter(staff => 
-          staff.status === 'active' || staff.status === 'pending'
-        );
+        return staffMembers.filter(staff => staff.status === 'active');
       },
 
-      getStaffById: (id) => {
+      getStaffById: (id: number) => {
         const { staffMembers } = get();
         return staffMembers.find(staff => staff.id === id);
       },
 
-      getStaffByName: (name) => {
+      getStaffByName: (name: string) => {
         const { staffMembers } = get();
         return staffMembers.find(staff => staff.name === name);
-      },
+      }
     }),
     {
-      name: 'staff-store',
+      name: 'staff-store'
     }
   )
 ); 

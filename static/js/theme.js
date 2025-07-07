@@ -27,12 +27,15 @@ class ThemeProvider {
   applyTheme() {
     const effectiveTheme = this.theme === 'system' ? this.systemTheme : this.theme;
     
-    if (effectiveTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark');
+    // document.documentElement과 document.body가 존재하는지 확인
+    if (document.documentElement && document.body) {
+      if (effectiveTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+      }
     }
 
     // 메타 태그 업데이트
@@ -66,8 +69,11 @@ class ThemeProvider {
     const header = document.querySelector('header, .header, .navbar');
     if (header) {
       header.appendChild(toggle);
-    } else {
+    } else if (document.body) {
       document.body.appendChild(toggle);
+    } else {
+      // body도 없으면 아무것도 하지 않음
+      console.warn('테마 토글을 추가할 위치를 찾을 수 없습니다.');
     }
   }
 

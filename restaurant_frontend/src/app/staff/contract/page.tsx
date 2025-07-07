@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Download, FileText, Calendar, Clock, User, Building, DollarSign, CheckCircle, Settings, Plus, Check, AlertCircle, Edit, Trash2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Save, Download, FileText, Calendar, Clock, User, Building, DollarSign, CheckCircle, Settings, Plus, Check, AlertCircle, Edit, Trash2, Shield } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,6 +42,7 @@ interface ContractForm {
     renewalDate: string;
     issuingAuthority: string;
     certificateType: string;
+    file: File | null;
   };
   requiredDocuments: {
     idCard: boolean;
@@ -49,45 +50,17 @@ interface ContractForm {
     bankbook: boolean;
     resume: boolean;
     contractAgreement: boolean;
+    idCardFile: File | null;
+    bankbookFile: File | null;
+    resumeFile: File | null;
   };
 }
 
 export default function ContractPage() {
   const router = useRouter();
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editStaffId, setEditStaffId] = useState<number | null>(null);
-  
-  // 직책 관련 상태
-  const [positions, setPositions] = useState<string[]>([]);
-  const [showPositionDropdown, setShowPositionDropdown] = useState(false);
-  const [positionInput, setPositionInput] = useState("");
-  const [filteredPositions, setFilteredPositions] = useState<string[]>([]);
-  
-  // 부서 관련 상태
-  const [departments, setDepartments] = useState<string[]>([]);
-  const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
-  const [departmentInput, setDepartmentInput] = useState("");
-  const [filteredDepartments, setFilteredDepartments] = useState<string[]>([]);
-  
-  // 피드백 상태
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
-  const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [showError, setShowError] = useState(false);
-
-  // 설정 직접 작성 모달 상태
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showSettingsListModal, setShowSettingsListModal] = useState(false);
-  const [customSettings, setCustomSettings] = useState({
-    name: '',
-    workDays: ["월", "화", "수", "목", "금"],
-    workHours: { start: "09:00", end: "18:00" },
-    salary: { base: 2500000, allowance: 200000, bonus: 0 },
-    benefits: ["4대보험", "연차휴가"]
-  });
-  const [savedSettings, setSavedSettings] = useState<any[]>([]);
+  const searchParams = useSearchParams();
+  const editStaffId = searchParams.get('edit');
+  const isEditMode = !!editStaffId;
 
   const [contractForm, setContractForm] = useState<ContractForm>({
     employeeName: "",
@@ -121,19 +94,62 @@ export default function ContractPage() {
       expiryDate: "",
       renewalDate: "",
       issuingAuthority: "서울시 보건소",
-      certificateType: "일반보건증"
+      certificateType: "일반보건증",
+      file: null,
     },
     requiredDocuments: {
       idCard: false,
       healthCertificate: false,
       bankbook: false,
       resume: false,
-      contractAgreement: false
+      contractAgreement: false,
+      idCardFile: null,
+      bankbookFile: null,
+      resumeFile: null,
     }
   });
 
+  // 직책 관련 상태
+  const [positions, setPositions] = useState<string[]>([]);
+  const [showPositionDropdown, setShowPositionDropdown] = useState(false);
+  const [positionInput, setPositionInput] = useState("");
+  const [filteredPositions, setFilteredPositions] = useState<string[]>([]);
+  
+  // 부서 관련 상태
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
+  const [departmentInput, setDepartmentInput] = useState("");
+  const [filteredDepartments, setFilteredDepartments] = useState<string[]>([]);
+  
+  const [appliedTemplate, setAppliedTemplate] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showError, setShowError] = useState(false);
+
+  // 설정 직접 작성 모달 상태
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSettingsListModal, setShowSettingsListModal] = useState(false);
+  const [customSettings, setCustomSettings] = useState({
+    name: '',
+    workDays: ["월", "화", "수", "목", "금"],
+    workHours: { start: "09:00", end: "18:00" },
+    salary: { base: 2500000, allowance: 200000, bonus: 0 },
+    benefits: ["4대보험", "연차휴가"]
+  });
+  const [savedSettings, setSavedSettings] = useState<any[]>([]);
+
   const workDayOptions = ["월", "화", "수", "목", "금", "토", "일"];
   const benefitOptions = ["4대보험", "연차휴가", "식대지원", "교통비지원", "야근수당", "휴일수당", "상여금"];
+
+  // 수정 모드일 때 직원 데이터 로드
+  useEffect(() => {
+    if (isEditMode && editStaffId) {
+      loadStaffData(parseInt(editStaffId));
+    }
+  }, [isEditMode, editStaffId]);
 
   // 직책 목록 불러오기
   useEffect(() => {
@@ -187,19 +203,6 @@ export default function ContractPage() {
     setSavedSettings(settings);
   }, []);
 
-  // URL 파라미터 확인하여 수정 모드 설정
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const staffId = urlParams.get('staffId');
-    const mode = urlParams.get('mode');
-    
-    if (staffId && mode === 'edit') {
-      setIsEditMode(true);
-      setEditStaffId(Number(staffId));
-      loadStaffData(Number(staffId));
-    }
-  }, []);
-
   // 직원 데이터 불러오기 (수정 모드)
   const loadStaffData = async (staffId: number) => {
     try {
@@ -214,6 +217,17 @@ export default function ContractPage() {
         const data = await response.json();
         if (data.success) {
           const staff = data.staff;
+          
+          // 최신 계약서 정보
+          const latestContract = staff.contracts && staff.contracts.length > 0 
+            ? staff.contracts[staff.contracts.length - 1] 
+            : null;
+          
+          // 최신 보건증 정보
+          const latestHealthCert = staff.health_certificates && staff.health_certificates.length > 0 
+            ? staff.health_certificates[staff.health_certificates.length - 1] 
+            : null;
+          
           setContractForm({
             employeeName: staff.name || '',
             employeeId: staff.id?.toString() || '',
@@ -224,15 +238,15 @@ export default function ContractPage() {
             username: staff.username || '',
             password: '',
             confirmPassword: '',
-            startDate: staff.contracts?.[0]?.start_date || '',
-            endDate: staff.contracts?.[0]?.expiry_date || '',
+            startDate: latestContract?.start_date || '',
+            endDate: latestContract?.expiry_date || '',
             workDays: ["월", "화", "수", "목", "금"],
             workHours: {
               start: "09:00",
               end: "18:00"
             },
             salary: {
-              base: staff.contracts?.[0]?.salary_amount || 2500000,
+              base: latestContract?.salary_amount || 2500000,
               allowance: 200000,
               bonus: 0
             },
@@ -242,24 +256,35 @@ export default function ContractPage() {
             responsibilities: "매장 운영 및 고객 서비스",
             terms: "근로기준법에 따른 근무 조건 적용",
             healthCertificate: {
-              issueDate: staff.health_certificates?.[0]?.issue_date || '',
-              expiryDate: staff.health_certificates?.[0]?.expiry_date || '',
-              renewalDate: staff.health_certificates?.[0]?.renewal_date || '',
-              issuingAuthority: staff.health_certificates?.[0]?.issuing_authority || '서울시 보건소',
-              certificateType: staff.health_certificates?.[0]?.certificate_type || '일반보건증'
+              issueDate: latestHealthCert?.issue_date || '',
+              expiryDate: latestHealthCert?.expiry_date || '',
+              renewalDate: latestHealthCert?.renewal_date || '',
+              issuingAuthority: latestHealthCert?.issuing_authority || '서울시 보건소',
+              certificateType: latestHealthCert?.certificate_type || '일반보건증',
+              file: null,
             },
             requiredDocuments: {
               idCard: false,
               healthCertificate: false,
               bankbook: false,
               resume: false,
-              contractAgreement: false
+              contractAgreement: false,
+              idCardFile: null,
+              bankbookFile: null,
+              resumeFile: null,
             }
           });
+        } else {
+          throw new Error(data.error || '직원 정보를 불러오는데 실패했습니다.');
         }
+      } else {
+        throw new Error('직원 정보 API 호출에 실패했습니다.');
       }
     } catch (error) {
-      console.error('직원 데이터 로드 실패:', error);
+      console.error("직원 데이터 로드 실패:", error);
+      setErrorMessage(error instanceof Error ? error.message : '직원 데이터를 불러오는데 실패했습니다.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 5000);
     }
   };
 
@@ -727,6 +752,52 @@ export default function ContractPage() {
   };
 
   const totalSalary = contractForm.salary.base + contractForm.salary.allowance + contractForm.salary.bonus;
+
+  // 파일 업로드 핸들러
+  const handleFileUpload = (field: string, file: File | null) => {
+    if (field.startsWith('healthCertificate.')) {
+      const subField = field.split('.')[1];
+      setContractForm(prev => ({
+        ...prev,
+        healthCertificate: {
+          ...prev.healthCertificate,
+          [subField]: file
+        }
+      }));
+    } else if (field.startsWith('requiredDocuments.')) {
+      const subField = field.split('.')[1];
+      setContractForm(prev => ({
+        ...prev,
+        requiredDocuments: {
+          ...prev.requiredDocuments,
+          [subField]: file
+        }
+      }));
+    }
+  };
+
+  // 보건증 만료일 자동 계산
+  const calculateRenewalDate = (expiryDate: string) => {
+    if (expiryDate) {
+      const expiry = new Date(expiryDate);
+      const renewal = new Date(expiry);
+      renewal.setDate(renewal.getDate() - 30); // 만료 30일 전
+      return renewal.toISOString().split('T')[0];
+    }
+    return '';
+  };
+
+  // 보건증 만료일 변경 시 갱신일 자동 설정
+  const handleExpiryDateChange = (expiryDate: string) => {
+    setContractForm(prev => ({
+      ...prev,
+      healthCertificate: {
+        ...prev.healthCertificate,
+        expiryDate,
+        renewalDate: calculateRenewalDate(expiryDate)
+      }
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -1278,6 +1349,214 @@ export default function ContractPage() {
                     placeholder="특별한 계약 조건이 있다면 입력하세요"
                     rows={3}
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 보건증 정보 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  보건증 정보
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      보건증 발급일 *
+                    </label>
+                    <Input
+                      type="date"
+                      value={contractForm.healthCertificate.issueDate}
+                      onChange={(e) => setContractForm(prev => ({
+                        ...prev,
+                        healthCertificate: { ...prev.healthCertificate, issueDate: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      보건증 만료일 *
+                    </label>
+                    <Input
+                      type="date"
+                      value={contractForm.healthCertificate.expiryDate}
+                      onChange={(e) => handleExpiryDateChange(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      갱신 예정일
+                    </label>
+                    <Input
+                      type="date"
+                      value={contractForm.healthCertificate.renewalDate}
+                      onChange={(e) => setContractForm(prev => ({
+                        ...prev,
+                        healthCertificate: { ...prev.healthCertificate, renewalDate: e.target.value }
+                      }))}
+                      placeholder="만료 30일 전 자동 설정"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      발급 기관
+                    </label>
+                    <Input
+                      value={contractForm.healthCertificate.issuingAuthority}
+                      onChange={(e) => setContractForm(prev => ({
+                        ...prev,
+                        healthCertificate: { ...prev.healthCertificate, issuingAuthority: e.target.value }
+                      }))}
+                      placeholder="예: 서울시 보건소"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    보건증 유형
+                  </label>
+                  <select
+                    value={contractForm.healthCertificate.certificateType}
+                    onChange={(e) => setContractForm(prev => ({
+                      ...prev,
+                      healthCertificate: { ...prev.healthCertificate, certificateType: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="일반보건증">일반보건증</option>
+                    <option value="식품위생교육">식품위생교육</option>
+                    <option value="위생교육">위생교육</option>
+                    <option value="기타">기타</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    보건증 파일 업로드
+                  </label>
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileUpload('healthCertificate.file', e.target.files?.[0] || null)}
+                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    PDF, JPG, PNG 파일만 업로드 가능합니다.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 필수 서류 체크 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  필수 서류 제출
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="idCard"
+                        checked={contractForm.requiredDocuments.idCard}
+                        onChange={(e) => setContractForm(prev => ({
+                          ...prev,
+                          requiredDocuments: { ...prev.requiredDocuments, idCard: e.target.checked }
+                        }))}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="idCard" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        신분증 사본
+                      </label>
+                    </div>
+                    {contractForm.requiredDocuments.idCard && (
+                      <Input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload('requiredDocuments.idCardFile', e.target.files?.[0] || null)}
+                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="bankbook"
+                        checked={contractForm.requiredDocuments.bankbook}
+                        onChange={(e) => setContractForm(prev => ({
+                          ...prev,
+                          requiredDocuments: { ...prev.requiredDocuments, bankbook: e.target.checked }
+                        }))}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="bankbook" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        통장 사본
+                      </label>
+                    </div>
+                    {contractForm.requiredDocuments.bankbook && (
+                      <Input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload('requiredDocuments.bankbookFile', e.target.files?.[0] || null)}
+                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="resume"
+                      checked={contractForm.requiredDocuments.resume}
+                      onChange={(e) => setContractForm(prev => ({
+                        ...prev,
+                        requiredDocuments: { ...prev.requiredDocuments, resume: e.target.checked }
+                      }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="resume" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      이력서
+                    </label>
+                  </div>
+                  {contractForm.requiredDocuments.resume && (
+                    <Input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileUpload('requiredDocuments.resumeFile', e.target.files?.[0] || null)}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  )}
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="contractAgreement"
+                    checked={contractForm.requiredDocuments.contractAgreement}
+                    onChange={(e) => setContractForm(prev => ({
+                      ...prev,
+                      requiredDocuments: { ...prev.requiredDocuments, contractAgreement: e.target.checked }
+                    }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="contractAgreement" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    계약서 동의
+                  </label>
                 </div>
               </CardContent>
             </Card>
