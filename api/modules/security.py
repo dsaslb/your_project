@@ -2,9 +2,10 @@ from flask import Blueprint, request, jsonify, current_app
 from functools import wraps
 import re
 import html
+import json
 from datetime import datetime
 import jwt
-from api.gateway import token_required
+from api.gateway import token_required, role_required
 
 security = Blueprint('security', __name__)
 
@@ -149,7 +150,7 @@ def rate_limit(max_requests=100, window_seconds=3600):
             # IP 주소 또는 사용자 ID로 식별
             identifier = request.remote_addr
             if hasattr(request, 'user') and request.user:
-                identifier = f"{identifier}_{request.user.id}"
+                identifier = f"{identifier}_{request.user.id}"  # type: ignore
             
             is_allowed, current_count = check_rate_limit(identifier, max_requests, window_seconds)
             
@@ -322,4 +323,69 @@ def get_security_events(current_user):
     return jsonify({
         'events': events,
         'total': len(events)
+    }), 200
+
+# Rate Limit 상태 조회
+@security.route('/rate-limit/status', methods=['GET'])
+@token_required
+def get_rate_limit_status(current_user):
+    """Rate Limit 상태 조회"""
+    identifier = f"{request.remote_addr}_{current_user.id}"
+    is_allowed, current_count = check_rate_limit(identifier, 100, 3600)
+    
+    return jsonify({
+        'identifier': identifier,
+        'is_allowed': is_allowed,
+        'current_count': current_count,
+        'max_requests': 100,
+        'window_seconds': 3600
+    }), 200
+
+# 보안 설정 조회
+@security.route('/settings', methods=['GET'])
+@token_required
+@role_required(['super_admin'])
+def get_security_settings(current_user):
+    """보안 설정 조회"""
+    settings = {
+        'max_login_attempts': 5,
+        'session_timeout': 30,  # 분
+        'password_expiry_days': 90,
+        'require_2fa': False,
+        'rate_limit_enabled': True,
+        'xss_protection': True,
+        'csrf_protection': True
+    }
+    
+    return jsonify(settings), 200
+
+# 보안 설정 업데이트
+@security.route('/settings', methods=['PUT'])
+@token_required
+@role_required(['super_admin'])
+def update_security_settings(current_user):
+    """보안 설정 업데이트"""
+    data = request.get_json() or {}
+    
+    # 설정 업데이트 로직 (실제로는 데이터베이스에 저장)
+    updated_settings = {
+        'max_login_attempts': data.get('max_login_attempts', 5),
+        'session_timeout': data.get('session_timeout', 30),
+        'password_expiry_days': data.get('password_expiry_days', 90),
+        'require_2fa': data.get('require_2fa', False),
+        'rate_limit_enabled': data.get('rate_limit_enabled', True),
+        'xss_protection': data.get('xss_protection', True),
+        'csrf_protection': data.get('csrf_protection', True)
+    }
+    
+    # 보안 이벤트 로그
+    log_security_event(
+        'settings_updated',
+        f"보안 설정이 업데이트되었습니다: {updated_settings}",
+        current_user.id
+    )
+    
+    return jsonify({
+        'message': '보안 설정이 업데이트되었습니다',
+        'settings': updated_settings
     }), 200 

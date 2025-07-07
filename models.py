@@ -1872,3 +1872,50 @@ class StaffRegistrationStep(db.Model):
             'health_certificate_renewal_date': self.health_certificate_renewal_date,
             'required_documents': self.required_documents
         }
+
+
+class ChatRoom(db.Model):
+    """채팅방 모델"""
+    __tablename__ = 'chat_rooms'
+    
+    id = db.Column(db.String(36), primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    room_type = db.Column(db.String(20), nullable=False, default='group')  # direct, group, department
+    creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    creator = db.relationship('User', backref='created_rooms')
+    participants = db.relationship('ChatParticipant', backref='room', cascade='all, delete-orphan')
+    messages = db.relationship('ChatMessage', backref='room', cascade='all, delete-orphan')
+
+class ChatMessage(db.Model):
+    """채팅 메시지 모델"""
+    __tablename__ = 'chat_messages'
+    
+    id = db.Column(db.String(36), primary_key=True)
+    room_id = db.Column(db.String(36), db.ForeignKey('chat_rooms.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    message_type = db.Column(db.String(20), default='text')  # text, image, file, system
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계
+    user = db.relationship('User', backref='chat_messages')
+
+class ChatParticipant(db.Model):
+    """채팅방 참가자 모델"""
+    __tablename__ = 'chat_participants'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.String(36), db.ForeignKey('chat_rooms.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_read_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계
+    user = db.relationship('User', backref='chat_participations')
+    
+    # 복합 유니크 제약
+    __table_args__ = (db.UniqueConstraint('room_id', 'user_id', name='_room_user_uc'),)

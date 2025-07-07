@@ -24,7 +24,6 @@ from api.notice import api_notice_bp
 from api.report import api_report_bp
 from api.staff import staff_bp as api_staff_bp
 from api.role_based_routes import role_routes
-from api.analytics import analytics_bp
 from config import config_by_name
 from extensions import cache, csrf, db, limiter, login_manager, migrate
 from models import (Branch, CleaningPlan, FeedbackIssue, Notice, Notification,
@@ -54,8 +53,13 @@ from api.modules.notification_system import notification_system
 from api.modules.schedule_management import schedule_management
 from api.modules.restaurant.qsc_system import qsc_system
 from api.modules.optimization import optimization
-from api.modules.monitoring import monitoring
 from api.modules.security import security
+from api.modules.monitoring import monitoring
+from api.modules.automation import automation
+from api.modules.analytics import analytics
+from api.modules.chat_system import chat_bp, register_chat_events
+from api.modules.reporting_system import reporting_bp
+from api.modules.visualization import visualization_bp
 
 config_name = os.getenv("FLASK_ENV", "default")
 
@@ -93,7 +97,20 @@ csrf.exempt(api_staff_bp)
 csrf.exempt(contracts_bp)
 csrf.exempt(health_bp)
 csrf.exempt(role_routes)
-csrf.exempt(analytics_bp)
+
+# Exempt optimization modules from CSRF protection
+csrf.exempt(optimization)
+csrf.exempt(security)
+csrf.exempt(monitoring)
+csrf.exempt(notification_system)
+csrf.exempt(automation)
+csrf.exempt(analytics)
+csrf.exempt(user_management)
+csrf.exempt(schedule_management)
+csrf.exempt(qsc_system)
+csrf.exempt(monitoring)
+csrf.exempt(security)
+csrf.exempt(visualization_bp)
 
 # Register API Blueprints
 app.register_blueprint(api_auth_bp)
@@ -109,7 +126,20 @@ app.register_blueprint(api_staff_bp, url_prefix='/api')
 app.register_blueprint(contracts_bp)
 app.register_blueprint(health_bp, url_prefix='/api')
 app.register_blueprint(role_routes)
-app.register_blueprint(analytics_bp)
+
+# Register optimization modules
+app.register_blueprint(optimization, url_prefix='/api/optimization')
+app.register_blueprint(security, url_prefix='/api/security')
+app.register_blueprint(monitoring, url_prefix='/api/monitoring')
+app.register_blueprint(notification_system, url_prefix='/api/notification-system')
+app.register_blueprint(automation, url_prefix='/api/automation')
+app.register_blueprint(analytics, url_prefix='/api/analytics')
+app.register_blueprint(user_management, url_prefix='/api/user-management')
+app.register_blueprint(schedule_management, url_prefix='/api/schedule-management')
+app.register_blueprint(qsc_system, url_prefix='/api/qsc-system')
+app.register_blueprint(monitoring, url_prefix='/api/monitoring')
+app.register_blueprint(security, url_prefix='/api/security')
+app.register_blueprint(visualization_bp, url_prefix='/api/visualization')
 
 # Register Route Blueprints
 app.register_blueprint(payroll_bp)
@@ -1400,6 +1430,15 @@ app.register_blueprint(qsc_system, url_prefix='/api/modules/restaurant/qsc')
 app.register_blueprint(optimization, url_prefix='/api/modules/optimization')
 app.register_blueprint(monitoring, url_prefix='/api/modules/monitoring')
 app.register_blueprint(security, url_prefix='/api/modules/security')
+
+# 채팅 시스템 등록
+app.register_blueprint(chat_bp, url_prefix='/api/chat')
+
+# 보고서 시스템 등록
+app.register_blueprint(reporting_bp, url_prefix='/api/reporting')
+
+# WebSocket 이벤트 등록
+register_chat_events(socketio)
 
 # 임시로 analytics 비활성화
 # app.register_blueprint(analytics_bp, url_prefix='/api/analytics')

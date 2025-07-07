@@ -4,6 +4,12 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import PermissionNav from "@/components/PermissionNav";
 import useUserStore from "@/store/useUserStore";
+import { useCachedStats, useLazyDashboard, usePerformanceMonitor } from "@/hooks/useOptimization";
+import OptimizedStats from "@/components/OptimizedStats";
+import PerformanceMonitor from "@/components/PerformanceMonitor";
+import SystemMonitor from "@/components/SystemMonitor";
+import SecurityDashboard from "@/components/SecurityDashboard";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import {
   ChevronLeft,
   ChevronRight,
@@ -33,6 +39,12 @@ import {
   ClipboardList,
   Package,
   Bell,
+  Activity,
+  Zap,
+  Database,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -43,10 +55,19 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useMobile, useMobileOptimization } from '@/hooks/useMobile';
+import MobileDashboard from '@/components/mobile/MobileDashboard';
+import StatCard from '@/components/widgets/StatCard';
+import NotificationCenter from '@/components/NotificationCenter';
+import { AdvancedVisualization } from '@/components/AdvancedVisualization';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, permissions } = useUserStore();
+  const { user } = useUserStore();
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
@@ -62,6 +83,12 @@ export default function DashboardPage() {
   const [openStaffModal, setOpenStaffModal] = useState(false);
   const [openOrderModal, setOpenOrderModal] = useState(false);
   const [isClient, setIsClient] = useState(false);
+
+  // 최적화된 API 훅들 (컴포넌트에서 직접 사용)
+  const { data: lazyDashboard } = useLazyDashboard();
+
+  const { isMobile } = useMobile();
+  const { mobileSpacing, mobileGridCols } = useMobileOptimization();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -104,10 +131,10 @@ export default function DashboardPage() {
 
   // 슈퍼 관리자인 경우 권한별 네비게이션 표시
   useEffect(() => {
-    if (user && permissions.canAccessSuperAdmin) {
+    if (user && useUserStore.getState().isSuperAdmin()) {
       setShowPermissionNav(true);
     }
-  }, [user, permissions]);
+  }, [user]);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
@@ -323,6 +350,11 @@ export default function DashboardPage() {
     return '';
   };
 
+  // 모바일에서는 모바일 전용 대시보드 표시
+  if (isMobile) {
+    return <MobileDashboard />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       
@@ -438,7 +470,36 @@ export default function DashboardPage() {
 
           {/* 오른쪽 컬럼 */}
           <div className="space-y-8">
-            {/* 통계 카드 */}
+            {/* 최적화된 통계 카드 */}
+            <OptimizedStats />
+
+            {/* 성능 모니터링 카드 */}
+            {user && useUserStore.getState().isSuperAdmin() && (
+              <PerformanceMonitor />
+            )}
+
+            {/* 시스템 모니터링 및 보안 대시보드 */}
+            {user && useUserStore.getState().isSuperAdmin() && (
+              <>
+                <SystemMonitor />
+                <SecurityDashboard />
+              </>
+            )}
+
+            {/* 분석 대시보드 */}
+            {user && useUserStore.getState().isSuperAdmin() && (
+              <AnalyticsDashboard />
+            )}
+
+            {/* 고급 데이터 시각화 */}
+            {user && useUserStore.getState().isSuperAdmin() && (
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">데이터 시각화</h2>
+                <AdvancedVisualization />
+              </div>
+            )}
+
+            {/* 기존 통계 카드 */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">오늘의 통계</h2>
               

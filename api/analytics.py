@@ -60,7 +60,7 @@ def brand_overview():
             FROM users 
             WHERE branch_id IS NOT NULL
             GROUP BY branch_id
-        "").fetchall()
+        """).fetchall()
         
         # 최근 30일 활동 통계
         thirty_days_ago = datetime.now() - timedelta(days=30)

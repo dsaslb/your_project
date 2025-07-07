@@ -19,7 +19,7 @@ export const useOptimizedUsers = (params?: {
 
   return useQuery({
     queryKey: ['optimized-users', params],
-    queryFn: () => apiClient.get(`/api/modules/optimization/users/optimized?${queryString}`),
+    queryFn: () => apiClient.get(`/api/optimization/users/optimized?${queryString}`),
     staleTime: 2 * 60 * 1000, // 2분
   });
 };
@@ -28,7 +28,7 @@ export const useOptimizedUsers = (params?: {
 export const useOptimizedOrderStats = () => {
   return useQuery({
     queryKey: ['optimized-order-stats'],
-    queryFn: () => apiClient.get('/api/modules/optimization/orders/stats/optimized'),
+    queryFn: () => apiClient.get('/api/optimization/orders/stats/optimized'),
     staleTime: 5 * 60 * 1000, // 5분
   });
 };
@@ -37,7 +37,7 @@ export const useOptimizedOrderStats = () => {
 export const useLazyDashboard = () => {
   return useQuery({
     queryKey: ['lazy-dashboard'],
-    queryFn: () => apiClient.get('/api/modules/optimization/dashboard/lazy'),
+    queryFn: () => apiClient.get('/api/optimization/dashboard/lazy'),
     staleTime: 1 * 60 * 1000, // 1분
   });
 };
@@ -46,7 +46,7 @@ export const useLazyDashboard = () => {
 export const useCachedStats = () => {
   return useQuery({
     queryKey: ['cached-stats'],
-    queryFn: () => apiClient.get('/api/modules/optimization/stats/cached'),
+    queryFn: () => apiClient.get('/api/optimization/stats/cached'),
     staleTime: 5 * 60 * 1000, // 5분
   });
 };
@@ -55,7 +55,7 @@ export const useCachedStats = () => {
 export const usePerformanceMonitor = () => {
   return useQuery({
     queryKey: ['performance-monitor'],
-    queryFn: () => apiClient.get('/api/modules/optimization/performance/monitor'),
+    queryFn: () => apiClient.get('/api/optimization/performance/monitor'),
     staleTime: 30 * 1000, // 30초
     refetchInterval: 30000, // 30초마다 자동 갱신
   });

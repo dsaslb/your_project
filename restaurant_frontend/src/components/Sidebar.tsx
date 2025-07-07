@@ -27,7 +27,8 @@ import {
   Archive,
   MessageSquare,
   Home,
-  LogOut
+  LogOut,
+  MessageCircle
 } from "lucide-react";
 
 export interface SidebarMenuItem {
@@ -186,6 +187,24 @@ export default function Sidebar({ menu }: { menu: SidebarMenuItem[] }) {
 
   // 공통 메뉴
   const commonMenu = [
+    { 
+      label: "채팅", 
+      href: "/chat", 
+      icon: <MessageCircle className="h-5 w-5" />,
+      requiredPermission: 'canAccessStaff'
+    },
+    { 
+      label: "고급 보고서", 
+      href: "/reports", 
+      icon: <BarChart3 className="h-5 w-5" />,
+      requiredPermission: 'canAccessManager'
+    },
+    { 
+      label: "데이터 시각화", 
+      href: "/visualization", 
+      icon: <TrendingUp className="h-5 w-5" />,
+      requiredPermission: 'canAccessManager'
+    },
     { 
       label: "알림/공지", 
       href: "/notifications", 

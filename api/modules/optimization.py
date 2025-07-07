@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify, current_app
 from functools import wraps
-from models import db, User, Order, Schedule, Attendance
+from models import db, User, Order, Schedule, Attendance, RestaurantOrder
 from api.gateway import token_required, role_required
 from datetime import datetime, timedelta
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, text
 import time
 
 optimization = Blueprint('optimization', __name__)
@@ -47,16 +47,7 @@ def get_users_optimized(current_user):
         search = request.args.get('search')
         
         # 기본 쿼리 (필요한 컬럼만 선택)
-        query = db.session.query(
-            User.id,
-            User.username,
-            User.name,
-            User.email,
-            User.role,
-            User.is_active,
-            User.created_at,
-            User.last_login
-        )
+        query = db.session.query(User)
         
         # 필터 적용
         if role_filter:
@@ -75,9 +66,9 @@ def get_users_optimized(current_user):
         # 권한별 필터
         if current_user.role != 'super_admin':
             if current_user.role == 'brand_manager':
-                query = query.filter(User.brand_id == current_user.brand_id)
+                query = query.filter(User.branch_id == current_user.branch_id)
             elif current_user.role == 'store_manager':
-                query = query.filter(User.store_id == current_user.store_id)
+                query = query.filter(User.branch_id == current_user.branch_id)
         
         # 정렬 및 페이지네이션
         query = query.order_by(User.created_at.desc())
@@ -91,7 +82,7 @@ def get_users_optimized(current_user):
                 'name': user.name,
                 'email': user.email,
                 'role': user.role,
-                'is_active': user.is_active,
+                'is_active': user.status == 'approved',
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None
             })
@@ -121,44 +112,53 @@ def get_orders_stats_optimized(current_user):
     try:
         # 단일 쿼리로 모든 통계 계산
         stats_query = db.session.query(
-            func.count(Order.id).label('total_orders'),
-            func.count(Order.id).filter(Order.status == 'completed').label('completed_orders'),
-            func.count(Order.id).filter(Order.status == 'pending').label('pending_orders'),
-            func.avg(Order.total_amount).label('avg_amount'),
-            func.sum(Order.total_amount).label('total_amount')
+            func.count(RestaurantOrder.id).label('total_orders'),
+            func.count(RestaurantOrder.id).filter(RestaurantOrder.status == 'completed').label('completed_orders'),
+            func.count(RestaurantOrder.id).filter(RestaurantOrder.status == 'pending').label('pending_orders'),
+            func.avg(RestaurantOrder.total_amount).label('avg_amount'),
+            func.sum(RestaurantOrder.total_amount).label('total_amount')
         )
         
         # 권한별 필터
         if current_user.role == 'store_manager':
-            stats_query = stats_query.filter(Order.store_id == current_user.store_id)
+            stats_query = stats_query.filter(RestaurantOrder.store_id == current_user.branch_id)
         elif current_user.role == 'brand_manager':
-            stats_query = stats_query.filter(Order.brand_id == current_user.brand_id)
+            stats_query = stats_query.filter(RestaurantOrder.store_id == current_user.branch_id)
         
         stats = stats_query.first()
         
         # 최근 7일 통계
         week_ago = datetime.utcnow() - timedelta(days=7)
         recent_stats = db.session.query(
-            func.count(Order.id).label('recent_orders'),
-            func.sum(Order.total_amount).label('recent_amount')
-        ).filter(Order.created_at >= week_ago)
+            func.count(RestaurantOrder.id).label('recent_orders'),
+            func.sum(RestaurantOrder.total_amount).label('recent_amount')
+        ).filter(RestaurantOrder.created_at >= week_ago)
         
         if current_user.role == 'store_manager':
-            recent_stats = recent_stats.filter(Order.store_id == current_user.store_id)
+            recent_stats = recent_stats.filter(RestaurantOrder.store_id == current_user.branch_id)
         elif current_user.role == 'brand_manager':
-            recent_stats = recent_stats.filter(Order.brand_id == current_user.brand_id)
+            recent_stats = recent_stats.filter(RestaurantOrder.store_id == current_user.branch_id)
         
         recent = recent_stats.first()
         
+        # None 체크를 위한 안전한 접근
+        total_orders = getattr(stats, 'total_orders', 0) or 0
+        completed_orders = getattr(stats, 'completed_orders', 0) or 0
+        pending_orders = getattr(stats, 'pending_orders', 0) or 0
+        avg_amount = float(getattr(stats, 'avg_amount', 0)) if getattr(stats, 'avg_amount', 0) else 0
+        total_amount = float(getattr(stats, 'total_amount', 0)) if getattr(stats, 'total_amount', 0) else 0
+        recent_orders = getattr(recent, 'recent_orders', 0) or 0
+        recent_amount = float(getattr(recent, 'recent_amount', 0)) if getattr(recent, 'recent_amount', 0) else 0
+        
         return jsonify({
-            'total_orders': stats.total_orders or 0,
-            'completed_orders': stats.completed_orders or 0,
-            'pending_orders': stats.pending_orders or 0,
-            'avg_amount': float(stats.avg_amount) if stats.avg_amount else 0,
-            'total_amount': float(stats.total_amount) if stats.total_amount else 0,
-            'completion_rate': (stats.completed_orders / stats.total_orders * 100) if stats.total_orders and stats.total_orders > 0 else 0,
-            'recent_orders': recent.recent_orders or 0,
-            'recent_amount': float(recent.recent_amount) if recent.recent_amount else 0
+            'total_orders': total_orders,
+            'completed_orders': completed_orders,
+            'pending_orders': pending_orders,
+            'avg_amount': avg_amount,
+            'total_amount': total_amount,
+            'completion_rate': (completed_orders / total_orders * 100) if total_orders and total_orders > 0 else 0,
+            'recent_orders': recent_orders,
+            'recent_amount': recent_amount
         }), 200
         
     except Exception as e:
@@ -175,19 +175,19 @@ def get_dashboard_lazy(current_user):
         # 기본 통계만 먼저 반환
         basic_stats = {
             'user_count': User.query.count(),
-            'order_count': Order.query.count(),
+            'order_count': RestaurantOrder.query.count(),
             'schedule_count': Schedule.query.count()
         }
         
         # 권한별 필터 적용
         if current_user.role == 'store_manager':
-            basic_stats['user_count'] = User.query.filter_by(store_id=current_user.store_id).count()
-            basic_stats['order_count'] = Order.query.filter_by(store_id=current_user.store_id).count()
-            basic_stats['schedule_count'] = Schedule.query.filter_by(store_id=current_user.store_id).count()
+            basic_stats['user_count'] = User.query.filter_by(branch_id=current_user.branch_id).count()
+            basic_stats['order_count'] = RestaurantOrder.query.filter_by(store_id=current_user.branch_id).count()
+            basic_stats['schedule_count'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
         elif current_user.role == 'brand_manager':
-            basic_stats['user_count'] = User.query.filter_by(brand_id=current_user.brand_id).count()
-            basic_stats['order_count'] = Order.query.filter_by(brand_id=current_user.brand_id).count()
-            basic_stats['schedule_count'] = Schedule.query.filter_by(brand_id=current_user.brand_id).count()
+            basic_stats['user_count'] = User.query.filter_by(branch_id=current_user.branch_id).count()
+            basic_stats['order_count'] = RestaurantOrder.query.filter_by(store_id=current_user.branch_id).count()
+            basic_stats['schedule_count'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
         
         return jsonify({
             'basic_stats': basic_stats,
@@ -241,22 +241,22 @@ def get_cached_stats(current_user):
         # 캐시가 없으면 새로 계산
         stats = {
             'total_users': User.query.count(),
-            'total_orders': Order.query.count(),
+            'total_orders': RestaurantOrder.query.count(),
             'total_schedules': Schedule.query.count(),
             'total_attendance': Attendance.query.count()
         }
         
         # 권한별 필터 적용
         if current_user.role == 'store_manager':
-            stats['total_users'] = User.query.filter_by(store_id=current_user.store_id).count()
-            stats['total_orders'] = Order.query.filter_by(store_id=current_user.store_id).count()
-            stats['total_schedules'] = Schedule.query.filter_by(store_id=current_user.store_id).count()
-            stats['total_attendance'] = Attendance.query.filter_by(store_id=current_user.store_id).count()
+            stats['total_users'] = User.query.filter_by(branch_id=current_user.branch_id).count()
+            stats['total_orders'] = RestaurantOrder.query.filter_by(store_id=current_user.branch_id).count()
+            stats['total_schedules'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
+            stats['total_attendance'] = Attendance.query.filter_by(user_id=current_user.id).count()
         elif current_user.role == 'brand_manager':
-            stats['total_users'] = User.query.filter_by(brand_id=current_user.brand_id).count()
-            stats['total_orders'] = Order.query.filter_by(brand_id=current_user.brand_id).count()
-            stats['total_schedules'] = Schedule.query.filter_by(brand_id=current_user.brand_id).count()
-            stats['total_attendance'] = Attendance.query.filter_by(brand_id=current_user.brand_id).count()
+            stats['total_users'] = User.query.filter_by(branch_id=current_user.branch_id).count()
+            stats['total_orders'] = RestaurantOrder.query.filter_by(store_id=current_user.branch_id).count()
+            stats['total_schedules'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
+            stats['total_attendance'] = Attendance.query.filter_by(user_id=current_user.id).count()
         
         # 캐시에 저장
         set_cached_data(cache_key, stats)
@@ -281,7 +281,7 @@ def get_performance_monitor(current_user):
         # 데이터베이스 연결 상태
         db_status = "healthy"
         try:
-            db.session.execute("SELECT 1")
+            db.session.execute(text("SELECT 1"))
         except Exception:
             db_status = "error"
         
