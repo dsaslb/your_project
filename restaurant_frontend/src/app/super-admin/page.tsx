@@ -198,7 +198,7 @@ const SuperAdminDashboard = () => {
           <div>
             <h1 className="text-3xl font-bold">슈퍼 관리자 대시보드</h1>
             <p className="text-muted-foreground">
-              전체 시스템 현황 및 관리 기능
+              전체 시스템 현황 및 최근 활동을 한눈에 확인하세요.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -214,134 +214,34 @@ const SuperAdminDashboard = () => {
         </div>
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard
             title="전체 사용자"
-            value={data.stats.total_users}
+            value={data?.stats?.total_users ?? 0}
             description="등록된 모든 사용자"
             icon={Users}
             trend="up"
           />
           <StatCard
             title="전체 매장"
-            value={data.stats.total_branches}
-            description="운영 중인 매장 수"
+            value={data?.stats?.total_branches ?? 0}
+            description="등록된 매장 수"
             icon={Building2}
             trend="neutral"
           />
           <StatCard
             title="활성 세션"
-            value={data.stats.active_sessions}
-            description="현재 접속 중인 사용자"
+            value={data?.stats?.active_sessions ?? 0}
+            description="현재 로그인 중인 세션"
             icon={Activity}
             trend="up"
           />
-          <StatCard
-            title="시스템 상태"
-            value="정상"
-            description="모든 서비스 운영 중"
-            icon={CheckCircle}
-            trend="neutral"
-          />
         </div>
 
-        {/* 탭 컨텐츠 */}
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">개요</TabsTrigger>
-            <TabsTrigger value="users">사용자 관리</TabsTrigger>
-            <TabsTrigger value="system">시스템</TabsTrigger>
-            <TabsTrigger value="analytics">분석</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <RecentUsersList users={data.recent_users} />
-              <SystemLogsList logs={data.system_logs} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>사용자 관리</CardTitle>
-                <CardDescription>
-                  전체 사용자 승인, 차단, 권한 관리
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <Button>
-                    <Users className="h-4 w-4 mr-2" />
-                    사용자 목록
-                  </Button>
-                  <Button variant="outline">
-                    <Clock className="h-4 w-4 mr-2" />
-                    승인 대기
-                  </Button>
-                  <Button variant="outline">
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    차단된 사용자
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="system" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>시스템 관리</CardTitle>
-                <CardDescription>
-                  시스템 설정, 백업, 모니터링
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <Button>
-                    <Settings className="h-4 w-4 mr-2" />
-                    시스템 설정
-                  </Button>
-                  <Button variant="outline">
-                    <Activity className="h-4 w-4 mr-2" />
-                    실시간 모니터링
-                  </Button>
-                  <Button variant="outline">
-                    <Shield className="h-4 w-4 mr-2" />
-                    보안 설정
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>데이터 분석</CardTitle>
-                <CardDescription>
-                  시스템 사용 통계 및 분석
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <Button>
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    사용 통계
-                  </Button>
-                  <Button variant="outline">
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    성능 분석
-                  </Button>
-                  <Button variant="outline">
-                    <Activity className="h-4 w-4 mr-2" />
-                    활동 로그
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* 최근 사용자 */}
+        <RecentUsersList users={data?.recent_users ?? []} />
+        {/* 시스템 로그 */}
+        <SystemLogsList logs={data?.system_logs ?? []} />
       </div>
     </SuperAdminOnly>
   );

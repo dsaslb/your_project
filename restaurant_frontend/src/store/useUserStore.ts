@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import apiClient from '@/lib/api-client';
+import { apiClient as _apiClient } from '@/lib/api-client';
+
+const apiClient: any = _apiClient;
 
 export interface User {
   id: number;
@@ -44,35 +46,44 @@ const useUserStore = create<UserState>()(
         set({ isLoading: true, error: null });
         
         try {
-          const { user, redirect_to } = await apiClient.login(username, password);
-          
+          const result = await apiClient.login(username, password);
+          const user = result.user;
+          const redirect_to = result.redirect_to;
           set({
             user,
             isAuthenticated: true,
             isLoading: false,
             error: null,
           });
-
           return { success: true, redirectTo: redirect_to };
         } catch (error: any) {
-          const errorMessage = error.response?.data?.message || '로그인에 실패했습니다';
+          const errorMessage = error.response?.data?.message || error.message || '로그인에 실패했습니다';
           set({
             isLoading: false,
             error: errorMessage,
             isAuthenticated: false,
             user: null,
           });
+          // 백엔드 연결 실패 시 특별 처리
+          if (errorMessage.includes('서버에 연결할 수 없습니다')) {
+            console.warn('백엔드 서버가 실행되지 않았습니다. 프론트엔드만으로 UI 테스트를 진행합니다.');
+          }
           return { success: false };
         }
       },
 
       logout: () => {
-        apiClient.logout();
-        set({
-          user: null,
-          isAuthenticated: false,
-          error: null,
-        });
+        try {
+          apiClient.logout();
+        } catch (error) {
+          console.error('Logout error:', error);
+        } finally {
+          set({
+            user: null,
+            isAuthenticated: false,
+            error: null,
+          });
+        }
       },
 
       checkAuth: async () => {
@@ -94,6 +105,21 @@ const useUserStore = create<UserState>()(
           });
           return true;
         } catch (error: any) {
+          console.error('Auth check error:', error);
+          
+          // 백엔드 연결 실패 시 토큰을 유지하되 인증 상태만 false로 설정
+          if (error.message?.includes('서버에 연결할 수 없습니다') || 
+              error.code === 'ERR_NETWORK' || 
+              error.response?.status >= 500) {
+            console.warn('백엔드 연결 실패. 토큰은 유지하되 인증 상태를 false로 설정합니다.');
+            set({
+              isAuthenticated: false,
+              isLoading: false,
+              error: '백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.',
+            });
+            return false;
+          }
+          
           // 토큰이 유효하지 않으면 로그아웃
           apiClient.logout();
           set({

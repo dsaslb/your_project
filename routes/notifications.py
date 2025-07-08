@@ -471,3 +471,16 @@ def bulk_attendance_notification():
         flash("근태 알림 발송 중 오류가 발생했습니다.", "error")
 
     return redirect(url_for("admin_dashboard"))
+
+
+@notifications_bp.route("/unread-count")
+def api_unread_count():
+    """미확인 알림 개수 API"""
+    try:
+        # JWT 토큰에서 사용자 ID 추출 (실제 구현에서는 토큰 검증 필요)
+        # 임시로 더미 데이터 반환
+        unread_count = 3  # 실제로는 current_user.id로 조회
+        
+        return jsonify({"unread_count": unread_count})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

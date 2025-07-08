@@ -67,7 +67,7 @@ export default function StaffPage() {
         const data = await response.json();
         if (data.success) {
           console.log(`직원 ${staffId} 상태 변경 성공: ${newStatus}`);
-          updateStaffStatusStore(staffId, newStatus);
+          updateStaffStatusStore(staffId, newStatus as 'active' | 'inactive' | 'pending');
           await refreshStaffData();
         } else {
           console.error('상태 변경 실패:', data.error);

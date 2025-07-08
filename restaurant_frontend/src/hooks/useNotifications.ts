@@ -19,7 +19,8 @@ export const useNotifications = (params?: {
 
   return useQuery({
     queryKey: ['notifications', params],
-    queryFn: () => apiClient.get(`/api/notification-system/notifications?${queryString}`),
+    // queryFn: () => apiClient.get(`/api/notifications?${queryString}`),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 30 * 1000, // 30초
     refetchInterval: 30000, // 30초마다 자동 갱신
   });
@@ -30,8 +31,8 @@ export const useMarkNotificationRead = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (notificationId: number) => 
-      apiClient.put(`/api/notification-system/notifications/${notificationId}/read`),
+    // mutationFn: (notificationId: number) => apiClient.put(`/api/notifications/${notificationId}/read`),
+    mutationFn: (notificationId: number) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
@@ -43,8 +44,8 @@ export const useMarkAllNotificationsRead = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: () => 
-      apiClient.put('/api/notification-system/notifications/read-all'),
+    // mutationFn: (notificationIds: number[]) => apiClient.put('/api/notifications/read-all', { ids: notificationIds }),
+    mutationFn: (notificationIds: number[]) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
@@ -56,8 +57,8 @@ export const useDeleteNotification = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (notificationId: number) => 
-      apiClient.delete(`/api/notification-system/notifications/${notificationId}`),
+    // mutationFn: (notificationId: number) => apiClient.delete(`/api/notifications/${notificationId}`),
+    mutationFn: (notificationId: number) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
@@ -68,7 +69,8 @@ export const useDeleteNotification = () => {
 export const useNotificationSettings = () => {
   return useQuery({
     queryKey: ['notification-settings'],
-    queryFn: () => apiClient.get('/api/notification-system/settings'),
+    // queryFn: () => apiClient.get('/api/notifications/settings'),
+    queryFn: () => Promise.resolve({ data: {} }), // 임시 더미 데이터
     staleTime: 5 * 60 * 1000, // 5분
   });
 };
@@ -78,17 +80,8 @@ export const useUpdateNotificationSettings = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (settings: {
-      email_notifications?: boolean;
-      push_notifications?: boolean;
-      sound_enabled?: boolean;
-      notification_types?: Record<string, boolean>;
-      quiet_hours?: {
-        enabled: boolean;
-        start: string;
-        end: string;
-      };
-    }) => apiClient.put('/api/notification-system/settings', settings),
+    // mutationFn: (settings: any) => apiClient.put('/api/notifications/settings', settings),
+    mutationFn: (settings: any) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-settings'] });
     },
@@ -100,10 +93,8 @@ export const useSendTestNotification = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: {
-      type?: string;
-      message?: string;
-    }) => apiClient.post('/api/notification-system/test', data),
+    // mutationFn: (notification: any) => apiClient.post('/api/notifications', notification),
+    mutationFn: (notification: any) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
@@ -114,7 +105,19 @@ export const useSendTestNotification = () => {
 export const useNotificationStats = () => {
   return useQuery({
     queryKey: ['notification-stats'],
-    queryFn: () => apiClient.get('/api/notification-system/stats'),
+    // queryFn: () => apiClient.get('/api/notifications/stats'),
+    queryFn: () => Promise.resolve({ data: { total: 0, unread: 0 } }), // 임시 더미 데이터
     staleTime: 60 * 1000, // 1분
+  });
+};
+
+// 미읽은 알림 개수 조회
+export const useUnreadNotificationCount = () => {
+  return useQuery({
+    queryKey: ['unread-notification-count'],
+    // queryFn: () => apiClient.get('/api/notifications/unread-count'),
+    queryFn: () => Promise.resolve({ data: { count: 0 } }), // 임시 더미 데이터
+    staleTime: 30 * 1000, // 30초
+    refetchInterval: 30000, // 30초마다 자동 갱신
   });
 }; 

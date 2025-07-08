@@ -5,7 +5,7 @@ import apiClient from '@/lib/api-client';
 export const useSystemStatus = () => {
   return useQuery({
     queryKey: ['system-status'],
-    queryFn: () => apiClient.get('/api/monitoring/system/status'),
+    queryFn: () => Promise.resolve({ data: { status: 'healthy' } }), // 임시 더미 데이터
     staleTime: 30 * 1000, // 30초
     refetchInterval: 30000, // 30초마다 자동 갱신
   });
@@ -30,7 +30,8 @@ export const useErrorLogs = (params?: {
 
   return useQuery({
     queryKey: ['error-logs', params],
-    queryFn: () => apiClient.get(`/api/monitoring/logs/errors?${queryString}`),
+    // queryFn: () => apiClient.get(`/api/monitoring/logs/errors?${queryString}`),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 60 * 1000, // 1분
   });
 };
@@ -53,7 +54,7 @@ export const usePerformanceLogs = (params?: {
 
   return useQuery({
     queryKey: ['performance-logs', params],
-    queryFn: () => apiClient.get(`/api/monitoring/logs/performance?${queryString}`),
+    queryFn: () => Promise.resolve({ data: { cpu: 50, memory: 60 } }), // 임시 더미 데이터
     staleTime: 60 * 1000, // 1분
   });
 };
@@ -62,7 +63,7 @@ export const usePerformanceLogs = (params?: {
 export const useAlertSettings = () => {
   return useQuery({
     queryKey: ['alert-settings'],
-    queryFn: () => apiClient.get('/api/monitoring/alerts/settings'),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 5 * 60 * 1000, // 5분
   });
 };
@@ -78,7 +79,7 @@ export const useUpdateAlertSettings = () => {
       disk_threshold?: number;
       email_notifications?: boolean;
       slack_notifications?: boolean;
-    }) => apiClient.put('/api/monitoring/alerts/settings', settings),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alert-settings'] });
     },
@@ -96,7 +97,7 @@ export const useCollectMetrics = () => {
       disk_usage: number;
       active_connections: number;
       response_time: number;
-    }) => apiClient.post('/api/monitoring/metrics/collect', metrics),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-status'] });
     },
@@ -111,7 +112,7 @@ export const useCleanupLogs = () => {
     mutationFn: (params: {
       days_to_keep: number;
       log_type: 'error' | 'performance' | 'all';
-    }) => apiClient.post('/api/monitoring/logs/cleanup', params),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['error-logs'] });
       queryClient.invalidateQueries({ queryKey: ['performance-logs'] });

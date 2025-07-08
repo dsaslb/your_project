@@ -23,11 +23,11 @@ import useUserStore from '@/store/useUserStore';
 import { useRouter } from 'next/navigation';
 
 export default function AdminMonitorPage() {
-  const { user, permissions } = useUserStore();
+  const { user, isSuperAdmin } = useUserStore();
   const router = useRouter();
 
   // 권한 확인
-  if (!user || !permissions.canAccessSuperAdmin) {
+  if (!user || !isSuperAdmin()) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-96">

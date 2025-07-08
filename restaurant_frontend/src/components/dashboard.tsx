@@ -1,10 +1,10 @@
 import Content from "./content"
-import Layout from "./layout"
+// import Layout from "./layout"
 
 export default function Dashboard() {
   return (
-    <Layout>
+    // <Layout>
       <Content />
-    </Layout>
+    // </Layout>
   )
 }

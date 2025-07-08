@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import json
 import pandas as pd
 from sqlalchemy import func, and_, desc
-from models import db, User, Order, Schedule, Attendance, Inventory
+from models import db, User, Order, Schedule, Attendance, InventoryItem
 from api.gateway import token_required, role_required
 
 analytics = Blueprint('analytics', __name__)
@@ -224,7 +224,7 @@ def calculate_inventory_analytics():
     
     try:
         # 재고 데이터 조회
-        inventory_items = Inventory.query.all()
+        inventory_items = InventoryItem.query.all()
         
         # 재고 상태 분석
         low_stock_items = []

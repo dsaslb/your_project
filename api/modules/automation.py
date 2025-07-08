@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from functools import wraps
 from datetime import datetime, timedelta
 import json
-from models import db, User, Order, Schedule, Attendance, Inventory
+from models import db, User, Order, Schedule, Attendance, InventoryItem
 from api.gateway import token_required, role_required
 from api.modules.notification_system import create_notification, send_system_notification
 

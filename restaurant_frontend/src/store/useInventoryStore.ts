@@ -243,7 +243,7 @@ export const useInventoryStore = create<InventoryStore>()(
         try {
           const result = await apiGet<InventoryItem[]>('/api/inventory');
           
-          if (!result.isConnected) {
+          if (result.error) {
             // 백엔드 연결 안 됨 - 더미 데이터 사용
             console.log('백엔드 연결 안 됨, 더미 재고 데이터 사용');
             const dummyData = getDummyInventoryData();
@@ -251,11 +251,6 @@ export const useInventoryStore = create<InventoryStore>()(
               inventoryItems: dummyData,
               loading: false 
             });
-            return;
-          }
-          
-          if (result.error) {
-            set({ error: result.error, loading: false });
             return;
           }
           
@@ -278,7 +273,7 @@ export const useInventoryStore = create<InventoryStore>()(
         try {
           const result = await apiGet<StockMovement[]>('/api/inventory/movements');
           
-          if (!result.isConnected) {
+          if (result.error) {
             // 백엔드 연결 안 됨 - 더미 이동 데이터
             const dummyMovements: StockMovement[] = [
               {
@@ -304,11 +299,6 @@ export const useInventoryStore = create<InventoryStore>()(
               stockMovements: dummyMovements,
               loading: false 
             });
-            return;
-          }
-          
-          if (result.error) {
-            set({ error: result.error, loading: false });
             return;
           }
           

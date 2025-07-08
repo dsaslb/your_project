@@ -18,6 +18,7 @@ import {
   BatteryCharging,
   Thermometer,
   Zap,
+  XCircle,
 } from "lucide-react";
 
 interface MonitoringData {
@@ -190,7 +191,7 @@ export default function MonitoringPage() {
       case "warning":
         return <AlertTriangle className="h-4 w-4" />;
       case "offline":
-        return <X className="h-4 w-4" />;
+        return <XCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
     }
@@ -203,7 +204,7 @@ export default function MonitoringPage() {
       case "warning":
         return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
       case "error":
-        return <X className="h-4 w-4 text-red-600" />;
+        return <XCircle className="h-4 w-4 text-red-600" />;
       default:
         return <Activity className="h-4 w-4 text-blue-600" />;
     }

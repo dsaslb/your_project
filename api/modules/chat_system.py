@@ -5,8 +5,8 @@ import json
 import uuid
 from typing import Dict, List, Optional
 from models import db, User, ChatRoom, ChatMessage, ChatParticipant
-from utils.auth import login_required, role_required
-from utils.notification import send_notification
+from utils.decorators import login_required, role_required
+from utils.notify import send_notification
 
 chat_bp = Blueprint('chat', __name__)
 

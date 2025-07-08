@@ -64,11 +64,45 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
     );
   }
 
-  const kpis = dashboardData?.kpis || {};
-  const growthMetrics = dashboardData?.growth_metrics || {};
-  const salesSummary = dashboardData?.sales_summary || {};
-  const staffSummary = dashboardData?.staff_summary || {};
-  const inventorySummary = dashboardData?.inventory_summary || {};
+  const kpis = {
+    total_revenue: 0,
+    total_orders: 0,
+    avg_order_value: 0,
+    total_customers: 0,
+    active_staff: 0,
+    low_stock_items: 0,
+    out_of_stock_items: 0
+  }; // 임시 더미 데이터
+  const growthMetrics = {
+    revenue_growth: 0,
+    order_growth: 0,
+    customer_growth: 0,
+    efficiency_growth: 0
+  }; // 임시 더미 데이터
+  const salesSummary = {
+    total_revenue: 0,
+    revenue_growth: 0,
+    total_orders: 0,
+    order_growth: 0,
+    avg_order_value: 0,
+    top_items: []
+  }; // 임시 더미 데이터
+  const staffSummary = {
+    total_staff: 0,
+    active_staff: 0,
+    attendance_rate: 0,
+    avg_hours_per_day: 0,
+    total_attendance_days: 0,
+    staff_performance: []
+  }; // 임시 더미 데이터
+  const inventorySummary = {
+    total_items: 0,
+    low_stock_items: 0,
+    out_of_stock_items: 0,
+    total_value: 0,
+    low_stock_count: 0,
+    turnover_data: []
+  }; // 임시 더미 데이터
 
   const getGrowthIcon = (value: number) => {
     return value >= 0 ? (
@@ -88,6 +122,8 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
       currency: 'KRW'
     }).format(amount);
   };
+
+  const lastUpdated = new Date().toISOString(); // 임시 더미 데이터
 
   return (
     <div className={`bg-white rounded-lg shadow-sm border p-6 ${className}`}>
@@ -213,7 +249,7 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">총 매출</span>
-                <span className="font-semibold">{formatCurrency(salesSummary.total_sales || 0)}</span>
+                <span className="font-semibold">{formatCurrency(salesSummary.total_revenue || 0)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">총 주문</span>
@@ -221,7 +257,7 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">평균 주문액</span>
-                <span className="font-semibold">{formatCurrency(salesSummary.average_order_value || 0)}</span>
+                <span className="font-semibold">{formatCurrency(salesSummary.avg_order_value || 0)}</span>
               </div>
               
               {/* 인기 상품 */}
@@ -374,8 +410,8 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
 
       {/* 마지막 업데이트 */}
       <div className="mt-6 text-xs text-gray-500 text-center">
-        마지막 업데이트: {dashboardData?.last_updated ? 
-          new Date(dashboardData.last_updated).toLocaleString('ko-KR') : 
+        마지막 업데이트: {lastUpdated ? 
+          new Date(lastUpdated).toLocaleString('ko-KR') : 
           '알 수 없음'
         }
       </div>

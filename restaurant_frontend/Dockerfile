@@ -1,10 +1,10 @@
-# Node.js 18 베이스 이미지 사용
+# 프론트엔드 Dockerfile
 FROM node:18-alpine
 
 # 작업 디렉토리 설정
 WORKDIR /app
 
-# 패키지 파일 복사
+# package.json 및 package-lock.json 복사
 COPY package*.json ./
 
 # 의존성 설치
@@ -18,6 +18,10 @@ RUN npm run build
 
 # 포트 노출
 EXPOSE 3000
+
+# 환경 변수 설정
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # 헬스 체크
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \

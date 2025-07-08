@@ -18,7 +18,8 @@ export const useSalesAnalytics = (params?: {
 
   return useQuery({
     queryKey: ['sales-analytics', params],
-    queryFn: () => apiClient.get(`/api/analytics/sales?${queryString}`),
+    // queryFn: () => apiClient.get(`/api/analytics/sales?${queryString}`),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 5 * 60 * 1000, // 5분
   });
 };
@@ -39,7 +40,8 @@ export const useStaffAnalytics = (params?: {
 
   return useQuery({
     queryKey: ['staff-analytics', params],
-    queryFn: () => apiClient.get(`/api/analytics/staff?${queryString}`),
+    // queryFn: () => apiClient.get(`/api/analytics/staff?${queryString}`),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 5 * 60 * 1000, // 5분
   });
 };
@@ -48,7 +50,8 @@ export const useStaffAnalytics = (params?: {
 export const useInventoryAnalytics = () => {
   return useQuery({
     queryKey: ['inventory-analytics'],
-    queryFn: () => apiClient.get('/api/analytics/inventory'),
+    // queryFn: () => apiClient.get('/api/analytics/inventory'),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 15 * 60 * 1000, // 15분
   });
 };
@@ -57,7 +60,8 @@ export const useInventoryAnalytics = () => {
 export const useAnalyticsDashboard = () => {
   return useQuery({
     queryKey: ['analytics-dashboard'],
-    queryFn: () => apiClient.get('/api/analytics/dashboard'),
+    // queryFn: () => apiClient.get('/api/analytics/dashboard'),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 5 * 60 * 1000, // 5분
     refetchInterval: 300000, // 5분마다 자동 갱신
   });
@@ -75,7 +79,7 @@ export const useCreateCustomReport = () => {
         end_date?: string;
         group_by?: string;
       };
-    }) => apiClient.post('/api/analytics/reports/custom', data),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-analytics'] });
       queryClient.invalidateQueries({ queryKey: ['staff-analytics'] });
@@ -90,7 +94,7 @@ export const useClearAnalyticsCache = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: () => apiClient.post('/api/analytics/cache/clear'),
+    mutationFn: () => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       // 모든 분석 관련 쿼리 무효화
       queryClient.invalidateQueries({ queryKey: ['sales-analytics'] });

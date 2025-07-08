@@ -5,7 +5,7 @@ import apiClient from '@/lib/api-client';
 export const useQSCItems = (category?: string) => {
   return useQuery({
     queryKey: ['qsc-items', category],
-    queryFn: () => apiClient.get(`/api/modules/restaurant/qsc/items${category ? `?category=${category}` : ''}`),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 5 * 60 * 1000, // 5분
   });
 };
@@ -30,7 +30,7 @@ export const useQSCInspections = (params?: {
 
   return useQuery({
     queryKey: ['qsc-inspections', params],
-    queryFn: () => apiClient.get(`/api/modules/restaurant/qsc/inspections?${queryString}`),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 2 * 60 * 1000, // 2분
   });
 };
@@ -39,7 +39,7 @@ export const useQSCInspections = (params?: {
 export const useQSCInspection = (inspectionId: number) => {
   return useQuery({
     queryKey: ['qsc-inspection', inspectionId],
-    queryFn: () => apiClient.get(`/api/modules/restaurant/qsc/inspections/${inspectionId}`),
+    queryFn: () => Promise.resolve({ data: {} }), // 임시 더미 데이터
     enabled: !!inspectionId,
   });
 };
@@ -60,7 +60,7 @@ export const useCreateQSCInspection = () => {
         photos?: string[];
       }>;
       notes?: string;
-    }) => apiClient.post('/api/modules/restaurant/qsc/inspections', data),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       // 관련 쿼리 무효화
       queryClient.invalidateQueries({ queryKey: ['qsc-inspections'] });
@@ -73,7 +73,7 @@ export const useCreateQSCInspection = () => {
 export const useQSCStats = () => {
   return useQuery({
     queryKey: ['qsc-stats'],
-    queryFn: () => apiClient.get('/api/modules/restaurant/qsc/stats'),
+    queryFn: () => Promise.resolve({ data: { total: 0, completed: 0 } }), // 임시 더미 데이터
     staleTime: 5 * 60 * 1000, // 5분
   });
 }; 

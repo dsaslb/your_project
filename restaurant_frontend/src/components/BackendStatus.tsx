@@ -4,16 +4,14 @@ import { useState, useEffect } from 'react';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Wifi, WifiOff, AlertCircle } from 'lucide-react';
-import useUserStore from '@/store/useUserStore';
 
 export default function BackendStatus() {
-  const { backendConnected, checkBackendConnection } = useUserStore();
   const [isChecking, setIsChecking] = useState(false);
 
   const checkConnection = async () => {
     setIsChecking(true);
     try {
-      await checkBackendConnection();
+      // await checkBackendConnection();
     } catch (error) {
       console.error('Backend connection check failed:', error);
     } finally {
@@ -22,31 +20,31 @@ export default function BackendStatus() {
   };
 
   // 백엔드 연결 상태가 null인 경우에만 확인 (초기 로드 시)
-  useEffect(() => {
-    if (backendConnected === null) {
-      checkConnection();
-    }
-  }, [backendConnected]);
+  // useEffect(() => {
+  //   if (backendConnected === null) {
+  //     checkConnection();
+  //   }
+  // }, [backendConnected]);
 
-  if (backendConnected === null) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-        <span className="text-sm text-gray-500">연결 확인 중...</span>
-      </div>
-    );
-  }
+  // if (backendConnected === null) {
+  //   return (
+  //     <div className="flex items-center gap-2">
+  //       <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
+  //       <span className="text-sm text-gray-500">연결 확인 중...</span>
+  //     </div>
+  //   );
+  // }
 
-  if (backendConnected) {
-    return (
-      <div className="flex items-center gap-2">
-        <Wifi className="w-4 h-4 text-green-500" />
-        <Badge variant="secondary" className="text-green-700 bg-green-100">
-          백엔드 연결됨
-        </Badge>
-      </div>
-    );
-  }
+  // if (backendConnected) {
+  //   return (
+  //     <div className="flex items-center gap-2">
+  //       <Wifi className="w-4 h-4 text-green-500" />
+  //       <Badge variant="secondary" className="text-green-700 bg-green-100">
+  //         백엔드 연결됨
+  //       </Badge>
+  //     </div>
+  //   );
+  // }
 
   return (
     <Alert className="border-orange-200 bg-orange-50">

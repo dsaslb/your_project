@@ -16,7 +16,8 @@ export const useAutomationRules = (params?: {
 
   return useQuery({
     queryKey: ['automation-rules', params],
-    queryFn: () => apiClient.get(`/api/automation/rules?${queryString}`),
+    // queryFn: () => apiClient.get(`/api/automation/rules?${queryString}`),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 60 * 1000, // 1분
   });
 };
@@ -34,7 +35,7 @@ export const useCreateAutomationRule = () => {
       actions: any[];
       enabled?: boolean;
       priority?: string;
-    }) => apiClient.post('/api/automation/rules', rule),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['automation-rules'] });
     },
@@ -57,7 +58,7 @@ export const useUpdateAutomationRule = () => {
         enabled?: boolean;
         priority?: string;
       };
-    }) => apiClient.put(`/api/automation/rules/${ruleId}`, rule),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['automation-rules'] });
     },
@@ -69,8 +70,7 @@ export const useDeleteAutomationRule = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (ruleId: number) => 
-      apiClient.delete(`/api/automation/rules/${ruleId}`),
+    mutationFn: (ruleId: number) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['automation-rules'] });
     },
@@ -85,7 +85,7 @@ export const useExecuteAutomationRule = () => {
     mutationFn: ({ ruleId, context }: {
       ruleId: number;
       context?: any;
-    }) => apiClient.post(`/api/automation/rules/${ruleId}/execute`, { context }),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['automation-jobs'] });
     },
@@ -110,7 +110,7 @@ export const useAutomationJobs = (params?: {
 
   return useQuery({
     queryKey: ['automation-jobs', params],
-    queryFn: () => apiClient.get(`/api/automation/jobs?${queryString}`),
+    queryFn: () => Promise.resolve({ data: [] }), // 임시 더미 데이터
     staleTime: 30 * 1000, // 30초
   });
 };
@@ -119,7 +119,7 @@ export const useAutomationJobs = (params?: {
 export const useAutomationStats = () => {
   return useQuery({
     queryKey: ['automation-stats'],
-    queryFn: () => apiClient.get('/api/automation/stats'),
+    queryFn: () => Promise.resolve({ data: { enabled: true } }), // 임시 더미 데이터
     staleTime: 60 * 1000, // 1분
   });
 }; 

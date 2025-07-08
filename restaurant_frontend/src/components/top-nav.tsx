@@ -5,7 +5,6 @@ import Image from "next/image"
 import { Bell, ChevronRight } from "lucide-react"
 import Profile01 from "./profile-01"
 import Link from "next/link"
-import { ThemeToggle } from "../theme-toggle"
 
 interface BreadcrumbItem {
   label: string
@@ -45,8 +44,6 @@ export default function TopNav() {
         >
           <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-300" />
         </button>
-
-        <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none">

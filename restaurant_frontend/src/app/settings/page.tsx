@@ -49,8 +49,6 @@ import {
   Lock,
   Unlock,
   RefreshCw,
-  Backup,
-  Restore,
   Archive,
   History,
 } from "lucide-react";
@@ -626,7 +624,7 @@ export default function SettingsPage() {
                       </p>
                     </div>
                     <Switch
-                      checked={value}
+                      checked={!!value}
                       onCheckedChange={(checked) => setSettings({
                         ...settings,
                         notifications: {
@@ -706,7 +704,7 @@ export default function SettingsPage() {
                     return (
                       <div key={key} className="flex items-center space-x-2">
                         <Switch
-                          checked={value}
+                          checked={!!value}
                           onCheckedChange={(checked) => setSettings({
                             ...settings,
                             security: {
@@ -872,7 +870,7 @@ export default function SettingsPage() {
                     return (
                       <div key={key} className="flex items-center space-x-2">
                         <Switch
-                          checked={value}
+                          checked={!!value}
                           onCheckedChange={(checked) => setSettings({
                             ...settings,
                             appearance: {

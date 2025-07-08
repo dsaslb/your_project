@@ -43,6 +43,7 @@ import {
   MessageSquare,
   Eye,
   EyeOff,
+  HistoryIcon,
 } from "lucide-react";
 
 // 평가 항목 타입 정의
@@ -559,7 +560,7 @@ export default function EvaluationPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
+                <HistoryIcon className="h-5 w-5" />
                 평가 이력
               </CardTitle>
             </CardHeader>

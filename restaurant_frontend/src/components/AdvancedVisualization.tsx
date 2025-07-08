@@ -396,7 +396,7 @@ export const AdvancedVisualization = () => {
                 <div>
                   <label className="text-sm font-medium">기간</label>
                   <Select 
-                    value={customChartConfig.filters.date_range || '30d'} 
+                    value={(customChartConfig.filters && (customChartConfig.filters as any).date_range) || '30d'} 
                     onValueChange={(value) => setCustomChartConfig(prev => ({ 
                       ...prev, 
                       filters: { ...prev.filters, date_range: value }

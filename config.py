@@ -137,6 +137,11 @@ class DevelopmentConfig(Config):
     # 개발 환경에서는 보안 헤더 완화
     SECURITY_HEADERS = {}
 
+    # 개발 환경에서는 HTTP 쿠키 허용
+    SESSION_COOKIE_SECURE = False
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+
     # 개발용 로깅 - 상세한 디버그 정보
     LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
     LOG_FILE = os.getenv("LOG_FILE", "logs/restaurant_dev.log")

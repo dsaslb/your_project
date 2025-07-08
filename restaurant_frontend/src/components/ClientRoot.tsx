@@ -20,7 +20,7 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
       <QueryClientProvider client={queryClient}>
         <UserProvider>
           <div className="flex h-screen bg-background">
-            <Sidebar menu={[]} />
+            <Sidebar />
             <main className="flex-1 overflow-auto">{children}</main>
           </div>
         </UserProvider>

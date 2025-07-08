@@ -8,7 +8,7 @@ import io
 import base64
 from typing import Dict, List, Optional
 from models import db, User, Branch, Order, Schedule, Report, Notification
-from utils.auth import login_required, role_required
+from utils.decorators import login_required, role_required
 import logging
 
 # 로깅 설정

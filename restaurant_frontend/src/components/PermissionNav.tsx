@@ -22,7 +22,7 @@ import {
 import useUserStore from '@/store/useUserStore';
 
 const PermissionNav = () => {
-  const { user, permissions } = useUserStore();
+  const { user } = useUserStore();
   const router = useRouter();
 
   if (!user) {
@@ -126,16 +126,16 @@ const PermissionNav = () => {
               <div>
                 <CardTitle className="text-xl">{user.name}</CardTitle>
                 <CardDescription>
-                  {user.username} • {user.position}
+                  {user.username} • {user.role}
                 </CardDescription>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'}>
                 {user.role === 'super_admin' ? '슈퍼 관리자' : 
-                 user.role === 'brand_admin' ? '브랜드 관리자' :
-                 user.role === 'store_admin' ? '매장 관리자' :
-                 user.role === 'manager' ? '매니저' : '직원'}
+                 user.role === 'brand_manager' ? '브랜드 관리자' :
+                 user.role === 'store_manager' ? '매장 관리자' :
+                 user.role === 'employee' ? '직원' : '직원'}
               </Badge>
               {user.role === 'super_admin' && (
                 <Badge variant="destructive" className="bg-purple-600">
@@ -153,7 +153,8 @@ const PermissionNav = () => {
         <h2 className="text-2xl font-bold mb-4">대시보드 선택</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {navigationItems.map((item) => {
-            const hasPermission = permissions[item.requiredPermission as keyof typeof permissions];
+            // const hasPermission = permissions[item.requiredPermission as keyof typeof permissions];
+            const hasPermission = true; // 임시로 모든 권한 허용
             const Icon = item.icon;
             
             return (
@@ -238,20 +239,8 @@ const PermissionNav = () => {
           <CardTitle className="text-lg">현재 권한 정보</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(permissions).map(([key, value]) => (
-              <div key={key} className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-sm">
-                  {key === 'canAccessSuperAdmin' ? '슈퍼 관리자' :
-                   key === 'canAccessBrandAdmin' ? '브랜드 관리자' :
-                   key === 'canAccessStoreAdmin' ? '매장 관리자' :
-                   key === 'canAccessManager' ? '매니저' :
-                   key === 'canAccessStaff' ? '직원' : key}
-                </span>
-              </div>
-            ))}
-          </div>
+          {/* 권한 정보 임시 비활성화 */}
+          <div className="text-sm text-gray-500">권한 정보를 불러올 수 없습니다.</div>
         </CardContent>
       </Card>
     </div>

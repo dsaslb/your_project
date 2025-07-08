@@ -47,33 +47,80 @@ class ThemeProvider {
 
   // 테마 토글 버튼 생성
   createThemeToggle() {
-    // 기존 토글 버튼이 있으면 제거
-    const existingToggle = document.getElementById('theme-toggle');
-    if (existingToggle) {
-      existingToggle.remove();
-    }
-
-    // 새 토글 버튼 생성
     const toggle = document.createElement('button');
     toggle.id = 'theme-toggle';
     toggle.className = 'theme-toggle-btn';
     toggle.setAttribute('aria-label', '테마 변경');
     toggle.innerHTML = this.getToggleIcon();
+    toggle.addEventListener('click', () => this.cycleTheme());
 
-    // 클릭 이벤트
-    toggle.addEventListener('click', () => {
-      this.cycleTheme();
-    });
+    // 더 구체적인 선택자들로 개선
+    const headerSelectors = [
+      // Next.js App Router 특화 선택자
+      '[data-testid="header"]', '.flex.w-full', '.min-h-screen',
+      '.bg-gradient-to-br', '.flex.items-center', '.justify-center',
+      // 로그인 페이지 특화 선택자
+      '.max-w-md', '.space-y-8', '.text-center',
+      // 대시보드 페이지 특화 선택자
+      '.bg-background', '.flex-1', '.ml-0', '.lg\\:ml-64',
+      // 일반적인 헤더 선택자
+      'header', '.header', '.navbar', '.nav', '.top-bar',
+      '.logo-container', '.brand-container', '.title-container',
+      '.login-container', '.auth-container', '.form-header',
+      // 추가적인 선택자들
+      '.flex.justify-between', '.flex.items-center',
+      '.container', '.main-header', '.app-header'
+    ];
 
-    // 헤더에 추가
-    const header = document.querySelector('header, .header, .navbar');
+    let header = null;
+    for (const selector of headerSelectors) {
+      const elements = document.querySelectorAll(selector);
+      for (const element of elements) {
+        // 로그인 페이지의 경우 오른쪽 컨테이너에 추가
+        if (selector.includes('max-w-md') || selector.includes('space-y-8')) {
+          header = element;
+          break;
+        }
+        // 대시보드의 경우 상단 영역에 추가
+        if (element.offsetTop < 100 || element.classList.contains('header') || element.classList.contains('navbar')) {
+          header = element;
+          break;
+        }
+        // flex 컨테이너인 경우
+        if (element.classList.contains('flex') || getComputedStyle(element).display === 'flex') {
+          header = element;
+          break;
+        }
+      }
+      if (header) break;
+    }
+
     if (header) {
-      header.appendChild(toggle);
-    } else if (document.body) {
-      document.body.appendChild(toggle);
+      // 헤더가 flex 컨테이너인 경우 적절한 위치에 추가
+      if (header.classList.contains('flex') || getComputedStyle(header).display === 'flex') {
+        header.appendChild(toggle);
+      } else {
+        // 일반 컨테이너인 경우 첫 번째 자식으로 추가
+        header.insertBefore(toggle, header.firstChild);
+      }
     } else {
-      // body도 없으면 아무것도 하지 않음
-      console.warn('테마 토글을 추가할 위치를 찾을 수 없습니다.');
+      // 헤더가 없으면 body에 추가
+      if (document.body) {
+        // body의 첫 번째 자식으로 추가
+        document.body.insertBefore(toggle, document.body.firstChild);
+      } else {
+        // body도 없으면 아무것도 하지 않음
+        console.warn('테마 토글을 추가할 위치를 찾을 수 없습니다.');
+      }
+    }
+    
+    // 토글이 성공적으로 추가되었는지 확인
+    if (!document.getElementById('theme-toggle')) {
+      // 마지막 수단: body에 강제로 추가
+      if (document.body) {
+        document.body.appendChild(toggle);
+        console.log('테마 토글을 body에 강제로 추가했습니다.');
+      }
     }
   }
 

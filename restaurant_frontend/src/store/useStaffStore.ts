@@ -65,7 +65,7 @@ interface StaffStore {
   addStaff: (staff: StaffMember) => void;
   updateStaff: (id: number, updates: Partial<StaffMember>) => void;
   deleteStaff: (id: number) => void;
-  updateStaffStatus: (id: number, status: string) => void;
+  updateStaffStatus: (id: number, status: 'active' | 'inactive' | 'pending') => void;
   
   // API 호출
   fetchStaffData: (pageType: string) => Promise<void>;
@@ -209,7 +209,7 @@ export const useStaffStore = create<StaffStore>()(
         staffMembers: state.staffMembers.filter(staff => staff.id !== id)
       })),
 
-      updateStaffStatus: (id, status) => set((state) => ({
+      updateStaffStatus: (id, status: 'active' | 'inactive' | 'pending') => set((state) => ({
         staffMembers: state.staffMembers.map(staff =>
           staff.id === id ? { ...staff, status } : staff
         )
@@ -222,7 +222,7 @@ export const useStaffStore = create<StaffStore>()(
         try {
           const result = await apiGet<any[]>(`/api/staff/${pageType}`);
           
-          if (!result.isConnected) {
+          if (result.error) {
             // 백엔드 연결 안 됨 - 더미 데이터 사용
             console.log('백엔드 연결 안 됨, 더미 데이터 사용');
             const dummyData = getDummyStaffData();
@@ -230,11 +230,6 @@ export const useStaffStore = create<StaffStore>()(
               staffMembers: dummyData,
               loading: false 
             });
-            return;
-          }
-          
-          if (result.error) {
-            set({ error: result.error, loading: false });
             return;
           }
           
@@ -257,7 +252,7 @@ export const useStaffStore = create<StaffStore>()(
         try {
           const result = await apiGet<any[]>('/api/staff/pending');
           
-          if (!result.isConnected) {
+          if (result.error) {
             // 백엔드 연결 안 됨 - 더미 데이터에서 pending 상태만 필터링
             const dummyData = getDummyStaffData();
             const pendingData = dummyData.filter(staff => staff.status === 'pending');
@@ -265,11 +260,6 @@ export const useStaffStore = create<StaffStore>()(
               pendingStaff: pendingData,
               loading: false 
             });
-            return;
-          }
-          
-          if (result.error) {
-            set({ error: result.error, loading: false });
             return;
           }
           
@@ -292,7 +282,7 @@ export const useStaffStore = create<StaffStore>()(
         try {
           const result = await apiGet<any>('/api/staff/expiring-documents');
           
-          if (!result.isConnected) {
+          if (result.error) {
             // 백엔드 연결 안 됨 - 더미 만료 문서 데이터
             const dummyExpiringDocs = {
               contracts: [
@@ -332,11 +322,6 @@ export const useStaffStore = create<StaffStore>()(
               expiringDocuments: dummyExpiringDocs,
               loading: false 
             });
-            return;
-          }
-          
-          if (result.error) {
-            set({ error: result.error, loading: false });
             return;
           }
           

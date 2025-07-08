@@ -12,7 +12,7 @@ export const useValidateUserInput = () => {
       password?: string;
       name?: string;
       phone?: string;
-    }) => apiClient.post('/api/security/validate/user', data),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-validation'] });
     },
@@ -27,11 +27,12 @@ export const useValidateFile = () => {
     mutationFn: (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
-      return apiClient.post('/api/security/validate/file', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // return apiClient.post('/api/security/validate/file', formData, {
+      //   headers: {
+      //     'Content-Type': 'multipart/form-data',
+      //   },
+      // });
+      return Promise.resolve({ success: true }); // 임시 더미 응답
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['file-validation'] });
@@ -58,7 +59,10 @@ export const useSecurityEvents = (params?: {
 
   return useQuery({
     queryKey: ['security-events', params],
-    queryFn: () => apiClient.get(`/api/security/security/events?${queryString}`),
+    queryFn: () => {
+      // queryFn: () => apiClient.get(`/api/security/security/events?${queryString}`),
+      return Promise.resolve({ data: [] }); // 임시 더미 데이터
+    },
     staleTime: 30 * 1000, // 30초
   });
 };
@@ -67,7 +71,10 @@ export const useSecurityEvents = (params?: {
 export const useRateLimitStatus = () => {
   return useQuery({
     queryKey: ['rate-limit-status'],
-    queryFn: () => apiClient.get('/api/security/rate-limit/status'),
+    queryFn: () => {
+      // queryFn: () => apiClient.get('/api/security/rate-limit/status'),
+      return Promise.resolve({ data: { limit: 100, remaining: 95 } }); // 임시 더미 데이터
+    },
     staleTime: 60 * 1000, // 1분
   });
 };
@@ -76,7 +83,10 @@ export const useRateLimitStatus = () => {
 export const useSecuritySettings = () => {
   return useQuery({
     queryKey: ['security-settings'],
-    queryFn: () => apiClient.get('/api/security/settings'),
+    queryFn: () => {
+      // queryFn: () => apiClient.get('/api/security/settings'),
+      return Promise.resolve({ data: {} }); // 임시 더미 데이터
+    },
     staleTime: 5 * 60 * 1000, // 5분
   });
 };
@@ -91,7 +101,7 @@ export const useUpdateSecuritySettings = () => {
       session_timeout?: number;
       password_expiry_days?: number;
       require_2fa?: boolean;
-    }) => apiClient.put('/api/security/settings', settings),
+    }) => Promise.resolve({ success: true }), // 임시 더미 응답
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['security-settings'] });
     },

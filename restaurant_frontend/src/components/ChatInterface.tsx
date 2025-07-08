@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Send, 
   Plus, 
@@ -162,45 +161,43 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className }) => {
         </div>
 
         {/* 채팅방 목록 */}
-        <ScrollArea className="flex-1">
-          <div className="space-y-1 p-2">
-            {rooms.map((room) => (
-              <div
-                key={room.id}
-                onClick={() => selectRoom(room)}
-                className={cn(
-                  "p-3 rounded-lg cursor-pointer transition-colors",
-                  currentRoom?.id === room.id
-                    ? "bg-blue-100 border border-blue-200"
-                    : "hover:bg-gray-50"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <MessageCircle className="w-4 h-4 text-gray-500" />
-                      <h3 className="font-medium text-sm truncate">{room.name}</h3>
-                      {room.unread_count > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          {room.unread_count}
-                        </Badge>
-                      )}
-                    </div>
-                    {room.last_message && (
-                      <p className="text-xs text-gray-500 truncate mt-1">
-                        {room.last_message.user_name}: {room.last_message.message}
-                      </p>
+        <div className="space-y-1 p-2">
+          {rooms.map((room) => (
+            <div
+              key={room.id}
+              onClick={() => selectRoom(room)}
+              className={cn(
+                "p-3 rounded-lg cursor-pointer transition-colors",
+                currentRoom?.id === room.id
+                  ? "bg-blue-100 border border-blue-200"
+                  : "hover:bg-gray-50"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2">
+                    <MessageCircle className="w-4 h-4 text-gray-500" />
+                    <h3 className="font-medium text-sm truncate">{room.name}</h3>
+                    {room.unread_count > 0 && (
+                      <Badge variant="destructive" className="text-xs">
+                        {room.unread_count}
+                      </Badge>
                     )}
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Users className="w-3 h-3 text-gray-400" />
-                    <span className="text-xs text-gray-400">{room.participant_count}</span>
-                  </div>
+                  {room.last_message && (
+                    <p className="text-xs text-gray-500 truncate mt-1">
+                      {room.last_message.user_name}: {room.last_message.message}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Users className="w-3 h-3 text-gray-400" />
+                  <span className="text-xs text-gray-400">{room.participant_count}</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </ScrollArea>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 채팅 메시지 영역 */}
@@ -233,68 +230,66 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className }) => {
             </div>
 
             {/* 메시지 목록 */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex space-x-3",
-                      message.is_own ? "flex-row-reverse space-x-reverse" : ""
-                    )}
-                  >
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={message.user.avatar} />
-                      <AvatarFallback>
-                        {message.user.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "flex space-x-3",
+                    message.is_own ? "flex-row-reverse space-x-reverse" : ""
+                  )}
+                >
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={message.user.avatar} />
+                    <AvatarFallback>
+                      {message.user.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className={cn(
+                    "flex-1 max-w-xs",
+                    message.is_own ? "text-right" : ""
+                  )}>
                     <div className={cn(
-                      "flex-1 max-w-xs",
+                      "inline-block p-3 rounded-lg",
+                      message.is_own
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-900"
+                    )}>
+                      <p className="text-sm">{message.message}</p>
+                    </div>
+                    <div className={cn(
+                      "mt-1 text-xs text-gray-500",
                       message.is_own ? "text-right" : ""
                     )}>
-                      <div className={cn(
-                        "inline-block p-3 rounded-lg",
-                        message.is_own
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      )}>
-                        <p className="text-sm">{message.message}</p>
-                      </div>
-                      <div className={cn(
-                        "mt-1 text-xs text-gray-500",
-                        message.is_own ? "text-right" : ""
-                      )}>
-                        {message.user.name} • {formatTime(message.timestamp)}
-                      </div>
+                      {message.user.name} • {formatTime(message.timestamp)}
                     </div>
                   </div>
-                ))}
-                
-                {/* 타이핑 표시 */}
-                {typingUsers.length > 0 && (
-                  <div className="flex space-x-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback>?</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="inline-block p-3 rounded-lg bg-gray-100">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
+                </div>
+              ))}
+              
+              {/* 타이핑 표시 */}
+              {typingUsers.length > 0 && (
+                <div className="flex space-x-3">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback>?</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="inline-block p-3 rounded-lg bg-gray-100">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {typingUsers.join(', ')}님이 입력 중...
-                      </p>
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {typingUsers.join(', ')}님이 입력 중...
+                    </p>
                   </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
 
             {/* 메시지 입력 */}
             <div className="p-4 border-t border-gray-200">

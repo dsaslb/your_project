@@ -82,7 +82,7 @@
     {% endif %}
   {% endwith %}
   
-  <form method="post">
+  <form method="post" action="/auth/login">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="username" class="form-label">사용자명</label>
@@ -95,6 +95,10 @@
     <button type="submit" class="btn btn-primary w-100">로그인</button>
                 </form>
                 
+  <form method="post" action="/api/auth/quick_admin_login" style="margin-top: 1em;">
+    <button type="submit" class="btn btn-primary">관리자 바로 로그인(admin/admin123)</button>
+  </form>
+  
   <div class="register-link">
     <a href="{{ url_for('auth.register') }}">회원가입</a>
     </div>

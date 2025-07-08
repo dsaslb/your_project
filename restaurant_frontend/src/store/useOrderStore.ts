@@ -139,7 +139,7 @@ export const useOrderStore = create<OrderStore>()(
         try {
           const result = await apiGet<Order[]>('/api/orders');
           
-          if (!result.isConnected) {
+          if (result.error) {
             // 백엔드 연결 안 됨 - 더미 데이터 사용
             console.log('백엔드 연결 안 됨, 더미 주문 데이터 사용');
             const dummyData = getDummyOrderData();
@@ -147,11 +147,6 @@ export const useOrderStore = create<OrderStore>()(
               orders: dummyData,
               loading: false 
             });
-            return;
-          }
-          
-          if (result.error) {
-            set({ error: result.error, loading: false });
             return;
           }
           
@@ -174,16 +169,11 @@ export const useOrderStore = create<OrderStore>()(
         try {
           const result = await apiPost<Order>('/api/orders', orderData);
           
-          if (!result.isConnected) {
+          if (result.error) {
             set({ 
               loading: false,
               error: '백엔드 서버에 연결할 수 없어 주문을 생성할 수 없습니다.'
             });
-            return;
-          }
-          
-          if (result.error) {
-            set({ error: result.error, loading: false });
             return;
           }
           
@@ -208,16 +198,11 @@ export const useOrderStore = create<OrderStore>()(
         try {
           const result = await apiPut<Order>(`/api/orders/${id}`, { status });
           
-          if (!result.isConnected) {
+          if (result.error) {
             set({ 
               loading: false,
               error: '백엔드 서버에 연결할 수 없어 주문 상태를 업데이트할 수 없습니다.'
             });
-            return;
-          }
-          
-          if (result.error) {
-            set({ error: result.error, loading: false });
             return;
           }
           

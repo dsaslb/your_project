@@ -144,7 +144,6 @@ class User(db.Model, UserMixin):
 
     # 관계 설정
     branch = db.relationship("Branch", backref="users")
-    notifications = db.relationship("Notification", lazy="dynamic")
     delegated_users = db.relationship(
         "User",
         backref=db.backref("delegator", remote_side=[id]),
@@ -432,6 +431,14 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f"<User {self.username}>"
 
+    # 성능 최적화를 위한 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_user_email', 'email'),
+        db.Index('idx_user_role', 'role'),
+        db.Index('idx_user_branch_id', 'branch_id'),
+        db.Index('idx_user_created_at', 'created_at'),
+    )
+
 
 # 출퇴근 모델
 class Attendance(db.Model):
@@ -453,10 +460,15 @@ class Attendance(db.Model):
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
-    # 복합 인덱스 추가
+    # 복합 인덱스 추가 (date 컬럼 관련 인덱스 제거)
     __table_args__ = (
         db.Index("idx_attendance_user_date", "user_id", "clock_in"),
         db.Index("idx_attendance_date_range", "clock_in", "clock_out"),
+        db.Index('idx_attendance_user_id', 'user_id'),
+        # db.Index('idx_attendance_date', 'date'),
+        # db.Index('idx_attendance_date_user', 'date', 'user_id'),
+        # db.Index('idx_attendance_branch_id', 'branch_id'),
+        # db.Index('idx_attendance_status', 'status'),
     )
 
     @property
@@ -633,7 +645,7 @@ class Notification(db.Model):
     ai_priority = db.Column(db.String(10), index=True)  # AI가 추천한 우선순위
 
     # 관계 설정
-    user = db.relationship("User")
+    user = db.relationship("User", backref="notifications")
 
     # 복합 인덱스 추가
     __table_args__ = (
@@ -641,6 +653,8 @@ class Notification(db.Model):
         db.Index("idx_notification_category_date", "category", "created_at"),
         db.Index("idx_notification_priority_date", "priority", "created_at"),
         db.Index("idx_notification_team_role", "recipient_team", "recipient_role"),
+        db.Index('idx_notification_user_id', 'user_id'),
+        db.Index('idx_notification_created_at', 'created_at'),
     )
 
     def __repr__(self):
@@ -896,6 +910,14 @@ class Schedule(db.Model):
     def __repr__(self):
         return f"<Schedule {self.date} {self.type} {self.user_id}>"
 
+    # 성능 최적화를 위한 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_schedule_user_id', 'user_id'),
+        db.Index('idx_schedule_date', 'date'),
+        db.Index('idx_schedule_branch_id', 'branch_id'),
+        db.Index('idx_schedule_date_user', 'date', 'user_id'),
+    )
+
 
 class CleaningPlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -954,6 +976,15 @@ class Order(db.Model):
 
     def __repr__(self):
         return f"<Order {self.item} {self.quantity}>"
+
+    # 성능 최적화를 위한 인덱스 추가
+    __table_args__ = (
+        db.Index('idx_order_store_id', 'store_id'),
+        db.Index('idx_order_created_at', 'created_at'),
+        db.Index('idx_order_status', 'status'),
+        db.Index('idx_order_employee_id', 'employee_id'),
+        db.Index('idx_order_date_status', 'created_at', 'status'),
+    )
 
 
 class InventoryItem(db.Model):
@@ -1919,3 +1950,25 @@ class ChatParticipant(db.Model):
     
     # 복합 유니크 제약
     __table_args__ = (db.UniqueConstraint('room_id', 'user_id', name='_room_user_uc'),)
+
+
+class IoTDevice(db.Model):
+    __tablename__ = 'iot_devices'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), nullable=False)
+    device_type = db.Column(db.String(32), nullable=False)  # 예: temperature, humidity, inventory, machine
+    location = db.Column(db.String(128), nullable=True)
+    description = db.Column(db.String(256), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # 관계
+    data = db.relationship('IoTData', backref='device', lazy=True)
+
+class IoTData(db.Model):
+    __tablename__ = 'iot_data'
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey('iot_devices.id'), nullable=False)
+    data_type = db.Column(db.String(32), nullable=False)  # 예: temperature, humidity, inventory, status
+    value = db.Column(db.Float, nullable=True)
+    extra = db.Column(db.JSON, nullable=True)  # 추가 정보(예: 상태, 경고 등)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)

@@ -520,7 +520,7 @@ export default function ContractPage() {
       salary: setting.salary,
       benefits: setting.benefits
     });
-    setIsEditMode(true);
+    // setIsEditMode(true);
     setShowSettingsModal(true);
   };
 
@@ -1853,7 +1853,7 @@ export default function ContractPage() {
                 <Button
                   onClick={() => {
                     setShowSettingsListModal(false);
-                    setIsEditMode(false);
+                    // setIsEditMode(false);
                     setCustomSettings({
                       name: '',
                       workDays: ["월", "화", "수", "목", "금"],
@@ -1936,7 +1936,7 @@ export default function ContractPage() {
                   <Button
                     onClick={() => {
                       setShowSettingsListModal(false);
-                      setIsEditMode(false);
+                      // setIsEditMode(false);
                       setCustomSettings({
                         name: '',
                         workDays: ["월", "화", "수", "목", "금"],
@@ -1970,7 +1970,7 @@ export default function ContractPage() {
                 size="sm"
                 onClick={() => {
                   setShowSettingsModal(false);
-                  setIsEditMode(false);
+                  // setIsEditMode(false);
                 }}
                 className="p-2"
               >
@@ -2195,7 +2195,7 @@ export default function ContractPage() {
                 variant="ghost"
                 onClick={() => {
                   setShowSettingsModal(false);
-                  setIsEditMode(false);
+                  // setIsEditMode(false);
                 }}
               >
                 취소
