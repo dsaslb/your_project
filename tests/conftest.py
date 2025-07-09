@@ -103,7 +103,10 @@ def session(app):
     테스트 시작 전에 모든 테이블을 삭제하고 재생성합니다.
     """
     with app.app_context():
-        db.drop_all()
+        try:
+            db.drop_all()
+        except:
+            pass  # 테이블이 존재하지 않으면 무시
         db.create_all()
         yield db.session
         db.session.remove()
@@ -112,9 +115,11 @@ def session(app):
 @pytest.fixture()
 def admin_user(session):
     """Fixture for a test admin user."""
-    user = User(
-        username="testadmin", email="admin@example.com", role="admin", status="approved"
-    )
+    user = User()
+    user.username = "testadmin"
+    user.email = "admin@example.com"
+    user.role = "admin"
+    user.status = "approved"
     user.set_password("a-very-secure-admin-password-123")
     session.add(user)
     session.flush()
@@ -124,12 +129,11 @@ def admin_user(session):
 @pytest.fixture()
 def notice(session, admin_user):
     """Fixture for a sample notice."""
-    n = Notice(
-        title="Original Title",
-        content="Original Content",
-        author_id=admin_user.id,
-        category="공지사항",
-    )
+    n = Notice()
+    n.title = "Original Title"
+    n.content = "Original Content"
+    n.author_id = admin_user.id
+    n.category = "공지사항"
     session.add(n)
     session.flush()
     return n
@@ -152,7 +156,7 @@ def admin_token(client, admin_user, session):
             f"Admin login failed with status {resp.status_code}: {resp.data.decode()}"
         )
 
-    token = resp.json.get("token")
+    token = resp.json.get("access_token")
     if not token:
         pytest.fail("Failed to retrieve admin token.")
 

@@ -31,7 +31,7 @@ def create_schedule(current_user):
         if current_user.role != 'super_admin':
             if current_user.role == 'brand_manager' and user.brand_id != current_user.brand_id:
                 return jsonify({'message': '접근 권한이 없습니다'}), 403
-            elif current_user.role == 'store_manager' and user.store_id != current_user.store_id:
+            elif current_user.role == 'store_manager' and user.branch_id != current_user.branch_id:
                 return jsonify({'message': '접근 권한이 없습니다'}), 403
         
         # 중복 스케줄 확인
@@ -44,15 +44,14 @@ def create_schedule(current_user):
             return jsonify({'message': '해당 날짜에 이미 스케줄이 존재합니다'}), 400
         
         # 스케줄 생성
-        schedule = Schedule(
-            user_id=data['user_id'],
-            date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
-            start_time=datetime.strptime(data['start_time'], '%H:%M').time(),
-            end_time=datetime.strptime(data['end_time'], '%H:%M').time(),
-            type=data.get('type', 'regular'),
-            notes=data.get('notes'),
-            created_by=current_user.id
-        )
+        schedule = Schedule()
+        schedule.user_id = data['user_id']
+        schedule.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        schedule.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+        schedule.end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+        schedule.type = data.get('type', 'regular')
+        schedule.memo = data.get('notes')
+        schedule.manager_id = current_user.id
         
         db.session.add(schedule)
         db.session.commit()
@@ -78,6 +77,7 @@ def create_schedule(current_user):
 # 스케줄 목록 조회
 @schedule_management.route('/schedules', methods=['GET'])
 @token_required
+@role_required(['super_admin', 'brand_manager', 'store_manager', 'employee'])
 def get_schedules(current_user):
     """스케줄 목록 조회"""
     try:
@@ -98,10 +98,10 @@ def get_schedules(current_user):
             query = query.filter(Schedule.user_id == current_user.id)
         elif current_user.role == 'brand_manager':
             # 브랜드 관리자는 자신의 브랜드 사용자 스케줄만 조회
-            query = query.join(User).filter(User.brand_id == current_user.brand_id)
+            query = query.join(User, Schedule.user_id == User.id).filter(User.brand_id == current_user.brand_id)
         elif current_user.role == 'store_manager':
             # 매장 관리자는 자신의 매장 사용자 스케줄만 조회
-            query = query.join(User).filter(User.store_id == current_user.store_id)
+            query = query.join(User, Schedule.user_id == User.id).filter(User.branch_id == current_user.branch_id)
         
         # 날짜 필터
         if start_date:
@@ -134,7 +134,7 @@ def get_schedules(current_user):
                 'start_time': schedule.start_time.strftime('%H:%M'),
                 'end_time': schedule.end_time.strftime('%H:%M'),
                 'type': schedule.type,
-                'notes': schedule.notes,
+                'notes': schedule.memo,
                 'created_at': schedule.created_at.isoformat() if schedule.created_at else None
             })
         
@@ -172,7 +172,7 @@ def get_schedule(current_user, schedule_id):
                 return jsonify({'message': '접근 권한이 없습니다'}), 403
         elif current_user.role == 'store_manager':
             user = User.query.get(schedule.user_id)
-            if user and user.store_id != current_user.store_id:
+            if user and user.branch_id != current_user.branch_id:
                 return jsonify({'message': '접근 권한이 없습니다'}), 403
         
         user = User.query.get(schedule.user_id)
@@ -185,9 +185,9 @@ def get_schedule(current_user, schedule_id):
             'start_time': schedule.start_time.strftime('%H:%M'),
             'end_time': schedule.end_time.strftime('%H:%M'),
             'type': schedule.type,
-            'notes': schedule.notes,
+            'notes': schedule.memo,
             'created_at': schedule.created_at.isoformat() if schedule.created_at else None,
-            'created_by': schedule.created_by
+            'created_by': schedule.manager_id
         }), 200
         
     except Exception as e:

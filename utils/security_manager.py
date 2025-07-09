@@ -15,8 +15,8 @@ import os
 class SecurityManager:
     """고급 보안 관리 시스템"""
     
-    def __init__(self, secret_key: str = None):
-        self.secret_key = secret_key or os.environ.get('SECRET_KEY', 'default-secret-key')
+    def __init__(self, secret_key: Optional[str] = None):
+        self.secret_key = secret_key or os.environ.get('JWT_SECRET_KEY') or 'your-secret-key'
         self.encryption_key = self._generate_encryption_key()
         self.fernet = Fernet(self.encryption_key)
         

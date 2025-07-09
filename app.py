@@ -34,6 +34,11 @@ from api.ai_analytics import ai_analytics_bp
 from api.security_api import security_bp
 from api.performance_optimization import performance_bp
 from api.integration_api import integration_bp
+from api.modules.user_management import user_management
+from api.modules.notification_system import notification_system
+from api.modules.schedule_management import schedule_management
+from api.modules.optimization import optimization
+from api.modules.monitoring import monitoring
 
 # Import Route Blueprints
 from routes.notifications import notifications_bp
@@ -64,6 +69,7 @@ config_name = os.getenv("FLASK_ENV", "default")
 
 app = Flask(__name__)
 app.config.from_object(config_by_name[config_name])
+app.config['JWT_SECRET_KEY'] = 'your-secret-key'
 
 CORS(app,
      origins=[
@@ -97,7 +103,8 @@ api_blueprints = [
     admin_report_bp, admin_log_bp, admin_report_stat_bp,
     comment_report_bp, api_staff_bp, contracts_bp, health_bp,
     brand_management_bp, store_management_bp, ai_management_bp, approval_workflow_bp,
-    improvement_requests_bp
+    improvement_requests_bp, user_management, notification_system, schedule_management,
+    optimization, monitoring
 ]
 
 for bp in api_blueprints:
@@ -126,6 +133,11 @@ app.register_blueprint(ai_analytics_bp)
 app.register_blueprint(security_bp)
 app.register_blueprint(performance_bp)
 app.register_blueprint(integration_bp)
+app.register_blueprint(user_management, url_prefix='/api/modules/user')
+app.register_blueprint(notification_system, url_prefix='/api/modules/notification')
+app.register_blueprint(schedule_management, url_prefix='/api/modules/schedule')
+app.register_blueprint(optimization, url_prefix='/api/modules/optimization')
+app.register_blueprint(monitoring, url_prefix='/api/modules/monitoring')
 
 # Register Route Blueprints
 app.register_blueprint(payroll_bp)
@@ -363,7 +375,7 @@ def auth_login():
             return jsonify({"message": "승인 대기 중인 계정입니다."}), 401
 
         # JWT 토큰 생성
-        secret_key = current_app.config.get('SECRET_KEY', 'default-secret-key')
+        secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
         
         # 액세스 토큰 (1시간)
         access_token = jwt.encode(

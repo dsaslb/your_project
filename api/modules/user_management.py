@@ -39,7 +39,7 @@ def get_users(current_user):
                 query = query.filter(User.brand_id == current_user.brand_id)
             # 매장 관리자는 자신의 매장 사용자만 조회
             elif current_user.role == 'store_manager':
-                query = query.filter(User.store_id == current_user.store_id)
+                query = query.filter(User.branch_id == current_user.branch_id)
         
         # 페이지네이션
         pagination = query.paginate(
@@ -56,7 +56,7 @@ def get_users(current_user):
                 'name': user.name,
                 'email': user.email,
                 'role': user.role,
-                'is_active': user.is_active,
+                'status': user.status,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None
             })
@@ -99,9 +99,9 @@ def get_user(current_user, user_id):
             'name': user.name,
             'email': user.email,
             'role': user.role,
-            'is_active': user.is_active,
+            'status': user.status,
             'brand_id': user.brand_id,
-            'store_id': user.store_id,
+            'branch_id': user.branch_id,
             'created_at': user.created_at.isoformat() if user.created_at else None,
             'last_login': user.last_login.isoformat() if user.last_login else None
         }), 200
@@ -143,15 +143,14 @@ def create_user(current_user):
                     return jsonify({'message': '권한이 없습니다'}), 403
         
         # 사용자 생성
-        user = User(
-            username=data['username'],
-            name=data['name'],
-            email=data['email'],
-            role=data['role'],
-            brand_id=data.get('brand_id'),
-            store_id=data.get('store_id'),
-            is_active=data.get('is_active', True)
-        )
+        user = User()
+        user.username = data['username']
+        user.name = data['name']
+        user.email = data['email']
+        user.role = data['role']
+        user.brand_id = data.get('brand_id')
+        user.branch_id = data.get('branch_id')
+        user.status = data.get('status', 'approved')
         user.set_password(data['password'])
         
         db.session.add(user)
@@ -201,8 +200,8 @@ def update_user(current_user, user_id):
             user.email = data['email']
         if 'role' in data and current_user.role == 'super_admin':
             user.role = data['role']
-        if 'is_active' in data:
-            user.is_active = data['is_active']
+        if 'status' in data:
+            user.status = data['status']
         if 'password' in data:
             user.set_password(data['password'])
         
@@ -216,7 +215,7 @@ def update_user(current_user, user_id):
                 'name': user.name,
                 'email': user.email,
                 'role': user.role,
-                'is_active': user.is_active
+                'status': user.status
             }
         }), 200
         
@@ -267,10 +266,10 @@ def get_user_stats(current_user):
             if current_user.role == 'brand_manager':
                 query = query.filter(User.brand_id == current_user.brand_id)
             elif current_user.role == 'store_manager':
-                query = query.filter(User.store_id == current_user.store_id)
+                query = query.filter(User.branch_id == current_user.branch_id)
         
         total_users = query.count()
-        active_users = query.filter(User.is_active == True).count()
+        active_users = query.filter(User.status == 'approved').count()
         
         # 역할별 통계
         role_stats = {}
@@ -280,7 +279,7 @@ def get_user_stats(current_user):
                 if current_user.role == 'brand_manager':
                     role_query = role_query.filter(User.brand_id == current_user.brand_id)
                 elif current_user.role == 'store_manager':
-                    role_query = role_query.filter(User.store_id == current_user.store_id)
+                    role_query = role_query.filter(User.branch_id == current_user.branch_id)
             role_stats[role] = role_query.count()
         
         return jsonify({

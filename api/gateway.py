@@ -14,12 +14,14 @@ from datetime import datetime, timedelta
 logger = logging.getLogger(__name__)
 
 # JWT 설정
-JWT_SECRET_KEY = "your-secret-key"
+# JWT_SECRET_KEY = "your-secret-key"  # 기존 하드코딩 제거
 JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
 JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
 def generate_tokens(user):
     """JWT 토큰 생성"""
+    from flask import current_app
+    jwt_secret = current_app.config.get("JWT_SECRET_KEY", "your-secret-key")
     access_token = jwt.encode(
         {
             'user_id': user.id,
@@ -27,7 +29,7 @@ def generate_tokens(user):
             'role': user.role,
             'exp': datetime.utcnow() + JWT_ACCESS_TOKEN_EXPIRES
         },
-        JWT_SECRET_KEY,
+        jwt_secret,
         algorithm="HS256"
     )
     
@@ -36,7 +38,7 @@ def generate_tokens(user):
             'user_id': user.id,
             'exp': datetime.utcnow() + JWT_REFRESH_TOKEN_EXPIRES
         },
-        JWT_SECRET_KEY,
+        jwt_secret,
         algorithm="HS256"
     )
     
@@ -46,6 +48,8 @@ def token_required(f):
     """JWT 토큰 필요 데코레이터"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        from flask import current_app
+        jwt_secret = current_app.config.get("JWT_SECRET_KEY", "your-secret-key")
         token = None
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
@@ -58,7 +62,7 @@ def token_required(f):
             return jsonify({'error': '토큰이 필요합니다'}), 401
         
         try:
-            data = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
+            data = jwt.decode(token, jwt_secret, algorithms=["HS256"])
             user = User.query.get(data['user_id'])
             if not user:
                 return jsonify({'error': '유효하지 않은 토큰입니다'}), 401
@@ -72,7 +76,7 @@ def token_required(f):
             
         except jwt.ExpiredSignatureError:
             return jsonify({'error': '토큰이 만료되었습니다'}), 401
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
             return jsonify({'error': '유효하지 않은 토큰입니다'}), 401
     
     return decorated_function
@@ -88,12 +92,12 @@ def role_required(allowed_roles):
             
             # 최고 관리자는 모든 권한 허용
             if user.role == 'super_admin':
-                return f(*args, **kwargs)
+                return f(user, *args, **kwargs)
             
             if user.role not in allowed_roles:
                 return jsonify({'error': '접근 권한이 없습니다'}), 403
             
-            return f(*args, **kwargs)
+            return f(user, *args, **kwargs)
         return decorated_function
     return decorator
 
@@ -174,6 +178,8 @@ def login():
 @gateway.route('/refresh', methods=['POST'])
 def refresh_token():
     """토큰 갱신 API"""
+    from flask import current_app
+    jwt_secret = current_app.config.get("JWT_SECRET_KEY", "your-secret-key")
     data = request.get_json()
     refresh_token = data.get('refresh_token')
     
@@ -181,7 +187,7 @@ def refresh_token():
         return jsonify({'error': 'Refresh token required'}), 400
     
     try:
-        payload = jwt.decode(refresh_token, JWT_SECRET_KEY, algorithms=["HS256"])
+        payload = jwt.decode(refresh_token, jwt_secret, algorithms=["HS256"])
         user = User.query.get(payload.get('user_id'))
         
         if not user:

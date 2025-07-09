@@ -36,7 +36,7 @@ def api_login():
         return jsonify({"message": "승인 대기 중인 계정입니다."}), 401
 
     # JWT 토큰 생성
-    secret_key = current_app.config.get('SECRET_KEY', 'default-secret-key')
+    secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
     
     # 액세스 토큰 (1시간)
     access_token = jwt.encode(
@@ -88,7 +88,7 @@ def api_refresh():
         return jsonify({"message": "리프레시 토큰이 필요합니다."}), 400
 
     try:
-        secret_key = current_app.config.get('SECRET_KEY', 'default-secret-key')
+        secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
         payload = jwt.decode(data["refresh_token"], secret_key, algorithms=['HS256'])
         
         user = User.query.get(payload['user_id'])
@@ -210,7 +210,7 @@ def api_quick_admin_login():
             db.session.commit()
         
         # JWT 토큰 생성
-        secret_key = current_app.config.get('SECRET_KEY', 'default-secret-key')
+        secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
         
         # 액세스 토큰 (1시간)
         access_token = jwt.encode(

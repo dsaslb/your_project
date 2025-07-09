@@ -89,6 +89,7 @@ def send_system_notification(title, message, priority='medium', data=None):
 # 알림 조회
 @notification_system.route('/notifications', methods=['GET'])
 @token_required
+@role_required(['super_admin', 'brand_manager', 'store_manager', 'employee'])
 def get_notifications(current_user):
     """사용자 알림 조회"""
     try:

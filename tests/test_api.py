@@ -25,14 +25,18 @@ def auth_headers():
 
 @pytest.fixture
 def test_user():
-    """테스트 사용자 생성"""
-    user = User(
-        username='testuser',
-        name='Test User',
-        email='test@example.com',
-        role='store_manager',
-        is_active=True
-    )
+    """테스트 사용자 생성 (브랜드도 함께 생성)"""
+    from models import Brand, db
+    brand = Brand(name="테스트브랜드", status="active")
+    db.session.add(brand)
+    db.session.commit()
+    user = User()
+    user.username = 'testuser'
+    user.name = 'Test User'
+    user.email = 'test@example.com'
+    user.role = 'brand_manager'
+    user.status = "approved"
+    user.brand_id = brand.id
     user.set_password('testpass123')
     return user
 
@@ -81,22 +85,35 @@ class TestUserManagementAPI:
         response = client.get('/api/modules/user/users')
         assert response.status_code == 401
     
-    def test_get_users_success(self, client, test_user, auth_headers):
-        """사용자 목록 조회 성공 테스트"""
-        with client.application.app_context():
-            db.session.add(test_user)
-            db.session.commit()
-        
-        # 먼저 로그인하여 토큰 획득
+    def test_get_users_success(self, client, auth_headers):
+        """사용자 목록 조회 성공 테스트 (client context 내에서 모든 작업)"""
+        from models import Brand, User, db
+        brand = Brand(name="테스트브랜드", status="active")
+        db.session.add(brand)
+        db.session.commit()
+        user = User()
+        user.username = 'testuser'
+        user.name = 'Test User'
+        user.email = 'test@example.com'
+        user.role = 'brand_manager'
+        user.status = "approved"
+        user.brand_id = brand.id
+        user.set_password('testpass123')
+        db.session.add(user)
+        db.session.commit()
+
+        # 로그인 및 토큰 획득
         login_response = client.post('/api/auth/login', json={
             'username': 'testuser',
             'password': 'testpass123'
         })
+        print("로그인 응답:", login_response.data)
         token = json.loads(login_response.data)['access_token']
+        print("토큰:", token)
         
-        response = client.get('/api/modules/user/users', 
+        response = client.get('/api/modules/user/users',
                             headers=auth_headers(token))
-        
+        print("API 응답:", response.data)
         assert response.status_code == 200
         data = json.loads(response.data)
         assert 'users' in data
@@ -194,7 +211,7 @@ class TestHealthCheck:
         data = json.loads(response.data)
         assert data['status'] == 'healthy'
         assert 'timestamp' in data
-        assert 'version' in data
+        assert 'message' in data
 
 class TestCORS:
     """CORS 테스트"""

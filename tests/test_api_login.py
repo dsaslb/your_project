@@ -17,7 +17,7 @@ class TestAPILogin:
         resp = client.post("/api/auth/login", json=payload)
 
         assert resp.status_code == 200
-        assert "token" in resp.json
+        assert "access_token" in resp.json
 
     def test_api_login_fail_invalid_credentials(self, client):
         """잘못된 인증 정보로 로그인 실패 테스트"""
@@ -26,8 +26,8 @@ class TestAPILogin:
 
         assert resp.status_code == 401
         data = resp.json
-        assert "msg" in data
-        assert "Invalid credentials" in data["msg"]
+        assert "message" in data
+        assert "잘못된 사용자명 또는 비밀번호입니다" in data["message"]
 
     def test_api_login_missing_username(self, client):
         """사용자명 누락 테스트"""
@@ -36,8 +36,8 @@ class TestAPILogin:
 
         assert resp.status_code == 400
         data = resp.json
-        assert "msg" in data
-        assert "Username and password are required" in data["msg"]
+        assert "message" in data
+        assert "사용자명과 비밀번호를 입력해주세요" in data["message"]
 
     def test_api_login_missing_password(self, client, admin_user):
         """비밀번호 누락 테스트"""
@@ -46,8 +46,8 @@ class TestAPILogin:
 
         assert resp.status_code == 400
         data = resp.json
-        assert "msg" in data
-        assert "Username and password are required" in data["msg"]
+        assert "message" in data
+        assert "사용자명과 비밀번호를 입력해주세요" in data["message"]
 
     def test_api_login_empty_payload(self, client):
         """빈 페이로드 테스트"""
@@ -56,8 +56,8 @@ class TestAPILogin:
 
         assert resp.status_code == 400
         data = resp.json
-        assert "msg" in data
-        assert "Username and password are required" in data["msg"]
+        assert "message" in data
+        assert "사용자명과 비밀번호를 입력해주세요" in data["message"]
 
     def test_api_login_invalid_json(self, client):
         """잘못된 JSON 형식 테스트"""
@@ -78,9 +78,9 @@ class TestAPILogin:
 
         assert resp.status_code == 200
         data = resp.json
-        assert "token" in data
+        assert "access_token" in data
 
-        token_parts = data["token"].split(".")
+        token_parts = data["access_token"].split(".")
         assert len(token_parts) == 3
 
     def test_token_uniqueness(self, client, admin_user, session):
@@ -99,8 +99,8 @@ class TestAPILogin:
         assert resp1.status_code == 200
         assert resp2.status_code == 200
 
-        token1 = resp1.json.get("token")
-        token2 = resp2.json.get("token")
+        token1 = resp1.json.get("access_token")
+        token2 = resp2.json.get("access_token")
 
         assert token1 is not None
         assert token2 is not None

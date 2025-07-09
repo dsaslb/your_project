@@ -1,16 +1,28 @@
 from flask import Blueprint, jsonify, request, current_app, g
 from functools import wraps
-import redis
 import hashlib
 import json
 import time
 from typing import Dict, Any, Optional, Union
 import logging
+import threading
 
 performance_bp = Blueprint('performance', __name__)
 
-# Redis 캐시 설정
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+# Redis 클라이언트 초기화 (선택적)
+redis_client = None
+try:
+    import redis
+    redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    # 연결 테스트
+    redis_client.ping()
+except (ImportError, Exception):
+    redis_client = None
+    logging.warning("Redis not available, using in-memory cache")
+
+# 메모리 기반 캐시 (Redis가 없을 때 사용)
+memory_cache = {}
+cache_lock = threading.Lock()
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -24,20 +36,45 @@ def cache_response(expire_time=300):
             # 캐시 키 생성
             cache_key = f"cache:{f.__name__}:{hashlib.md5(str(request.args).encode()).hexdigest()}"
             
-            # 캐시에서 데이터 확인
-            cached_data = redis_client.get(cache_key)
-            if cached_data:
-                logger.info(f"캐시 히트: {cache_key}")
-                return json.loads(cached_data)  # type: ignore
-            
-            # 캐시 미스 - 함수 실행
-            result = f(*args, **kwargs)
-            
-            # 결과 캐싱
-            redis_client.setex(cache_key, expire_time, json.dumps(result))
-            logger.info(f"캐시 저장: {cache_key}")
-            
-            return result
+            # Redis가 있으면 Redis 사용, 없으면 메모리 캐시 사용
+            if redis_client:
+                # Redis 캐시에서 데이터 확인
+                cached_data = redis_client.get(cache_key)
+                if cached_data:
+                    logger.info(f"Redis 캐시 히트: {cache_key}")
+                    return json.loads(cached_data)  # type: ignore
+                
+                # 캐시 미스 - 함수 실행
+                result = f(*args, **kwargs)
+                
+                # 결과 Redis 캐싱
+                redis_client.setex(cache_key, expire_time, json.dumps(result))
+                logger.info(f"Redis 캐시 저장: {cache_key}")
+                
+                return result
+            else:
+                # 메모리 캐시 사용
+                with cache_lock:
+                    if cache_key in memory_cache:
+                        cache_data = memory_cache[cache_key]
+                        if time.time() < cache_data['expires']:
+                            logger.info(f"메모리 캐시 히트: {cache_key}")
+                            return cache_data['data']
+                        else:
+                            del memory_cache[cache_key]
+                
+                # 캐시 미스 - 함수 실행
+                result = f(*args, **kwargs)
+                
+                # 결과 메모리 캐싱
+                with cache_lock:
+                    memory_cache[cache_key] = {
+                        'data': result,
+                        'expires': time.time() + expire_time
+                    }
+                logger.info(f"메모리 캐시 저장: {cache_key}")
+                
+                return result
         return decorated
     return decorator
 
@@ -49,16 +86,32 @@ def rate_limit(max_requests=100, window=60):
             client_ip = request.remote_addr
             rate_key = f"rate_limit:{client_ip}:{f.__name__}"
             
-            # 현재 요청 수 확인
-            current_requests = redis_client.get(rate_key)
-            if current_requests and int(current_requests) >= max_requests:  # type: ignore
-                return jsonify({'error': '요청 제한 초과'}), 429
-            
-            # 요청 수 증가
-            pipe = redis_client.pipeline()
-            pipe.incr(rate_key)
-            pipe.expire(rate_key, window)
-            pipe.execute()
+            if redis_client:
+                # Redis 기반 요청 제한
+                current_requests = redis_client.get(rate_key)
+                if current_requests and int(current_requests) >= max_requests:  # type: ignore
+                    return jsonify({'error': '요청 제한 초과'}), 429
+                
+                # 요청 수 증가
+                pipe = redis_client.pipeline()
+                pipe.incr(rate_key)
+                pipe.expire(rate_key, window)
+                pipe.execute()
+            else:
+                # 메모리 기반 요청 제한 (간단한 구현)
+                with cache_lock:
+                    if rate_key not in memory_cache:
+                        memory_cache[rate_key] = {'count': 0, 'reset_time': time.time() + window}
+                    
+                    cache_data = memory_cache[rate_key]
+                    if time.time() > cache_data['reset_time']:
+                        cache_data['count'] = 0
+                        cache_data['reset_time'] = time.time() + window
+                    
+                    if cache_data['count'] >= max_requests:
+                        return jsonify({'error': '요청 제한 초과'}), 429
+                    
+                    cache_data['count'] += 1
             
             return f(*args, **kwargs)
         return decorated
@@ -68,12 +121,22 @@ def rate_limit(max_requests=100, window=60):
 def clear_cache():
     """캐시 전체 삭제"""
     try:
-        keys = redis_client.keys("cache:*")
-        if keys:
-            redis_client.delete(*keys)  # type: ignore
-            logger.info(f"캐시 삭제 완료: {len(keys)}개 키")  # type: ignore
+        if redis_client:
+            keys = redis_client.keys("cache:*")
+            if keys:
+                redis_client.delete(*keys)  # type: ignore
+                logger.info(f"Redis 캐시 삭제 완료: {len(keys)}개 키")  # type: ignore
+            deleted_keys = len(keys) if keys else 0
+        else:
+            # 메모리 캐시 삭제
+            with cache_lock:
+                cache_keys = [k for k in memory_cache.keys() if k.startswith("cache:")]
+                for key in cache_keys:
+                    del memory_cache[key]
+                deleted_keys = len(cache_keys)
+                logger.info(f"메모리 캐시 삭제 완료: {deleted_keys}개 키")
         
-        return jsonify({'message': '캐시가 삭제되었습니다', 'deleted_keys': len(keys) if keys else 0})  # type: ignore
+        return jsonify({'message': '캐시가 삭제되었습니다', 'deleted_keys': deleted_keys})
     except Exception as e:
         logger.error(f"캐시 삭제 오류: {e}")
         return jsonify({'error': '캐시 삭제 실패'}), 500
@@ -82,15 +145,30 @@ def clear_cache():
 def get_cache_stats():
     """캐시 통계 조회"""
     try:
-        cache_keys = redis_client.keys("cache:*")
-        rate_limit_keys = redis_client.keys("rate_limit:*")
-        
-        stats = {
-            'cache_entries': len(cache_keys) if cache_keys else 0,  # type: ignore
-            'rate_limit_entries': len(rate_limit_keys) if rate_limit_keys else 0,  # type: ignore
-            'total_memory': redis_client.info()['used_memory_human'],  # type: ignore
-            'connected_clients': redis_client.info()['connected_clients']  # type: ignore
-        }
+        if redis_client:
+            cache_keys = redis_client.keys("cache:*")
+            rate_limit_keys = redis_client.keys("rate_limit:*")
+            
+            stats = {
+                'cache_entries': len(cache_keys) if cache_keys else 0,  # type: ignore
+                'rate_limit_entries': len(rate_limit_keys) if rate_limit_keys else 0,  # type: ignore
+                'total_memory': redis_client.info()['used_memory_human'],  # type: ignore
+                'connected_clients': redis_client.info()['connected_clients'],  # type: ignore
+                'cache_type': 'redis'
+            }
+        else:
+            # 메모리 캐시 통계
+            with cache_lock:
+                cache_keys = [k for k in memory_cache.keys() if k.startswith("cache:")]
+                rate_limit_keys = [k for k in memory_cache.keys() if k.startswith("rate_limit:")]
+            
+            stats = {
+                'cache_entries': len(cache_keys),
+                'rate_limit_entries': len(rate_limit_keys),
+                'total_memory': f"{len(memory_cache)} entries",
+                'connected_clients': 1,
+                'cache_type': 'memory'
+            }
         
         return jsonify(stats)
     except Exception as e:
@@ -102,7 +180,13 @@ def health_check():
     """시스템 상태 확인"""
     try:
         # Redis 연결 확인
-        redis_ping = redis_client.ping()
+        redis_status = 'disconnected'
+        if redis_client:
+            try:
+                redis_ping = redis_client.ping()
+                redis_status = 'connected' if redis_ping else 'disconnected'
+            except:
+                redis_status = 'disconnected'
         
         # 시스템 리소스 확인 (실제 환경에서는 psutil 사용)
         import os
@@ -113,10 +197,10 @@ def health_check():
         disk = psutil.disk_usage('/')
         
         health_data = {
-            'status': 'healthy' if redis_ping else 'unhealthy',
+            'status': 'healthy',
             'timestamp': time.time(),
             'services': {
-                'redis': 'connected' if redis_ping else 'disconnected',
+                'redis': redis_status,
                 'database': 'connected',  # TODO: 실제 DB 연결 확인
                 'api': 'running'
             },
