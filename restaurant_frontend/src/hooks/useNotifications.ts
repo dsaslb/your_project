@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
 
 // 알림 조회
 export const useNotifications = (params?: {
@@ -115,8 +115,16 @@ export const useNotificationStats = () => {
 export const useUnreadNotificationCount = () => {
   return useQuery({
     queryKey: ['unread-notification-count'],
-    // queryFn: () => apiClient.get('/api/notifications/unread-count'),
-    queryFn: () => Promise.resolve({ data: { count: 0 } }), // 임시 더미 데이터
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get('/api/notifications/unread-count');
+        return response;
+      } catch (error) {
+        console.warn('알림 카운트 조회 실패:', error);
+        // 백엔드 연결 실패 시 기본값 반환
+        return { data: { count: 0 } };
+      }
+    },
     staleTime: 30 * 1000, // 30초
     refetchInterval: 30000, // 30초마다 자동 갱신
   });

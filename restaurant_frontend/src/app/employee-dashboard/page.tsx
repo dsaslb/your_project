@@ -1,151 +1,212 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
   User, 
   Clock, 
-  Calendar, 
-  CheckCircle, 
-  AlertTriangle,
-  TrendingUp,
+  Calendar,
+  TrendingUp, 
+  Activity, 
   Star,
-  Target,
-  Award,
-  Bell,
-  Settings,
-  LogOut,
-  LogIn,
-  Coffee,
-  Briefcase,
   BarChart3,
-  ArrowUpRight,
-  ArrowDownRight
-} from "lucide-react";
+  Settings,
+  Bell,
+  CheckCircle,
+  AlertTriangle,
+  Target
+} from 'lucide-react';
 
-interface EmployeeData {
-  id: number;
-  name: string;
-  role: string;
-  department: string;
-  employeeId: string;
-  joinDate: string;
-  avatar: string;
-}
-
-interface WorkSchedule {
-  date: string;
-  dayOfWeek: string;
-  startTime: string;
-  endTime: string;
-  status: 'scheduled' | 'working' | 'completed' | 'off' | 'late';
-  totalHours: number;
-}
-
-interface WorkStats {
-  totalWorkDays: number;
-  totalWorkHours: number;
-  averageWorkHours: number;
-  overtimeHours: number;
-  attendanceRate: number;
-  lateCount: number;
-  earlyLeaveCount: number;
+interface EmployeeStats {
+  todayWorkHours: number;
+  weeklyWorkHours: number;
+  monthlyWorkHours: number;
+  totalOrders: number;
+  customerRating: number;
   performanceScore: number;
+  attendanceRate: number;
+  overtimeHours: number;
 }
 
-interface TaskData {
+interface Task {
   id: number;
   title: string;
   description: string;
-  priority: 'high' | 'medium' | 'low';
-  status: 'pending' | 'in-progress' | 'completed';
+  status: 'pending' | 'in_progress' | 'completed';
+  priority: 'low' | 'medium' | 'high';
   dueDate: string;
-  assignedBy: string;
+  category: 'cleaning' | 'service' | 'kitchen' | 'admin';
+}
+
+interface Schedule {
+  id: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  type: 'work' | 'break' | 'training' | 'meeting';
+  status: 'scheduled' | 'completed' | 'absent';
 }
 
 export default function EmployeeDashboard() {
-  const [employee, setEmployee] = useState<EmployeeData>({
-    id: 1,
-    name: "김철수",
-    role: "서버",
-    department: "서빙팀",
-    employeeId: "EMP001",
-    joinDate: "2023-03-15",
-    avatar: "KC"
+  const [stats, setStats] = useState<EmployeeStats>({
+    todayWorkHours: 0,
+    weeklyWorkHours: 0,
+    monthlyWorkHours: 0,
+    totalOrders: 0,
+    customerRating: 0,
+    performanceScore: 0,
+    attendanceRate: 0,
+    overtimeHours: 0
   });
 
-  const [workStats, setWorkStats] = useState<WorkStats>({
-    totalWorkDays: 22,
-    totalWorkHours: 176,
-    averageWorkHours: 8.0,
-    overtimeHours: 12,
-    attendanceRate: 95.5,
-    lateCount: 1,
-    earlyLeaveCount: 0,
-    performanceScore: 4.2
-  });
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [schedule, setSchedule] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [currentSchedule, setCurrentSchedule] = useState<WorkSchedule>({
-    date: "2024-01-15",
-    dayOfWeek: "월요일",
-    startTime: "09:00",
-    endTime: "18:00",
-    status: 'working',
-    totalHours: 8
-  });
+  useEffect(() => {
+    // 로그인 시에만 데이터 fetch (실시간 아님)
+    loadEmployeeData();
+  }, []);
 
-  const [weeklySchedule, setWeeklySchedule] = useState<WorkSchedule[]>([
-    { date: "2024-01-15", dayOfWeek: "월", startTime: "09:00", endTime: "18:00", status: 'working', totalHours: 8 },
-    { date: "2024-01-16", dayOfWeek: "화", startTime: "10:00", endTime: "19:00", status: 'scheduled', totalHours: 8 },
-    { date: "2024-01-17", dayOfWeek: "수", startTime: "09:00", endTime: "18:00", status: 'scheduled', totalHours: 8 },
-    { date: "2024-01-18", dayOfWeek: "목", startTime: "11:00", endTime: "20:00", status: 'scheduled', totalHours: 8 },
-    { date: "2024-01-19", dayOfWeek: "금", startTime: "09:00", endTime: "18:00", status: 'scheduled', totalHours: 8 },
-    { date: "2024-01-20", dayOfWeek: "토", startTime: "10:00", endTime: "19:00", status: 'scheduled', totalHours: 8 },
-    { date: "2024-01-21", dayOfWeek: "일", startTime: "", endTime: "", status: 'off', totalHours: 0 }
-  ]);
+  const loadEmployeeData = async () => {
+    try {
+      // 실제로는 백엔드 API에서 데이터 가져오기
+      // 현재는 더미 데이터 사용
+      const mockStats: EmployeeStats = {
+        todayWorkHours: 6.5,
+        weeklyWorkHours: 32.5,
+        monthlyWorkHours: 140,
+        totalOrders: 45,
+        customerRating: 4.8,
+        performanceScore: 92,
+        attendanceRate: 95,
+        overtimeHours: 2.5
+      };
 
-  const [tasks, setTasks] = useState<TaskData[]>([
-    { id: 1, title: "테이블 정리", description: "1-5번 테이블 청소 및 정리", priority: 'high', status: 'completed', dueDate: "2024-01-15", assignedBy: "매니저" },
-    { id: 2, title: "주문 확인", description: "새로운 주문 확인 및 처리", priority: 'high', status: 'in-progress', dueDate: "2024-01-15", assignedBy: "매니저" },
-    { id: 3, title: "재고 확인", description: "서빙용품 재고 상태 확인", priority: 'medium', status: 'pending', dueDate: "2024-01-16", assignedBy: "매니저" },
-    { id: 4, title: "고객 응대", description: "VIP 고객 특별 서비스", priority: 'high', status: 'pending', dueDate: "2024-01-15", assignedBy: "매니저" }
-  ]);
+      const mockTasks: Task[] = [
+        {
+          id: 1,
+          title: '테이블 정리',
+          description: '1-5번 테이블 청소 및 정리',
+          status: 'completed',
+          priority: 'high',
+          dueDate: '2024-01-15',
+          category: 'cleaning'
+        },
+        {
+          id: 2,
+          title: '고객 서비스',
+          description: '새 고객 응대 및 주문 처리',
+          status: 'in_progress',
+          priority: 'high',
+          dueDate: '2024-01-15',
+          category: 'service'
+        },
+        {
+          id: 3,
+          title: '재고 확인',
+          description: '주방 재고 현황 점검',
+          status: 'pending',
+          priority: 'medium',
+          dueDate: '2024-01-16',
+          category: 'kitchen'
+        },
+        {
+          id: 4,
+          title: '매출 정리',
+          description: '오늘 매출 정리 및 보고서 작성',
+          status: 'pending',
+          priority: 'low',
+          dueDate: '2024-01-15',
+          category: 'admin'
+        }
+      ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'working': return 'bg-green-500';
-      case 'scheduled': return 'bg-blue-500';
-      case 'completed': return 'bg-gray-500';
-      case 'off': return 'bg-red-500';
-      case 'late': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
+      const mockSchedule: Schedule[] = [
+        {
+          id: 1,
+          date: '2024-01-15',
+          startTime: '09:00',
+          endTime: '18:00',
+          type: 'work',
+          status: 'completed'
+        },
+        {
+          id: 2,
+          date: '2024-01-15',
+          startTime: '12:00',
+          endTime: '13:00',
+          type: 'break',
+          status: 'completed'
+        },
+        {
+          id: 3,
+          date: '2024-01-16',
+          startTime: '09:00',
+          endTime: '18:00',
+          type: 'work',
+          status: 'scheduled'
+        },
+        {
+          id: 4,
+          date: '2024-01-17',
+          startTime: '10:00',
+          endTime: '11:00',
+          type: 'training',
+          status: 'scheduled'
+        }
+      ];
+
+      setStats(mockStats);
+      setTasks(mockTasks);
+      setSchedule(mockSchedule);
+    } catch (error) {
+      console.error('직원 데이터 로드 오류:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getTaskStatusColor = (status: string) => {
     switch (status) {
-      case 'working': return '근무중';
-      case 'scheduled': return '예정';
+      case 'completed': return 'bg-green-500/20 text-green-600';
+      case 'in_progress': return 'bg-blue-500/20 text-blue-600';
+      case 'pending': return 'bg-yellow-500/20 text-yellow-600';
+      default: return 'bg-gray-500/20 text-gray-600';
+    }
+  };
+
+  const getTaskPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-500/20 text-red-600';
+      case 'medium': return 'bg-yellow-500/20 text-yellow-600';
+      case 'low': return 'bg-green-500/20 text-green-600';
+      default: return 'bg-gray-500/20 text-gray-600';
+    }
+  };
+
+  const getScheduleTypeColor = (type: string) => {
+    switch (type) {
+      case 'work': return 'bg-blue-500/20 text-blue-600';
+      case 'break': return 'bg-green-500/20 text-green-600';
+      case 'training': return 'bg-purple-500/20 text-purple-600';
+      case 'meeting': return 'bg-orange-500/20 text-orange-600';
+      default: return 'bg-gray-500/20 text-gray-600';
+    }
+  };
+
+  const getTaskStatusText = (status: string) => {
+    switch (status) {
       case 'completed': return '완료';
-      case 'off': return '휴무';
-      case 'late': return '지각';
+      case 'in_progress': return '진행중';
+      case 'pending': return '대기중';
       default: return '알 수 없음';
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getPriorityText = (priority: string) => {
+  const getTaskPriorityText = (priority: string) => {
     switch (priority) {
       case 'high': return '높음';
       case 'medium': return '보통';
@@ -154,302 +215,248 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const getTaskStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'in-progress': return 'bg-blue-500';
-      case 'completed': return 'bg-green-500';
-      default: return 'bg-gray-500';
+  const getScheduleTypeText = (type: string) => {
+    switch (type) {
+      case 'work': return '근무';
+      case 'break': return '휴식';
+      case 'training': return '교육';
+      case 'meeting': return '회의';
+      default: return '기타';
     }
   };
 
-  const getTaskStatusText = (status: string) => {
-    switch (status) {
-      case 'pending': return '대기중';
-      case 'in-progress': return '진행중';
-      case 'completed': return '완료';
-      default: return '알 수 없음';
-    }
-  };
-
-  const formatTime = (time: string) => {
-    if (!time) return "휴무";
-    return time;
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">직원 대시보드</h1>
-          <p className="text-gray-600 dark:text-gray-400">개인 업무 현황 및 스케줄 관리</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${getStatusColor(currentSchedule.status)}`} />
-            <span className="text-sm font-medium">{getStatusText(currentSchedule.status)}</span>
-          </div>
-          <Button variant="outline">
-            <Settings className="h-4 w-4 mr-2" />
-            설정
-          </Button>
-        </div>
-      </div>
-
-      {/* 직원 정보 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <User className="h-5 w-5 mr-2" />
-            직원 정보
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-xl">
-              {employee.avatar}
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold">{employee.name}</h3>
-              <p className="text-gray-600">{employee.role} • {employee.department}</p>
-              <p className="text-sm text-gray-500">사번: {employee.employeeId} | 입사일: {employee.joinDate}</p>
-            </div>
-            <div className="text-right">
-              <div className="flex items-center space-x-1">
-                <Star className="h-4 w-4 text-yellow-500" />
-                <span className="font-semibold">{workStats.performanceScore}</span>
+      <header className="bg-white/10 backdrop-blur-xl border-b border-white/20">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <User className="h-8 w-8 text-blue-400" />
+              <div>
+                <h1 className="text-2xl font-bold text-white">김직원님</h1>
+                <p className="text-slate-300">개인 업무 현황 및 스케줄 관리</p>
               </div>
-              <p className="text-sm text-gray-500">성과 점수</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <Badge variant="outline" className="text-green-400 border-green-400">
+                <Activity className="h-4 w-4 mr-1" />
+                근무중
+              </Badge>
+              <div className="text-slate-300 text-sm">
+                {new Date().toLocaleString()}
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </header>
 
-      {/* 오늘의 통계 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">출근률</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{workStats.attendanceRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              지각: {workStats.lateCount}회 | 조퇴: {workStats.earlyLeaveCount}회
-            </p>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto px-6 py-8">
+        {/* 통계 카드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">오늘 근무시간</CardTitle>
+              <Clock className="h-4 w-4 text-blue-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.todayWorkHours}h</div>
+              <p className="text-xs text-slate-400">오늘 총 근무시간</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">총 근무시간</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{workStats.totalWorkHours}h</div>
-            <p className="text-xs text-muted-foreground">
-              평균: {workStats.averageWorkHours}h/일 | 초과: {workStats.overtimeHours}h
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">처리 주문</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.totalOrders}</div>
+              <p className="text-xs text-slate-400">오늘 처리한 주문</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">완료된 업무</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{tasks.filter(t => t.status === 'completed').length}</div>
-            <p className="text-xs text-muted-foreground">
-              총 {tasks.length}개 중 완료
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">고객 평점</CardTitle>
+              <Star className="h-4 w-4 text-yellow-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.customerRating}</div>
+              <p className="text-xs text-slate-400">평균 고객 만족도</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">오늘 스케줄</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatTime(currentSchedule.startTime)}</div>
-            <p className="text-xs text-muted-foreground">
-              {currentSchedule.dayOfWeek} • {formatTime(currentSchedule.endTime)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">성과 점수</CardTitle>
+              <Target className="h-4 w-4 text-purple-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.performanceScore}</div>
+              <p className="text-xs text-slate-400">월간 성과 점수</p>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* 주간 스케줄 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calendar className="h-5 w-5 mr-2" />
-            이번 주 스케줄
-          </CardTitle>
-          <CardDescription>주간 근무 일정 및 시간</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-7 gap-2">
-            {weeklySchedule.map((schedule, index) => (
-              <div key={index} className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm font-medium">{schedule.dayOfWeek}</p>
-                <p className="text-xs text-muted-foreground">{schedule.date.split('-')[2]}</p>
-                <div className="mt-2">
-                  <div className={`w-3 h-3 rounded-full mx-auto ${getStatusColor(schedule.status)}`} />
-                  <p className="text-xs mt-1">{getStatusText(schedule.status)}</p>
-                </div>
-                {schedule.status !== 'off' && (
-                  <div className="mt-1 text-xs">
-                    <p>{formatTime(schedule.startTime)}</p>
-                    <p>{formatTime(schedule.endTime)}</p>
+        {/* 업무 현황 및 스케줄 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* 업무 목록 */}
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                오늘의 업무
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">
+                        {task.category === 'cleaning' ? '🧹' :
+                         task.category === 'service' ? '👥' :
+                         task.category === 'kitchen' ? '👨‍🍳' : '📋'}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-white">{task.title}</h3>
+                        <p className="text-sm text-slate-400">{task.description}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge className={getTaskStatusColor(task.status)}>
+                            {getTaskStatusText(task.status)}
+                          </Badge>
+                          <Badge className={getTaskPriorityColor(task.priority)}>
+                            {getTaskPriorityText(task.priority)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right text-sm text-slate-300">
+                      <div>{task.dueDate}</div>
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
-      {/* 업무 현황 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Briefcase className="h-5 w-5 mr-2" />
-              할당된 업무
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {tasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
-                      <span className="font-medium">{task.title}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{task.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      담당: {task.assignedBy} • 마감: {task.dueDate}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${getTaskStatusColor(task.status)}`} />
-                      <span className="text-xs">{getTaskStatusText(task.status)}</span>
-                    </div>
-                    <Badge variant="outline" className="text-xs mt-1">
-                      {getPriorityText(task.priority)}
-                    </Badge>
+          {/* 스케줄 및 성과 지표 */}
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                스케줄 및 성과
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* 스케줄 */}
+                <div>
+                  <h3 className="text-white font-semibold mb-3">이번 주 스케줄</h3>
+                  <div className="space-y-2">
+                    {schedule.slice(0, 3).map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge className={getScheduleTypeColor(item.type)}>
+                            {getScheduleTypeText(item.type)}
+                          </Badge>
+                          <span className="text-white text-sm">
+                            {item.startTime} - {item.endTime}
+                          </span>
+                        </div>
+                        <span className="text-slate-300 text-sm">{item.date}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2" />
-              근무 통계
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">출근률</span>
-                <span className="font-medium">{workStats.attendanceRate}%</span>
+                {/* 성과 지표 */}
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-slate-300">출근률</span>
+                      <span className="text-white font-semibold">{stats.attendanceRate}%</span>
+                    </div>
+                    <Progress 
+                      value={stats.attendanceRate} 
+                      className="h-2"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-slate-300">주간 근무시간</span>
+                      <span className="text-white font-semibold">{stats.weeklyWorkHours}h</span>
+                    </div>
+                    <Progress 
+                      value={(stats.weeklyWorkHours / 40) * 100} 
+                      className="h-2 bg-slate-700"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-slate-300">초과근무</span>
+                      <span className="text-white font-semibold">{stats.overtimeHours}h</span>
+                    </div>
+                    <Progress 
+                      value={25} 
+                      className="h-2 bg-slate-700"
+                    />
+                  </div>
+                </div>
               </div>
-              <Progress value={workStats.attendanceRate} className="h-2" />
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">업무 완료율</span>
-                <span className="font-medium">
-                  {Math.round((tasks.filter(t => t.status === 'completed').length / tasks.length) * 100)}%
-                </span>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 빠른 액션 */}
+        <div className="mt-8">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                빠른 액션
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button className="p-4 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors text-white">
+                  <Clock className="h-6 w-6 mx-auto mb-2" />
+                  <span className="text-sm">출근 체크</span>
+                </button>
+                <button className="p-4 rounded-lg bg-green-500/20 hover:bg-green-500/30 transition-colors text-white">
+                  <CheckCircle className="h-6 w-6 mx-auto mb-2" />
+                  <span className="text-sm">업무 완료</span>
+                </button>
+                <button className="p-4 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 transition-colors text-white">
+                  <Calendar className="h-6 w-6 mx-auto mb-2" />
+                  <span className="text-sm">스케줄 확인</span>
+                </button>
+                <button className="p-4 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 transition-colors text-white">
+                  <Bell className="h-6 w-6 mx-auto mb-2" />
+                  <span className="text-sm">알림 설정</span>
+                </button>
               </div>
-              <Progress value={(tasks.filter(t => t.status === 'completed').length / tasks.length) * 100} className="h-2" />
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">평균 근무시간</span>
-                <span className="font-medium">{workStats.averageWorkHours}h</span>
-              </div>
-              <Progress value={(workStats.averageWorkHours / 10) * 100} className="h-2" />
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">성과 점수</span>
-                <span className="font-medium">{workStats.performanceScore}/5.0</span>
-              </div>
-              <Progress value={(workStats.performanceScore / 5) * 100} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {/* 알림 및 공지 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Bell className="h-5 w-5 mr-2" />
-            개인 알림
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <Award className="h-4 w-4 text-blue-600" />
-              <div>
-                <p className="font-medium">우수 직원 선정</p>
-                <p className="text-sm text-muted-foreground">이번 달 우수 직원으로 선정되었습니다. 축하합니다!</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <div>
-                <p className="font-medium">업무 마감 알림</p>
-                <p className="text-sm text-muted-foreground">오늘 할당된 업무 중 2개가 아직 완료되지 않았습니다.</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <div>
-                <p className="font-medium">근무 시간 달성</p>
-                <p className="text-sm text-muted-foreground">이번 주 목표 근무 시간을 달성했습니다.</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 빠른 액션 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>빠른 액션</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-16 flex flex-col space-y-2">
-              <LogIn className="h-5 w-5" />
-              <span className="text-sm">출근 체크</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col space-y-2">
-              <Coffee className="h-5 w-5" />
-              <span className="text-sm">휴식 시작</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col space-y-2">
-              <LogOut className="h-5 w-5" />
-              <span className="text-sm">퇴근 체크</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col space-y-2">
-              <Settings className="h-5 w-5" />
-              <span className="text-sm">설정</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 } 

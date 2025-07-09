@@ -13,9 +13,11 @@ migrate = Migrate()
 # 로그인 매니저
 login_manager = LoginManager()
 
-# 요청 제한
+# 요청 제한 (메모리 저장소 명시적 설정)
 limiter = Limiter(
-    key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
+    key_func=get_remote_address, 
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"  # 메모리 저장소 명시적 설정
 )
 
 # 캐싱
@@ -33,8 +35,3 @@ def init_extensions(app):
     limiter.init_app(app)
     cache.init_app(app)
     csrf.init_app(app)
-
-    # 로그인 매니저 설정
-    login_manager.login_view = "login"
-    login_manager.login_message = "로그인이 필요합니다."
-    login_manager.login_message_category = "info"

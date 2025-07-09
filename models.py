@@ -1,9 +1,11 @@
 import re
 from datetime import date, datetime, timedelta
 from enum import Enum
+from typing import Any
 
-from flask_login import AnonymousUserMixin as BaseAnonymousUserMixin
-from flask_login import UserMixin
+from flask_login import AnonymousUserMixin as BaseAnonymousUserMixin, UserMixin
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import Mapped
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from extensions import db
@@ -33,7 +35,33 @@ class AnonymousUserMixin(BaseAnonymousUserMixin):
         return {"role": "anonymous", "grade": "none", "modules": {}}
 
 
-# 지점 모델
+# 브랜드 모델
+class Brand(db.Model):
+    __tablename__ = "brands"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    logo_url = db.Column(db.String(255))
+    website = db.Column(db.String(255))
+    contact_email = db.Column(db.String(120))
+    contact_phone = db.Column(db.String(20))
+    address = db.Column(db.String(200))
+    status = db.Column(db.String(20), default="active", index=True)  # active, inactive, suspended
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    stores = db.relationship("Branch", backref="brand", lazy=True)
+    brand_manager = db.relationship("User", backref="managed_brand", foreign_keys="User.brand_id")
+    
+    def __init__(self, **kwargs):
+        super(Brand, self).__init__(**kwargs)
+    
+    def __repr__(self):
+        return f"<Brand {self.name}>"
+
+
+# 지점 모델 (기존 Branch 모델 확장)
 class Branch(db.Model):
     __tablename__ = "branches"
     id = db.Column(db.Integer, primary_key=True)
@@ -43,6 +71,15 @@ class Branch(db.Model):
     processing_time_standard = db.Column(
         db.Integer, default=15
     )  # 기준 주문 처리 시간(분)
+    
+    # 브랜드 연관 필드 추가
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)
+    store_code = db.Column(db.String(20), unique=True)  # 매장 코드
+    store_type = db.Column(db.String(20), default="franchise")  # franchise, corporate, independent
+    business_hours = db.Column(db.JSON)  # 영업시간 정보
+    capacity = db.Column(db.Integer)  # 수용 인원
+    status = db.Column(db.String(20), default="active", index=True)  # active, inactive, maintenance
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -61,14 +98,15 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.String(120), nullable=False)
     role = db.Column(
         db.String(20), default="employee", index=True
-    )  # 'admin', 'manager', 'employee'
+    )  # 'super_admin', 'admin', 'brand_manager', 'store_manager', 'manager', 'employee'
     grade = db.Column(
         db.String(20), default="staff", index=True
     )  # 'ceo', 'director', 'manager', 'staff'
     status = db.Column(
         db.String(20), default="pending", index=True
-    )  # 'approved', 'pending', 'rejected'
+    )  # 'approved', 'pending', 'rejected', 'suspended'
     branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), index=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), index=True)  # 브랜드 매니저용
     team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), index=True)  # 팀 ID 추가
     position = db.Column(db.String(50), index=True)  # 직책 필드 추가
     department = db.Column(db.String(50), index=True)  # 부서 필드 추가
@@ -90,6 +128,24 @@ class User(db.Model, UserMixin):
         default=lambda: {
             # 대시보드 접근 권한
             "dashboard": {"view": True, "edit": False, "admin_only": False},
+            # 브랜드 관리 권한
+            "brand_management": {
+                "view": False,
+                "create": False,
+                "edit": False,
+                "delete": False,
+                "approve": False,
+                "monitor": False,
+            },
+            # 매장 관리 권한
+            "store_management": {
+                "view": False,
+                "create": False,
+                "edit": False,
+                "delete": False,
+                "approve": False,
+                "monitor": False,
+            },
             # 직원 관리 권한
             "employee_management": {
                 "view": False,
@@ -132,6 +188,15 @@ class User(db.Model, UserMixin):
                 "settings": False,
                 "monitoring": False,
             },
+            # AI 진단 및 개선안 관리 권한
+            "ai_management": {
+                "view": False,
+                "create": False,
+                "edit": False,
+                "delete": False,
+                "approve": False,
+                "monitor": False,
+            },
             # 보고서 권한
             "reports": {"view": False, "export": False, "admin_only": False},
         },
@@ -159,6 +224,22 @@ class User(db.Model, UserMixin):
         """역할별 기본 권한 설정"""
         base_permissions = {
             "dashboard": {"view": True, "edit": False, "admin_only": False},
+            "brand_management": {
+                "view": False,
+                "create": False,
+                "edit": False,
+                "delete": False,
+                "approve": False,
+                "monitor": False,
+            },
+            "store_management": {
+                "view": False,
+                "create": False,
+                "edit": False,
+                "delete": False,
+                "approve": False,
+                "monitor": False,
+            },
             "employee_management": {
                 "view": False,
                 "create": False,
@@ -195,14 +276,89 @@ class User(db.Model, UserMixin):
                 "settings": False,
                 "monitoring": False,
             },
+            "ai_management": {
+                "view": False,
+                "create": False,
+                "edit": False,
+                "delete": False,
+                "approve": False,
+                "monitor": False,
+            },
             "reports": {"view": False, "export": False, "admin_only": False},
         }
 
-        if self.role == "admin":
+        if self.role == "super_admin":
             # 최고관리자: 모든 권한
             for module in base_permissions:
                 for action in base_permissions[module]:
                     base_permissions[module][action] = True
+        elif self.role == "admin":
+            # 관리자: 브랜드/매장 관리 권한 포함
+            base_permissions["dashboard"]["view"] = True
+            base_permissions["brand_management"]["view"] = True
+            base_permissions["brand_management"]["create"] = True
+            base_permissions["brand_management"]["edit"] = True
+            base_permissions["brand_management"]["monitor"] = True
+            base_permissions["store_management"]["view"] = True
+            base_permissions["store_management"]["create"] = True
+            base_permissions["store_management"]["edit"] = True
+            base_permissions["store_management"]["monitor"] = True
+            base_permissions["employee_management"]["view"] = True
+            base_permissions["employee_management"]["create"] = True
+            base_permissions["employee_management"]["edit"] = True
+            base_permissions["employee_management"]["approve"] = True
+            base_permissions["schedule_management"]["view"] = True
+            base_permissions["schedule_management"]["create"] = True
+            base_permissions["schedule_management"]["edit"] = True
+            base_permissions["order_management"]["view"] = True
+            base_permissions["order_management"]["create"] = True
+            base_permissions["order_management"]["approve"] = True
+            base_permissions["inventory_management"]["view"] = True
+            base_permissions["inventory_management"]["create"] = True
+            base_permissions["inventory_management"]["edit"] = True
+            base_permissions["notification_management"]["view"] = True
+            base_permissions["ai_management"]["view"] = True
+            base_permissions["ai_management"]["monitor"] = True
+            base_permissions["reports"]["view"] = True
+        elif self.role == "brand_manager":
+            # 브랜드 매니저: 해당 브랜드의 매장들만 관리
+            base_permissions["dashboard"]["view"] = True
+            base_permissions["store_management"]["view"] = True
+            base_permissions["store_management"]["edit"] = True
+            base_permissions["store_management"]["monitor"] = True
+            base_permissions["employee_management"]["view"] = True
+            base_permissions["employee_management"]["create"] = True
+            base_permissions["employee_management"]["edit"] = True
+            base_permissions["employee_management"]["approve"] = True
+            base_permissions["schedule_management"]["view"] = True
+            base_permissions["schedule_management"]["create"] = True
+            base_permissions["schedule_management"]["edit"] = True
+            base_permissions["order_management"]["view"] = True
+            base_permissions["order_management"]["create"] = True
+            base_permissions["order_management"]["approve"] = True
+            base_permissions["inventory_management"]["view"] = True
+            base_permissions["inventory_management"]["create"] = True
+            base_permissions["inventory_management"]["edit"] = True
+            base_permissions["notification_management"]["view"] = True
+            base_permissions["ai_management"]["view"] = True
+            base_permissions["reports"]["view"] = True
+        elif self.role == "store_manager":
+            # 매장 관리자: 해당 매장만 관리
+            base_permissions["dashboard"]["view"] = True
+            base_permissions["employee_management"]["view"] = True
+            base_permissions["employee_management"]["create"] = True
+            base_permissions["employee_management"]["edit"] = True
+            base_permissions["schedule_management"]["view"] = True
+            base_permissions["schedule_management"]["create"] = True
+            base_permissions["schedule_management"]["edit"] = True
+            base_permissions["order_management"]["view"] = True
+            base_permissions["order_management"]["create"] = True
+            base_permissions["order_management"]["approve"] = True
+            base_permissions["inventory_management"]["view"] = True
+            base_permissions["inventory_management"]["create"] = True
+            base_permissions["inventory_management"]["edit"] = True
+            base_permissions["notification_management"]["view"] = True
+            base_permissions["reports"]["view"] = True
         elif self.role == "manager":
             # 매장관리자: 제한된 관리 권한
             base_permissions["dashboard"]["view"] = True
@@ -1687,8 +1843,8 @@ class Staff(db.Model):
     # 관계 설정
     restaurant = db.relationship("Branch", backref="staff")
     user = db.relationship("User", backref="staff_profile")
-    contracts = db.relationship("Contract", backref="staff", cascade="all, delete-orphan")
-    health_certificates = db.relationship("HealthCertificate", backref="staff", cascade="all, delete-orphan")
+    contracts = db.relationship("Contract", back_populates="staff", cascade="all, delete-orphan")
+    health_certificates = db.relationship("HealthCertificate", back_populates="staff", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Staff {self.name}>"
@@ -1713,6 +1869,9 @@ class Contract(db.Model):
     expired_notification_sent = db.Column(db.Boolean, default=False, index=True)  # 만료 알림 발송 여부
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    staff = db.relationship("Staff", back_populates="contracts")
     
     # 복합 인덱스
     __table_args__ = (
@@ -1761,28 +1920,33 @@ class HealthCertificate(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # 관계 설정
+    staff = db.relationship("Staff", back_populates="health_certificates")
+    
     # 복합 인덱스
     __table_args__ = (
-        db.Index('idx_health_cert_expiry_notification', 'expiry_date', 'notification_sent'),
-        db.Index('idx_health_cert_expired_notification', 'expiry_date', 'expired_notification_sent'),
+        db.Index('idx_healthcertificate_expiry_notification', 'expiry_date', 'notification_sent'),
+        db.Index('idx_healthcertificate_expired_notification', 'expiry_date', 'expired_notification_sent'),
     )
     
     @property
     def is_expiring_soon(self):
-        """30일 이내에 만료되는지 확인"""
-        today = datetime.now().date()
-        return self.expiry_date <= today + timedelta(days=30) and self.expiry_date > today
+        if self.expiry_date:
+            days_left = (self.expiry_date - datetime.utcnow().date()).days
+            return 0 < days_left <= 30
+        return False
     
     @property
     def is_expired(self):
-        """만료되었는지 확인"""
-        return self.expiry_date <= datetime.now().date()
+        if self.expiry_date:
+            return self.expiry_date < datetime.utcnow().date()
+        return False
     
     @property
     def days_until_expiry(self):
-        """만료까지 남은 일수"""
-        today = datetime.now().date()
-        return (self.expiry_date - today).days
+        if self.expiry_date:
+            return (self.expiry_date - datetime.utcnow().date()).days
+        return None
     
     def __repr__(self):
         return f"<HealthCertificate {self.certificate_number} - {self.staff.name if self.staff else 'Unknown'}>"
@@ -1965,10 +2129,212 @@ class IoTDevice(db.Model):
     data = db.relationship('IoTData', backref='device', lazy=True)
 
 class IoTData(db.Model):
-    __tablename__ = 'iot_data'
+    __tablename__ = "iot_data"
     id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(db.Integer, db.ForeignKey('iot_devices.id'), nullable=False)
+    device_id = db.Column(db.Integer, db.ForeignKey("iot_devices.id"), nullable=False)
     data_type = db.Column(db.String(32), nullable=False)  # 예: temperature, humidity, inventory, status
     value = db.Column(db.Float, nullable=True)
     extra = db.Column(db.JSON, nullable=True)  # 추가 정보(예: 상태, 경고 등)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+# AI 진단 및 개선안 관리 모델들
+class AIDiagnosis(db.Model):
+    """AI 진단 결과 모델"""
+    __tablename__ = "ai_diagnoses"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)
+    store_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=True, index=True)
+    diagnosis_type = db.Column(db.String(50), nullable=False, index=True)  # performance, quality, efficiency, safety
+    severity = db.Column(db.String(20), default="medium", index=True)  # low, medium, high, critical
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    findings = db.Column(db.JSON)  # AI 분석 결과 데이터
+    recommendations = db.Column(db.JSON)  # AI 추천사항
+    status = db.Column(db.String(20), default="pending", index=True)  # pending, reviewed, implemented, resolved
+    priority = db.Column(db.String(20), default="normal", index=True)  # low, normal, high, urgent
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    reviewed_at = db.Column(db.DateTime, index=True)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
+    implemented_at = db.Column(db.DateTime, index=True)
+    implemented_by = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
+    
+    # 관계 설정
+    brand = db.relationship("Brand", backref="ai_diagnoses")
+    store = db.relationship("Branch", backref="ai_diagnoses")
+    reviewer = db.relationship("User", foreign_keys=[reviewed_by], backref="reviewed_diagnoses")
+    implementer = db.relationship("User", foreign_keys=[implemented_by], backref="implemented_diagnoses")
+    
+    def __repr__(self):
+        return f"<AIDiagnosis {self.title}>"
+
+
+class ImprovementRequest(db.Model):
+    """개선 요청 모델"""
+    __tablename__ = "improvement_requests"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)
+    store_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=True, index=True)
+    requester_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    category = db.Column(db.String(50), nullable=False, index=True)  # system, process, equipment, training, other
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    current_issue = db.Column(db.Text)  # 현재 문제점
+    proposed_solution = db.Column(db.Text)  # 제안하는 해결책
+    expected_benefits = db.Column(db.Text)  # 기대 효과
+    priority = db.Column(db.String(20), default="normal", index=True)  # low, normal, high, urgent
+    status = db.Column(db.String(20), default="pending", index=True)  # pending, under_review, approved, rejected, implemented
+    estimated_cost = db.Column(db.Integer)  # 예상 비용
+    estimated_time = db.Column(db.String(50))  # 예상 소요 시간
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    reviewed_at = db.Column(db.DateTime, index=True)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
+    admin_comment = db.Column(db.Text)  # 관리자 코멘트
+    
+    # 관계 설정
+    brand = db.relationship("Brand", backref="improvement_requests")
+    store = db.relationship("Branch", backref="improvement_requests")
+    requester = db.relationship("User", foreign_keys=[requester_id], backref="improvement_requests")
+    reviewer = db.relationship("User", foreign_keys=[reviewed_by], backref="reviewed_improvements")
+    
+    def __repr__(self):
+        return f"<ImprovementRequest {self.title}>"
+
+
+class AIImprovementSuggestion(db.Model):
+    """AI 개선 제안 모델"""
+    __tablename__ = "ai_improvement_suggestions"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    diagnosis_id = db.Column(db.Integer, db.ForeignKey("ai_diagnoses.id"), nullable=True, index=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)
+    store_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=True, index=True)
+    suggestion_type = db.Column(db.String(50), nullable=False, index=True)  # automation, optimization, process, training
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    current_state = db.Column(db.JSON)  # 현재 상태 분석
+    proposed_changes = db.Column(db.JSON)  # 제안하는 변경사항
+    expected_impact = db.Column(db.JSON)  # 예상 영향도
+    implementation_steps = db.Column(db.JSON)  # 구현 단계
+    estimated_effort = db.Column(db.String(20))  # 예상 노력 (low, medium, high)
+    estimated_roi = db.Column(db.Float)  # 예상 투자수익률
+    confidence_score = db.Column(db.Float)  # AI 신뢰도 점수 (0-1)
+    status = db.Column(db.String(20), default="suggested", index=True)  # suggested, approved, rejected, implemented
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    reviewed_at = db.Column(db.DateTime, index=True)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
+    admin_comment = db.Column(db.Text)
+    
+    # 관계 설정
+    diagnosis = db.relationship("AIDiagnosis", backref="suggestions")
+    brand = db.relationship("Brand", backref="ai_suggestions")
+    store = db.relationship("Branch", backref="ai_suggestions")
+    reviewer = db.relationship("User", foreign_keys=[reviewed_by], backref="reviewed_ai_suggestions")
+    
+    def __repr__(self):
+        return f"<AIImprovementSuggestion {self.title}>"
+
+
+class BrandDataCollection(db.Model):
+    """브랜드 데이터 수집 모델"""
+    __tablename__ = "brand_data_collections"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=False, index=True)
+    data_type = db.Column(db.String(50), nullable=False, index=True)  # sales, performance, quality, customer_feedback
+    collection_date = db.Column(db.Date, nullable=False, index=True)
+    data_source = db.Column(db.String(100))  # 데이터 소스
+    raw_data = db.Column(db.JSON)  # 원시 데이터
+    processed_data = db.Column(db.JSON)  # 처리된 데이터
+    metrics = db.Column(db.JSON)  # 계산된 지표들
+    anomalies = db.Column(db.JSON)  # 이상치 데이터
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    brand = db.relationship("Brand", backref="data_collections")
+    
+    def __repr__(self):
+        return f"<BrandDataCollection {self.brand_id} {self.data_type} {self.collection_date}>"
+
+
+class StoreDataCollection(db.Model):
+    """매장 데이터 수집 모델"""
+    __tablename__ = "store_data_collections"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=False, index=True)
+    data_type = db.Column(db.String(50), nullable=False, index=True)  # sales, performance, quality, customer_feedback
+    collection_date = db.Column(db.Date, nullable=False, index=True)
+    data_source = db.Column(db.String(100))  # 데이터 소스
+    raw_data = db.Column(db.JSON)  # 원시 데이터
+    processed_data = db.Column(db.JSON)  # 처리된 데이터
+    metrics = db.Column(db.JSON)  # 계산된 지표들
+    anomalies = db.Column(db.JSON)  # 이상치 데이터
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship("Branch", backref="data_collections")
+    
+    def __repr__(self):
+        return f"<StoreDataCollection {self.store_id} {self.data_type} {self.collection_date}>"
+
+
+class SystemHealth(db.Model):
+    """시스템 건강도 모델"""
+    __tablename__ = "system_health"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)
+    store_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=True, index=True)
+    health_date = db.Column(db.Date, nullable=False, index=True)
+    overall_score = db.Column(db.Float, nullable=False)  # 전체 건강도 점수 (0-100)
+    performance_score = db.Column(db.Float)  # 성능 점수
+    quality_score = db.Column(db.Float)  # 품질 점수
+    efficiency_score = db.Column(db.Float)  # 효율성 점수
+    safety_score = db.Column(db.Float)  # 안전성 점수
+    customer_satisfaction_score = db.Column(db.Float)  # 고객 만족도 점수
+    issues = db.Column(db.JSON)  # 발견된 문제점들
+    recommendations = db.Column(db.JSON)  # 개선 권장사항
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    brand = db.relationship("Brand", backref="system_health")
+    store = db.relationship("Branch", backref="system_health")
+    
+    def __repr__(self):
+        return f"<SystemHealth {self.brand_id or self.store_id} {self.health_date}>"
+
+
+class ApprovalWorkflow(db.Model):
+    """승인 워크플로우 모델"""
+    __tablename__ = "approval_workflows"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    workflow_type = db.Column(db.String(50), nullable=False, index=True)  # user_approval, improvement_approval, ai_suggestion_approval
+    target_type = db.Column(db.String(50), nullable=False, index=True)  # user, improvement_request, ai_suggestion
+    target_id = db.Column(db.Integer, nullable=False, index=True)
+    requester_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    approver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    status = db.Column(db.String(20), default="pending", index=True)  # pending, approved, rejected, cancelled
+    request_data = db.Column(db.JSON)  # 요청 데이터
+    approval_data = db.Column(db.JSON)  # 승인 데이터
+    comments = db.Column(db.Text)  # 코멘트
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    approved_at = db.Column(db.DateTime, index=True)
+    rejected_at = db.Column(db.DateTime, index=True)
+    
+    # 관계 설정
+    requester = db.relationship("User", foreign_keys=[requester_id], backref="workflow_requests")
+    approver = db.relationship("User", foreign_keys=[approver_id], backref="workflow_approvals")
+    
+    def __repr__(self):
+        return f"<ApprovalWorkflow {self.workflow_type} {self.target_type} {self.target_id}>"

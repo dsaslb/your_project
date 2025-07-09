@@ -153,9 +153,13 @@ class ApiClient {
   // 인증 관련 API
   async login(username: string, password: string) {
     try {
-      const response = await this.axiosInstance.post('/api/auth/login', {
+      const response = await this.axiosInstance.post('/auth/login', {
         username,
         password,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
       
       const { access_token, refresh_token, user, redirect_to } = response.data;

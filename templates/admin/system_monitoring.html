@@ -1,0 +1,479 @@
+{% extends 'base_modern.html' %}
+{% block title %}시스템 모니터링{% endblock %}
+{% block content %}
+<!-- 헤더 -->
+<div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl p-6 mb-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold">📊 시스템 모니터링</h1>
+      <p class="text-purple-100 mt-2">실시간 시스템 상태 및 성능 모니터링</p>
+    </div>
+    <div class="flex items-center space-x-4">
+      <div class="text-right">
+        <div class="text-sm text-purple-200">마지막 업데이트</div>
+        <div class="text-lg font-semibold" id="lastUpdate">방금 전</div>
+      </div>
+      <button onclick="refreshData()" class="bg-white text-purple-600 px-4 py-2 rounded-lg font-semibold hover:bg-purple-50 transition-colors">
+        🔄 새로고침
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 시스템 상태 카드 -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">서버 상태</p>
+        <p class="text-2xl font-bold text-green-600" id="serverStatus">정상</p>
+      </div>
+      <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+        <span class="text-2xl">🟢</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">CPU 사용률</p>
+        <p class="text-2xl font-bold text-blue-600" id="cpuUsage">45%</p>
+      </div>
+      <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+        <span class="text-2xl">💻</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">메모리 사용률</p>
+        <p class="text-2xl font-bold text-yellow-600" id="memoryUsage">62%</p>
+      </div>
+      <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
+        <span class="text-2xl">🧠</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">디스크 사용률</p>
+        <p class="text-2xl font-bold text-purple-600" id="diskUsage">28%</p>
+      </div>
+      <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+        <span class="text-2xl">💾</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 상세 모니터링 섹션 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <!-- 실시간 로그 -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">📝 실시간 시스템 로그</h2>
+      <button onclick="clearLogs()" class="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+        로그 지우기
+      </button>
+    </div>
+    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 h-64 overflow-y-auto font-mono text-sm">
+      <div id="systemLogs">
+        <div class="text-gray-500 dark:text-gray-400">시스템 로그를 불러오는 중...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 서비스 상태 -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">🔧 서비스 상태</h2>
+    <div class="space-y-3" id="serviceStatus">
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div class="flex items-center space-x-3">
+          <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+          <span class="font-medium text-gray-900 dark:text-white">웹 서버 (Flask)</span>
+        </div>
+        <span class="text-sm text-green-600 font-semibold">실행 중</span>
+      </div>
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div class="flex items-center space-x-3">
+          <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+          <span class="font-medium text-gray-900 dark:text-white">데이터베이스 (SQLite)</span>
+        </div>
+        <span class="text-sm text-green-600 font-semibold">연결됨</span>
+      </div>
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div class="flex items-center space-x-3">
+          <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+          <span class="font-medium text-gray-900 dark:text-white">캐시 서버</span>
+        </div>
+        <span class="text-sm text-green-600 font-semibold">정상</span>
+      </div>
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div class="flex items-center space-x-3">
+          <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+          <span class="font-medium text-gray-900 dark:text-white">백업 서비스</span>
+        </div>
+        <span class="text-sm text-yellow-600 font-semibold">점검 중</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 성능 차트 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <!-- CPU 사용률 차트 -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">💻 CPU 사용률 추이</h2>
+    <div class="h-64 flex items-center justify-center">
+      <canvas id="cpuChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- 메모리 사용률 차트 -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">🧠 메모리 사용률 추이</h2>
+    <div class="h-64 flex items-center justify-center">
+      <canvas id="memoryChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- 알림 및 경고 -->
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">⚠️ 시스템 알림</h2>
+    <span class="text-sm text-gray-500" id="alertCount">3개 알림</span>
+  </div>
+  <div class="space-y-3" id="systemAlerts">
+    <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+      <span class="text-yellow-600 text-lg">⚠️</span>
+      <div class="flex-1">
+        <p class="font-medium text-gray-900 dark:text-white">메모리 사용률 높음</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">메모리 사용률이 80%를 초과했습니다. 시스템 성능에 영향을 줄 수 있습니다.</p>
+        <p class="text-xs text-gray-500 mt-1">2분 전</p>
+      </div>
+    </div>
+    <div class="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+      <span class="text-blue-600 text-lg">ℹ️</span>
+      <div class="flex-1">
+        <p class="font-medium text-gray-900 dark:text-white">백업 완료</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">일일 데이터 백업이 성공적으로 완료되었습니다.</p>
+        <p class="text-xs text-gray-500 mt-1">15분 전</p>
+      </div>
+    </div>
+    <div class="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+      <span class="text-green-600 text-lg">✅</span>
+      <div class="flex-1">
+        <p class="font-medium text-gray-900 dark:text-white">시스템 정상</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">모든 시스템 서비스가 정상적으로 작동하고 있습니다.</p>
+        <p class="text-xs text-gray-500 mt-1">1시간 전</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 빠른 액션 -->
+<div class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+  <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">⚡ 빠른 액션</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <button onclick="restartServices()" class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+      <span class="text-2xl mb-2">🔄</span>
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">서비스 재시작</span>
+    </button>
+    <button onclick="clearCache()" class="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
+      <span class="text-2xl mb-2">🧹</span>
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">캐시 정리</span>
+    </button>
+    <button onclick="backupNow()" class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
+      <span class="text-2xl mb-2">💾</span>
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">백업 실행</span>
+    </button>
+    <button onclick="viewLogs()" class="flex flex-col items-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors">
+      <span class="text-2xl mb-2">📋</span>
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">로그 보기</span>
+    </button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 차트 데이터
+let cpuChart, memoryChart;
+let cpuData = [];
+let memoryData = [];
+let timeLabels = [];
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('📊 시스템 모니터링 페이지 로드됨');
+  initializeCharts();
+  loadSystemData();
+  startRealTimeUpdates();
+});
+
+// 차트 초기화
+function initializeCharts() {
+  const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+  const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+  
+  cpuChart = new Chart(cpuCtx, {
+    type: 'line',
+    data: {
+      labels: timeLabels,
+      datasets: [{
+        label: 'CPU 사용률 (%)',
+        data: cpuData,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        tension: 0.4,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    }
+  });
+  
+  memoryChart = new Chart(memoryCtx, {
+    type: 'line',
+    data: {
+      labels: timeLabels,
+      datasets: [{
+        label: '메모리 사용률 (%)',
+        data: memoryData,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        tension: 0.4,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    }
+  });
+}
+
+// 시스템 데이터 로드
+function loadSystemData() {
+  fetch('/api/admin/system-stats')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        updateSystemStats(data.stats);
+      }
+    })
+    .catch(error => {
+      console.error('시스템 데이터 로드 실패:', error);
+    });
+}
+
+// 시스템 통계 업데이트
+function updateSystemStats(stats) {
+  document.getElementById('cpuUsage').textContent = stats.cpu_usage + '%';
+  document.getElementById('memoryUsage').textContent = stats.memory_usage + '%';
+  document.getElementById('diskUsage').textContent = stats.disk_usage + '%';
+  
+  // 차트 데이터 업데이트
+  const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  timeLabels.push(now);
+  cpuData.push(stats.cpu_usage);
+  memoryData.push(stats.memory_usage);
+  
+  // 최대 20개 데이터 포인트 유지
+  if (timeLabels.length > 20) {
+    timeLabels.shift();
+    cpuData.shift();
+    memoryData.shift();
+  }
+  
+  cpuChart.update();
+  memoryChart.update();
+  
+  // 마지막 업데이트 시간
+  document.getElementById('lastUpdate').textContent = '방금 전';
+}
+
+// 실시간 업데이트 시작
+function startRealTimeUpdates() {
+  setInterval(() => {
+    loadSystemData();
+  }, 10000); // 10초마다 업데이트
+}
+
+// 새로고침
+function refreshData() {
+  loadSystemData();
+  loadSystemLogs();
+  loadSystemAlerts();
+}
+
+// 시스템 로그 로드
+function loadSystemLogs() {
+  fetch('/api/admin/system-logs')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        displaySystemLogs(data.logs);
+      }
+    })
+    .catch(error => {
+      console.error('시스템 로그 로드 실패:', error);
+    });
+}
+
+// 시스템 로그 표시
+function displaySystemLogs(logs) {
+  const logsContainer = document.getElementById('systemLogs');
+  logsContainer.innerHTML = logs.map(log => `
+    <div class="mb-2">
+      <span class="text-gray-500">[${log.timestamp}]</span>
+      <span class="text-gray-700 dark:text-gray-300">${log.message}</span>
+    </div>
+  `).join('');
+}
+
+// 시스템 알림 로드
+function loadSystemAlerts() {
+  fetch('/api/admin/system-alerts')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        displaySystemAlerts(data.alerts);
+      }
+    })
+    .catch(error => {
+      console.error('시스템 알림 로드 실패:', error);
+    });
+}
+
+// 시스템 알림 표시
+function displaySystemAlerts(alerts) {
+  const alertsContainer = document.getElementById('systemAlerts');
+  const alertCount = document.getElementById('alertCount');
+  
+  alertCount.textContent = alerts.length + '개 알림';
+  
+  alertsContainer.innerHTML = alerts.map(alert => `
+    <div class="flex items-start space-x-3 p-3 bg-${alert.type}-50 dark:bg-${alert.type}-900/20 border border-${alert.type}-200 dark:border-${alert.type}-800 rounded-lg">
+      <span class="text-${alert.type}-600 text-lg">${alert.icon}</span>
+      <div class="flex-1">
+        <p class="font-medium text-gray-900 dark:text-white">${alert.title}</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">${alert.message}</p>
+        <p class="text-xs text-gray-500 mt-1">${alert.timestamp}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 빠른 액션 함수들
+function restartServices() {
+  if (confirm('서비스를 재시작하시겠습니까?')) {
+    fetch('/api/admin/restart-services', { method: 'POST' })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('서비스가 재시작되었습니다.');
+          refreshData();
+        } else {
+          alert('서비스 재시작에 실패했습니다.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다.');
+      });
+  }
+}
+
+function clearCache() {
+  if (confirm('캐시를 정리하시겠습니까?')) {
+    fetch('/api/admin/clear-cache', { method: 'POST' })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('캐시가 정리되었습니다.');
+          refreshData();
+        } else {
+          alert('캐시 정리에 실패했습니다.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다.');
+      });
+  }
+}
+
+function backupNow() {
+  if (confirm('지금 백업을 실행하시겠습니까?')) {
+    fetch('/api/admin/backup-now', { method: 'POST' })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('백업이 시작되었습니다.');
+          refreshData();
+        } else {
+          alert('백업 실행에 실패했습니다.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다.');
+      });
+  }
+}
+
+function viewLogs() {
+  window.open('/admin/system-logs', '_blank');
+}
+
+function clearLogs() {
+  if (confirm('시스템 로그를 지우시겠습니까?')) {
+    document.getElementById('systemLogs').innerHTML = '<div class="text-gray-500 dark:text-gray-400">로그가 지워졌습니다.</div>';
+  }
+}
+
+// 초기 데이터 로드
+loadSystemLogs();
+loadSystemAlerts();
+</script>
+{% endblock %} 

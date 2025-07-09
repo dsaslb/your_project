@@ -23,14 +23,12 @@ def api_login():
     description: 사용자명과 비밀번호를 받아 인증 후 JWT 토큰을 반환합니다.
     """
     data = request.json
-    print("로그인 시도:", data)
-    user = User.query.filter_by(username=data["username"]).first() if data else None
-    print("찾은 사용자:", user)
-    if user:
-        print("비밀번호 일치:", user.check_password(data["password"]))
-    if not data or not data.get("username") or not data.get("password"):
+    if not data or "username" not in data or "password" not in data:
         return jsonify({"message": "사용자명과 비밀번호를 입력해주세요."}), 400
 
+    user = User.query.filter_by(username=data["username"]).first()
+    if user:
+        print("비밀번호 일치:", user.check_password(data["password"]))
     if not user or not user.check_password(data["password"]):
         return jsonify({"message": "잘못된 사용자명 또는 비밀번호입니다."}), 401
 
@@ -77,7 +75,8 @@ def api_login():
         "access_token": access_token,
         "refresh_token": refresh_token,
         "user": user_data,
-        "redirect_to": "/dashboard"
+        "redirect_to": "/dashboard",
+        "success": True
     }), 200
 
 
@@ -182,7 +181,9 @@ def register():
             return render_template("auth/register.html")
 
         # 새 사용자 생성
-        user = User(username=username, email=email)
+        user = User()
+        user.username = username
+        user.email = email
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
@@ -200,7 +201,10 @@ def api_quick_admin_login():
         # admin 계정 확인 및 생성
         admin = User.query.filter_by(username="admin").first()
         if not admin:
-            admin = User(username="admin", role="super_admin", status="approved")
+            admin = User()
+            admin.username = "admin"
+            admin.role = "super_admin"
+            admin.status = "approved"
             admin.set_password("admin123")
             db.session.add(admin)
             db.session.commit()
@@ -259,7 +263,10 @@ def quick_admin_login():
     from models import User, db
     admin = User.query.filter_by(username="admin").first()
     if not admin:
-        admin = User(username="admin", role="admin", status="approved")
+        admin = User()
+        admin.username = "admin"
+        admin.role = "admin"
+        admin.status = "approved"
         admin.set_password("admin123")
         db.session.add(admin)
         db.session.commit()

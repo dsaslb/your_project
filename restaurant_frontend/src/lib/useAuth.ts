@@ -32,7 +32,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         
         try {
-          const response = await apiClient.post<{ user: User; token: string }>('/api/auth/login', {
+          const response = await apiClient.post<{ user: User; token: string }>('/auth/login', {
             username,
             password,
           });

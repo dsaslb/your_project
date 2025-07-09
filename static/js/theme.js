@@ -1,15 +1,14 @@
 // Theme Provider for Flask Restaurant Management System
 class ThemeProvider {
   constructor() {
-    this.theme = this.getStoredTheme() || 'system';
+    this.theme = this.getStoredTheme();
     this.systemTheme = this.getSystemTheme();
     this.init();
   }
 
-  // 초기화
   init() {
     this.applyTheme();
-    this.createThemeToggle();
+    this.setupThemeToggle();
     this.watchSystemTheme();
   }
 
@@ -27,7 +26,6 @@ class ThemeProvider {
   applyTheme() {
     const effectiveTheme = this.theme === 'system' ? this.systemTheme : this.theme;
     
-    // document.documentElement과 document.body가 존재하는지 확인
     if (document.documentElement && document.body) {
       if (effectiveTheme === 'dark') {
         document.documentElement.classList.add('dark');
@@ -45,82 +43,54 @@ class ThemeProvider {
     }
   }
 
+  // 테마 토글 설정
+  setupThemeToggle() {
+    // 이미 존재하는 토글 버튼 찾기
+    const existingToggle = document.getElementById('theme-toggle');
+    
+    if (existingToggle) {
+      // 기존 토글에 이벤트 리스너 추가
+      existingToggle.addEventListener('click', () => {
+        this.cycleTheme();
+      });
+      // 아이콘 업데이트
+      existingToggle.innerHTML = this.getToggleIcon();
+      return;
+    }
+
+    // 기존 토글이 없으면 동적으로 생성
+    this.createThemeToggle();
+  }
+
   // 테마 토글 버튼 생성
   createThemeToggle() {
+    // 이미 존재하면 스킵
+    if (document.getElementById('theme-toggle')) {
+      return;
+    }
+
     const toggle = document.createElement('button');
     toggle.id = 'theme-toggle';
     toggle.className = 'theme-toggle-btn';
     toggle.setAttribute('aria-label', '테마 변경');
     toggle.innerHTML = this.getToggleIcon();
-    toggle.addEventListener('click', () => this.cycleTheme());
 
-    // 더 구체적인 선택자들로 개선
-    const headerSelectors = [
-      // Next.js App Router 특화 선택자
-      '[data-testid="header"]', '.flex.w-full', '.min-h-screen',
-      '.bg-gradient-to-br', '.flex.items-center', '.justify-center',
-      // 로그인 페이지 특화 선택자
-      '.max-w-md', '.space-y-8', '.text-center',
-      // 대시보드 페이지 특화 선택자
-      '.bg-background', '.flex-1', '.ml-0', '.lg\\:ml-64',
-      // 일반적인 헤더 선택자
-      'header', '.header', '.navbar', '.nav', '.top-bar',
-      '.logo-container', '.brand-container', '.title-container',
-      '.login-container', '.auth-container', '.form-header',
-      // 추가적인 선택자들
-      '.flex.justify-between', '.flex.items-center',
-      '.container', '.main-header', '.app-header'
-    ];
+    // 클릭 이벤트
+    toggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.cycleTheme();
+    });
 
-    let header = null;
-    for (const selector of headerSelectors) {
-      const elements = document.querySelectorAll(selector);
-      for (const element of elements) {
-        // 로그인 페이지의 경우 오른쪽 컨테이너에 추가
-        if (selector.includes('max-w-md') || selector.includes('space-y-8')) {
-          header = element;
-          break;
-        }
-        // 대시보드의 경우 상단 영역에 추가
-        if (element.offsetTop < 100 || element.classList.contains('header') || element.classList.contains('navbar')) {
-          header = element;
-          break;
-        }
-        // flex 컨테이너인 경우
-        if (element.classList.contains('flex') || getComputedStyle(element).display === 'flex') {
-          header = element;
-          break;
-        }
-      }
-      if (header) break;
-    }
-
-    if (header) {
-      // 헤더가 flex 컨테이너인 경우 적절한 위치에 추가
-      if (header.classList.contains('flex') || getComputedStyle(header).display === 'flex') {
-        header.appendChild(toggle);
-      } else {
-        // 일반 컨테이너인 경우 첫 번째 자식으로 추가
-        header.insertBefore(toggle, header.firstChild);
-      }
+    // 간단한 위치 찾기 - body에 직접 추가
+    if (document.body) {
+      document.body.appendChild(toggle);
     } else {
-      // 헤더가 없으면 body에 추가
-      if (document.body) {
-        // body의 첫 번째 자식으로 추가
-        document.body.insertBefore(toggle, document.body.firstChild);
-      } else {
-        // body도 없으면 아무것도 하지 않음
-        console.warn('테마 토글을 추가할 위치를 찾을 수 없습니다.');
-      }
-    }
-    
-    // 토글이 성공적으로 추가되었는지 확인
-    if (!document.getElementById('theme-toggle')) {
-      // 마지막 수단: body에 강제로 추가
-      if (document.body) {
-        document.body.appendChild(toggle);
-        console.log('테마 토글을 body에 강제로 추가했습니다.');
-      }
+      // body가 없으면 DOMContentLoaded 이벤트를 기다림
+      document.addEventListener('DOMContentLoaded', () => {
+        if (document.body && !document.getElementById('theme-toggle')) {
+          document.body.appendChild(toggle);
+        }
+      });
     }
   }
 
@@ -194,38 +164,36 @@ class ThemeProvider {
   }
 }
 
-// 전역 테마 프로바이더 인스턴스
-window.themeProvider = new ThemeProvider();
-
 // CSS 스타일 추가
 const style = document.createElement('style');
 style.textContent = `
   .theme-toggle-btn {
-    position: relative;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 40px;
     height: 40px;
     border-radius: 8px;
-    border: 1px solid hsl(var(--border));
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.8);
+    color: white;
     cursor: pointer;
     transition: all 0.2s ease;
-    margin-left: 8px;
   }
 
   .theme-toggle-btn:hover {
-    background: hsl(var(--accent));
-    border-color: hsl(var(--accent));
+    background: rgba(59, 130, 246, 0.8);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: scale(1.05);
   }
 
   .theme-toggle-btn:focus {
     outline: none;
-    ring: 2px;
-    ring-color: hsl(var(--ring));
-    ring-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
   }
 
   .theme-toggle-btn svg {
@@ -238,14 +206,14 @@ style.textContent = `
 
   /* 다크모드에서의 토글 버튼 */
   .dark .theme-toggle-btn {
-    border-color: hsl(var(--border));
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    border-color: rgba(148, 163, 184, 0.5);
+    background: rgba(30, 41, 59, 0.8);
+    color: white;
   }
 
   .dark .theme-toggle-btn:hover {
-    background: hsl(var(--accent));
-    border-color: hsl(var(--accent));
+    background: rgba(59, 130, 246, 0.8);
+    border-color: rgba(59, 130, 246, 0.5);
   }
 
   /* 모바일에서의 토글 버튼 */
@@ -253,22 +221,37 @@ style.textContent = `
     .theme-toggle-btn {
       width: 36px;
       height: 36px;
-      margin-left: 4px;
+      top: 10px;
+      right: 10px;
     }
   }
 `;
-document.head.appendChild(style);
 
-// 페이지 로드 시 테마 적용
-document.addEventListener('DOMContentLoaded', () => {
-  // 이미 초기화되었으면 스킵
-  if (window.themeProvider) {
-    return;
+// 스타일을 head에 추가
+if (document.head) {
+  document.head.appendChild(style);
+} else {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.head.appendChild(style);
+  });
+}
+
+// 전역 테마 프로바이더 인스턴스 생성
+let themeProvider = null;
+
+function initThemeProvider() {
+  if (!themeProvider) {
+    themeProvider = new ThemeProvider();
+    window.themeProvider = themeProvider;
   }
-  
-  // 테마 프로바이더 초기화
-  window.themeProvider = new ThemeProvider();
-});
+}
+
+// DOM이 로드되면 테마 프로바이더 초기화
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initThemeProvider);
+} else {
+  initThemeProvider();
+}
 
 // 모듈 내보내기 (ES6 모듈 지원)
 if (typeof module !== 'undefined' && module.exports) {

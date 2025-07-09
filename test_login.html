@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 테스트</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: none;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1 style="text-align: center; margin-bottom: 2rem;">로그인 테스트</h1>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">사용자명:</label>
+                <input type="text" id="username" name="username" value="admin" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">비밀번호:</label>
+                <input type="password" id="password" name="password" value="admin123" required>
+            </div>
+            
+            <button type="submit">로그인</button>
+        </form>
+        
+        <div style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem; text-align: center;">
+            <h4 style="margin-bottom: 0.5rem; color: #374151;">빠른 접속</h4>
+            <button onclick="window.location.href='/super-admin-dashboard'" style="margin: 0.25rem; padding: 0.75rem 1.5rem; background: #1e40af; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                🏆 슈퍼 관리자 대시보드
+            </button>
+            <button onclick="window.location.href='/test-login'" style="margin: 0.25rem; padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                🔐 로그인 테스트
+            </button>
+        </div>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <h3>✅ 로그인 성공!</h3>
+                        <p><strong>사용자:</strong> ${data.user.username}</p>
+                        <p><strong>역할:</strong> ${data.user.role}</p>
+                        <p><strong>이메일:</strong> ${data.user.email}</p>
+                        <p><strong>토큰:</strong> ${data.access_token.substring(0, 50)}...</p>
+                        <p style="color: #10b981; font-weight: bold;">3초 후 자동으로 대시보드로 이동합니다...</p>
+                        <button onclick="goToSimpleDashboard('${data.access_token}')" style="margin-top: 1rem; background: #10b981;">
+                            지금 대시보드로 이동
+                        </button>
+                        <button onclick="goToSuperAdminDashboard('${data.access_token}')" style="margin-top: 0.5rem; background: #1e40af;">
+                            최고 관리자 대시보드
+                        </button>
+                        <div style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem;">
+                            <h4 style="margin-bottom: 0.5rem;">다른 페이지로 이동:</h4>
+                            <button onclick="goToPage('${data.access_token}', '/admin/staff-management')" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #3b82f6; font-size: 0.875rem;">
+                                직원 관리
+                            </button>
+                            <button onclick="goToPage('${data.access_token}', '/admin/branch-management')" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #10b981; font-size: 0.875rem;">
+                                매장 관리
+                            </button>
+                            <button onclick="goToPage('${data.access_token}', '/admin/system-monitoring')" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #f59e0b; font-size: 0.875rem;">
+                                시스템 모니터링
+                            </button>
+                        </div>
+                    `;
+                    
+                    // 3초 후 자동으로 대시보드로 이동
+                    setTimeout(() => {
+                        goToSimpleDashboard(data.access_token);
+                    }, 3000);
+                    
+                    // 토큰을 localStorage에 저장
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `<h3>❌ 로그인 실패</h3><p>${data.message}</p>`;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<h3>❌ 오류 발생</h3><p>${error.message}</p>`;
+            }
+        });
+        
+        function goToDashboard(token) {
+            // JWT 토큰을 사용하여 대시보드에 접근
+            fetch('/dashboard-jwt', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    // 성공하면 새 창에서 대시보드 열기
+                    window.open('/dashboard-jwt', '_blank');
+                } else {
+                    return response.json();
+                }
+            })
+            .then(data => {
+                if (data && data.message) {
+                    alert('대시보드 접근 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('대시보드 접근 중 오류가 발생했습니다.');
+            });
+        }
+        
+        function goToSimpleDashboard(token) {
+            // 토큰을 URL 파라미터로 전달하여 간단한 대시보드로 이동
+            window.location.href = `/dashboard-simple?token=${token}`;
+        }
+        
+        function goToSuperAdminDashboard(token) {
+            // 토큰을 URL 파라미터로 전달하여 최고 관리자 대시보드로 이동
+            window.location.href = `/super-admin-dashboard?token=${token}`;
+        }
+        
+        function goToPage(token, pagePath) {
+            // 토큰을 URL 파라미터로 전달하여 지정된 페이지로 이동
+            window.location.href = `${pagePath}?token=${token}`;
+        }
+        
+        function goToPage(token, page) {
+            // 토큰을 URL 파라미터로 전달하여 지정된 페이지로 이동
+            window.location.href = `${page}?token=${token}`;
+        }
+    </script>
+</body>
+</html> 

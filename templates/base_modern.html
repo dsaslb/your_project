@@ -14,7 +14,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -22,43 +22,251 @@
     <!-- Theme Provider -->
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     
+    <!-- 테마 토글 버튼 스타일 -->
+    <style>
+        .theme-toggle-btn {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .theme-toggle-btn:hover {
+            background: rgba(59, 130, 246, 0.8);
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .theme-toggle-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .theme-toggle-btn svg {
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle-btn:hover svg {
+            transform: scale(1.1) rotate(15deg);
+        }
+
+        /* 다크모드에서의 토글 버튼 */
+        .dark .theme-toggle-btn {
+            border-color: rgba(148, 163, 184, 0.5);
+            background: rgba(30, 41, 59, 0.8);
+            color: white;
+        }
+
+        .dark .theme-toggle-btn:hover {
+            background: rgba(59, 130, 246, 0.8);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        /* 모바일에서의 토글 버튼 */
+        @media (max-width: 768px) {
+            .theme-toggle-btn {
+                width: 36px;
+                height: 36px;
+                margin-left: 4px;
+            }
+        }
+
+        /* 커스텀 스크롤바 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.7);
+        }
+
+        /* 다크모드 스크롤바 */
+        .dark ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.6);
+        }
+
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.8);
+        }
+
+        /* 애니메이션 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* 호버 효과 */
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 그라데이션 텍스트 */
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 글래스모피즘 효과 */
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .dark .glass {
+            background: rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+    
     {% block head %}{% endblock %}
 </head>
-<body class="h-full bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col">
+<body class="h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen flex flex-col font-['Inter']">
     <!-- 상단바 -->
-    <header class="w-full bg-white dark:bg-gray-800 shadow flex items-center justify-between px-6 py-3">
-        <div class="flex items-center space-x-3">
-            <span class="text-2xl font-bold text-blue-700 dark:text-blue-300">🍽️ Restaurant Manager</span>
-            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">AI 기반</span>
+    <header class="w-full glass shadow-lg border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 py-4">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <span class="text-white text-xl font-bold">🍽️</span>
+                </div>
+                <div>
+                    <span class="text-xl font-bold gradient-text">Restaurant Manager</span>
+                    <div class="flex items-center space-x-2 mt-1">
+                        <span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-1 rounded-full font-medium">AI 기반</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">v2.0</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <nav class="flex items-center space-x-4">
-            <a href="/dashboard" class="text-gray-700 dark:text-gray-200 hover:text-blue-600">대시보드</a>
-            <a href="/staff" class="text-gray-700 dark:text-gray-200 hover:text-blue-600">직원</a>
-            <a href="/schedule" class="text-gray-700 dark:text-gray-200 hover:text-blue-600">스케줄</a>
-            <a href="/reports" class="text-gray-700 dark:text-gray-200 hover:text-blue-600">리포트</a>
-            <a href="/settings" class="text-gray-700 dark:text-gray-200 hover:text-blue-600">설정</a>
-            <a href="/logout" class="ml-4 text-red-500 hover:underline">로그아웃</a>
+        
+        <nav class="flex items-center space-x-6">
+            <a href="/dashboard" class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">🏠 대시보드</a>
+            <a href="/staff" class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">👥 직원</a>
+            <a href="/schedule" class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">🗓️ 스케줄</a>
+            <a href="/reports" class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">📊 리포트</a>
+            <a href="/settings" class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">⚙️ 설정</a>
+            
+            <!-- 테마 토글 버튼 -->
+            <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+            
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">A</span>
+                </div>
+                <a href="/logout" class="text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors font-medium">로그아웃</a>
+            </div>
         </nav>
     </header>
+    
     <div class="flex flex-1">
         <!-- 사이드바 -->
-        <aside class="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 space-y-2">
-            <a href="/dashboard" class="block py-2 px-3 rounded hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200">🏠 대시보드</a>
-            <a href="/staff" class="block py-2 px-3 rounded hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200">👥 직원 관리</a>
-            <a href="/schedule" class="block py-2 px-3 rounded hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200">🗓️ 스케줄</a>
-            <a href="/reports" class="block py-2 px-3 rounded hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200">📊 리포트</a>
-            <a href="/settings" class="block py-2 px-3 rounded hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200">⚙️ 설정</a>
+        <aside class="hidden md:flex flex-col w-64 glass border-r border-gray-200 dark:border-gray-700 p-6 space-y-4">
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">메인 메뉴</h3>
+            </div>
+            
+            <a href="/dashboard" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 hover-lift">
+                <span class="text-xl">🏠</span>
+                <span class="font-medium">대시보드</span>
+            </a>
+            
+            <a href="/staff" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 hover-lift">
+                <span class="text-xl">👥</span>
+                <span class="font-medium">직원 관리</span>
+            </a>
+            
+            <a href="/schedule" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 hover-lift">
+                <span class="text-xl">🗓️</span>
+                <span class="font-medium">스케줄</span>
+            </a>
+            
+            <a href="/reports" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 hover-lift">
+                <span class="text-xl">📊</span>
+                <span class="font-medium">리포트</span>
+            </a>
+            
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
+                <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">시스템</h3>
+            </div>
+            
+            <a href="/settings" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 hover-lift">
+                <span class="text-xl">⚙️</span>
+                <span class="font-medium">설정</span>
+            </a>
+            
+            <a href="/notifications" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 hover-lift">
+                <span class="text-xl">🔔</span>
+                <span class="font-medium">알림</span>
+                <span class="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-1">3</span>
+            </a>
         </aside>
+        
         <!-- 메인 컨텐츠 -->
-        <main class="flex-1 p-6">
-            {% block content %}{% endblock %}
+        <main class="flex-1 p-8 overflow-y-auto">
+            <div class="fade-in-up">
+                {% block content %}{% endblock %}
+            </div>
         </main>
     </div>
+    
     <!-- 알림/피드백 영역 -->
     <div id="notification-area" class="fixed bottom-4 right-4 z-50"></div>
+    
     <!-- 푸터 -->
-    <footer class="w-full bg-white dark:bg-gray-800 text-center py-3 text-xs text-gray-400 border-t border-gray-200 dark:border-gray-700">
-        © 2024 Restaurant Manager. All rights reserved.
+    <footer class="w-full glass text-center py-4 text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-center space-x-4">
+            <span>© 2024 Restaurant Manager. All rights reserved.</span>
+            <span class="w-1 h-1 bg-gray-400 rounded-full"></span>
+            <span>AI 기반 통합 관리 시스템</span>
+            <span class="w-1 h-1 bg-gray-400 rounded-full"></span>
+            <span>v2.0</span>
+        </div>
     </footer>
 
     <!-- JavaScript -->
@@ -88,12 +296,28 @@
                     }, 300);
                 }, 5000);
             });
+
+            // 페이지 로드 애니메이션
+            const elements = document.querySelectorAll('.fade-in-up');
+            elements.forEach((element, index) => {
+                element.style.animationDelay = `${index * 0.1}s`;
+            });
         });
 
         // Theme change event listener
         window.addEventListener('themeChange', function(e) {
             console.log('Theme changed to:', e.detail.theme);
             // Add any theme-specific logic here
+        });
+
+        // 스크롤 효과
+        window.addEventListener('scroll', function() {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelector('.parallax');
+            if (parallax) {
+                const speed = scrolled * 0.5;
+                parallax.style.transform = `translateY(${speed}px)`;
+            }
         });
     </script>
 

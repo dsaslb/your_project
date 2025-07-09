@@ -1,418 +1,405 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
   Store, 
   Users, 
-  ShoppingCart, 
-  Package, 
-  Clock, 
-  Star,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle,
-  DollarSign,
-  Calendar,
+  TrendingUp, 
+  Activity, 
   MapPin,
-  Phone,
-  Mail,
-  Settings,
   BarChart3,
-  ArrowUpRight,
-  ArrowDownRight
-} from "lucide-react";
+  Settings,
+  Bell,
+  Calendar,
+  Package,
+  Clock,
+  Star
+} from 'lucide-react';
 
-interface StoreMetrics {
-  name: string;
-  location: string;
-  status: 'open' | 'closed' | 'maintenance';
+interface StoreStats {
+  totalEmployees: number;
+  activeEmployees: number;
   todayRevenue: number;
-  todayOrders: number;
-  totalStaff: number;
-  activeStaff: number;
-  averageRating: number;
-  inventoryAlerts: number;
+  monthlyRevenue: number;
+  growthRate: number;
+  averageOrderValue: number;
+  customerSatisfaction: number;
   pendingOrders: number;
-  completedOrders: number;
-  customerCount: number;
-  growth: number;
+  lowStockItems: number;
 }
 
-interface StaffData {
+interface Employee {
   id: number;
   name: string;
-  role: string;
-  status: 'working' | 'break' | 'off' | 'late';
+  role: 'manager' | 'staff' | 'kitchen' | 'cashier';
+  status: 'active' | 'break' | 'off';
   startTime: string;
   endTime: string;
   avatar: string;
 }
 
-interface OrderData {
-  id: number;
-  customerName: string;
-  items: string[];
-  total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'completed';
-  time: string;
-}
-
 export default function StoreDashboard() {
-  const [storeMetrics, setStoreMetrics] = useState<StoreMetrics>({
-    name: "강남점",
-    location: "서울시 강남구 테헤란로 123",
-    status: 'open',
-    todayRevenue: 1250000,
-    todayOrders: 47,
-    totalStaff: 15,
-    activeStaff: 12,
-    averageRating: 4.8,
-    inventoryAlerts: 3,
-    pendingOrders: 8,
-    completedOrders: 39,
-    customerCount: 156,
-    growth: 12.5
+  const [stats, setStats] = useState<StoreStats>({
+    totalEmployees: 0,
+    activeEmployees: 0,
+    todayRevenue: 0,
+    monthlyRevenue: 0,
+    growthRate: 0,
+    averageOrderValue: 0,
+    customerSatisfaction: 0,
+    pendingOrders: 0,
+    lowStockItems: 0
   });
 
-  const [staff, setStaff] = useState<StaffData[]>([
-    { id: 1, name: "김철수", role: "매니저", status: 'working', startTime: "09:00", endTime: "18:00", avatar: "KC" },
-    { id: 2, name: "이영희", role: "주방장", status: 'working', startTime: "08:00", endTime: "17:00", avatar: "LY" },
-    { id: 3, name: "박민수", role: "서버", status: 'break', startTime: "10:00", endTime: "19:00", avatar: "PM" },
-    { id: 4, name: "정수진", role: "서버", status: 'working', startTime: "11:00", endTime: "20:00", avatar: "JS" },
-    { id: 5, name: "최동현", role: "주방보조", status: 'working', startTime: "09:30", endTime: "18:30", avatar: "CD" }
-  ]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [recentOrders, setRecentOrders] = useState<OrderData[]>([
-    { id: 1, customerName: "김고객", items: ["김치찌개", "밥"], total: 15000, status: 'completed', time: "14:30" },
-    { id: 2, customerName: "이고객", items: ["된장찌개", "밥"], total: 12000, status: 'ready', time: "14:25" },
-    { id: 3, customerName: "박고객", items: ["비빔밥"], total: 8000, status: 'preparing', time: "14:20" },
-    { id: 4, customerName: "정고객", items: ["갈비찜", "밥", "국"], total: 25000, status: 'pending', time: "14:15" }
-  ]);
+  useEffect(() => {
+    // 로그인 시에만 데이터 fetch (실시간 아님)
+    loadStoreData();
+  }, []);
+
+  const loadStoreData = async () => {
+    try {
+      // 실제로는 백엔드 API에서 데이터 가져오기
+      // 현재는 더미 데이터 사용
+      const mockStats: StoreStats = {
+        totalEmployees: 12,
+        activeEmployees: 8,
+        todayRevenue: 850000,
+        monthlyRevenue: 45000000,
+        growthRate: 8.5,
+        averageOrderValue: 28000,
+        customerSatisfaction: 4.7,
+        pendingOrders: 5,
+        lowStockItems: 3
+      };
+
+      const mockEmployees: Employee[] = [
+        {
+          id: 1,
+          name: '김매니저',
+          role: 'manager',
+          status: 'active',
+          startTime: '09:00',
+          endTime: '18:00',
+          avatar: '👨‍💼'
+        },
+        {
+          id: 2,
+          name: '이주방장',
+          role: 'kitchen',
+          status: 'active',
+          startTime: '08:00',
+          endTime: '17:00',
+          avatar: '👨‍🍳'
+        },
+        {
+          id: 3,
+          name: '박카운터',
+          role: 'cashier',
+          status: 'active',
+          startTime: '10:00',
+          endTime: '19:00',
+          avatar: '👩‍💼'
+        },
+        {
+          id: 4,
+          name: '최서빙',
+          role: 'staff',
+          status: 'break',
+          startTime: '11:00',
+          endTime: '20:00',
+          avatar: '👩‍🍳'
+        },
+        {
+          id: 5,
+          name: '정청소',
+          role: 'staff',
+          status: 'active',
+          startTime: '12:00',
+          endTime: '21:00',
+          avatar: '🧹'
+        },
+        {
+          id: 6,
+          name: '강배달',
+          role: 'staff',
+          status: 'active',
+          startTime: '13:00',
+          endTime: '22:00',
+          avatar: '🚚'
+        }
+      ];
+
+      setStats(mockStats);
+      setEmployees(mockEmployees);
+    } catch (error) {
+      console.error('매장 데이터 로드 오류:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'manager': return 'bg-blue-500/20 text-blue-600';
+      case 'kitchen': return 'bg-orange-500/20 text-orange-600';
+      case 'cashier': return 'bg-green-500/20 text-green-600';
+      case 'staff': return 'bg-purple-500/20 text-purple-600';
+      default: return 'bg-gray-500/20 text-gray-600';
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'open': return 'bg-green-500';
-      case 'closed': return 'bg-red-500';
-      case 'maintenance': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
+      case 'active': return 'bg-green-500/20 text-green-600';
+      case 'break': return 'bg-yellow-500/20 text-yellow-600';
+      case 'off': return 'bg-gray-500/20 text-gray-600';
+      default: return 'bg-gray-500/20 text-gray-600';
+    }
+  };
+
+  const getRoleText = (role: string) => {
+    switch (role) {
+      case 'manager': return '매니저';
+      case 'kitchen': return '주방';
+      case 'cashier': return '카운터';
+      case 'staff': return '직원';
+      default: return '직원';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'open': return '영업중';
-      case 'closed': return '휴무';
-      case 'maintenance': return '점검중';
-      default: return '알 수 없음';
-    }
-  };
-
-  const getStaffStatusColor = (status: string) => {
-    switch (status) {
-      case 'working': return 'bg-green-500';
-      case 'break': return 'bg-yellow-500';
-      case 'off': return 'bg-gray-500';
-      case 'late': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getStaffStatusText = (status: string) => {
-    switch (status) {
-      case 'working': return '근무중';
+      case 'active': return '근무중';
       case 'break': return '휴식중';
       case 'off': return '퇴근';
-      case 'late': return '지각';
       default: return '알 수 없음';
     }
   };
 
-  const getOrderStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'preparing': return 'bg-blue-500';
-      case 'ready': return 'bg-green-500';
-      case 'completed': return 'bg-gray-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getOrderStatusText = (status: string) => {
-    switch (status) {
-      case 'pending': return '대기중';
-      case 'preparing': return '조리중';
-      case 'ready': return '준비완료';
-      case 'completed': return '완료';
-      default: return '알 수 없음';
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW'
-    }).format(amount);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">매장 관리자 대시보드</h1>
-          <p className="text-gray-600 dark:text-gray-400">{storeMetrics.name} - 실시간 운영 현황</p>
+      <header className="bg-white/10 backdrop-blur-xl border-b border-white/20">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Store className="h-8 w-8 text-green-400" />
+              <div>
+                <h1 className="text-2xl font-bold text-white">강남점 관리자</h1>
+                <p className="text-slate-300">매장 실시간 운영 및 직원 관리</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <Badge variant="outline" className="text-green-400 border-green-400">
+                <Activity className="h-4 w-4 mr-1" />
+                실시간 운영
+              </Badge>
+              <div className="text-slate-300 text-sm">
+                {new Date().toLocaleString()}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${getStatusColor(storeMetrics.status)}`} />
-            <span className="text-sm font-medium">{getStatusText(storeMetrics.status)}</span>
-          </div>
-          <Button variant="outline">
-            <Settings className="h-4 w-4 mr-2" />
-            매장 설정
-          </Button>
+      </header>
+
+      <div className="container mx-auto px-6 py-8">
+        {/* 통계 카드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">오늘 매출</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">
+                {(stats.todayRevenue / 1000).toFixed(0)}K
+              </div>
+              <p className="text-xs text-slate-400">오늘 총 매출</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">근무 직원</CardTitle>
+              <Users className="h-4 w-4 text-blue-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.activeEmployees}</div>
+              <p className="text-xs text-slate-400">현재 근무 중</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">대기 주문</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.pendingOrders}</div>
+              <p className="text-xs text-slate-400">처리 대기 중</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">고객 만족도</CardTitle>
+              <Star className="h-4 w-4 text-purple-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.customerSatisfaction}</div>
+              <p className="text-xs text-slate-400">평균 평점</p>
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      {/* 매장 정보 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Store className="h-5 w-5 mr-2" />
-            매장 정보
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center space-x-3">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="font-medium">{storeMetrics.location}</p>
-                <p className="text-sm text-muted-foreground">매장 위치</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="font-medium">02-1234-5678</p>
-                <p className="text-sm text-muted-foreground">매장 전화</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="font-medium">gangnam@restaurant.com</p>
-                <p className="text-sm text-muted-foreground">매장 이메일</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 오늘의 통계 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">오늘 매출</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(storeMetrics.todayRevenue)}</div>
-            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-              {storeMetrics.growth > 0 ? (
-                <ArrowUpRight className="h-3 w-3 text-green-500" />
-              ) : (
-                <ArrowDownRight className="h-3 w-3 text-red-500" />
-              )}
-              <span className={storeMetrics.growth > 0 ? 'text-green-600' : 'text-red-600'}>
-                {storeMetrics.growth > 0 ? '+' : ''}{storeMetrics.growth}%
-              </span>
-              <span>어제 대비</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">오늘 주문</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{storeMetrics.todayOrders}</div>
-            <p className="text-xs text-muted-foreground">
-              완료: {storeMetrics.completedOrders} | 대기: {storeMetrics.pendingOrders}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">고객 수</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{storeMetrics.customerCount}</div>
-            <p className="text-xs text-muted-foreground">
-              평점: {storeMetrics.averageRating} ⭐
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">재고 알림</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{storeMetrics.inventoryAlerts}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-red-600">재고 부족</span> 상품
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 직원 현황 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Users className="h-5 w-5 mr-2" />
-            직원 현황
-          </CardTitle>
-          <CardDescription>현재 근무 중인 직원 및 스케줄</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {staff.map((member) => (
-              <div key={member.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  {member.avatar}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">{member.name}</p>
-                  <p className="text-sm text-muted-foreground">{member.role}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {member.startTime} - {member.endTime}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${getStaffStatusColor(member.status)}`} />
-                  <span className="text-xs">{getStaffStatusText(member.status)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 주문 현황 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <ShoppingCart className="h-5 w-5 mr-2" />
-              최근 주문
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium">{order.customerName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {order.items.join(', ')}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{order.time}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(order.total)}</p>
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${getOrderStatusColor(order.status)}`} />
-                      <span className="text-xs">{getOrderStatusText(order.status)}</span>
+        {/* 직원 현황 및 성과 지표 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* 직원 현황 */}
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                직원 현황
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {employees.map((employee) => (
+                  <div
+                    key={employee.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">{employee.avatar}</div>
+                      <div>
+                        <h3 className="font-semibold text-white">{employee.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge className={getRoleColor(employee.role)}>
+                            {getRoleText(employee.role)}
+                          </Badge>
+                          <Badge className={getStatusColor(employee.status)}>
+                            {getStatusText(employee.status)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right text-sm text-slate-300">
+                      <div>{employee.startTime} - {employee.endTime}</div>
                     </div>
                   </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 성과 지표 */}
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                성과 지표
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-300">직원 출근률</span>
+                    <span className="text-white font-semibold">
+                      {((stats.activeEmployees / stats.totalEmployees) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(stats.activeEmployees / stats.totalEmployees) * 100} 
+                    className="h-2"
+                  />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2" />
-              주문 상태 분포
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">대기중</span>
-                <span className="font-medium">{storeMetrics.pendingOrders}</span>
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-300">월 매출 달성률</span>
+                    <span className="text-white font-semibold">85%</span>
+                  </div>
+                  <Progress 
+                    value={85} 
+                    className="h-2 bg-slate-700"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-300">평균 주문 금액</span>
+                    <span className="text-white font-semibold">
+                      {stats.averageOrderValue.toLocaleString()}원
+                    </span>
+                  </div>
+                  <Progress 
+                    value={75} 
+                    className="h-2 bg-slate-700"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-300">재고 부족 알림</span>
+                    <span className="text-white font-semibold">{stats.lowStockItems}개</span>
+                  </div>
+                  <Progress 
+                    value={30} 
+                    className="h-2 bg-slate-700"
+                  />
+                </div>
               </div>
-              <Progress value={(storeMetrics.pendingOrders / storeMetrics.todayOrders) * 100} className="h-2" />
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">조리중</span>
-                <span className="font-medium">5</span>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 빠른 액션 */}
+        <div className="mt-8">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                빠른 액션
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button className="p-4 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors text-white">
+                  <Users className="h-6 w-6 mx-auto mb-2" />
+                  <span className="text-sm">직원 스케줄</span>
+                </button>
+                <button className="p-4 rounded-lg bg-green-500/20 hover:bg-green-500/30 transition-colors text-white">
+                  <Package className="h-6 w-6 mx-auto mb-2" />
+                  <span className="text-sm">재고 관리</span>
+                </button>
+                <button className="p-4 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 transition-colors text-white">
+                  <Calendar className="h-6 w-6 mx-auto mb-2" />
+                  <span className="text-sm">주문 관리</span>
+                </button>
+                <button className="p-4 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 transition-colors text-white">
+                  <Bell className="h-6 w-6 mx-auto mb-2" />
+                  <span className="text-sm">알림 설정</span>
+                </button>
               </div>
-              <Progress value={(5 / storeMetrics.todayOrders) * 100} className="h-2" />
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">준비완료</span>
-                <span className="font-medium">3</span>
-              </div>
-              <Progress value={(3 / storeMetrics.todayOrders) * 100} className="h-2" />
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">완료</span>
-                <span className="font-medium">{storeMetrics.completedOrders}</span>
-              </div>
-              <Progress value={(storeMetrics.completedOrders / storeMetrics.todayOrders) * 100} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {/* 알림 및 이슈 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2" />
-            매장 알림
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <div>
-                <p className="font-medium">재고 부족 알림</p>
-                <p className="text-sm text-muted-foreground">김치, 된장, 고추가루 재고가 부족합니다.</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-              <Clock className="h-4 w-4 text-yellow-600" />
-              <div>
-                <p className="font-medium">직원 퇴근 예정</p>
-                <p className="text-sm text-muted-foreground">박민수 직원이 19:00에 퇴근 예정입니다.</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <div>
-                <p className="font-medium">목표 달성</p>
-                <p className="text-sm text-muted-foreground">오늘 매출 목표를 110% 달성했습니다.</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 } 

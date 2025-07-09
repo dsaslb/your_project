@@ -1,33 +1,373 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>로그인 - Core System</title>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>레스토랑 관리 시스템 - 로그인</title>
+    
+    <!-- Theme Provider -->
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
-        .login-form { max-width: 300px; margin: 0 auto; }
-        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #45a049; }
-        .error { color: red; margin: 10px 0; }
-        .info { margin: 20px 0; color: #666; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e293b, #334155, #1e293b);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #fbbf24;
+        }
+
+        .login-header p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #64748b;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .login-btn:hover {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            transform: translateY(-1px);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #86efac;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .demo-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .demo-info strong {
+            color: #60a5fa;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .system-info {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .system-info a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+
+        .system-info a:hover {
+            text-decoration: underline;
+        }
+
+        /* 테마 토글 버튼 스타일 */
+        .theme-toggle-btn {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-left: 8px;
+        }
+
+        .theme-toggle-btn:hover {
+            background: rgba(59, 130, 246, 0.8);
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+        }
+
+        .theme-toggle-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .theme-toggle-btn svg {
+            transition: transform 0.2s ease;
+        }
+
+        .theme-toggle-btn:hover svg {
+            transform: scale(1.1);
+        }
+
+        /* 다크모드에서의 토글 버튼 */
+        .dark .theme-toggle-btn {
+            border-color: rgba(148, 163, 184, 0.5);
+            background: rgba(30, 41, 59, 0.8);
+            color: white;
+        }
+
+        .dark .theme-toggle-btn:hover {
+            background: rgba(59, 130, 246, 0.8);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        /* 모바일에서의 토글 버튼 */
+        @media (max-width: 768px) {
+            .theme-toggle-btn {
+                width: 36px;
+                height: 36px;
+                margin-left: 4px;
+            }
+        }
     </style>
 </head>
 <body>
-    <h2>🍽️ 레스토랑 관리 시스템</h2>
-    <div class="login-form">
-        <form method="post">
-            <input name="username" placeholder="아이디" required>
-            <input name="password" type="password" placeholder="비밀번호" required>
-            <button type="submit">로그인</button>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="flex items-center justify-between mb-4">
+                <h1>🍽️ 레스토랑 관리 시스템</h1>
+                <!-- 테마 토글 버튼 -->
+                <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </button>
+            </div>
+            <p>4단계 계층별 통합 관리 플랫폼</p>
+        </div>
+
+        <div class="demo-info">
+            <strong>데모 계정:</strong><br>
+            아이디: admin<br>
+            비밀번호: admin123
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">아이디</label>
+                <input type="text" id="username" name="username" placeholder="아이디를 입력하세요" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" name="password" placeholder="비밀번호를 입력하세요" required>
+            </div>
+
+            <button type="submit" class="login-btn">로그인</button>
         </form>
-        {% if error %}
-            <p class="error">{{ error }}</p>
-        {% endif %}
-        <div class="info">
-            <p>기본 계정: admin / admin123</p>
-            <a href="/register">회원가입</a>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>로그인 중...</p>
+        </div>
+
+        <div class="system-info">
+            <p>시스템 버전: v2.0</p>
+            <p>포트 5000에서 실행 중</p>
+            <p><a href="http://localhost:3001/test.html" target="_blank">프론트엔드 테스트 페이지</a></p>
+            <p style="color: #fbbf24; font-size: 0.9rem;">💡 문제 발생 시 F12를 눌러 개발자 도구에서 콘솔을 확인하세요</p>
         </div>
     </div>
+
+    <!-- Theme Provider -->
+    <script src="/static/js/theme.js"></script>
+    
+    <script>
+        // 캐시 무효화를 위한 버전 파라미터
+        const CACHE_BUSTER = '?v=' + Date.now();
+        
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('errorMessage');
+            const successMessage = document.getElementById('successMessage');
+            
+            // 로딩 표시
+            loading.style.display = 'block';
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            
+            try {
+                const loginUrl = '/api/auth/login';
+                console.log('현재 페이지 URL:', window.location.href);
+                console.log('현재 origin:', window.location.origin);
+                console.log('로그인 요청 URL:', loginUrl);
+                console.log('요청 데이터:', { username, password });
+                
+                const response = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                console.log('응답 상태:', response.status);
+                console.log('응답 URL:', response.url);
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 로그인 성공
+                    successMessage.textContent = '로그인 성공! 관리자 시스템으로 이동합니다...';
+                    successMessage.style.display = 'block';
+                    
+                    // JWT 토큰 저장
+                    if (data.token) {
+                        localStorage.setItem('jwt_token', data.token);
+                    }
+                    
+                    // 2초 후 관리자 대시보드로 이동
+                    setTimeout(() => {
+                        window.location.href = '/admin_dashboard';
+                    }, 2000);
+                } else {
+                    // 로그인 실패
+                    errorMessage.textContent = data.message || '로그인에 실패했습니다.';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                errorMessage.textContent = '서버 연결 오류가 발생했습니다.';
+                errorMessage.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        // Enter 키로 로그인
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
 </body>
 </html> 

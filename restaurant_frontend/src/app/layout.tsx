@@ -3,14 +3,12 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CyberRestaurant - Management System",
-  description: "Advanced restaurant management with cyberpunk aesthetics",
+  title: "레스토랑 관리 시스템",
+  description: "4단계 계층별 통합 관리 플랫폼",
 }
 
 export default function RootLayout({
@@ -19,13 +17,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ko" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <SidebarProvider>
-            <AppSidebar />
-            <main className="flex-1 overflow-hidden">{children}</main>
-          </SidebarProvider>
+          <main className="min-h-screen">{children}</main>
         </ThemeProvider>
       </body>
     </html>

@@ -103,15 +103,14 @@ def add_staff():
                 return redirect(url_for("staff.add_staff"))
 
             # 새 사용자 생성
-            new_user = User(
-                username=username,
-                name=name,
-                email=email,
-                phone=phone,
-                role=role,
-                department=department,
-                is_active=True,
-            )
+            new_user = User()
+            new_user.username = username
+            new_user.name = name
+            new_user.email = email
+            new_user.phone = phone
+            new_user.role = role
+            new_user.department = department
+            new_user.status = 'approved'  # is_active 대신 status 사용
             new_user.set_password(password)
 
             db.session.add(new_user)

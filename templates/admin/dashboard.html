@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}관리자 대시보드{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">관리자 대시보드</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 통계 카드 -->
+            <div class="bg-blue-50 p-6 rounded-lg">
+                <h3 class="text-lg font-semibold text-blue-800 mb-2">전체 직원</h3>
+                <p class="text-3xl font-bold text-blue-600">{{ stats.total_staff if stats else 0 }}</p>
+            </div>
+            
+            <div class="bg-green-50 p-6 rounded-lg">
+                <h3 class="text-lg font-semibold text-green-800 mb-2">오늘 출근</h3>
+                <p class="text-3xl font-bold text-green-600">{{ stats.today_attendance if stats else 0 }}</p>
+            </div>
+            
+            <div class="bg-yellow-50 p-6 rounded-lg">
+                <h3 class="text-lg font-semibold text-yellow-800 mb-2">대기 승인</h3>
+                <p class="text-3xl font-bold text-yellow-600">{{ stats.pending_approvals if stats else 0 }}</p>
+            </div>
+        </div>
+        
+        <!-- 빠른 액션 버튼 -->
+        <div class="mt-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">빠른 액션</h2>
+            <div class="flex flex-wrap gap-4">
+                <a href="{{ url_for('admin_dashboard') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    직원 관리
+                </a>
+                <a href="{{ url_for('schedule') }}" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
+                    스케줄 관리
+                </a>
+                <a href="{{ url_for('notifications') }}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg">
+                    알림 관리
+                </a>
+                <a href="{{ url_for('admin_reports') }}" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg">
+                    리포트
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,49 +1,35 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // App 디렉토리 경로 명시적 지정
-  // experimental: {
-  //   appDir: true,
-  // },
-  // App Router 경로 설정
-  distDir: '.next',
+  // 이미지 도메인 설정
   images: {
     domains: ['localhost', '192.168.45.44'],
   },
-  // PWA 설정 (일시적으로 제거)
-  // async headers() {
-  //   return [
-  //     {
-  //       source: '/(.*)',
-  //       headers: [
-  //         {
-  //           key: 'X-Frame-Options',
-  //           value: 'DENY',
-  //         },
-  //         {
-  //           key: 'X-Content-Type-Options',
-  //           value: 'nosniff',
-  //         },
-  //         {
-  //           key: 'Referrer-Policy',
-  //           value: 'origin-when-cross-origin',
-  //         },
-  //       ],
-  //     },
-  //   ];
-  // },
-  // 모바일 최적화 (일시적으로 제거)
-  // async rewrites() {
-  //   return [
-  //     {
-  //       source: '/api/:path*',
-  //       destination: 'http://192.168.45.44:5000/api/:path*',
-  //     },
-  //   ];
-  // },
+  
+  // 개발 서버 허용 오리진 설정
   allowedDevOrigins: [
     "http://localhost:3000",
-    "http://192.168.45.44:3000"
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001", 
+    "http://192.168.45.44:3000",
+    "http://192.168.45.44:3001"
   ],
+  
+  // 개발 서버 설정
+  experimental: {
+    // 실험적 기능 비활성화
+  },
+  
+  // WebSocket HMR 설정
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      }
+    }
+    return config
+  },
 };
 
 module.exports = nextConfig; 

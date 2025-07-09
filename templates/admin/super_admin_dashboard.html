@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>최고 관리자 대시보드 - 레스토랑 관리 시스템</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .admin-header h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .admin-header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .stat-card.critical {
+            border-left-color: #ef4444;
+        }
+        
+        .stat-card.warning {
+            border-left-color: #f59e0b;
+        }
+        
+        .stat-card.success {
+            border-left-color: #10b981;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .card-action {
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .card-action:hover {
+            text-decoration: underline;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .action-btn {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            text-decoration: none;
+            color: #1e293b;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+        
+        .action-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            background: #3b82f6;
+            color: white;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.125rem;
+        }
+        
+        .action-text {
+            flex: 1;
+        }
+        
+        .action-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .action-desc {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .admin-table th,
+        .admin-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .admin-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .status-critical {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+        
+        .alert-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .alert-item {
+            padding: 1rem;
+            border-left: 4px solid #e2e8f0;
+            margin-bottom: 1rem;
+            background: #f8fafc;
+            border-radius: 0.5rem;
+        }
+        
+        .alert-item.critical {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        
+        .alert-item.warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+        
+        .alert-item.info {
+            border-left-color: #3b82f6;
+            background: #eff6ff;
+        }
+        
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .alert-desc {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+        
+        .alert-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 0.5rem;
+        }
+        
+        .responsive-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .admin-header {
+                padding: 1rem;
+            }
+            
+            .admin-header h1 {
+                font-size: 1.5rem;
+            }
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: #64748b;
+        }
+        
+        .spinner {
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <h1><i class="fas fa-shield-alt"></i> 최고 관리자 대시보드</h1>
+        <p>시스템 전체 현황 및 관리 기능</p>
+    </div>
+
+    <div class="container">
+        <!-- 통계 카드 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-staff">-</div>
+                <div class="stat-label">전체 직원</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-branches">-</div>
+                <div class="stat-label">전체 매장</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-number" id="pending-approvals">-</div>
+                <div class="stat-label">승인 대기</div>
+            </div>
+            <div class="stat-card critical">
+                <div class="stat-number" id="critical-alerts">-</div>
+                <div class="stat-label">긴급 알림</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-orders">-</div>
+                <div class="stat-label">총 주문</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-number" id="system-status">정상</div>
+                <div class="stat-label">시스템 상태</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- 왼쪽 컬럼 -->
+            <div class="space-y-6">
+                <!-- 빠른 액션 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-bolt"></i> 빠른 액션</h2>
+                    </div>
+                    <div class="quick-actions">
+                        <a href="/admin/staff-management?token=${token}" class="action-btn">
+                            <div class="action-icon"><i class="fas fa-users"></i></div>
+                            <div class="action-text">
+                                <div class="action-title">직원 관리</div>
+                                <div class="action-desc">직원 목록, 권한 변경</div>
+                            </div>
+                        </a>
+                        <a href="/admin/branch-management?token=${token}" class="action-btn">
+                            <div class="action-icon"><i class="fas fa-store"></i></div>
+                            <div class="action-text">
+                                <div class="action-title">매장 관리</div>
+                                <div class="action-desc">매장별 현황, 통계</div>
+                            </div>
+                        </a>
+                        <a href="/admin/approval-management?token=${token}" class="action-btn">
+                            <div class="action-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="action-text">
+                                <div class="action-title">승인 관리</div>
+                                <div class="action-desc">가입, 권한, 계약 승인</div>
+                            </div>
+                        </a>
+                        <a href="/admin/system-monitoring?token=${token}" class="action-btn">
+                            <div class="action-icon"><i class="fas fa-server"></i></div>
+                            <div class="action-text">
+                                <div class="action-title">시스템 모니터링</div>
+                                <div class="action-desc">로그, 백업, DB 관리</div>
+                            </div>
+                        </a>
+                        <a href="/admin/notifications" class="action-btn">
+                            <div class="action-icon"><i class="fas fa-bell"></i></div>
+                            <div class="action-text">
+                                <div class="action-title">알림 관리</div>
+                                <div class="action-desc">시스템 알림 설정</div>
+                            </div>
+                        </a>
+                        <a href="/admin/backup-management" class="action-btn">
+                            <div class="action-icon"><i class="fas fa-database"></i></div>
+                            <div class="action-text">
+                                <div class="action-title">백업 관리</div>
+                                <div class="action-desc">DB 백업, 복원</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 매장별 현황 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-chart-bar"></i> 매장별 현황</h2>
+                        <a href="/admin/branch-management" class="card-action">전체 보기</a>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="branchChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 최근 시스템 로그 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-list-alt"></i> 최근 시스템 로그</h2>
+                        <a href="/admin/system-logs" class="card-action">전체 보기</a>
+                    </div>
+                    <div class="table-container">
+                        <table class="admin-table" id="systemLogsTable">
+                            <thead>
+                                <tr>
+                                    <th>시간</th>
+                                    <th>사용자</th>
+                                    <th>액션</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="loading">
+                                        <div class="spinner"></div>
+                                        로딩 중...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오른쪽 컬럼 -->
+            <div class="space-y-6">
+                <!-- 긴급 알림 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-exclamation-triangle"></i> 긴급 알림</h2>
+                    </div>
+                    <div class="alert-list" id="criticalAlerts">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            알림 로딩 중...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 승인 대기 목록 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-clock"></i> 승인 대기</h2>
+                        <a href="/admin/approval-management" class="card-action">전체 보기</a>
+                    </div>
+                    <div class="alert-list" id="pendingApprovals">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            승인 대기 목록 로딩 중...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 시스템 상태 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-heartbeat"></i> 시스템 상태</h2>
+                    </div>
+                    <div id="systemStatus">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            시스템 상태 확인 중...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // JWT 토큰 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        if (!token) {
+            alert('인증 토큰이 필요합니다. 다시 로그인해주세요.');
+            window.location.href = '/test-login';
+        }
+
+        // API 호출 헤더
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+
+        // 대시보드 데이터 로드
+        async function loadDashboardData() {
+            try {
+                // 통계 데이터 로드
+                const statsResponse = await fetch('/api/admin/dashboard-stats', { headers });
+                const statsData = await statsResponse.json();
+                
+                if (statsData.success) {
+                    document.getElementById('total-staff').textContent = statsData.stats.total_staff || 0;
+                    document.getElementById('total-branches').textContent = statsData.stats.total_branches || 0;
+                    document.getElementById('pending-approvals').textContent = statsData.stats.pending_approvals || 0;
+                    document.getElementById('critical-alerts').textContent = statsData.stats.critical_alerts || 0;
+                    document.getElementById('total-orders').textContent = statsData.stats.total_orders || 0;
+                }
+
+                // 매장별 현황 차트 로드
+                const branchResponse = await fetch('/api/admin/branch-stats', { headers });
+                const branchData = await branchResponse.json();
+                
+                if (branchData.success) {
+                    createBranchChart(branchData.branches);
+                }
+
+                // 시스템 로그 로드
+                const logsResponse = await fetch('/api/admin/system-logs', { headers });
+                const logsData = await logsResponse.json();
+                
+                if (logsData.success) {
+                    displaySystemLogs(logsData.logs);
+                }
+
+                // 긴급 알림 로드
+                const alertsResponse = await fetch('/api/admin/critical-alerts', { headers });
+                const alertsData = await alertsResponse.json();
+                
+                if (alertsData.success) {
+                    displayCriticalAlerts(alertsData.alerts);
+                }
+
+                // 승인 대기 목록 로드
+                const approvalsResponse = await fetch('/api/admin/pending-approvals', { headers });
+                const approvalsData = await approvalsResponse.json();
+                
+                if (approvalsData.success) {
+                    displayPendingApprovals(approvalsData.approvals);
+                }
+
+                // 시스템 상태 로드
+                const statusResponse = await fetch('/api/admin/system-status', { headers });
+                const statusData = await statusResponse.json();
+                
+                if (statusData.success) {
+                    displaySystemStatus(statusData.status);
+                }
+
+            } catch (error) {
+                console.error('대시보드 데이터 로드 오류:', error);
+            }
+        }
+
+        // 매장별 현황 차트 생성
+        function createBranchChart(branches) {
+            const ctx = document.getElementById('branchChart').getContext('2d');
+            
+            // branches가 없거나 배열이 아닌 경우 기본 데이터 사용
+            if (!branches || !Array.isArray(branches) || branches.length === 0) {
+                branches = [
+                    { name: '본점', staff_count: 15, order_count: 120 },
+                    { name: '강남점', staff_count: 12, order_count: 95 },
+                    { name: '홍대점', staff_count: 10, order_count: 85 },
+                    { name: '부산점', staff_count: 8, order_count: 65 }
+                ];
+            }
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: branches.map(b => b.name),
+                    datasets: [{
+                        label: '직원 수',
+                        data: branches.map(b => b.staff_count),
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#2563eb',
+                        borderWidth: 1
+                    }, {
+                        label: '주문 수',
+                        data: branches.map(b => b.order_count),
+                        backgroundColor: '#10b981',
+                        borderColor: '#059669',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 시스템 로그 표시
+        function displaySystemLogs(logs) {
+            const tbody = document.querySelector('#systemLogsTable tbody');
+            
+            if (!logs || !Array.isArray(logs) || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #64748b;">로그가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => `
+                <tr>
+                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                    <td>${log.username || '시스템'}</td>
+                    <td>${log.action || log.message || '알 수 없음'}</td>
+                    <td><span class="status-badge status-${log.status || 'info'}">${log.status || 'info'}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // 긴급 알림 표시
+        function displayCriticalAlerts(alerts) {
+            const container = document.getElementById('criticalAlerts');
+            
+            if (!alerts || !Array.isArray(alerts) || alerts.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 1rem;">긴급 알림이 없습니다.</div>';
+                return;
+            }
+
+            container.innerHTML = alerts.map(alert => `
+                <div class="alert-item ${alert.level || 'info'}">
+                    <div class="alert-title">${alert.title || '알림'}</div>
+                    <div class="alert-desc">${alert.description || '내용 없음'}</div>
+                    <div class="alert-time">${new Date(alert.timestamp).toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        // 승인 대기 목록 표시
+        function displayPendingApprovals(approvals) {
+            const container = document.getElementById('pendingApprovals');
+            
+            if (!approvals || !Array.isArray(approvals) || approvals.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 1rem;">승인 대기 항목이 없습니다.</div>';
+                return;
+            }
+
+            container.innerHTML = approvals.map(approval => `
+                <div class="alert-item warning">
+                    <div class="alert-title">${approval.type || '승인'} - ${approval.username || '사용자'}</div>
+                    <div class="alert-desc">${approval.description || '설명 없음'}</div>
+                    <div class="alert-time">${new Date(approval.created_at).toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        // 시스템 상태 표시
+        function displaySystemStatus(status) {
+            const container = document.getElementById('systemStatus');
+            
+            // status가 없거나 undefined인 경우 기본값 사용
+            if (!status) {
+                status = {
+                    cpu_usage: 0,
+                    memory_usage: 0,
+                    disk_usage: 0,
+                    database_status: '정상',
+                    last_backup: new Date()
+                };
+            }
+            
+            container.innerHTML = `
+                <div style="display: grid; gap: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>CPU 사용률</span>
+                        <span>${status.cpu_usage || 0}%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>메모리 사용률</span>
+                        <span>${status.memory_usage || 0}%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>디스크 사용률</span>
+                        <span>${status.disk_usage || 0}%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>DB 상태</span>
+                        <span style="color: #10b981;">${status.database_status || '정상'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>마지막 백업</span>
+                        <span>${new Date(status.last_backup || new Date()).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
+
+        // 30초마다 데이터 새로고침
+        setInterval(loadDashboardData, 30000);
+    </script>
+</body>
+</html> 
