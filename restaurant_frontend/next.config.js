@@ -1,35 +1,77 @@
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+  register: true,
+  skipWaiting: true,
+})
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 이미지 도메인 설정
   images: {
     domains: ['localhost', '192.168.45.44'],
   },
-  
-  // 개발 서버 허용 오리진 설정
   allowedDevOrigins: [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001", 
     "http://192.168.45.44:3000",
-    "http://192.168.45.44:3001"
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://0.0.0.0:3000",
+    "http://[::1]:3000",
+    "http://192.168.45.44",
+    "http://localhost",
+    "http://127.0.0.1",
+    "http://0.0.0.0",
+    "http://DESKTOP-QKAV4QJ:3000"
   ],
-  
-  // 개발 서버 설정
-  experimental: {
-    // 실험적 기능 비활성화
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+        ],
+      },
+      {
+        source: '/_next/(.*)',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+        ],
+      },
+      {
+        source: '/__nextjs_font/(.*)',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/_next/webpack-hmr',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+        ],
+      },
+    ];
   },
-  
-  // WebSocket HMR 설정
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
       config.watchOptions = {
         poll: 1000,
         aggregateTimeout: 300,
-      }
+        ignored: ['**/node_modules', '**/.git', '**/.next'],
+      };
+      config.devServer = {
+        ...config.devServer,
+        hot: true,
+        client: { overlay: false },
+      };
     }
-    return config
+    return config;
+  },
+  experimental: {
+    webpackBuildWorker: false,
+    optimizePackageImports: ['@next/font'],
   },
 };
 
-module.exports = nextConfig; 
+module.exports = withPWA(nextConfig); 

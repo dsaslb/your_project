@@ -17,11 +17,6 @@ export default function NotificationPopup({
   const [typedText, setTypedText] = useState("");
   const [isTypingComplete, setIsTypingComplete] = useState(false);
 
-  // message가 유효하지 않으면 컴포넌트를 렌더링하지 않음
-  if (!message || typeof message !== 'string') {
-    return null;
-  }
-
   useEffect(() => {
     const popupTimer = setTimeout(() => {
       setShowPopup(true);
@@ -64,6 +59,11 @@ export default function NotificationPopup({
     "top-right": "top-6 right-6",
     "top-left": "top-6 left-6",
   };
+
+  // message가 유효하지 않으면 컴포넌트를 렌더링하지 않음
+  if (!message || typeof message !== 'string') {
+    return null;
+  }
 
   if (!showPopup) return null;
 

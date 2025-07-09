@@ -20,6 +20,7 @@ import {
   CheckCircle,
   Info
 } from "lucide-react";
+import { apiClient } from '@/lib/api-client';
 
 interface PredictiveSales {
   current_trend: {
@@ -156,9 +157,7 @@ export default function AnalyticsAdvancedPage() {
 
       const results = await Promise.all(
         endpoints.map(endpoint =>
-          fetch(`/api/analytics/${endpoint}`)
-            .then(res => res.json())
-            .catch(() => null)
+          apiClient.get(`/api/analytics/${endpoint}`).catch(() => null)
         )
       );
 

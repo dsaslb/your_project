@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { apiClient } from '@/lib/api-client';
 import { 
   Activity, 
   AlertTriangle, 
@@ -64,12 +65,7 @@ const PerformanceDashboard: React.FC = () => {
 
       const responses = await Promise.all(
         endpoints.map(endpoint => 
-          fetch(endpoint, {
-            credentials: 'include',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            }
-          }).then(res => res.json()).catch(() => ({ success: false }))
+          apiClient.get(endpoint).catch(() => ({ success: false }))
         )
       );
 

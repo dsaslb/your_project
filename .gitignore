@@ -19,6 +19,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+ai_env/
 
 # Database
 *.sqlite3
@@ -92,3 +93,40 @@ __pycache__/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# AI Models
+ai_models/saved_models/
+*.h5
+*.pkl
+*.joblib
+
+# Mobile App
+mobile_app/node_modules/
+mobile_app/.expo/
+mobile_app/dist/
+
+# Frontend
+restaurant_frontend/.next/
+restaurant_frontend/out/
+restaurant_frontend/node_modules/
+
+# Uploads
+uploads/
+static/uploads/
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Monitoring
+grafana/data/
+prometheus/data/
+
+# Cache
+.cache/
+.parcel-cache/

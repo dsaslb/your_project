@@ -19,6 +19,7 @@ import {
   Calendar,
   DollarSign
 } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 interface AnalyticsData {
   sales?: any;
@@ -56,12 +57,7 @@ const AdvancedAnalytics: React.FC = () => {
 
       const responses = await Promise.all(
         endpoints.map(endpoint => 
-          fetch(endpoint, {
-            credentials: 'include',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            }
-          }).then(res => res.json()).catch(() => ({ success: false }))
+          apiClient.get(endpoint).catch(() => ({ success: false }))
         )
       );
 

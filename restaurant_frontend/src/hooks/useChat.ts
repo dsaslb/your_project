@@ -203,7 +203,7 @@ export const useChat = () => {
 
     typingTimeoutRef.current = setTimeout(() => {
       sendTypingStatus(false);
-    }, 3000);
+    }, 3000) as unknown as NodeJS.Timeout;
   }, [sendTypingStatus]);
 
   // 채팅방 선택

@@ -25,8 +25,8 @@ export const useRealTimeSync = (options: SyncOptions = {
   // WebSocket 연결 설정
   const connectWebSocket = () => {
     try {
-      // 실제 WebSocket 서버 URL로 변경 필요
-      const wsUrl = 'ws://192.168.45.44:5000/ws';
+      // 환경 변수에서 WebSocket URL 가져오기
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000/ws';
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
@@ -102,7 +102,7 @@ export const useRealTimeSync = (options: SyncOptions = {
           syncData();
           setLastSyncTime(new Date());
         }
-      }, options.syncInterval);
+      }, options.syncInterval) as unknown as NodeJS.Timeout;
     }
 
     return () => {

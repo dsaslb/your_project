@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Network from 'expo-network';
 import { Ionicons } from '@expo/vector-icons';
+import 'react-native-gesture-handler';
 
 // 화면 컴포넌트들
 import DashboardScreen from './src/screens/DashboardScreen';
@@ -46,8 +47,8 @@ function TabNavigator() {
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+      screenOptions={({ route }: { route: any }) => ({
+        tabBarIcon: ({ focused, color, size }: { focused: boolean; color: string; size: number }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           if (route.name === 'Dashboard') {

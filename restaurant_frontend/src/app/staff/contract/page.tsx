@@ -414,7 +414,7 @@ export default function ContractPage() {
     }
 
     const startDate = new Date(contractForm.startDate);
-    let endDate = new Date(startDate);
+    const endDate = new Date(startDate);
 
     switch (period) {
       case '1week':

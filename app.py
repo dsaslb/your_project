@@ -187,10 +187,78 @@ def index():
 
 
 @app.route("/dashboard")
-# @login_required  # 테스트용으로 인증 우회
 def dashboard():
-    # 백엔드 대시보드 템플릿 렌더링
-    return render_template('dashboard.html')
+    """대시보드 API 엔드포인트"""
+    # Authorization 헤더에서 토큰 확인
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"message": "인증 토큰이 필요합니다."}), 401
+    
+    token = auth_header.split(' ')[1]
+    
+    try:
+        secret_key = current_app.config.get('SECRET_KEY', 'default-secret-key')
+        payload = jwt.decode(token, secret_key, algorithms=['HS256'])
+        
+        user = User.query.get(payload['user_id'])
+        if not user:
+            return jsonify({"message": "유효하지 않은 사용자입니다."}), 401
+        
+        # 기본 통계 데이터
+        total_users = User.query.count()
+        total_orders = Order.query.count()
+        total_schedules = Schedule.query.count()
+        
+        # 오늘의 통계
+        today = date.today()
+        today_orders = Order.query.filter(
+            Order.created_at >= today
+        ).count()
+        
+        today_schedules = Schedule.query.filter(
+            Schedule.date == today
+        ).count()
+        
+        # 주간 통계
+        week_ago = today - timedelta(days=7)
+        weekly_orders = Order.query.filter(
+            Order.created_at >= week_ago
+        ).count()
+        
+        # 월간 통계
+        month_ago = today - timedelta(days=30)
+        monthly_orders = Order.query.filter(
+            Order.created_at >= month_ago
+        ).count()
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'role': user.role,
+                'email': user.email
+            },
+            'stats': {
+                'total_users': total_users,
+                'total_orders': total_orders,
+                'total_schedules': total_schedules,
+                'today_orders': today_orders,
+                'today_schedules': today_schedules,
+                'weekly_orders': weekly_orders,
+                'monthly_orders': monthly_orders,
+                'total_revenue': 1500000,  # 더미 데이터
+                'low_stock_items': 3,  # 더미 데이터
+            },
+            'last_updated': datetime.now().isoformat()
+        })
+        
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "토큰이 만료되었습니다."}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "유효하지 않은 토큰입니다."}), 401
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route("/dashboard-jwt")
 def dashboard_jwt():

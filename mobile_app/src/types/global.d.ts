@@ -1,0 +1,9 @@
+declare module 'expo-notifications';
+declare module 'expo-network';
+declare module '@expo/vector-icons';
+declare module '@react-native-async-storage/async-storage';
+declare module '@react-navigation/native';
+declare module '@react-navigation/bottom-tabs';
+declare module '@react-navigation/stack';
+declare module '@react-native-community/netinfo';
+declare module 'react-native-gesture-handler'; 
