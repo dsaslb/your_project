@@ -1,8 +1,8 @@
-{
+﻿{
   "dashboard": {
     "id": null,
-    "title": "Restaurant Management System",
-    "tags": ["restaurant", "monitoring"],
+    "title": "your_program Management System",
+    "tags": ["your_program", "monitoring"],
     "style": "dark",
     "timezone": "browser",
     "panels": [

@@ -1,8 +1,8 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: iot-deployment
-  namespace: restaurant-system
+  namespace: your_program-system
   labels:
     app: iot-service
     version: v1
@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: iot-service
-        image: restaurant-iot:latest
+        image: your_program-iot:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5006
@@ -30,27 +30,27 @@ spec:
         - name: IOT_SERVICE_PORT
           valueFrom:
             configMapKeyRef:
-              name: restaurant-app-config
+              name: your_program-app-config
               key: IOT_SERVICE_PORT
         - name: IOT_DB_PATH
           valueFrom:
             configMapKeyRef:
-              name: restaurant-app-config
+              name: your_program-app-config
               key: IOT_DB_PATH
         - name: REDIS_HOST
           valueFrom:
             configMapKeyRef:
-              name: restaurant-app-config
+              name: your_program-app-config
               key: REDIS_HOST
         - name: REDIS_PORT
           valueFrom:
             configMapKeyRef:
-              name: restaurant-app-config
+              name: your_program-app-config
               key: REDIS_PORT
         - name: REDIS_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: restaurant-app-secrets
+              name: your_program-app-secrets
               key: REDIS_PASSWORD
         resources:
           requests:
@@ -92,7 +92,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: iot-pvc
-  namespace: restaurant-system
+  namespace: your_program-system
 spec:
   accessModes:
     - ReadWriteOnce
@@ -105,7 +105,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: iot-hpa
-  namespace: restaurant-system
+  namespace: your_program-system
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

@@ -1,4 +1,4 @@
-# 🚀 배포 가이드
+﻿# 🚀 배포 가이드
 
 ## 1. 개발 환경
 
@@ -40,14 +40,14 @@ sudo apt install python3 python3-pip python3-venv -y
 sudo apt install nginx -y
 
 # 프로젝트 디렉토리 생성
-sudo mkdir -p /var/www/restaurant_project
-sudo chown $USER:$USER /var/www/restaurant_project
+sudo mkdir -p /var/www/your_program_project
+sudo chown $USER:$USER /var/www/your_program_project
 ```
 
 ### 애플리케이션 배포
 ```bash
 # 프로젝트 클론
-cd /var/www/restaurant_project
+cd /var/www/your_program_project
 git clone <your-repo-url> .
 
 # 가상환경 생성
@@ -65,20 +65,20 @@ nano .env  # 운영 환경에 맞게 수정
 ### Gunicorn 설정
 ```bash
 # Gunicorn 서비스 파일 생성
-sudo nano /etc/systemd/system/restaurant.service
+sudo nano /etc/systemd/system/your_program.service
 ```
 
 ```ini
 [Unit]
-Description=Restaurant Management System
+Description=your_program Management System
 After=network.target
 
 [Service]
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/restaurant_project
-Environment="PATH=/var/www/restaurant_project/venv/bin"
-ExecStart=/var/www/restaurant_project/venv/bin/gunicorn --workers 4 --bind unix:restaurant.sock -m 007 app:app
+WorkingDirectory=/var/www/your_program_project
+Environment="PATH=/var/www/your_program_project/venv/bin"
+ExecStart=/var/www/your_program_project/venv/bin/gunicorn --workers 4 --bind unix:your_program.sock -m 007 app:app
 
 [Install]
 WantedBy=multi-user.target
@@ -86,14 +86,14 @@ WantedBy=multi-user.target
 
 ```bash
 # 서비스 시작
-sudo systemctl start restaurant
-sudo systemctl enable restaurant
+sudo systemctl start your_program
+sudo systemctl enable your_program
 ```
 
 ### Nginx 설정
 ```bash
 # Nginx 설정 파일 생성
-sudo nano /etc/nginx/sites-available/restaurant
+sudo nano /etc/nginx/sites-available/your_program
 ```
 
 ```nginx
@@ -103,18 +103,18 @@ server {
 
     location / {
         include proxy_params;
-        proxy_pass http://unix:/var/www/restaurant_project/restaurant.sock;
+        proxy_pass http://unix:/var/www/your_program_project/your_program.sock;
     }
 
     location /static {
-        alias /var/www/restaurant_project/static;
+        alias /var/www/your_program_project/static;
     }
 }
 ```
 
 ```bash
 # Nginx 설정 활성화
-sudo ln -s /etc/nginx/sites-available/restaurant /etc/nginx/sites-enabled
+sudo ln -s /etc/nginx/sites-available/your_program /etc/nginx/sites-enabled
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -134,13 +134,13 @@ sudo apt install postgresql postgresql-contrib -y
 
 # 데이터베이스 생성
 sudo -u postgres psql
-CREATE DATABASE restaurant_db;
-CREATE USER restaurant_user WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE restaurant_db TO restaurant_user;
+CREATE DATABASE your_program_db;
+CREATE USER your_program_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE your_program_db TO your_program_user;
 \q
 
 # .env 파일 수정
-DATABASE_URL=postgresql://restaurant_user:your_password@localhost/restaurant_db
+DATABASE_URL=postgresql://your_program_user:your_password@localhost/your_program_db
 ```
 
 ## 4. 보안 설정
@@ -173,14 +173,14 @@ chmod 600 *.db
 ### 로그 확인
 ```bash
 # Gunicorn 로그
-sudo journalctl -u restaurant
+sudo journalctl -u your_program
 
 # Nginx 로그
 sudo tail -f /var/log/nginx/access.log
 sudo tail -f /var/log/nginx/error.log
 
 # 애플리케이션 로그
-tail -f logs/restaurant.log
+tail -f logs/your_program.log
 ```
 
 ### 백업 스크립트
@@ -188,15 +188,15 @@ tail -f logs/restaurant.log
 #!/bin/bash
 # backup.sh
 DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/backup/restaurant"
+BACKUP_DIR="/backup/your_program"
 
 mkdir -p $BACKUP_DIR
 
 # 데이터베이스 백업
-pg_dump restaurant_db > $BACKUP_DIR/db_backup_$DATE.sql
+pg_dump your_program_db > $BACKUP_DIR/db_backup_$DATE.sql
 
 # 애플리케이션 백업
-tar -czf $BACKUP_DIR/app_backup_$DATE.tar.gz /var/www/restaurant_project
+tar -czf $BACKUP_DIR/app_backup_$DATE.tar.gz /var/www/your_program_project
 
 # 30일 이상 된 백업 삭제
 find $BACKUP_DIR -name "*.sql" -mtime +30 -delete
@@ -207,7 +207,7 @@ find $BACKUP_DIR -name "*.tar.gz" -mtime +30 -delete
 
 ### 코드 업데이트
 ```bash
-cd /var/www/restaurant_project
+cd /var/www/your_program_project
 git pull origin main
 
 # 가상환경 활성화
@@ -220,7 +220,7 @@ pip install -r requirements.txt
 # flask db upgrade
 
 # 서비스 재시작
-sudo systemctl restart restaurant
+sudo systemctl restart your_program
 ```
 
 ### 정기 점검
@@ -236,7 +236,7 @@ du -sh /var/log/nginx/*
 du -sh logs/*
 
 # 데이터베이스 크기 확인
-psql -d restaurant_db -c "SELECT pg_size_pretty(pg_database_size('restaurant_db'));"
+psql -d your_program_db -c "SELECT pg_size_pretty(pg_database_size('your_program_db'));"
 ```
 
 ## 7. 문제 해결
@@ -250,7 +250,7 @@ psql -d restaurant_db -c "SELECT pg_size_pretty(pg_database_size('restaurant_db'
 ### 로그 분석
 ```bash
 # 에러 로그 필터링
-sudo journalctl -u restaurant | grep ERROR
+sudo journalctl -u your_program | grep ERROR
 
 # Nginx 에러 로그
 sudo tail -f /var/log/nginx/error.log | grep -i error
@@ -261,10 +261,10 @@ sudo tail -f /var/log/nginx/error.log | grep -i error
 ### Gunicorn 설정 최적화
 ```bash
 # workers 수 조정 (CPU 코어 수 * 2 + 1)
-gunicorn --workers 4 --bind unix:restaurant.sock --timeout 120 app:app
+gunicorn --workers 4 --bind unix:your_program.sock --timeout 120 app:app
 
 # 메모리 제한
-gunicorn --workers 4 --bind unix:restaurant.sock --max-requests 1000 --max-requests-jitter 100 app:app
+gunicorn --workers 4 --bind unix:your_program.sock --max-requests 1000 --max-requests-jitter 100 app:app
 ```
 
 ### Nginx 최적화

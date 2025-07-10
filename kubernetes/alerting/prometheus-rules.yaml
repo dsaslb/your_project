@@ -1,12 +1,12 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-rules
   namespace: monitoring
 data:
-  restaurant-rules.yml: |
+  your_program-rules.yml: |
     groups:
-    - name: restaurant-system
+    - name: your_program-system
       rules:
       
       # API Gateway 알림
@@ -172,8 +172,8 @@ data:
           description: "노드 {{ $labels.instance }}에서 높은 네트워크 에러가 발생하고 있습니다."
       
       # 애플리케이션 특화 알림
-      - alert: RestaurantOrderFailure
-        expr: rate(restaurant_order_failures_total[5m]) > 0.1
+      - alert: your_programOrderFailure
+        expr: rate(your_program_order_failures_total[5m]) > 0.1
         for: 2m
         labels:
           severity: warning

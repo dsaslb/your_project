@@ -1,4 +1,4 @@
-name: Test Backend and Frontend
+﻿name: Test Backend and Frontend
 
 on:
   push:
@@ -55,20 +55,20 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: restaurant_frontend/package-lock.json
+          cache-dependency-path: your_program_frontend/package-lock.json
       
       - name: Install frontend dependencies
-        working-directory: restaurant_frontend
+        working-directory: your_program_frontend
         run: npm ci
       
       - name: Run frontend tests
-        working-directory: restaurant_frontend
+        working-directory: your_program_frontend
         run: npm test -- --coverage --watchAll=false
       
       - name: Upload frontend coverage
         uses: codecov/codecov-action@v3
         with:
-          file: restaurant_frontend/coverage/lcov.info
+          file: your_program_frontend/coverage/lcov.info
           flags: frontend
           name: frontend-coverage
 
@@ -94,10 +94,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: restaurant_frontend/package-lock.json
+          cache-dependency-path: your_program_frontend/package-lock.json
       
       - name: Install frontend dependencies
-        working-directory: restaurant_frontend
+        working-directory: your_program_frontend
         run: npm ci
       
       - name: Start backend server
@@ -106,7 +106,7 @@ jobs:
           sleep 10
       
       - name: Run integration tests
-        working-directory: restaurant_frontend
+        working-directory: your_program_frontend
         run: |
           npm run build
           echo "Integration tests completed successfully" 

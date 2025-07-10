@@ -1,16 +1,16 @@
-/* Tailwind CSS Design System */
+﻿/* Tailwind CSS Design System */
 @import url('tailwind.css');
 
-/* Restaurant Management System Custom Styles */
+/* your_program Management System Custom Styles */
 :root {
-  --restaurant-primary: #667eea;
-  --restaurant-secondary: #764ba2;
-  --restaurant-success: #48bb78;
-  --restaurant-warning: #ed8936;
-  --restaurant-danger: #f56565;
-  --restaurant-info: #4299e1;
-  --restaurant-light: #f7fafc;
-  --restaurant-dark: #2d3748;
+  --your_program-primary: #667eea;
+  --your_program-secondary: #764ba2;
+  --your_program-success: #48bb78;
+  --your_program-warning: #ed8936;
+  --your_program-danger: #f56565;
+  --your_program-info: #4299e1;
+  --your_program-light: #f7fafc;
+  --your_program-dark: #2d3748;
 }
 
 /* Base Styles */
@@ -325,20 +325,20 @@ body {
   animation: slideInRight 0.3s ease-out;
 }
 
-/* Restaurant Specific Styles */
-.restaurant-header {
+/* your_program Specific Styles */
+.your_program-header {
   @apply bg-gradient-to-r from-primary to-secondary text-white;
 }
 
-.restaurant-logo {
+.your_program-logo {
   @apply text-2xl font-bold;
 }
 
-.restaurant-nav {
+.your_program-nav {
   @apply bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60;
 }
 
-.restaurant-footer {
+.your_program-footer {
   @apply bg-muted/50 border-t;
 }
 

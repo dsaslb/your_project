@@ -1,4 +1,4 @@
-# 🚀 운영 배포 가이드
+﻿# 🚀 운영 배포 가이드
 
 ## 📋 1. 환경 설정 파일 분리
 
@@ -15,7 +15,7 @@ LOG_LEVEL=DEBUG
 ```ini
 FLASK_ENV=production
 SECRET_KEY=prod-secret-key-5678
-DATABASE_URL=sqlite:///restaurant_prod.sqlite3
+DATABASE_URL=sqlite:///your_program_prod.sqlite3
 DEBUG=0
 LOG_LEVEL=INFO
 ```
@@ -70,7 +70,7 @@ cp backup_20241201_143000.sqlite3 core_db.sqlite3
 ### PostgreSQL 마이그레이션
 ```python
 # app_core.py에서 DATABASE_URL 변경
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:pass@localhost/restaurant_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:pass@localhost/your_program_db'
 ```
 
 ### Alembic 마이그레이션 (권장)
@@ -134,14 +134,14 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 if not app.debug:
-    file_handler = RotatingFileHandler('logs/restaurant.log', maxBytes=10240, backupCount=10)
+    file_handler = RotatingFileHandler('logs/your_program.log', maxBytes=10240, backupCount=10)
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))
     file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
-    app.logger.info('Restaurant startup')
+    app.logger.info('your_program startup')
 ```
 
 ### 로그 로테이션
@@ -198,7 +198,7 @@ ps aux | grep gunicorn
 netstat -tlnp | grep 8000
 
 # 로그 확인
-tail -f logs/restaurant.log
+tail -f logs/your_program.log
 ```
 
 ## 📋 8. 자동 배포 스크립트
@@ -206,7 +206,7 @@ tail -f logs/restaurant.log
 ### deploy.sh
 ```bash
 #!/bin/bash
-echo "Deploying Restaurant Management System..."
+echo "Deploying your_program Management System..."
 
 # 코드 업데이트
 git pull origin main
@@ -218,21 +218,21 @@ pip install -r requirements.txt
 alembic upgrade head
 
 # 서비스 재시작
-sudo systemctl restart restaurant-app
+sudo systemctl restart your_program-app
 
 echo "Deployment completed!"
 ```
 
 ### systemd 서비스
 ```ini
-# /etc/systemd/system/restaurant-app.service
+# /etc/systemd/system/your_program-app.service
 [Unit]
-Description=Restaurant Management System
+Description=your_program Management System
 After=network.target
 
 [Service]
 User=www-data
-WorkingDirectory=/path/to/restaurant_project
+WorkingDirectory=/path/to/your_program_project
 Environment=PATH=/path/to/venv/bin
 ExecStart=/path/to/venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 app_core:app
 Restart=always

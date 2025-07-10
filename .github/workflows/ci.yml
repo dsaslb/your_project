@@ -1,4 +1,4 @@
-name: CI/CD
+﻿name: CI/CD
 
 on:
   push:
@@ -17,23 +17,23 @@ jobs:
           node-version: '18'
       - name: Install dependencies
         run: |
-          cd restaurant_frontend && npm ci
+          cd your_program_frontend && npm ci
       - name: Lint
         run: |
-          cd restaurant_frontend && npm run lint
+          cd your_program_frontend && npm run lint
       - name: Run tests
         run: |
-          cd restaurant_frontend && npm run test
+          cd your_program_frontend && npm run test
       - name: Build frontend
         run: |
-          cd restaurant_frontend && npm run build
+          cd your_program_frontend && npm run build
       - name: Build backend
         run: |
           pip install -r requirements.txt
           python -m compileall .
       - name: Build Docker image
         run: |
-          docker build -t restaurant-app:latest .
+          docker build -t your_program-app:latest .
       - name: Deploy
         if: github.ref == 'refs/heads/main'
         run: |

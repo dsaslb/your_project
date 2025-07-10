@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: elasticsearch
@@ -26,7 +26,7 @@ spec:
           name: transport
         env:
         - name: cluster.name
-          value: "restaurant-cluster"
+          value: "your_program-cluster"
         - name: node.name
           valueFrom:
             fieldRef:

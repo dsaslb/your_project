@@ -1,19 +1,19 @@
-name: Frontend CI
+﻿name: Frontend CI
 
 on:
   push:
     paths:
-      - 'restaurant_frontend/**'
+      - 'your_program_frontend/**'
   pull_request:
     paths:
-      - 'restaurant_frontend/**'
+      - 'your_program_frontend/**'
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: restaurant_frontend
+        working-directory: your_program_frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

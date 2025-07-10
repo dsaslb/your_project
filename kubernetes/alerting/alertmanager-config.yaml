@@ -1,4 +1,4 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: alertmanager-config
@@ -9,7 +9,7 @@ data:
       resolve_timeout: 5m
       slack_api_url: 'https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK'
       smtp_smarthost: 'smtp.gmail.com:587'
-      smtp_from: 'alertmanager@restaurant.com'
+      smtp_from: 'alertmanager@your_program.com'
       smtp_auth_username: 'your-email@gmail.com'
       smtp_auth_password: 'your-app-password'
     
@@ -36,16 +36,16 @@ data:
     
     - name: 'slack-notifications'
       slack_configs:
-      - channel: '#restaurant-alerts'
-        title: '{{ template "slack.restaurant.title" . }}'
-        text: '{{ template "slack.restaurant.text" . }}'
+      - channel: '#your_program-alerts'
+        title: '{{ template "slack.your_program.title" . }}'
+        text: '{{ template "slack.your_program.text" . }}'
         send_resolved: true
     
     - name: 'email-notifications'
       email_configs:
-      - to: 'admin@restaurant.com'
-        subject: '{{ template "email.restaurant.subject" . }}'
-        body: '{{ template "email.restaurant.body" . }}'
+      - to: 'admin@your_program.com'
+        subject: '{{ template "email.your_program.subject" . }}'
+        body: '{{ template "email.your_program.body" . }}'
         send_resolved: true
     
     templates:

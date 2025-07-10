@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "approved",
-    email: "kitchen_lee@restaurant.com",
+    email: "kitchen_lee@your_program.com",
     phone: "010-1111-1112"
   },
   {
@@ -96,7 +96,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "approved",
-    email: "service_park@restaurant.com",
+    email: "service_park@your_program.com",
     phone: "010-1111-1113"
   },
   {
@@ -107,7 +107,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "approved",
-    email: "service_choi@restaurant.com",
+    email: "service_choi@your_program.com",
     phone: "010-1111-1114"
   },
   {
@@ -118,7 +118,7 @@ const sampleUsers: User[] = [
     department: "매니지먼트",
     role: "manager",
     status: "approved",
-    email: "manager_jung@restaurant.com",
+    email: "manager_jung@your_program.com",
     phone: "010-1111-1115"
   },
   {
@@ -129,7 +129,7 @@ const sampleUsers: User[] = [
     department: "매니지먼트",
     role: "employee",
     status: "approved",
-    email: "cashier_han@restaurant.com",
+    email: "cashier_han@your_program.com",
     phone: "010-1111-1116"
   },
   {
@@ -140,7 +140,7 @@ const sampleUsers: User[] = [
     department: "배달",
     role: "employee",
     status: "approved",
-    email: "delivery_yoon@restaurant.com",
+    email: "delivery_yoon@your_program.com",
     phone: "010-1111-1117"
   },
   {
@@ -151,7 +151,7 @@ const sampleUsers: User[] = [
     department: "청소",
     role: "employee",
     status: "approved",
-    email: "cleaning_lim@restaurant.com",
+    email: "cleaning_lim@your_program.com",
     phone: "010-1111-1118"
   },
   {
@@ -162,7 +162,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "approved",
-    email: "sauce_kang@restaurant.com",
+    email: "sauce_kang@your_program.com",
     phone: "010-1111-1119"
   },
   {
@@ -173,7 +173,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "approved",
-    email: "dish_cho@restaurant.com",
+    email: "dish_cho@your_program.com",
     phone: "010-1111-1120"
   },
   {
@@ -184,7 +184,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "approved",
-    email: "host_baek@restaurant.com",
+    email: "host_baek@your_program.com",
     phone: "010-1111-1121"
   },
   {
@@ -195,7 +195,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "approved",
-    email: "bartender_song@restaurant.com",
+    email: "bartender_song@your_program.com",
     phone: "010-1111-1122"
   },
   {
@@ -206,7 +206,7 @@ const sampleUsers: User[] = [
     department: "매니지먼트",
     role: "manager",
     status: "approved",
-    email: "manager_gu@restaurant.com",
+    email: "manager_gu@your_program.com",
     phone: "010-1111-1123"
   },
   {
@@ -217,7 +217,7 @@ const sampleUsers: User[] = [
     department: "매니지먼트",
     role: "employee",
     status: "approved",
-    email: "accountant_nam@restaurant.com",
+    email: "accountant_nam@your_program.com",
     phone: "010-1111-1124"
   },
   {
@@ -228,7 +228,7 @@ const sampleUsers: User[] = [
     department: "배달",
     role: "manager",
     status: "approved",
-    email: "delivery_team_moon@restaurant.com",
+    email: "delivery_team_moon@your_program.com",
     phone: "010-1111-1125"
   },
   {
@@ -239,7 +239,7 @@ const sampleUsers: User[] = [
     department: "배달",
     role: "employee",
     status: "approved",
-    email: "delivery_yang@restaurant.com",
+    email: "delivery_yang@your_program.com",
     phone: "010-1111-1126"
   },
   {
@@ -250,7 +250,7 @@ const sampleUsers: User[] = [
     department: "청소",
     role: "manager",
     status: "approved",
-    email: "cleaning_team_gu@restaurant.com",
+    email: "cleaning_team_gu@your_program.com",
     phone: "010-1111-1127"
   },
   {
@@ -261,7 +261,7 @@ const sampleUsers: User[] = [
     department: "청소",
     role: "employee",
     status: "approved",
-    email: "cleaning_shin@restaurant.com",
+    email: "cleaning_shin@your_program.com",
     phone: "010-1111-1128"
   },
   {
@@ -272,7 +272,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "approved",
-    email: "kitchen_assistant_oh@restaurant.com",
+    email: "kitchen_assistant_oh@your_program.com",
     phone: "010-1111-1129"
   },
   {
@@ -283,7 +283,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "approved",
-    email: "server_jeon@restaurant.com",
+    email: "server_jeon@your_program.com",
     phone: "010-1111-1130"
   },
   
@@ -296,7 +296,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "pending",
-    email: "newbie_kim@restaurant.com",
+    email: "newbie_kim@your_program.com",
     phone: "010-2222-2221"
   },
   {
@@ -307,7 +307,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "pending",
-    email: "newbie_lee@restaurant.com",
+    email: "newbie_lee@your_program.com",
     phone: "010-2222-2222"
   },
   {
@@ -318,7 +318,7 @@ const sampleUsers: User[] = [
     department: "배달",
     role: "employee",
     status: "pending",
-    email: "newbie_park@restaurant.com",
+    email: "newbie_park@your_program.com",
     phone: "010-2222-2223"
   },
   {
@@ -329,7 +329,7 @@ const sampleUsers: User[] = [
     department: "청소",
     role: "employee",
     status: "pending",
-    email: "newbie_choi@restaurant.com",
+    email: "newbie_choi@your_program.com",
     phone: "010-2222-2224"
   },
   {
@@ -340,7 +340,7 @@ const sampleUsers: User[] = [
     department: "매니지먼트",
     role: "employee",
     status: "pending",
-    email: "newbie_jung@restaurant.com",
+    email: "newbie_jung@your_program.com",
     phone: "010-2222-2225"
   },
   
@@ -353,7 +353,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "rejected",
-    email: "rejected_han@restaurant.com",
+    email: "rejected_han@your_program.com",
     phone: "010-3333-3331"
   },
   {
@@ -364,7 +364,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "rejected",
-    email: "rejected_yoon@restaurant.com",
+    email: "rejected_yoon@your_program.com",
     phone: "010-3333-3332"
   },
   
@@ -377,7 +377,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "inactive",
-    email: "resigned_lim@restaurant.com",
+    email: "resigned_lim@your_program.com",
     phone: "010-4444-4441"
   },
   {
@@ -388,7 +388,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "inactive",
-    email: "resigned_kang@restaurant.com",
+    email: "resigned_kang@your_program.com",
     phone: "010-4444-4442"
   },
   
@@ -401,7 +401,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "approved",
-    email: "kitchen_chief_assistant_cho@restaurant.com",
+    email: "kitchen_chief_assistant_cho@your_program.com",
     phone: "010-1111-1131"
   },
   {
@@ -412,7 +412,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "approved",
-    email: "sauce_baek@restaurant.com",
+    email: "sauce_baek@your_program.com",
     phone: "010-1111-1132"
   },
   {
@@ -423,7 +423,7 @@ const sampleUsers: User[] = [
     department: "주방",
     role: "employee",
     status: "approved",
-    email: "dish_song@restaurant.com",
+    email: "dish_song@your_program.com",
     phone: "010-1111-1133"
   },
   {
@@ -434,7 +434,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "approved",
-    email: "host_gu@restaurant.com",
+    email: "host_gu@your_program.com",
     phone: "010-1111-1134"
   },
   {
@@ -445,7 +445,7 @@ const sampleUsers: User[] = [
     department: "홀서비스",
     role: "employee",
     status: "approved",
-    email: "bartender_nam@restaurant.com",
+    email: "bartender_nam@your_program.com",
     phone: "010-1111-1135"
   },
   {
@@ -456,7 +456,7 @@ const sampleUsers: User[] = [
     department: "매니지먼트",
     role: "employee",
     status: "approved",
-    email: "accountant_moon@restaurant.com",
+    email: "accountant_moon@your_program.com",
     phone: "010-1111-1136"
   }
 ];

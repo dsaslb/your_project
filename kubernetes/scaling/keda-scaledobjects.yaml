@@ -1,8 +1,8 @@
-apiVersion: keda.sh/v1alpha1
+﻿apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: gateway-scaledobject
-  namespace: restaurant-system
+  namespace: your_program-system
 spec:
   scaleTargetRef:
     name: gateway-deployment
@@ -32,7 +32,7 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: user-scaledobject
-  namespace: restaurant-system
+  namespace: your_program-system
 spec:
   scaleTargetRef:
     name: user-deployment
@@ -62,7 +62,7 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: iot-scaledobject
-  namespace: restaurant-system
+  namespace: your_program-system
 spec:
   scaleTargetRef:
     name: iot-deployment
@@ -89,7 +89,7 @@ spec:
       threshold: "100"
   - type: redis
     metadata:
-      host: redis-service.restaurant-system.svc.cluster.local:6379
+      host: redis-service.your_program-system.svc.cluster.local:6379
       listName: iot-queue
       listLength: "10"
 ---
@@ -109,7 +109,7 @@ spec:
   - type: elasticsearch
     metadata:
       addresses: http://elasticsearch-service.monitoring.svc.cluster.local:9200
-      index: restaurant-logs-*
+      index: your_program-logs-*
       searchTemplateName: logstash-scaling
       valueLocation: "@timestamp"
       targetQueryValue: "1000"

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChefHat } from "lucide-react"
@@ -43,7 +43,7 @@ export default function ComfortableLoginPage() {
               </div>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Restaurant Manager
+              your_program Manager
             </h1>
             <p className="text-gray-600">로그인하여 시작하세요</p>
           </div>

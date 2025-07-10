@@ -1,4 +1,4 @@
-# 레스토랑 통합 관리 시스템
+﻿# 레스토랑 통합 관리 시스템
 
 ## 프로젝트 개요
 - 실시간 업무/통계/알림/혁신 기능을 통합한 레스토랑 관리 플랫폼
@@ -11,7 +11,7 @@
 
 ## 설치/실행
 1. 의존성 설치
-   - 프론트: `cd restaurant_frontend && npm install`
+   - 프론트: `cd your_program_frontend && npm install`
    - 백엔드: `pip install -r requirements.txt`
 2. 개발 서버 실행
    - 프론트: `npm run dev`

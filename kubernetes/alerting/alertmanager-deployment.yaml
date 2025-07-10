@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: alertmanager-deployment
@@ -24,7 +24,7 @@ spec:
         args:
         - '--config.file=/etc/alertmanager/alertmanager.yml'
         - '--storage.path=/alertmanager'
-        - '--web.external-url=http://alertmanager.restaurant.local'
+        - '--web.external-url=http://alertmanager.your_program.local'
         resources:
           requests:
             memory: "128Mi"

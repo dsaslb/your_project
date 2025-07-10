@@ -1,4 +1,4 @@
-# 🚀 Kubernetes 배포 및 모니터링 가이드
+﻿# 🚀 Kubernetes 배포 및 모니터링 가이드
 
 ## 📋 개요
 
@@ -11,7 +11,7 @@
 │                    Kubernetes Cluster                   │
 ├─────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐              │
-│  │  restaurant-    │  │    monitoring   │              │
+│  │  your_program-    │  │    monitoring   │              │
 │  │    system       │  │   namespace     │              │
 │  │  namespace      │  │                 │              │
 │  │                 │  │                 │              │
@@ -47,7 +47,7 @@
 
 ```bash
 # 네임스페이스 생성
-kubectl apply -f namespaces/restaurant-system.yaml
+kubectl apply -f namespaces/your_program-system.yaml
 
 # ConfigMap 및 Secret 생성
 kubectl apply -f configmaps/app-config.yaml
@@ -75,7 +75,7 @@ helm repo update
 helm dependency update
 
 # 배포
-helm install restaurant-management . --namespace restaurant-system --create-namespace
+helm install your_program-management . --namespace your_program-system --create-namespace
 ```
 
 ### 3. 배치 파일 사용
@@ -125,7 +125,7 @@ deploy-helm.bat
 ## 🔧 설정 파일
 
 ### 네임스페이스
-- `namespaces/restaurant-system.yaml`: 애플리케이션 네임스페이스
+- `namespaces/your_program-system.yaml`: 애플리케이션 네임스페이스
 - `namespaces/monitoring.yaml`: 모니터링 네임스페이스
 
 ### 설정 관리
@@ -152,13 +152,13 @@ deploy-helm.bat
 ## 🌐 접근 URL
 
 ### 애플리케이션
-- **API Gateway**: http://api.restaurant.local
-- **Admin Dashboard**: http://admin.restaurant.local
-- **IoT Dashboard**: http://iot.restaurant.local
+- **API Gateway**: http://api.your_program.local
+- **Admin Dashboard**: http://admin.your_program.local
+- **IoT Dashboard**: http://iot.your_program.local
 
 ### 모니터링
-- **Grafana**: http://grafana.restaurant.local
-- **Prometheus**: http://prometheus.restaurant.local
+- **Grafana**: http://grafana.your_program.local
+- **Prometheus**: http://prometheus.your_program.local
 
 ## 📈 자동 스케일링
 
@@ -177,28 +177,28 @@ deploy-helm.bat
 ### 상태 확인
 ```bash
 # Pod 상태 확인
-kubectl get pods -n restaurant-system
+kubectl get pods -n your_program-system
 kubectl get pods -n monitoring
 
 # 서비스 상태 확인
-kubectl get services -n restaurant-system
+kubectl get services -n your_program-system
 kubectl get services -n monitoring
 
 # Ingress 상태 확인
-kubectl get ingress -n restaurant-system
+kubectl get ingress -n your_program-system
 kubectl get ingress -n monitoring
 ```
 
 ### 로그 확인
 ```bash
 # API Gateway 로그
-kubectl logs -f deployment/gateway-deployment -n restaurant-system
+kubectl logs -f deployment/gateway-deployment -n your_program-system
 
 # User Service 로그
-kubectl logs -f deployment/user-deployment -n restaurant-system
+kubectl logs -f deployment/user-deployment -n your_program-system
 
 # IoT Service 로그
-kubectl logs -f deployment/iot-deployment -n restaurant-system
+kubectl logs -f deployment/iot-deployment -n your_program-system
 ```
 
 ### 메트릭 확인
@@ -262,19 +262,19 @@ kubectl port-forward svc/grafana-service 3000:3000 -n monitoring
 #### 1. Pod가 시작되지 않는 경우
 ```bash
 # Pod 상태 확인
-kubectl describe pod <pod-name> -n restaurant-system
+kubectl describe pod <pod-name> -n your_program-system
 
 # 로그 확인
-kubectl logs <pod-name> -n restaurant-system
+kubectl logs <pod-name> -n your_program-system
 ```
 
 #### 2. 서비스 연결 문제
 ```bash
 # 서비스 엔드포인트 확인
-kubectl get endpoints -n restaurant-system
+kubectl get endpoints -n your_program-system
 
 # 네트워크 정책 확인
-kubectl get networkpolicies -n restaurant-system
+kubectl get networkpolicies -n your_program-system
 ```
 
 #### 3. 모니터링 데이터가 수집되지 않는 경우
@@ -287,17 +287,17 @@ kubectl port-forward svc/prometheus-service 9090:9090 -n monitoring
 ### 유용한 명령어
 ```bash
 # 모든 리소스 확인
-kubectl get all -n restaurant-system
+kubectl get all -n your_program-system
 
 # 이벤트 확인
-kubectl get events -n restaurant-system
+kubectl get events -n your_program-system
 
 # 리소스 사용량 확인
-kubectl top pods -n restaurant-system
+kubectl top pods -n your_program-system
 kubectl top nodes
 
 # 설정 확인
-kubectl describe configmap restaurant-app-config -n restaurant-system
+kubectl describe configmap your_program-app-config -n your_program-system
 ```
 
 ## 🎯 다음 단계

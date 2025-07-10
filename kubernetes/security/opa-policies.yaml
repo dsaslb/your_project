@@ -1,12 +1,12 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: opa-policies
-  namespace: restaurant-system
+  namespace: your_program-system
 data:
   # API 접근 제어 정책
   api-access.rego: |
-    package restaurant.api
+    package your_program.api
     
     # 기본적으로 모든 요청을 거부
     default allow = false
@@ -75,7 +75,7 @@ data:
   
   # 데이터 접근 제어 정책
   data-access.rego: |
-    package restaurant.data
+    package your_program.data
     
     # 기본적으로 모든 데이터 접근을 거부
     default allow_read = false
@@ -127,7 +127,7 @@ data:
   
   # IoT 기기 제어 정책
   iot-control.rego: |
-    package restaurant.iot
+    package your_program.iot
     
     # IoT 기기 제어 권한
     default allow_control = false
@@ -174,7 +174,7 @@ data:
   
   # 네트워크 보안 정책
   network-security.rego: |
-    package restaurant.network
+    package your_program.network
     
     # 허용된 IP 주소 범위
     allowed_ips = {

@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: logstash-deployment
@@ -91,7 +91,7 @@ data:
     filter {
       if [kubernetes] {
         mutate {
-          add_field => { "cluster" => "restaurant-cluster" }
+          add_field => { "cluster" => "your_program-cluster" }
         }
       }
       
@@ -110,10 +110,10 @@ data:
     output {
       elasticsearch {
         hosts => ["elasticsearch-service.monitoring.svc.cluster.local:9200"]
-        index => "restaurant-logs-%{+YYYY.MM.dd}"
-        template_name => "restaurant-logs"
+        index => "your_program-logs-%{+YYYY.MM.dd}"
+        template_name => "your_program-logs"
         template => {
-          "index_patterns" => ["restaurant-logs-*"]
+          "index_patterns" => ["your_program-logs-*"]
           "settings" => {
             "number_of_shards" => 1
             "number_of_replicas" => 1

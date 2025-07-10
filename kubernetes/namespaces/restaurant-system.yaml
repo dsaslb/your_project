@@ -1,10 +1,10 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: Namespace
 metadata:
-  name: restaurant-system
+  name: your_program-system
   labels:
-    name: restaurant-system
-    app: restaurant-management
+    name: your_program-system
+    app: your_program-management
     environment: production
 ---
 apiVersion: v1

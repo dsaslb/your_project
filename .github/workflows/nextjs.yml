@@ -1,4 +1,4 @@
-# Sample workflow for building and deploying a Next.js site to GitHub Pages
+﻿# Sample workflow for building and deploying a Next.js site to GitHub Pages
 #
 # To get started with Next.js see: https://nextjs.org/docs/getting-started
 #
@@ -34,12 +34,12 @@ jobs:
       - name: Detect package manager
         id: detect-package-manager
         run: |
-          if [ -f "${{ github.workspace }}/restaurant_frontend/yarn.lock" ]; then
+          if [ -f "${{ github.workspace }}/your_program_frontend/yarn.lock" ]; then
             echo "manager=yarn" >> $GITHUB_OUTPUT
             echo "command=install" >> $GITHUB_OUTPUT
             echo "runner=yarn" >> $GITHUB_OUTPUT
             exit 0
-          elif [ -f "${{ github.workspace }}/restaurant_frontend/package.json" ]; then
+          elif [ -f "${{ github.workspace }}/your_program_frontend/package.json" ]; then
             echo "manager=npm" >> $GITHUB_OUTPUT
             echo "command=ci" >> $GITHUB_OUTPUT
             echo "runner=npx --no-install" >> $GITHUB_OUTPUT
@@ -53,7 +53,7 @@ jobs:
         with:
           node-version: "20"
           cache: ${{ steps.detect-package-manager.outputs.manager }}
-          cache-dependency-path: restaurant_frontend/package-lock.json
+          cache-dependency-path: your_program_frontend/package-lock.json
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -66,22 +66,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            restaurant_frontend/.next/cache
+            your_program_frontend/.next/cache
           # Generate a new cache whenever packages or source files change.
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('restaurant_frontend/package-lock.json') }}-${{ hashFiles('restaurant_frontend/**.[jt]s', 'restaurant_frontend/**.[jt]sx') }}
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('your_program_frontend/package-lock.json') }}-${{ hashFiles('your_program_frontend/**.[jt]s', 'your_program_frontend/**.[jt]sx') }}
           # If source files changed but packages didn't, rebuild from a prior cache.
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('restaurant_frontend/package-lock.json') }}-
+            ${{ runner.os }}-nextjs-${{ hashFiles('your_program_frontend/package-lock.json') }}-
       - name: Install dependencies
-        working-directory: restaurant_frontend
+        working-directory: your_program_frontend
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
       - name: Build with Next.js
-        working-directory: restaurant_frontend
+        working-directory: your_program_frontend
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: restaurant_frontend/out
+          path: your_program_frontend/out
 
   # Deployment job
   deploy:
@@ -94,3 +94,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+

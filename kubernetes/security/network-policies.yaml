@@ -1,8 +1,8 @@
-apiVersion: networking.k8s.io/v1
+﻿apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: gateway-network-policy
-  namespace: restaurant-system
+  namespace: your_program-system
 spec:
   podSelector:
     matchLabels:
@@ -14,7 +14,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: restaurant-system
+          name: your_program-system
     ports:
     - protocol: TCP
       port: 5000
@@ -29,7 +29,7 @@ spec:
   - to:
     - namespaceSelector:
         matchLabels:
-          name: restaurant-system
+          name: your_program-system
     ports:
     - protocol: TCP
       port: 5000
@@ -53,7 +53,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: user-network-policy
-  namespace: restaurant-system
+  namespace: your_program-system
 spec:
   podSelector:
     matchLabels:
@@ -65,7 +65,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: restaurant-system
+          name: your_program-system
     ports:
     - protocol: TCP
       port: 5001
@@ -73,7 +73,7 @@ spec:
   - to:
     - namespaceSelector:
         matchLabels:
-          name: restaurant-system
+          name: your_program-system
     ports:
     - protocol: TCP
       port: 5432
@@ -84,7 +84,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: iot-network-policy
-  namespace: restaurant-system
+  namespace: your_program-system
 spec:
   podSelector:
     matchLabels:
@@ -96,7 +96,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: restaurant-system
+          name: your_program-system
     ports:
     - protocol: TCP
       port: 5006
@@ -104,7 +104,7 @@ spec:
   - to:
     - namespaceSelector:
         matchLabels:
-          name: restaurant-system
+          name: your_program-system
     ports:
     - protocol: TCP
       port: 5432
@@ -133,7 +133,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: restaurant-system
+          name: your_program-system
     ports:
     - protocol: TCP
       port: 9090
@@ -141,7 +141,7 @@ spec:
   - to:
     - namespaceSelector:
         matchLabels:
-          name: restaurant-system
+          name: your_program-system
     ports:
     - protocol: TCP
       port: 5000

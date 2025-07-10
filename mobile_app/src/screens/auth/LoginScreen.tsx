@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -50,19 +50,19 @@ const LoginScreen: React.FC = () => {
 
       switch (role) {
         case 'admin':
-          testEmail = 'admin@restaurant.com';
+          testEmail = 'admin@your_program.com';
           testPassword = 'admin123';
           break;
         case 'manager':
-          testEmail = 'manager@restaurant.com';
+          testEmail = 'manager@your_program.com';
           testPassword = 'manager123';
           break;
         case 'employee':
-          testEmail = 'employee@restaurant.com';
+          testEmail = 'employee@your_program.com';
           testPassword = 'employee123';
           break;
         default:
-          testEmail = 'admin@restaurant.com';
+          testEmail = 'admin@your_program.com';
           testPassword = 'admin123';
       }
 
@@ -87,7 +87,7 @@ const LoginScreen: React.FC = () => {
           {/* Logo and Title */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Icon name="restaurant" size={80} color="#3b82f6" />
+              <Icon name="your_program" size={80} color="#3b82f6" />
             </View>
             <Text style={styles.title}>레스토랑 매니저</Text>
             <Text style={styles.subtitle}>스마트한 레스토랑 관리</Text>
@@ -185,7 +185,7 @@ const LoginScreen: React.FC = () => {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              © 2024 Restaurant Manager. All rights reserved.
+              © 2024 your_program Manager. All rights reserved.
             </Text>
           </View>
         </ScrollView>

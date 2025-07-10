@@ -1,7 +1,7 @@
-# Operator Manual
+﻿# Operator Manual
 
 ## 1. System Overview
-- Restaurant management system: notices, notifications, orders, inventory, staff, schedule, stats, etc.
+- your_program management system: notices, notifications, orders, inventory, staff, schedule, stats, etc.
 
 ## 2. Role/Account Management
 - Super Admin: manage all stores/accounts/settings/stats/permissions

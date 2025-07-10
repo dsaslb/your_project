@@ -1,4 +1,4 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: falco-config
@@ -59,7 +59,7 @@ data:
     time_format_iso_8601: true
     
     # 호스트 설정
-    hostname: "restaurant-cluster"
+    hostname: "your_program-cluster"
     
     # 보안 설정
     syscall_event_drops:

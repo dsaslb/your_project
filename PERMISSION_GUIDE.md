@@ -1,132 +1,214 @@
-# 🔧 신규 권한 추가 가이드
+# Your Program 권한 관리 가이드
 
-## 📋 1단계: 권한 상수에 추가
+## 개요
+Your Program은 **User.permissions (JSON 기반)** 권한 시스템을 사용하여 세밀한 권한 관리를 제공합니다.
 
-### `app_core.py` 파일에서 권한 상수 수정
+## 권한 시스템 구조
 
-```python
-ALL_PERMISSIONS = [
-    'order', 'schedule', 'clean', 'inventory', 'customer', 'reports', 'reservation', 'accounting',
-    'marketing'  # 🆕 신규 권한 추가
-]
+### 1. 사용자 역할 (User.role)
+- `super_admin`: 최고관리자 (모든 권한)
+- `admin`: 관리자 (브랜드/매장 관리 권한)
+- `brand_manager`: 브랜드 매니저 (해당 브랜드만 관리)
+- `store_manager`: 매장 관리자 (해당 매장만 관리)
+- `manager`: 팀장 (제한된 관리 권한)
+- `employee`: 직원 (기본 업무 권한)
 
-PERMISSION_LABELS = {
-    'order':'발주', 'schedule':'스케줄', 'clean':'청소', 'inventory':'재고', 'customer':'고객',
-    'reports':'보고서', 'reservation':'예약', 'accounting':'정산', 'marketing':'마케팅'  # 🆕 라벨 추가
+### 2. 권한 모듈 (User.permissions)
+각 사용자는 JSON 형태의 permissions 필드를 가지며, 다음과 같은 모듈별 권한을 가집니다:
+
+```json
+{
+  "dashboard": {"view": true, "edit": false, "admin_only": false},
+  "brand_management": {"view": false, "create": false, "edit": false, "delete": false, "approve": false, "monitor": false},
+  "store_management": {"view": false, "create": false, "edit": false, "delete": false, "approve": false, "monitor": false},
+  "employee_management": {"view": false, "create": false, "edit": false, "delete": false, "approve": false, "assign_roles": false},
+  "schedule_management": {"view": false, "create": false, "edit": false, "delete": false, "approve": false},
+  "order_management": {"view": false, "create": false, "edit": false, "delete": false, "approve": false},
+  "inventory_management": {"view": false, "create": false, "edit": false, "delete": false},
+  "notification_management": {"view": false, "send": false, "delete": false},
+  "system_management": {"view": false, "backup": false, "restore": false, "settings": false, "monitoring": false},
+  "ai_management": {"view": false, "create": false, "edit": false, "delete": false, "approve": false, "monitor": false},
+  "reports": {"view": false, "export": false, "admin_only": false}
 }
 ```
 
-## 📋 2단계: 권한 관리 템플릿 자동 반영
+### 3. 권한 액션
+- `view`: 조회 권한
+- `create`: 생성 권한
+- `edit`: 편집 권한
+- `delete`: 삭제 권한
+- `approve`: 승인 권한
+- `assign_roles`: 권한 부여 권한
+- `monitor`: 모니터링 권한
+- `admin_only`: 관리자 전용 권한
 
-### `templates/user_permissions.html`에서 반복문으로 표시
+## 권한 확인 방법
 
-```html
-{% for perm in ALL_PERMISSIONS %}
-  <label>
-    <input type="checkbox" name="perm_{{ perm }}" {% if perms[perm] %}checked{% endif %}>
-    {{ PERMISSION_LABELS[perm] }}
-  </label>
-{% endfor %}
+### 1. Python 코드에서 권한 확인
+```python
+# 특정 모듈의 특정 액션 권한 확인
+if current_user.has_permission("employee_management", "create"):
+    # 직원 생성 로직
+    pass
+
+# 모듈 접근 권한 확인
+if current_user.can_access_module("dashboard"):
+    # 대시보드 접근 로직
+    pass
+
+# 편집 권한 확인
+if current_user.can_edit_module("schedule_management"):
+    # 스케줄 편집 로직
+    pass
 ```
 
-## 📋 3단계: 대시보드 메뉴 자동 추가
-
-### `templates/dashboard.html`에서 권한별 메뉴 표시
-
+### 2. 템플릿에서 권한 확인
 ```html
-{% if perms.get('marketing', False) or user.role == 'admin' %}
-    <a href="/marketing">📢 마케팅 관리</a>
+{% if current_user.has_permission("employee_management", "create") %}
+    <button class="btn btn-primary">직원 추가</button>
+{% endif %}
+
+{% if current_user.can_access_module("reports") %}
+    <li><a href="{{ url_for('admin_reports.reports_stats') }}">보고서</a></li>
 {% endif %}
 ```
 
-## 📋 4단계: 신규 기능 라우트 생성
-
-### `app_core.py`에 라우트 추가
-
+### 3. 데코레이터를 사용한 권한 제어
 ```python
-@app.route('/marketing', methods=['GET', 'POST'])
-@require_perm('marketing')
-def marketing():
-    """마케팅 관리"""
-    if request.method == 'POST':
-        # 마케팅 데이터 등록 로직
-        campaign_name = request.form['campaign_name']
-        budget = float(request.form['budget'])
-        # Marketing 모델이 있다면 여기에 추가
-        return redirect(url_for('marketing'))
-    
-    # 마케팅 조회 로직
-    return render_template('marketing.html', message="마케팅 관리 기능이 구현되었습니다!")
+from utils.decorators import require_permission
+
+@admin_reports_bp.route("/admin/employees")
+@login_required
+@require_permission("employee_management", "view")
+def manage_employees():
+    # 직원 관리 페이지
+    pass
+
+@admin_reports_bp.route("/admin/employees/create", methods=["POST"])
+@login_required
+@require_permission("employee_management", "create")
+def create_employee():
+    # 직원 생성 로직
+    pass
 ```
 
-## 📋 5단계: 템플릿 생성
+## 권한 관리
 
-### `templates/marketing.html` 생성
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>마케팅 관리 - Core System</title>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .header { background-color: #333; color: white; padding: 15px; margin-bottom: 20px; }
-        .nav { background-color: #4CAF50; padding: 10px; margin-bottom: 20px; }
-        .nav a { color: white; text-decoration: none; margin-right: 20px; padding: 8px 16px; border-radius: 5px; }
-        .content { max-width: 800px; margin: 0 auto; }
-        .feature-box { background-color: #e8f5e8; padding: 30px; border-radius: 10px; text-align: center; margin: 20px 0; }
-        .back-btn { background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>📢 마케팅 관리</h1>
-    </div>
-    
-    <div class="nav">
-        <a href="/dashboard">🏠 대시보드</a>
-        <a href="/marketing">📢 마케팅 관리</a>
-    </div>
-    
-    <div class="content">
-        <div class="feature-box">
-            <h2>🎯 마케팅 관리 시스템</h2>
-            <p>{{ message }}</p>
-            <p>이 기능은 마케팅 관리 권한이 있는 사용자만 접근할 수 있습니다.</p>
-        </div>
-        
-        <div style="text-align: center; margin-top: 30px;">
-            <a href="/dashboard" class="back-btn">← 대시보드로 돌아가기</a>
-        </div>
-    </div>
-</body>
-</html>
+### 1. 권한 설정
+```python
+# 사용자 권한 설정
+user = User.query.get(user_id)
+user.permissions = {
+    "dashboard": {"view": True, "edit": False},
+    "employee_management": {"view": True, "create": True, "edit": True},
+    "schedule_management": {"view": True, "create": True, "edit": True}
+}
+db.session.commit()
 ```
 
-## ✅ 완료!
+### 2. 권한 위임
+```python
+# 권한 위임 (최고관리자가 매장관리자에게)
+admin_user.delegate_permissions(
+    target_user=store_manager,
+    permissions={"schedule_management": {"view": True, "create": True}},
+    expires_in_days=30
+)
+```
 
-이제 **마케팅** 권한이 완전히 추가되었습니다:
+### 3. 권한 회수
+```python
+# 위임된 권한 회수
+admin_user.revoke_delegated_permissions(store_manager)
+```
 
-1. ✅ 권한 상수에 추가
-2. ✅ 권한 관리 UI에 자동 반영
-3. ✅ 대시보드 메뉴에 자동 추가
-4. ✅ 라우트 권한 보호 적용
-5. ✅ 템플릿 생성
+## 권한별 메뉴 접근
 
-## 🔄 다른 권한 추가하기
+### 1. 최고관리자 (super_admin)
+- 모든 메뉴 접근 가능
+- 시스템 전체 설정
+- 브랜드/매장 관리
+- 권한 관리
 
-위 과정을 반복하여 새로운 권한을 추가할 수 있습니다:
+### 2. 관리자 (admin)
+- 브랜드/매장 관리
+- 직원 관리
+- 스케줄/발주/재고 관리
+- 보고서 및 모니터링
 
-- `'sales'` (영업)
-- `'hr'` (인사)
-- `'finance'` (재무)
-- `'quality'` (품질관리)
-- 등등...
+### 3. 브랜드 매니저 (brand_manager)
+- 해당 브랜드의 매장들만 관리
+- 직원 관리
+- 스케줄/발주/재고 관리
 
-## 📝 주의사항
+### 4. 매장 관리자 (store_manager)
+- 해당 매장만 관리
+- 직원 관리
+- 스케줄/발주/재고 관리
 
-- 권한 이름은 **소문자**로 작성
-- 라벨은 **한글**로 작성
-- 권한 변경 후 **재시작** 필요
-- 기존 사용자의 권한은 **기본값 False**로 설정됨 
+### 5. 팀장 (manager)
+- 제한된 관리 권한
+- 스케줄/발주/재고 관리
+
+### 6. 직원 (employee)
+- 기본 업무 권한
+- 스케줄 조회
+- 발주 생성
+
+## 보안 고려사항
+
+### 1. 권한 검증
+- 모든 API 엔드포인트에서 권한 검증 필수
+- 프론트엔드와 백엔드 모두에서 권한 확인
+- 세션 기반 권한 캐싱 활용
+
+### 2. 권한 로깅
+- 권한 변경 시 로그 기록
+- 권한 위임/회수 시 알림 발송
+- 정기적인 권한 감사
+
+### 3. 기본 권한
+- 새 사용자 생성 시 역할별 기본 권한 자동 설정
+- 최소 권한 원칙 적용
+- 필요시에만 권한 추가
+
+## 문제 해결
+
+### 1. 권한 확인 실패
+```python
+# 권한 요약 정보 확인
+summary = current_user.get_permission_summary()
+print(f"사용자 권한: {summary}")
+
+# 실제 적용되는 권한 확인
+effective_perms = current_user.get_effective_permissions()
+print(f"실제 권한: {effective_perms}")
+```
+
+### 2. 권한 위임 만료 확인
+```python
+if current_user.is_delegation_expired():
+    # 기본 권한으로 복원
+    current_user.permissions = current_user._get_default_permissions()
+    db.session.commit()
+```
+
+### 3. 권한 디버깅
+```python
+# 권한 체크 로그 활성화
+import logging
+logging.getLogger('permissions').setLevel(logging.DEBUG)
+```
+
+## 최적화된 권한 시스템의 장점
+
+1. **성능 향상**: 불필요한 테이블 조인 제거
+2. **유연성**: JSON 기반으로 동적 권한 관리
+3. **확장성**: 새로운 권한 모듈 쉽게 추가
+4. **보안성**: 세밀한 권한 제어
+5. **유지보수성**: 단순한 구조로 관리 용이
+
+---
+
+**최종 업데이트**: 2025-07-10
+**버전**: 2.0 (User.permissions 기반) 

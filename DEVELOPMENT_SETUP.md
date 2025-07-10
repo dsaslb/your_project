@@ -1,4 +1,4 @@
-# 개발 환경 설정 가이드 (Python 3.13)
+﻿# 개발 환경 설정 가이드 (Python 3.13)
 
 ## 환경 정보
 - **Python 버전**: 3.13.5
@@ -37,7 +37,7 @@ python app.py
 
 ### Next.js 서버 (프론트엔드)
 ```bash
-cd restaurant_frontend
+cd your_program_frontend
 npm run dev
 ```
 

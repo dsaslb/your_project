@@ -1,4 +1,4 @@
-# 🏪 레스토랑 관리 시스템 환경 설정 가이드
+﻿# 🏪 레스토랑 관리 시스템 환경 설정 가이드
 
 ## 📋 개요
 
@@ -100,7 +100,7 @@ uvicorn==0.24.0
 
 ```bash
 # AI 환경에서
-cd restaurant_project
+cd your_program_project
 ai_env\Scripts\activate
 python ai_server.py
 ```

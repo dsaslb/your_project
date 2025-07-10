@@ -1,4 +1,4 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
@@ -27,35 +27,35 @@ data:
       # API Gateway 모니터링
       - job_name: 'gateway'
         static_configs:
-          - targets: ['gateway-service.restaurant-system.svc.cluster.local:9090']
+          - targets: ['gateway-service.your_program-system.svc.cluster.local:9090']
         metrics_path: /metrics
         scrape_interval: 10s
 
       # User Service 모니터링
       - job_name: 'user-service'
         static_configs:
-          - targets: ['user-service.restaurant-system.svc.cluster.local:9090']
+          - targets: ['user-service.your_program-system.svc.cluster.local:9090']
         metrics_path: /metrics
         scrape_interval: 10s
 
       # IoT Service 모니터링
       - job_name: 'iot-service'
         static_configs:
-          - targets: ['iot-service.restaurant-system.svc.cluster.local:9090']
+          - targets: ['iot-service.your_program-system.svc.cluster.local:9090']
         metrics_path: /metrics
         scrape_interval: 10s
 
       # PostgreSQL 모니터링
       - job_name: 'postgres'
         static_configs:
-          - targets: ['postgres-service.restaurant-system.svc.cluster.local:9187']
+          - targets: ['postgres-service.your_program-system.svc.cluster.local:9187']
         metrics_path: /metrics
         scrape_interval: 30s
 
       # Redis 모니터링
       - job_name: 'redis'
         static_configs:
-          - targets: ['redis-service.restaurant-system.svc.cluster.local:9121']
+          - targets: ['redis-service.your_program-system.svc.cluster.local:9121']
         metrics_path: /metrics
         scrape_interval: 30s
 

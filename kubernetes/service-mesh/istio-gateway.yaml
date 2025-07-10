@@ -1,8 +1,8 @@
-apiVersion: networking.istio.io/v1beta1
+﻿apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
-  name: restaurant-gateway
-  namespace: restaurant-system
+  name: your_program-gateway
+  namespace: your_program-system
 spec:
   selector:
     istio: ingressgateway
@@ -12,71 +12,71 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - "api.restaurant.local"
-    - "admin.restaurant.local"
-    - "iot.restaurant.local"
+    - "api.your_program.local"
+    - "admin.your_program.local"
+    - "iot.your_program.local"
   - port:
       number: 443
       name: https
       protocol: HTTPS
     tls:
       mode: SIMPLE
-      credentialName: restaurant-tls
+      credentialName: your_program-tls
     hosts:
-    - "api.restaurant.local"
-    - "admin.restaurant.local"
-    - "iot.restaurant.local"
+    - "api.your_program.local"
+    - "admin.your_program.local"
+    - "iot.your_program.local"
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: restaurant-vs
-  namespace: restaurant-system
+  name: your_program-vs
+  namespace: your_program-system
 spec:
   hosts:
-  - "api.restaurant.local"
-  - "admin.restaurant.local"
-  - "iot.restaurant.local"
+  - "api.your_program.local"
+  - "admin.your_program.local"
+  - "iot.your_program.local"
   gateways:
-  - restaurant-gateway
+  - your_program-gateway
   http:
   - match:
     - uri:
         prefix: "/api/auth"
       authority:
-        exact: "api.restaurant.local"
+        exact: "api.your_program.local"
     - uri:
         prefix: "/api/users"
       authority:
-        exact: "api.restaurant.local"
+        exact: "api.your_program.local"
     - uri:
         prefix: "/api/staff"
       authority:
-        exact: "api.restaurant.local"
+        exact: "api.your_program.local"
     - uri:
         prefix: "/api/inventory"
       authority:
-        exact: "api.restaurant.local"
+        exact: "api.your_program.local"
     - uri:
         prefix: "/api/orders"
       authority:
-        exact: "api.restaurant.local"
+        exact: "api.your_program.local"
     - uri:
         prefix: "/api/analytics"
       authority:
-        exact: "api.restaurant.local"
+        exact: "api.your_program.local"
     - uri:
         prefix: "/api/iot"
       authority:
-        exact: "iot.restaurant.local"
+        exact: "iot.your_program.local"
     - uri:
         prefix: "/api/notifications"
       authority:
-        exact: "api.restaurant.local"
+        exact: "api.your_program.local"
     - uri:
         prefix: "/api/ai"
       authority:
-        exact: "api.restaurant.local"
+        exact: "api.your_program.local"
     route:
     - destination:
         host: gateway-service
@@ -89,8 +89,8 @@ spec:
     timeout: 30s
     corsPolicy:
       allowOrigins:
-      - exact: "https://admin.restaurant.local"
-      - exact: "https://iot.restaurant.local"
+      - exact: "https://admin.your_program.local"
+      - exact: "https://iot.your_program.local"
       allowMethods:
       - GET
       - POST
@@ -106,8 +106,8 @@ spec:
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
-  name: restaurant-auth-policy
-  namespace: restaurant-system
+  name: your_program-auth-policy
+  namespace: your_program-system
 spec:
   selector:
     matchLabels:
@@ -115,14 +115,14 @@ spec:
   rules:
   - from:
     - source:
-        principals: ["cluster.local/ns/restaurant-system/sa/default"]
+        principals: ["cluster.local/ns/your_program-system/sa/default"]
     to:
     - operation:
         methods: ["GET"]
         paths: ["/health", "/api/services/status"]
   - from:
     - source:
-        namespaces: ["restaurant-system"]
+        namespaces: ["your_program-system"]
     to:
     - operation:
         methods: ["GET", "POST", "PUT", "DELETE"]
@@ -138,8 +138,8 @@ spec:
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:
-  name: restaurant-peer-auth
-  namespace: restaurant-system
+  name: your_program-peer-auth
+  namespace: your_program-system
 spec:
   mtls:
     mode: STRICT

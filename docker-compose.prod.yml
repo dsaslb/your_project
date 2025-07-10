@@ -1,13 +1,13 @@
-version: '3.8'
+﻿version: '3.8'
 
 services:
   # PostgreSQL 데이터베이스
   postgres:
     image: postgres:15-alpine
-    container_name: restaurant_postgres
+    container_name: your_program_postgres
     environment:
-      POSTGRES_DB: restaurant_db
-      POSTGRES_USER: restaurant_user
+      POSTGRES_DB: your_program_db
+      POSTGRES_USER: your_program_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -15,20 +15,20 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - restaurant_network
+      - your_program_network
     restart: unless-stopped
 
   # Redis 캐시
   redis:
     image: redis:7-alpine
-    container_name: restaurant_redis
+    container_name: your_program_redis
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     ports:
       - "6379:6379"
     networks:
-      - restaurant_network
+      - your_program_network
     restart: unless-stopped
 
   # 백엔드 API
@@ -36,10 +36,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: restaurant_backend
+    container_name: your_program_backend
     environment:
       - FLASK_ENV=production
-      - DATABASE_URL=postgresql://restaurant_user:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/restaurant_db
+      - DATABASE_URL=postgresql://your_program_user:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/your_program_db
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-your-secret-key}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-jwt-secret}
@@ -52,7 +52,7 @@ services:
       - postgres
       - redis
     networks:
-      - restaurant_network
+      - your_program_network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
@@ -63,9 +63,9 @@ services:
   # 프론트엔드
   frontend:
     build:
-      context: ./restaurant_frontend
+      context: ./your_program_frontend
       dockerfile: Dockerfile
-    container_name: restaurant_frontend
+    container_name: your_program_frontend
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://backend:5000
@@ -74,7 +74,7 @@ services:
     depends_on:
       - backend
     networks:
-      - restaurant_network
+      - your_program_network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
@@ -85,7 +85,7 @@ services:
   # Nginx 리버스 프록시
   nginx:
     image: nginx:alpine
-    container_name: restaurant_nginx
+    container_name: your_program_nginx
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./ssl:/etc/nginx/ssl
@@ -96,26 +96,26 @@ services:
       - frontend
       - backend
     networks:
-      - restaurant_network
+      - your_program_network
     restart: unless-stopped
 
   # 모니터링 - Prometheus
   prometheus:
     image: prom/prometheus:latest
-    container_name: restaurant_prometheus
+    container_name: your_program_prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
     networks:
-      - restaurant_network
+      - your_program_network
     restart: unless-stopped
 
   # 모니터링 - Grafana
   grafana:
     image: grafana/grafana:latest
-    container_name: restaurant_grafana
+    container_name: your_program_grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
     volumes:
@@ -127,7 +127,7 @@ services:
     depends_on:
       - prometheus
     networks:
-      - restaurant_network
+      - your_program_network
     restart: unless-stopped
 
 volumes:
@@ -137,5 +137,5 @@ volumes:
   grafana_data:
 
 networks:
-  restaurant_network:
+  your_program_network:
     driver: bridge 

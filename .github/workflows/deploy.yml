@@ -1,4 +1,4 @@
-name: Deploy Restaurant Management System
+﻿name: Deploy your_program Management System
 
 on:
   push:
@@ -54,18 +54,18 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: restaurant_frontend/package-lock.json
+        cache-dependency-path: your_program_frontend/package-lock.json
 
     - name: Install frontend dependencies
-      working-directory: restaurant_frontend
+      working-directory: your_program_frontend
       run: npm ci
 
     - name: Run frontend tests
-      working-directory: restaurant_frontend
+      working-directory: your_program_frontend
       run: npm test
 
     - name: Build frontend
-      working-directory: restaurant_frontend
+      working-directory: your_program_frontend
       run: npm run build
 
   security:
@@ -111,8 +111,8 @@ jobs:
     - name: Build and push frontend image
       uses: docker/build-push-action@v5
       with:
-        context: ./restaurant_frontend
-        file: ./restaurant_frontend/Dockerfile
+        context: ./your_program_frontend
+        file: ./your_program_frontend/Dockerfile
         push: true
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.sha }}
         cache-from: type=gha
