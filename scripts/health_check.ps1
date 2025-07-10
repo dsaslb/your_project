@@ -68,26 +68,25 @@ function Test-DatabaseHealth {
     
     try {
         # Python 스크립트로 데이터베이스 연결 테스트
-        $dbTestScript = @"
+        $dbTestScript = @'
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath('.')))
-
-try:
-    from app import app, db
-    with app.app_context():
-        # 간단한 쿼리 실행
-        result = db.session.execute('SELECT 1').fetchone()
+from app import app, db
+from sqlalchemy import text
+with app.app_context():
+    try:
+        result = db.session.execute(text("SELECT 1")).fetchone()
         if result:
-            print('SUCCESS: Database connection successful')
+            print("SUCCESS: Database connection successful")
             sys.exit(0)
         else:
-            print('ERROR: Database query failed')
+            print("ERROR: Database query failed")
             sys.exit(1)
-except Exception as e:
-    print(f'ERROR: {str(e)}')
-    sys.exit(1)
-"@
+    except Exception as e:
+        print(f"ERROR: {e}")
+        sys.exit(1)
+'@
         
         $dbTestScript | Out-File -FilePath "temp_db_test.py" -Encoding UTF8
         $result = python temp_db_test.py 2>&1

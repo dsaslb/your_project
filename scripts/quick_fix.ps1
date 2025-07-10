@@ -10,7 +10,7 @@ function Repair-DatabaseQuery {
     Write-Host "`n🗄️ Repairing Database Query Issues (데이터베이스 쿼리 문제 해결)..." -ForegroundColor Yellow
     
     try {
-        # 데이터베이스 쿼리 수정 스크립트
+        # DB 쿼리 부분만 text("SELECT 1")로 수정
         $dbFixScript = @"
 import sys
 import os
