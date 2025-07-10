@@ -1,5 +1,5 @@
-// Service Worker for Restaurant Management PWA
-const CACHE_NAME = 'restaurant-pwa-v1';
+﻿// Service Worker for your_program Management PWA
+const CACHE_NAME = 'your_program-pwa-v1';
 const urlsToCache = [
     '/m',
     '/static/css/common.css',

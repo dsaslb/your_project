@@ -121,25 +121,25 @@ sys.path.append(os.path.dirname(os.path.abspath('.')))
 
 try:
     from app import app, db
-    from models import User, Brand, Branch, Permission, Role
+    from models import User, Brand, Branch
     
     with app.app_context():
-        # 기본 권한 확인
-        admin_role = Role.query.filter_by(name='admin').first()
-        if admin_role:
-            print('SUCCESS: Admin role exists')
-        else:
-            print('WARNING: Admin role not found')
-        
-        # 사용자 권한 확인
+        # 사용자 권한 확인 (User.permissions 기반)
         users = User.query.limit(5).all()
         print(f'SUCCESS: Found {len(users)} users')
+        
+        # 사용자 권한 구조 확인
+        for user in users:
+            if user.permissions:
+                print(f'SUCCESS: User {user.username} has permissions: {list(user.permissions.keys())}')
+            else:
+                print(f'WARNING: User {user.username} has no permissions')
         
         # 브랜드/지점 구조 확인
         brands = Brand.query.limit(5).all()
         print(f'SUCCESS: Found {len(brands)} brands')
         
-        print('SUCCESS: Permissions system is working')
+        print('SUCCESS: Permissions system is working (User.permissions based)')
         sys.exit(0)
         
 except Exception as e:

@@ -1,4 +1,4 @@
-// Theme Provider for Flask Restaurant Management System
+﻿// Theme Provider for Flask your_program Management System
 class ThemeProvider {
   constructor() {
     this.theme = this.getStoredTheme();

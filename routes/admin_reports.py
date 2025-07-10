@@ -18,7 +18,7 @@ from sqlalchemy import and_, func, or_
 
 from extensions import db
 from models import (Attendance, AttendanceReport, Notification, Order,
-                    PermissionChangeLog, PermissionTemplate, SystemLog, User)
+                    SystemLog, User)
 from utils.decorators import admin_required, require_permission
 from utils.logger import log_action, log_error
 from utils.notify import send_notification_enhanced
@@ -1081,7 +1081,6 @@ def export_report_stats_excel():
 def manage_permissions():
     """권한 관리 페이지"""
     users = User.query.filter(User.deleted_at.is_(None)).all()
-    permission_templates = PermissionTemplate.query.filter_by(is_active=True).all()
 
     # 권한 모듈 정의
     permission_modules = {
@@ -1107,7 +1106,6 @@ def manage_permissions():
     return render_template(
         "admin/permissions.html",
         users=users,
-        permission_templates=permission_templates,
         permission_modules=permission_modules,
         permission_actions=permission_actions,
     )
@@ -1141,21 +1139,8 @@ def user_permissions(user_id):
                     "admin_only": request.form.get(f"admin_only_{module}") == "on",
                 }
 
-            # 권한 변경 로그 기록
-            change_log = PermissionChangeLog(
-                user_id=user.id,
-                changed_by=current_user.id,
-                change_type="permission",
-                before_value=json.dumps(old_permissions, ensure_ascii=False),
-                after_value=json.dumps(new_permissions, ensure_ascii=False),
-                reason=request.form.get("reason", ""),
-                ip_address=request.remote_addr,
-                user_agent=request.user_agent.string,
-            )
-
             # 권한 업데이트
             user.permissions = new_permissions
-            db.session.add(change_log)
             db.session.commit()
 
             flash(f"{user.username}의 권한이 성공적으로 업데이트되었습니다.", "success")
@@ -1168,85 +1153,22 @@ def user_permissions(user_id):
     return render_template("admin/user_permissions.html", user=user)
 
 
-@admin_reports_bp.route("/admin/permissions/template", methods=["GET", "POST"])
-@login_required
-@require_permission("employee_management", "assign_roles")
-def permission_templates():
-    """권한 템플릿 관리"""
-    if request.method == "POST":
-        try:
-            template = PermissionTemplate(
-                name=request.form["name"],
-                description=request.form["description"],
-                permissions=request.form["permissions"],
-                role_type=request.form["role_type"],
-                created_by=current_user.id,
-            )
-            db.session.add(template)
-            db.session.commit()
-            flash("권한 템플릿이 생성되었습니다.", "success")
-            return redirect(url_for("admin_reports.permission_templates"))
-        except Exception as e:
-            db.session.rollback()
-            flash(f"템플릿 생성 중 오류가 발생했습니다: {str(e)}", "error")
-
-    templates = PermissionTemplate.query.all()
-    return render_template("admin/permission_templates.html", templates=templates)
+# 권한 템플릿 기능은 User.permissions 기반으로 단순화되어 제거됨
 
 
-@admin_reports_bp.route(
-    "/admin/permissions/apply_template/<int:user_id>/<int:template_id>"
-)
-@login_required
-@require_permission("employee_management", "assign_roles")
-def apply_permission_template(user_id, template_id):
-    """권한 템플릿 적용"""
-    user = User.query.get_or_404(user_id)
-    template = PermissionTemplate.query.get_or_404(template_id)
-
-    try:
-        # 기존 권한 백업
-        old_permissions = user.permissions.copy() if user.permissions else {}
-
-        # 템플릿 권한 적용
-        new_permissions = json.loads(template.permissions)
-        user.permissions = new_permissions
-
-        # 권한 변경 로그 기록
-        change_log = PermissionChangeLog(
-            user_id=user.id,
-            changed_by=current_user.id,
-            change_type="template_apply",
-            before_value=json.dumps(old_permissions, ensure_ascii=False),
-            after_value=json.dumps(new_permissions, ensure_ascii=False),
-            reason=f"템플릿 '{template.name}' 적용",
-            ip_address=request.remote_addr,
-            user_agent=request.user_agent.string,
-        )
-
-        db.session.add(change_log)
-        db.session.commit()
-
-        flash(
-            f"{user.username}에게 '{template.name}' 템플릿이 적용되었습니다.", "success"
-        )
-
-    except Exception as e:
-        db.session.rollback()
-        flash(f"템플릿 적용 중 오류가 발생했습니다: {str(e)}", "error")
-
-    return redirect(url_for("admin_reports.manage_permissions"))
+# 권한 템플릿 적용 기능은 User.permissions 기반으로 단순화되어 제거됨
 
 
 @admin_reports_bp.route("/admin/permissions/logs")
 @login_required
 @require_permission("employee_management", "view")
 def permission_logs():
-    """권한 변경 로그"""
+    """권한 변경 로그 - User.permissions 기반으로 단순화됨"""
+    # 권한 변경 로그는 SystemLog에서 확인
     page = request.args.get("page", 1, type=int)
-    logs = PermissionChangeLog.query.order_by(
-        PermissionChangeLog.created_at.desc()
-    ).paginate(page=page, per_page=50, error_out=False)
+    logs = SystemLog.query.filter(
+        SystemLog.action.contains("permission")
+    ).order_by(SystemLog.created_at.desc()).paginate(page=page, per_page=50, error_out=False)
 
     return render_template("admin/permission_logs.html", logs=logs)
 
