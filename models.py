@@ -53,7 +53,7 @@ class Brand(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 관계 설정
-    industry = db.relationship('Industry')
+    industry = db.relationship('Industry', overlaps="industry_obj")
     stores = db.relationship("Branch", backref="brand", lazy=True)
     brand_manager = db.relationship("User", backref="managed_brand", foreign_keys="User.brand_id")
     
@@ -2239,7 +2239,7 @@ class Industry(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 관계
-    brands_list = db.relationship('Brand', backref='industry_obj', lazy='dynamic')
+    brands_list = db.relationship('Brand', backref='industry_obj', lazy='dynamic', overlaps="industry")
     plugins = db.relationship('IndustryPlugin', backref='industry', lazy='dynamic')
     
     def __repr__(self):
