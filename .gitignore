@@ -1,47 +1,45 @@
-# Dependencies
-node_modules/
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Environment
-.env
-.venv
-env/
+# Virtual environments
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
 ai_env/
+venv_py313/
 
 # Database
-*.sqlite3
 *.db
+*.sqlite
+*.sqlite3
 instance/
 
 # Logs
-logs/
 *.log
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Testing
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
+logs/
+test-results/
 
 # IDE
 .vscode/
@@ -59,74 +57,92 @@ coverage.xml
 ehthumbs.db
 Thumbs.db
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Next.js
 .next/
 out/
-.nuxt/
-dist/
+build/
 
-# Temporary
-tmp/
-temp/
-*.tmp
-*.temp
-
-# Backup files
-*.backup
-*.bak
-*_backup.*
-
-# Compiled files
-*.pyc
-*.pyo
-*.pyd
-__pycache__/
-*.so
-
-# Package files
-*.tgz
-*.tar.gz
-*.zip
-
-# Local development
+# Environment variables
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# AI Models
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Backup files
+backup_*/
+backups/
+*.bak
+*.backup
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# AI models and data
 ai_models/saved_models/
 *.h5
 *.pkl
-*.joblib
+*.pickle
 
-# Mobile App
-mobile_app/node_modules/
-mobile_app/.expo/
-mobile_app/dist/
+# Large files
+*.zip
+*.tar.gz
+*.rar
 
-# Frontend
-restaurant_frontend/.next/
-restaurant_frontend/out/
-restaurant_frontend/node_modules/
-
-# Uploads
-uploads/
-static/uploads/
-
-# SSL Certificates
-*.pem
+# Secrets and sensitive data
+secrets/
 *.key
+*.pem
 *.crt
 
 # Docker
 .dockerignore
-docker-compose.override.yml
+
+# Kubernetes
+*.kubeconfig
 
 # Monitoring
-grafana/data/
-prometheus/data/
+prometheus.yml
+grafana/
+monitoring/
 
-# Cache
-.cache/
-.parcel-cache/
+# Mobile app
+mobile_app/node_modules/
+mobile_app/.expo/
+mobile_app/dist/
+mobile_app/npm-debug.*
+mobile_app/*.jks
+mobile_app/*.p8
+mobile_app/*.p12
+mobile_app/*.key
+mobile_app/*.mobileprovision
+mobile_app/*.orig.*
+mobile_app/web-build/
+
+# Test files
+test-results/
+coverage/
+*.test.js
+*.test.ts
+*.test.tsx
