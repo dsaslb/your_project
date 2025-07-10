@@ -1,0 +1,219 @@
+# Restaurant Management System Helm Chart Values
+
+# Global settings
+global:
+  environment: production
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "standard"
+
+# API Gateway configuration
+gateway:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: restaurant-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 5000
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# User Service configuration
+userService:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: restaurant-user
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 5001
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 150m
+    limits:
+      memory: 512Mi
+      cpu: 300m
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  persistence:
+    enabled: true
+    size: 1Gi
+
+# IoT Service configuration
+iotService:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: restaurant-iot
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 5006
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 200m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  persistence:
+    enabled: true
+    size: 2Gi
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "password"
+    database: "restaurant_microservices"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "redispassword"
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 1Gi
+        cpu: 500m
+
+# Grafana configuration
+grafana:
+  enabled: true
+  adminPassword: "admin123"
+  persistence:
+    enabled: true
+    size: 5Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 200m
+  dashboards:
+    default:
+      restaurant-dashboard:
+        json: |
+          {
+            "dashboard": {
+              "title": "Restaurant Management Dashboard",
+              "panels": []
+            }
+          }
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: api.restaurant.local
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: admin.restaurant.local
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: iot.restaurant.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: restaurant-tls
+      hosts:
+        - api.restaurant.local
+        - admin.restaurant.local
+        - iot.restaurant.local
+
+# Monitoring Ingress
+monitoringIngress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: grafana.restaurant.local
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: prometheus.restaurant.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: monitoring-tls
+      hosts:
+        - grafana.restaurant.local
+        - prometheus.restaurant.local 

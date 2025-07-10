@@ -1,0 +1,148 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: restaurant-gateway
+  namespace: restaurant-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "api.restaurant.local"
+    - "admin.restaurant.local"
+    - "iot.restaurant.local"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: restaurant-tls
+    hosts:
+    - "api.restaurant.local"
+    - "admin.restaurant.local"
+    - "iot.restaurant.local"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: restaurant-vs
+  namespace: restaurant-system
+spec:
+  hosts:
+  - "api.restaurant.local"
+  - "admin.restaurant.local"
+  - "iot.restaurant.local"
+  gateways:
+  - restaurant-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/api/auth"
+      authority:
+        exact: "api.restaurant.local"
+    - uri:
+        prefix: "/api/users"
+      authority:
+        exact: "api.restaurant.local"
+    - uri:
+        prefix: "/api/staff"
+      authority:
+        exact: "api.restaurant.local"
+    - uri:
+        prefix: "/api/inventory"
+      authority:
+        exact: "api.restaurant.local"
+    - uri:
+        prefix: "/api/orders"
+      authority:
+        exact: "api.restaurant.local"
+    - uri:
+        prefix: "/api/analytics"
+      authority:
+        exact: "api.restaurant.local"
+    - uri:
+        prefix: "/api/iot"
+      authority:
+        exact: "iot.restaurant.local"
+    - uri:
+        prefix: "/api/notifications"
+      authority:
+        exact: "api.restaurant.local"
+    - uri:
+        prefix: "/api/ai"
+      authority:
+        exact: "api.restaurant.local"
+    route:
+    - destination:
+        host: gateway-service
+        port:
+          number: 5000
+      weight: 100
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+    timeout: 30s
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://admin.restaurant.local"
+      - exact: "https://iot.restaurant.local"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - authorization
+      - content-type
+      - x-requested-with
+      maxAge: "24h"
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: restaurant-auth-policy
+  namespace: restaurant-system
+spec:
+  selector:
+    matchLabels:
+      app: gateway
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/restaurant-system/sa/default"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/health", "/api/services/status"]
+  - from:
+    - source:
+        namespaces: ["restaurant-system"]
+    to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        paths: ["/api/*"]
+  - from:
+    - source:
+        principals: ["cluster.local/ns/monitoring/sa/prometheus"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/metrics"]
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: restaurant-peer-auth
+  namespace: restaurant-system
+spec:
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    5000:
+      mode: PERMISSIVE 

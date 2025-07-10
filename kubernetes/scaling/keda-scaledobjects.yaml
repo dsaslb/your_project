@@ -1,0 +1,116 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: gateway-scaledobject
+  namespace: restaurant-system
+spec:
+  scaleTargetRef:
+    name: gateway-deployment
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  triggers:
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      type: Utilization
+      value: "70"
+  - type: memory
+    metricType: Utilization
+    metadata:
+      type: Utilization
+      value: "80"
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus-service.monitoring.svc.cluster.local:9090
+      metricName: http_requests_total
+      query: rate(http_requests_total{service="gateway"}[2m])
+      threshold: "100"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: user-scaledobject
+  namespace: restaurant-system
+spec:
+  scaleTargetRef:
+    name: user-deployment
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 2
+  maxReplicaCount: 5
+  triggers:
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      type: Utilization
+      value: "70"
+  - type: memory
+    metricType: Utilization
+    metadata:
+      type: Utilization
+      value: "80"
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus-service.monitoring.svc.cluster.local:9090
+      metricName: http_requests_total
+      query: rate(http_requests_total{service="user-service"}[2m])
+      threshold: "50"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: iot-scaledobject
+  namespace: restaurant-system
+spec:
+  scaleTargetRef:
+    name: iot-deployment
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 2
+  maxReplicaCount: 5
+  triggers:
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      type: Utilization
+      value: "70"
+  - type: memory
+    metricType: Utilization
+    metadata:
+      type: Utilization
+      value: "80"
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus-service.monitoring.svc.cluster.local:9090
+      metricName: iot_device_connections
+      query: iot_device_connections_total
+      threshold: "100"
+  - type: redis
+    metadata:
+      host: redis-service.restaurant-system.svc.cluster.local:6379
+      listName: iot-queue
+      listLength: "10"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: logstash-scaledobject
+  namespace: monitoring
+spec:
+  scaleTargetRef:
+    name: logstash-deployment
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 2
+  maxReplicaCount: 5
+  triggers:
+  - type: elasticsearch
+    metadata:
+      addresses: http://elasticsearch-service.monitoring.svc.cluster.local:9200
+      index: restaurant-logs-*
+      searchTemplateName: logstash-scaling
+      valueLocation: "@timestamp"
+      targetQueryValue: "1000"
+      activationThreshold: "100" 

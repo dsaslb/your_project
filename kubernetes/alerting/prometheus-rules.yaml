@@ -1,0 +1,202 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+data:
+  restaurant-rules.yml: |
+    groups:
+    - name: restaurant-system
+      rules:
+      
+      # API Gateway 알림
+      - alert: APIGatewayHighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: api-gateway
+        annotations:
+          summary: "API Gateway 높은 에러율"
+          description: "API Gateway에서 5xx 에러율이 10%를 초과했습니다."
+      
+      - alert: APIGatewayHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: api-gateway
+        annotations:
+          summary: "API Gateway 높은 지연시간"
+          description: "API Gateway의 95% 응답 시간이 1초를 초과했습니다."
+      
+      # User Service 알림
+      - alert: UserServiceHighErrorRate
+        expr: rate(http_requests_total{service="user-service",status=~"5.."}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: user-service
+        annotations:
+          summary: "User Service 높은 에러율"
+          description: "User Service에서 5xx 에러율이 5%를 초과했습니다."
+      
+      - alert: UserServiceDown
+        expr: up{service="user-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: user-service
+        annotations:
+          summary: "User Service 다운"
+          description: "User Service가 응답하지 않습니다."
+      
+      # IoT Service 알림
+      - alert: IoTServiceHighErrorRate
+        expr: rate(http_requests_total{service="iot-service",status=~"5.."}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: iot-service
+        annotations:
+          summary: "IoT Service 높은 에러율"
+          description: "IoT Service에서 5xx 에러율이 5%를 초과했습니다."
+      
+      - alert: IoTServiceDown
+        expr: up{service="iot-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: iot-service
+        annotations:
+          summary: "IoT Service 다운"
+          description: "IoT Service가 응답하지 않습니다."
+      
+      # 데이터베이스 알림
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_database_numbackends > 80
+        for: 2m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL 높은 연결 수"
+          description: "PostgreSQL 연결 수가 80개를 초과했습니다."
+      
+      - alert: PostgreSQLDown
+        expr: up{service="postgresql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL 다운"
+          description: "PostgreSQL이 응답하지 않습니다."
+      
+      # Redis 알림
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis 높은 메모리 사용량"
+          description: "Redis 메모리 사용량이 80%를 초과했습니다."
+      
+      - alert: RedisDown
+        expr: up{service="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis 다운"
+          description: "Redis가 응답하지 않습니다."
+      
+      # Kubernetes 노드 알림
+      - alert: NodeHighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "노드 높은 CPU 사용량"
+          description: "노드 {{ $labels.instance }}의 CPU 사용량이 80%를 초과했습니다."
+      
+      - alert: NodeHighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "노드 높은 메모리 사용량"
+          description: "노드 {{ $labels.instance }}의 메모리 사용량이 80%를 초과했습니다."
+      
+      - alert: NodeDiskSpaceFilling
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"} < 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "노드 디스크 공간 부족"
+          description: "노드 {{ $labels.instance }}의 디스크 공간이 20% 미만입니다."
+      
+      # Pod 알림
+      - alert: PodRestartingFrequently
+        expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod 자주 재시작"
+          description: "Pod {{ $labels.pod }}가 1시간 내에 5회 이상 재시작되었습니다."
+      
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 > 0.5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod Crash Looping"
+          description: "Pod {{ $labels.pod }}가 Crash Looping 상태입니다."
+      
+      # 네트워크 알림
+      - alert: HighNetworkErrors
+        expr: rate(node_network_receive_errs_total[5m]) + rate(node_network_transmit_errs_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "높은 네트워크 에러율"
+          description: "노드 {{ $labels.instance }}에서 높은 네트워크 에러가 발생하고 있습니다."
+      
+      # 애플리케이션 특화 알림
+      - alert: RestaurantOrderFailure
+        expr: rate(restaurant_order_failures_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: order-service
+        annotations:
+          summary: "주문 처리 실패율 증가"
+          description: "주문 처리 실패율이 증가하고 있습니다."
+      
+      - alert: IoTDeviceOffline
+        expr: iot_device_status{status="offline"} > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: iot-service
+        annotations:
+          summary: "IoT 기기 오프라인"
+          description: "일부 IoT 기기가 오프라인 상태입니다."
+      
+      - alert: DatabaseConnectionPoolExhausted
+        expr: database_connection_pool_active_connections / database_connection_pool_max_connections > 0.9
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "데이터베이스 연결 풀 고갈"
+          description: "데이터베이스 연결 풀이 90% 이상 사용되고 있습니다." 

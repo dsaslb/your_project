@@ -1,12 +1,15 @@
 {
   "name": "레스토랑 관리 시스템",
   "short_name": "레스토랑 관리",
-  "description": "레스토랑 운영을 위한 종합 관리 시스템",
+  "description": "계층형 구조 기반 레스토랑 관리 시스템",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ko",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -21,7 +24,56 @@
       "purpose": "maskable any"
     }
   ],
-  "categories": ["business", "productivity"],
-  "lang": "ko",
-  "dir": "ltr"
+  "shortcuts": [
+    {
+      "name": "대시보드",
+      "short_name": "대시보드",
+      "description": "메인 대시보드로 이동",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "주문 관리",
+      "short_name": "주문",
+      "description": "주문 관리 페이지로 이동",
+      "url": "/orders",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "재고 관리",
+      "short_name": "재고",
+      "description": "재고 관리 페이지로 이동",
+      "url": "/inventory",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
 } 

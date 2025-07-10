@@ -337,17 +337,26 @@
                 
                 if (response.ok) {
                     // 로그인 성공
-                    successMessage.textContent = '로그인 성공! 관리자 시스템으로 이동합니다...';
+                    const userRole = data.user.role;
+                    let roleName = '시스템';
+                    
+                    if (userRole === 'super_admin') roleName = '최고관리자';
+                    else if (userRole === 'admin') roleName = '관리자';
+                    else if (userRole === 'manager') roleName = '매니저';
+                    else if (userRole === 'employee') roleName = '직원';
+                    else if (userRole === 'teamlead') roleName = '팀리드';
+                    
+                    successMessage.textContent = `로그인 성공! ${roleName} 시스템으로 이동합니다...`;
                     successMessage.style.display = 'block';
                     
                     // JWT 토큰 저장
-                    if (data.token) {
-                        localStorage.setItem('jwt_token', data.token);
+                    if (data.access_token) {
+                        localStorage.setItem('jwt_token', data.access_token);
                     }
                     
-                    // 2초 후 관리자 대시보드로 이동
+                    // 2초 후 역할별 페이지로 이동
                     setTimeout(() => {
-                        window.location.href = '/admin_dashboard';
+                        window.location.href = data.redirect_to || '/dashboard';
                     }, 2000);
                 } else {
                     // 로그인 실패

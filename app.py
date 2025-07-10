@@ -1,16 +1,13 @@
 import os
-from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 import click
 import jwt
-from dateutil import parser as date_parser
 from flask import (Flask, current_app, flash, jsonify, redirect,
-                   render_template, request, send_file, session, url_for)
+                   render_template, request, url_for)
 from flask_cors import CORS
-from flask_login import (AnonymousUserMixin, UserMixin, current_user,
-                         login_required, login_user, logout_user)
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask_login import (current_user, login_required)
+from werkzeug.security import generate_password_hash
 
 # Import API Blueprints
 from api.admin_log import admin_log_bp
@@ -39,31 +36,20 @@ from api.modules.notification_system import notification_system
 from api.modules.schedule_management import schedule_management
 from api.modules.optimization import optimization
 from api.modules.monitoring import monitoring
+from api.iot_api import iot_bp
 
 # Import Route Blueprints
-from routes.notifications import notifications_bp
 from routes.dashboard import dashboard_bp
-from routes.schedule import schedule_bp
-from routes.staff import staff_bp as routes_staff_bp
-from routes.staff_management import staff_bp as staff_management_bp
-from routes.orders import orders_bp
 from routes.notice_api import notice_api_bp
-from routes.attendance import attendance_bp
 from routes.payroll import payroll_bp
-from routes.notice import notice_bp
 
 # Import notification functions
-from utils.notify import (send_admin_only_notification,
-                          send_notification_enhanced,
-                          send_notification_to_role)
-from routes.admin_dashboard_api import admin_dashboard_api
-from api.gateway import gateway as api_gateway
+from utils.notify import send_notification_enhanced
 
 # Import core modules
 from config import config_by_name
 from extensions import cache, csrf, db, limiter, login_manager, migrate
-from models import (Branch, CleaningPlan, FeedbackIssue, Notice, Notification,
-                    Order, Report, Schedule, SystemLog, User)
+from models import (Branch, Notification, Order, Schedule, User)
 
 config_name = os.getenv("FLASK_ENV", "default")
 
@@ -97,6 +83,10 @@ login_manager.init_app(app)
 limiter.init_app(app)
 cache.init_app(app)
 
+# Initialize IoT system
+from utils.iot_simulator import initialize_iot_system
+initialize_iot_system()
+
 # Exempt API blueprints from CSRF protection
 api_blueprints = [
     api_auth_bp, api_notice_bp, api_comment_bp, api_report_bp,
@@ -104,7 +94,7 @@ api_blueprints = [
     comment_report_bp, api_staff_bp, contracts_bp, health_bp,
     brand_management_bp, store_management_bp, ai_management_bp, approval_workflow_bp,
     improvement_requests_bp, user_management, notification_system, schedule_management,
-    optimization, monitoring
+    optimization, monitoring, iot_bp
 ]
 
 for bp in api_blueprints:
@@ -138,6 +128,7 @@ app.register_blueprint(notification_system, url_prefix='/api/modules/notificatio
 app.register_blueprint(schedule_management, url_prefix='/api/modules/schedule')
 app.register_blueprint(optimization, url_prefix='/api/modules/optimization')
 app.register_blueprint(monitoring, url_prefix='/api/modules/monitoring')
+app.register_blueprint(iot_bp, url_prefix='/api')
 
 # Register Route Blueprints
 app.register_blueprint(payroll_bp)
@@ -200,6 +191,27 @@ def index():
 
 @app.route("/dashboard")
 def dashboard():
+    """대시보드 페이지 - 역할별 리다이렉트"""
+    # 로그인된 사용자가 있으면 역할별 대시보드로 리다이렉트
+    if current_user.is_authenticated:
+        if current_user.role == "super_admin":
+            return redirect("/super-admin")
+        elif current_user.role == "admin":
+            return redirect("/admin-dashboard")
+        elif current_user.role == "manager":
+            return redirect("/manager-dashboard")
+        elif current_user.role == "employee":
+            return redirect("/employee-dashboard")
+        elif current_user.role == "teamlead":
+            return redirect("/teamlead-dashboard")
+        else:
+            return redirect("/super-admin")  # 기본값
+    
+    # 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+    return redirect("/auth/login")
+
+@app.route("/api/dashboard")
+def api_dashboard():
     """대시보드 API 엔드포인트"""
     # Authorization 헤더에서 토큰 확인
     auth_header = request.headers.get('Authorization')
@@ -298,10 +310,7 @@ def dashboard_jwt():
     except jwt.InvalidTokenError:
         return jsonify({"message": "유효하지 않은 토큰입니다."}), 401
 
-@app.route("/dashboard-simple")
-def dashboard_simple():
-    """간단한 대시보드 - 토큰 파라미터로 접근"""
-    return render_template('dashboard_simple.html')
+
 
 @app.route("/login-success")
 def login_success():
@@ -350,8 +359,13 @@ def api_user_profile():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route("/auth/login", methods=["POST"])
+@app.route("/auth/login", methods=["GET", "POST"])
 def auth_login():
+    if request.method == "GET":
+        # GET 요청: 로그인 페이지 렌더링
+        return render_template('auth/login.html')
+    
+    # POST 요청: 로그인 처리
     """프론트엔드 로그인 요청 처리"""
     try:
         # Content-Type에 관계없이 JSON 데이터 처리
@@ -788,9 +802,9 @@ def api_add_schedule():
     
     schedule = Schedule()
     schedule.user_id = data.get('user_id')
-    schedule.date = date_parser.parse(data['date']).date()
-    schedule.start_time = date_parser.parse(data['start_time']).time()
-    schedule.end_time = date_parser.parse(data['end_time']).time()
+    schedule.date = datetime.fromisoformat(data['date']).date()
+    schedule.start_time = datetime.fromisoformat(data['start_time']).time()
+    schedule.end_time = datetime.fromisoformat(data['end_time']).time()
     schedule.type = data.get('type', 'work')
     schedule.category = data.get('category', '근무')
     
@@ -809,9 +823,9 @@ def api_update_schedule(schedule_id):
     schedule = Schedule.query.get_or_404(schedule_id)
     data = request.get_json()
     
-    schedule.date = date_parser.parse(data['date']).date()
-    schedule.start_time = date_parser.parse(data['start_time']).time()
-    schedule.end_time = date_parser.parse(data['end_time']).time()
+    schedule.date = datetime.fromisoformat(data['date']).date()
+    schedule.start_time = datetime.fromisoformat(data['start_time']).time()
+    schedule.end_time = datetime.fromisoformat(data['end_time']).time()
     schedule.type = data.get('type', 'work')
     schedule.category = data.get('category', '근무')
     
@@ -1294,7 +1308,7 @@ def api_admin_add_branch():
         if not user or user.role != 'super_admin':
             return jsonify({"message": "최고 관리자 권한이 필요합니다."}), 403
         
-        data = request.get_json()
+        _ = request.get_json()  # 데이터는 받지만 사용하지 않음
         
         # 실제로는 DB에 저장
         # 여기서는 성공 응답만 반환
@@ -1327,7 +1341,7 @@ def api_admin_update_branch(branch_id):
         if not user or user.role != 'super_admin':
             return jsonify({"message": "최고 관리자 권한이 필요합니다."}), 403
         
-        data = request.get_json()
+        _ = request.get_json()  # 데이터는 받지만 사용하지 않음
         
         # 실제로는 DB에서 업데이트
         # 여기서는 성공 응답만 반환
@@ -1482,7 +1496,6 @@ def api_dashboard_stats_jwt():
         # 기본 통계 데이터
         total_users = User.query.count()
         total_orders = Order.query.count()
-        total_schedules = Schedule.query.count()
         
         # 오늘의 통계
         today = date.today()
@@ -1529,11 +1542,30 @@ def api_dashboard_stats_jwt():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route("/super-admin-dashboard")
+@app.route("/super-admin")
 def super_admin_dashboard():
-    """슈퍼 관리자 대시보드 - 테스트용으로 인증 우회"""
-    # 테스트용으로 인증 없이 접근 가능하도록 설정
-    return render_template('admin/super_admin_dashboard.html')
+    """최고 관리자 대시보드 - 프론트엔드로 리다이렉트"""
+    return redirect("http://192.168.45.44:3000/super-admin")
+
+@app.route("/admin-dashboard")
+def admin_dashboard_route():
+    """관리자 대시보드 - 프론트엔드로 리다이렉트"""
+    return redirect("http://192.168.45.44:3000/admin-dashboard")
+
+@app.route("/manager-dashboard")
+def manager_dashboard():
+    """매니저 대시보드 - 프론트엔드로 리다이렉트"""
+    return redirect("http://192.168.45.44:3000/manager-dashboard")
+
+@app.route("/employee-dashboard")
+def employee_dashboard():
+    """직원 대시보드 - 프론트엔드로 리다이렉트"""
+    return redirect("http://192.168.45.44:3000/employee-dashboard")
+
+@app.route("/teamlead-dashboard")
+def teamlead_dashboard():
+    """팀리드 대시보드 - 프론트엔드로 리다이렉트"""
+    return redirect("http://192.168.45.44:3000/teamlead-dashboard")
 
 # 최고 관리자 API 엔드포인트들
 @app.route("/api/admin/dashboard-stats")
@@ -1614,7 +1646,7 @@ def api_admin_system_logs():
         ]
         
         logs = []
-        for i in range(10):
+        for _ in range(10):
             timestamp = datetime.now() - timedelta(minutes=random.randint(0, 60))
             logs.append({
                 'timestamp': timestamp.isoformat(),
@@ -2092,7 +2124,6 @@ def api_admin_system_alerts():
         
         # 더미 알림 데이터
         from datetime import datetime, timedelta
-        import random
         
         alerts = [
             {

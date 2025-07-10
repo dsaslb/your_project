@@ -40,6 +40,8 @@ class Brand(db.Model):
     __tablename__ = "brands"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False, unique=True)
+    code = db.Column(db.String(20), nullable=False, unique=True)
+    industry_id = db.Column(db.Integer, db.ForeignKey('industries.id'), nullable=True)
     description = db.Column(db.Text)
     logo_url = db.Column(db.String(255))
     website = db.Column(db.String(255))
@@ -51,6 +53,7 @@ class Brand(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 관계 설정
+    industry = db.relationship('Industry')
     stores = db.relationship("Branch", backref="brand", lazy=True)
     brand_manager = db.relationship("User", backref="managed_brand", foreign_keys="User.brand_id")
     
@@ -72,7 +75,8 @@ class Branch(db.Model):
         db.Integer, default=15
     )  # 기준 주문 처리 시간(분)
     
-    # 브랜드 연관 필드 추가
+    # 계층형 구조 필드 추가
+    industry_id = db.Column(db.Integer, db.ForeignKey('industries.id'), nullable=True)
     brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)
     store_code = db.Column(db.String(20), unique=True)  # 매장 코드
     store_type = db.Column(db.String(20), default="franchise")  # franchise, corporate, independent
@@ -84,6 +88,9 @@ class Branch(db.Model):
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+    
+    # 관계 설정
+    industry = db.relationship('Industry')
 
     def __repr__(self):
         return f"<Branch {self.name}>"
@@ -107,6 +114,7 @@ class User(db.Model, UserMixin):
     )  # 'approved', 'pending', 'rejected', 'suspended'
     branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), index=True)
     brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), index=True)  # 브랜드 매니저용
+    industry_id = db.Column(db.Integer, db.ForeignKey('industries.id'), nullable=True)
     team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), index=True)  # 팀 ID 추가
     position = db.Column(db.String(50), index=True)  # 직책 필드 추가
     department = db.Column(db.String(50), index=True)  # 부서 필드 추가
@@ -209,6 +217,7 @@ class User(db.Model, UserMixin):
 
     # 관계 설정
     branch = db.relationship("Branch", backref="users")
+    industry = db.relationship('Industry', backref='users')
     delegated_users = db.relationship(
         "User",
         backref=db.backref("delegator", remote_side=[id]),
@@ -2338,3 +2347,162 @@ class ApprovalWorkflow(db.Model):
     
     def __repr__(self):
         return f"<ApprovalWorkflow {self.workflow_type} {self.target_type} {self.target_id}>"
+
+
+class Industry(db.Model):
+    """업종 모델 (병원, 미용실, 옷가게, 레스토랑 등)"""
+    __tablename__ = 'industries'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    code = db.Column(db.String(20), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    icon = db.Column(db.String(50))
+    color = db.Column(db.String(7))  # hex color
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    brands_list = db.relationship('Brand', backref='industry_obj', lazy='dynamic')
+    plugins = db.relationship('IndustryPlugin', backref='industry', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<Industry {self.name}>'
+
+
+
+class IndustryPlugin(db.Model):
+    """업종별 플러그인 모델"""
+    __tablename__ = 'industry_plugins'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    industry_id = db.Column(db.Integer, db.ForeignKey('industries.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(50), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    version = db.Column(db.String(20), default='1.0.0')
+    is_active = db.Column(db.Boolean, default=True)
+    config = db.Column(db.JSON)  # 플러그인 설정
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<IndustryPlugin {self.name}>'
+
+class BrandPlugin(db.Model):
+    """브랜드별 플러그인 모델"""
+    __tablename__ = 'brand_plugins'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(50), nullable=False)
+    description = db.Column(db.Text)
+    version = db.Column(db.String(20), default='1.0.0')
+    is_active = db.Column(db.Boolean, default=True)
+    config = db.Column(db.JSON)  # 플러그인 설정
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<BrandPlugin {self.name}>'
+
+class DataSyncLog(db.Model):
+    """데이터 동기화 로그 모델"""
+    __tablename__ = 'data_sync_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    table_name = db.Column(db.String(50), nullable=False)
+    record_id = db.Column(db.Integer, nullable=False)
+    action = db.Column(db.String(20), nullable=False)  # CREATE, UPDATE, DELETE
+    data_before = db.Column(db.JSON)
+    data_after = db.Column(db.JSON)
+    sync_status = db.Column(db.String(20), default='pending')  # pending, synced, failed
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    synced_at = db.Column(db.DateTime)
+    
+    # 관계
+    user = db.relationship('User', backref='sync_logs')
+    
+    def __repr__(self):
+        return f'<DataSyncLog {self.table_name}:{self.record_id}>'
+
+class OfflineData(db.Model):
+    """오프라인 데이터 저장 모델"""
+    __tablename__ = 'offline_data'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    device_id = db.Column(db.String(100), nullable=False)
+    table_name = db.Column(db.String(50), nullable=False)
+    record_id = db.Column(db.Integer, nullable=False)
+    action = db.Column(db.String(20), nullable=False)  # CREATE, UPDATE, DELETE
+    data = db.Column(db.JSON, nullable=False)
+    sync_status = db.Column(db.String(20), default='pending')  # pending, synced, failed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    synced_at = db.Column(db.DateTime)
+    
+    # 관계
+    user = db.relationship('User', backref='offline_data')
+    
+    def __repr__(self):
+        return f'<OfflineData {self.table_name}:{self.record_id}>'
+
+class AIIntegration(db.Model):
+    """AI 통합 모델"""
+    __tablename__ = 'ai_integrations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    type = db.Column(db.String(50), nullable=False)  # analysis, chatbot, recommendation
+    provider = db.Column(db.String(50), nullable=False)  # openai, anthropic, local
+    api_key = db.Column(db.String(255))
+    config = db.Column(db.JSON)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<AIIntegration {self.name}>'
+
+class AIAnalysisReport(db.Model):
+    """AI 분석 리포트 모델"""
+    __tablename__ = 'ai_analysis_reports'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    report_type = db.Column(db.String(50), nullable=False)  # sales, inventory, staff, customer
+    period = db.Column(db.String(20), nullable=False)  # daily, weekly, monthly
+    data = db.Column(db.JSON, nullable=False)  # 분석 결과 데이터
+    insights = db.Column(db.JSON)  # AI 인사이트
+    recommendations = db.Column(db.JSON)  # AI 추천사항
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계
+    branch = db.relationship('Branch', backref='ai_reports')
+    
+    def __repr__(self):
+        return f'<AIAnalysisReport {self.report_type}:{self.period}>'
+
+class AutomationRule(db.Model):
+    """자동화 규칙 모델"""
+    __tablename__ = 'automation_rules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    trigger_type = db.Column(db.String(50), nullable=False)  # schedule, event, threshold
+    trigger_config = db.Column(db.JSON, nullable=False)
+    action_type = db.Column(db.String(50), nullable=False)  # notification, report, task
+    action_config = db.Column(db.JSON, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<AutomationRule {self.name}>'
+
+

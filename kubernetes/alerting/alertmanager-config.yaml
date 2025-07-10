@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      slack_api_url: 'https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK'
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_from: 'alertmanager@restaurant.com'
+      smtp_auth_username: 'your-email@gmail.com'
+      smtp_auth_password: 'your-app-password'
+    
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'web.hook'
+      routes:
+      - match:
+          severity: critical
+        receiver: 'slack-notifications'
+        continue: true
+      - match:
+          severity: warning
+        receiver: 'email-notifications'
+        continue: true
+    
+    receivers:
+    - name: 'web.hook'
+      webhook_configs:
+      - url: 'http://127.0.0.1:5001/'
+    
+    - name: 'slack-notifications'
+      slack_configs:
+      - channel: '#restaurant-alerts'
+        title: '{{ template "slack.restaurant.title" . }}'
+        text: '{{ template "slack.restaurant.text" . }}'
+        send_resolved: true
+    
+    - name: 'email-notifications'
+      email_configs:
+      - to: 'admin@restaurant.com'
+        subject: '{{ template "email.restaurant.subject" . }}'
+        body: '{{ template "email.restaurant.body" . }}'
+        send_resolved: true
+    
+    templates:
+    - '/etc/alertmanager/template/*.tmpl'
+    
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'dev', 'instance'] 

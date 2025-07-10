@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iot-deployment
+  namespace: restaurant-system
+  labels:
+    app: iot-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: iot-service
+  template:
+    metadata:
+      labels:
+        app: iot-service
+        version: v1
+    spec:
+      containers:
+      - name: iot-service
+        image: restaurant-iot:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5006
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: IOT_SERVICE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: restaurant-app-config
+              key: IOT_SERVICE_PORT
+        - name: IOT_DB_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: restaurant-app-config
+              key: IOT_DB_PATH
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: restaurant-app-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: restaurant-app-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: restaurant-app-secrets
+              key: REDIS_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5006
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5006
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: iot-data
+          mountPath: /app
+        - name: iot-logs
+          mountPath: /app/logs
+      volumes:
+      - name: iot-data
+        persistentVolumeClaim:
+          claimName: iot-pvc
+      - name: iot-logs
+        emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: iot-pvc
+  namespace: restaurant-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: standard
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: iot-hpa
+  namespace: restaurant-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: iot-deployment
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80 

@@ -1,468 +1,149 @@
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api';
+import { persist } from 'zustand/middleware';
+import { offlineStorage } from '../utils/offlineStorage';
 
-export interface InventoryItem {
+export type InventoryItem = {
   id: number;
   name: string;
   category: string;
-  current_stock: number;
-  min_stock: number;
-  max_stock: number;
+  currentStock: number;
+  minStock: number;
+  maxStock: number;
   unit: string;
-  unit_price: number;
+  price: number;
   supplier: string;
-  description: string;
-  expiry_date?: string;
-  location: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  branch_id: number;
-}
+  lastUpdated: string;
+  branchId: number;
+  status: 'normal' | 'low' | 'out' | 'overstock';
+};
 
-export interface StockMovement {
-  id: number;
-  inventory_item_id: number;
-  movement_type: 'in' | 'out' | 'adjustment';
-  quantity: number;
-  reason: string;
-  created_by: number;
-  created_at: string;
-}
+export type SyncStatus = 'synced' | 'pending' | 'offline' | 'error';
 
 interface InventoryStore {
-  // 상태
-  inventoryItems: InventoryItem[];
-  stockMovements: StockMovement[];
-  loading: boolean;
-  error: string | null;
-
-  // 액션
-  setInventoryItems: (items: InventoryItem[]) => void;
-  setStockMovements: (movements: StockMovement[]) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  
-  // 재고 관리
-  addInventoryItem: (item: InventoryItem) => void;
-  updateInventoryItem: (id: number, updates: Partial<InventoryItem>) => void;
-  deleteInventoryItem: (id: number) => void;
-  updateStock: (itemId: number, quantity: number, type: 'in' | 'out' | 'adjustment', reason: string) => void;
-  
-  // API 호출
+  items: InventoryItem[];
+  syncStatus: SyncStatus;
+  lastSync: string | null;
   fetchInventory: () => Promise<void>;
-  fetchStockMovements: () => Promise<void>;
-  createInventoryItem: (itemData: Partial<InventoryItem>) => Promise<boolean>;
-  updateInventoryItemAPI: (id: number, itemData: Partial<InventoryItem>) => Promise<boolean>;
-  deleteInventoryItemAPI: (id: number) => Promise<boolean>;
-  
-  // 유틸리티
-  getInventoryByCategory: (category: string) => InventoryItem[];
-  getInventoryById: (id: number) => InventoryItem | undefined;
+  addItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status'>) => void;
+  updateItem: (id: number, updates: Partial<InventoryItem>) => void;
+  removeItem: (id: number) => void;
+  updateStock: (id: number, newStock: number) => void;
   getLowStockItems: () => InventoryItem[];
-  getOverStockItems: () => InventoryItem[];
-  getStockMovementsByItem: (itemId: number) => StockMovement[];
-  getStockMovementsByDateRange: (startDate: string, endDate: string) => StockMovement[];
+  getOutOfStockItems: () => InventoryItem[];
+  clearAll: () => void;
+  manualSync: () => Promise<void>;
+  setOffline: () => void;
 }
 
-// 더미 재고 데이터
-const getDummyInventoryData = (): InventoryItem[] => [
-  {
-    id: 1,
-    name: '소고기',
-    category: '육류',
-    current_stock: 50,
-    min_stock: 10,
-    max_stock: 100,
-    unit: 'kg',
-    unit_price: 45000,
-    supplier: '한우공급업체',
-    description: '한우 등급 소고기',
-    location: '냉동고 A-1',
-    status: 'active',
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-16T14:30:00Z',
-    branch_id: 1
-  },
-  {
-    id: 2,
-    name: '양파',
-    category: '채소',
-    current_stock: 100,
-    min_stock: 20,
-    max_stock: 200,
-    unit: 'kg',
-    unit_price: 3000,
-    supplier: '채소공급업체',
-    description: '신선한 양파',
-    location: '야채실 B-2',
-    status: 'active',
-    created_at: '2024-01-15T14:30:00Z',
-    updated_at: '2024-01-16T14:30:00Z',
-    branch_id: 1
-  },
-  {
-    id: 3,
-    name: '고추장',
-    category: '조미료',
-    current_stock: 20,
-    min_stock: 5,
-    max_stock: 50,
-    unit: 'kg',
-    unit_price: 12000,
-    supplier: '조미료공급업체',
-    description: '전통 고추장',
-    location: '조미료실 C-3',
-    status: 'active',
-    created_at: '2024-01-15T09:15:00Z',
-    updated_at: '2024-01-17T09:15:00Z',
-    branch_id: 1
-  },
-  {
-    id: 4,
-    name: '김치',
-    category: '반찬',
-    current_stock: 30,
-    min_stock: 10,
-    max_stock: 80,
-    unit: 'kg',
-    unit_price: 8000,
-    supplier: '김치공급업체',
-    description: '맛있는 김치',
-    location: '냉장고 D-4',
-    status: 'active',
-    created_at: '2024-01-15T11:45:00Z',
-    updated_at: '2024-01-18T16:45:00Z',
-    branch_id: 1
-  }
-];
-
-const getDummyStockMovements = (): StockMovement[] => [
-  {
-    id: 1,
-    inventory_item_id: 1,
-    movement_type: "in",
-    quantity: 50,
-    reason: "발주 입고 (발주번호: 1)",
-    created_by: 1,
-    created_at: "2024-01-16T14:30:00Z"
-  },
-  {
-    id: 2,
-    inventory_item_id: 1,
-    movement_type: "out",
-    quantity: 25,
-    reason: "주문 처리",
-    created_by: 2,
-    created_at: "2024-01-17T10:00:00Z"
-  },
-  {
-    id: 3,
-    inventory_item_id: 2,
-    movement_type: "in",
-    quantity: 100,
-    reason: "발주 입고 (발주번호: 2)",
-    created_by: 1,
-    created_at: "2024-01-17T11:00:00Z"
-  }
-];
-
 export const useInventoryStore = create<InventoryStore>()(
-  devtools(
+  persist(
     (set, get) => ({
-      // 초기 상태
-      inventoryItems: [],
-      stockMovements: [],
-      loading: false,
-      error: null,
-
-      // 상태 설정
-      setInventoryItems: (items) => set({ inventoryItems: items }),
-      setStockMovements: (movements) => set({ stockMovements: movements }),
-      setLoading: (loading) => set({ loading }),
-      setError: (error) => set({ error }),
-
-      // 재고 관리
-      addInventoryItem: (item) => set((state) => ({
-        inventoryItems: [...state.inventoryItems, item]
-      })),
-
-      updateInventoryItem: (id, updates) => set((state) => ({
-        inventoryItems: state.inventoryItems.map(item =>
-          item.id === id ? { ...item, ...updates, updated_at: new Date().toISOString() } : item
-        )
-      })),
-
-      deleteInventoryItem: (id) => set((state) => ({
-        inventoryItems: state.inventoryItems.filter(item => item.id !== id)
-      })),
-
-      updateStock: (itemId, quantity, type, reason) => {
-        const { inventoryItems, stockMovements } = get();
-        const item = inventoryItems.find(i => i.id === itemId);
-        
-        if (!item) return;
-
-        let newStock = item.current_stock;
-        if (type === 'in') {
-          newStock += quantity;
-        } else if (type === 'out') {
-          newStock -= quantity;
-        } else if (type === 'adjustment') {
-          newStock = quantity;
-        }
-
-        // 재고 아이템 업데이트
-        set((state) => ({
-          inventoryItems: state.inventoryItems.map(i =>
-            i.id === itemId ? { ...i, current_stock: newStock, updated_at: new Date().toISOString() } : i
-          )
-        }));
-
-        // 재고 변동 이력 추가
-        const newMovement: StockMovement = {
-          id: Date.now(),
-          inventory_item_id: itemId,
-          movement_type: type,
-          quantity: quantity,
-          reason: reason,
-          created_by: 1, // TODO: 실제 사용자 ID로 변경
-          created_at: new Date().toISOString()
-        };
-
-        set((state) => ({
-          stockMovements: [...state.stockMovements, newMovement]
-        }));
-      },
-
-      // API 호출
+      items: [],
+      syncStatus: 'synced',
+      lastSync: null,
+      
       fetchInventory: async () => {
-        set({ loading: true, error: null });
+        try {
+          set({ syncStatus: 'pending' });
+          const res = await fetch('/api/inventory');
+          if (!res.ok) throw new Error('API 오류');
+          const data: InventoryItem[] = await res.json();
+          set({ items: data, syncStatus: 'synced', lastSync: new Date().toISOString() });
+          
+          // 캐시에 저장
+          await offlineStorage.saveCachedData('inventory', 'inventory', data);
+        } catch (e: unknown) {
+          set({ syncStatus: 'offline' });
+          // 오프라인 시 캐시된 데이터 사용
+          const cachedData = await offlineStorage.getCachedData('inventory');
+          if (cachedData) {
+            set({ items: cachedData });
+          }
+        }
+      },
+      
+      addItem: async (item) => {
+        const newItem: InventoryItem = {
+          ...item,
+          id: Date.now(),
+          lastUpdated: new Date().toISOString(),
+          status: item.currentStock <= item.minStock ? 'low' : 
+                  item.currentStock === 0 ? 'out' : 
+                  item.currentStock > item.maxStock ? 'overstock' : 'normal',
+        };
         
-        try {
-          const result = await apiGet<InventoryItem[]>('/api/inventory');
-          
-          if (result.error) {
-            // 백엔드 연결 안 됨 - 더미 데이터 사용
-            console.log('백엔드 연결 안 됨, 더미 재고 데이터 사용');
-            const dummyData = getDummyInventoryData();
-            set({ 
-              inventoryItems: dummyData,
-              loading: false 
-            });
-            return;
-          }
-          
-          set({ inventoryItems: result.data || [], loading: false });
-        } catch (error) {
-          console.error('재고 데이터 가져오기 오류:', error);
-          // 오류 시에도 더미 데이터 사용
-          const dummyData = getDummyInventoryData();
-          set({ 
-            inventoryItems: dummyData,
-            loading: false,
-            error: '데이터를 가져올 수 없어 더미 데이터를 표시합니다.'
-          });
-        }
-      },
-
-      fetchStockMovements: async () => {
-        set({ loading: true, error: null });
+        set((state: InventoryStore) => ({
+          items: [...state.items, newItem],
+          syncStatus: 'pending',
+        }));
         
-        try {
-          const result = await apiGet<StockMovement[]>('/api/inventory/movements');
-          
-          if (result.error) {
-            // 백엔드 연결 안 됨 - 더미 이동 데이터
-            const dummyMovements: StockMovement[] = [
-              {
-                id: 1,
-                inventory_item_id: 1,
-                movement_type: 'in',
-                quantity: 50,
-                reason: '입고',
-                created_by: 1,
-                created_at: '2024-01-15T10:00:00Z'
-              },
-              {
-                id: 2,
-                inventory_item_id: 2,
-                movement_type: 'out',
-                quantity: 10,
-                reason: '사용',
-                created_by: 2,
-                created_at: '2024-01-15T14:30:00Z'
-              }
-            ];
-            set({ 
-              stockMovements: dummyMovements,
-              loading: false 
-            });
-            return;
-          }
-          
-          set({ stockMovements: result.data || [], loading: false });
-        } catch (error) {
-          console.error('재고 이동 데이터 가져오기 오류:', error);
-          set({ 
-            loading: false,
-            error: '재고 이동 데이터를 가져올 수 없습니다.'
-          });
-        }
+        // 오프라인 데이터로 저장
+        await offlineStorage.saveOfflineData('inventory', 'create', newItem);
       },
-
-      createInventoryItem: async (itemData) => {
-        try {
-          const response = await fetch('http://localhost:5000/api/inventory', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify(itemData)
-          });
-          const contentType = response.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
-              alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
-              window.location.href = 'http://localhost:5000/login';
-              return false;
-            }
-            // 기타 에러 처리
-          }
-          const result = await response.json();
-
-          if (result.success) {
-            get().addInventoryItem(result.data);
-            console.log('재고 아이템 생성 성공');
-            return true;
-          } else {
-            console.error('재고 아이템 생성 실패:', result.error);
-            set({ error: result.error });
-            return false;
-          }
-        } catch (error) {
-          console.error('재고 아이템 생성 오류:', error);
-          set({ error: '재고 아이템 생성 중 오류가 발생했습니다.' });
-          return false;
-        }
+      
+      updateItem: async (id: number, updates: Partial<InventoryItem>) => {
+        set((state: InventoryStore) => ({
+          items: state.items.map((item) =>
+            item.id === id ? { 
+              ...item, 
+              ...updates, 
+              lastUpdated: new Date().toISOString(),
+              status: updates.currentStock !== undefined ? 
+                (updates.currentStock <= item.minStock ? 'low' : 
+                 updates.currentStock === 0 ? 'out' : 
+                 updates.currentStock > item.maxStock ? 'overstock' : 'normal') : 
+                item.status
+            } : item
+          ),
+          syncStatus: 'pending',
+        }));
+        
+        // 오프라인 데이터로 저장
+        await offlineStorage.saveOfflineData('inventory', 'update', { id, ...updates });
       },
-
-      updateInventoryItemAPI: async (id, itemData) => {
-        try {
-          const response = await fetch(`http://localhost:5000/api/inventory/${id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify(itemData)
-          });
-          const contentType = response.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
-              alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
-              window.location.href = 'http://localhost:5000/login';
-              return false;
-            }
-            // 기타 에러 처리
-          }
-          const result = await response.json();
-
-          if (result.success) {
-            get().updateInventoryItem(id, result.data);
-            console.log('재고 아이템 수정 성공');
-            return true;
-          } else {
-            console.error('재고 아이템 수정 실패:', result.error);
-            set({ error: result.error });
-            return false;
-          }
-        } catch (error) {
-          console.error('재고 아이템 수정 오류:', error);
-          set({ error: '재고 아이템 수정 중 오류가 발생했습니다.' });
-          return false;
-        }
+      
+      removeItem: async (id: number) => {
+        set((state: InventoryStore) => ({
+          items: state.items.filter((item) => item.id !== id),
+          syncStatus: 'pending',
+        }));
+        
+        // 오프라인 데이터로 저장
+        await offlineStorage.saveOfflineData('inventory', 'delete', { id });
       },
-
-      deleteInventoryItemAPI: async (id) => {
-        try {
-          const response = await fetch(`http://localhost:5000/api/inventory/${id}`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include'
-          });
-          const contentType = response.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
-              alert('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
-              window.location.href = 'http://localhost:5000/login';
-              return false;
-            }
-            // 기타 에러 처리
-          }
-          const result = await response.json();
-
-          if (result.success) {
-            get().deleteInventoryItem(id);
-            console.log('재고 아이템 삭제 성공');
-            return true;
-          } else {
-            console.error('재고 아이템 삭제 실패:', result.error);
-            set({ error: result.error });
-            return false;
-          }
-        } catch (error) {
-          console.error('재고 아이템 삭제 오류:', error);
-          set({ error: '재고 아이템 삭제 중 오류가 발생했습니다.' });
-          return false;
-        }
-      },
-
-      // 유틸리티
-      getInventoryByCategory: (category) => {
-        const { inventoryItems } = get();
-        return inventoryItems.filter(item => item.category === category);
-      },
-
-      getInventoryById: (id) => {
-        const { inventoryItems } = get();
-        return inventoryItems.find(item => item.id === id);
+      
+      updateStock: async (id: number, newStock: number) => {
+        const item = get().items.find(item => item.id === id);
+        if (!item) return;
+        
+        const status = newStock <= item.minStock ? 'low' : 
+                      newStock === 0 ? 'out' : 
+                      newStock > item.maxStock ? 'overstock' : 'normal';
+        
+        await get().updateItem(id, { 
+          currentStock: newStock, 
+          status,
+          lastUpdated: new Date().toISOString()
+        });
       },
 
       getLowStockItems: () => {
-        const { inventoryItems } = get();
-        return inventoryItems.filter(item => item.current_stock <= item.min_stock);
+        return get().items.filter(item => item.status === 'low');
       },
-
-      getOverStockItems: () => {
-        const { inventoryItems } = get();
-        return inventoryItems.filter(item => item.current_stock >= item.max_stock);
+      
+      getOutOfStockItems: () => {
+        return get().items.filter(item => item.status === 'out');
       },
-
-      getStockMovementsByItem: (itemId) => {
-        const { stockMovements } = get();
-        return stockMovements.filter(movement => movement.inventory_item_id === itemId);
+      
+      manualSync: async () => {
+        await get().fetchInventory();
       },
-
-      getStockMovementsByDateRange: (startDate, endDate) => {
-        const { stockMovements } = get();
-        return stockMovements.filter(movement => {
-          const movementDate = new Date(movement.created_at);
-          const start = new Date(startDate);
-          const end = new Date(endDate);
-          return movementDate >= start && movementDate <= end;
-        });
-      },
+      
+      clearAll: () => set({ items: [] }),
+      setOffline: () => set({ syncStatus: 'offline' }),
     }),
     {
-      name: 'inventory-store'
+      name: 'inventory-store',
     }
   )
 ); 

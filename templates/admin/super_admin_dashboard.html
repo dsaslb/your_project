@@ -128,8 +128,141 @@
         
         .quick-actions {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .role-dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .role-dashboard-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .role-dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .role-dashboard-card.admin {
+            border-color: #3b82f6;
+        }
+        
+        .role-dashboard-card.manager {
+            border-color: #10b981;
+        }
+        
+        .role-dashboard-card.employee {
+            border-color: #8b5cf6;
+        }
+        
+        .role-dashboard-card.teamlead {
+            border-color: #f59e0b;
+        }
+        
+        .role-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .role-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .role-icon.admin {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        
+        .role-icon.manager {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .role-icon.employee {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+        
+        .role-icon.teamlead {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .role-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        
+        .role-subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+        
+        .role-features {
+            list-style: none;
+            margin: 1rem 0;
+        }
+        
+        .role-features li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+        }
+        
+        .role-features li:last-child {
+            border-bottom: none;
+        }
+        
+        .role-features li::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        
+        .role-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .role-stat {
+            text-align: center;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 0.5rem;
+        }
+        
+        .role-stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        
+        .role-stat-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.25rem;
         }
         
         .action-btn {
@@ -360,6 +493,131 @@
             <div class="stat-card success">
                 <div class="stat-number" id="system-status">정상</div>
                 <div class="stat-label">시스템 상태</div>
+            </div>
+        </div>
+
+        <!-- 역할별 대시보드 접근 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-users-cog"></i> 역할별 대시보드 접근</h2>
+                <p style="color: #64748b; font-size: 0.875rem; margin: 0;">각 역할의 대시보드로 전환하여 업무를 확인하세요</p>
+            </div>
+            <div class="role-dashboard-grid">
+                <!-- 관리자 대시보드 -->
+                <a href="/admin-dashboard" class="role-dashboard-card admin">
+                    <div class="role-header">
+                        <div class="role-icon admin">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div>
+                            <div class="role-title">관리자 대시보드</div>
+                            <div class="role-subtitle">매장 관리자 모드</div>
+                        </div>
+                    </div>
+                    <ul class="role-features">
+                        <li>직원 관리 및 스케줄</li>
+                        <li>매출 분석 및 리포트</li>
+                        <li>재고 관리 및 발주</li>
+                        <li>매장 운영 현황</li>
+                    </ul>
+                    <div class="role-stats">
+                        <div class="role-stat">
+                            <div class="role-stat-number">24명</div>
+                            <div class="role-stat-label">총 직원</div>
+                        </div>
+                        <div class="role-stat">
+                            <div class="role-stat-number">₩2.4M</div>
+                            <div class="role-stat-label">오늘 매출</div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- 매니저 대시보드 -->
+                <a href="/manager-dashboard" class="role-dashboard-card manager">
+                    <div class="role-header">
+                        <div class="role-icon manager">
+                            <i class="fas fa-user-cog"></i>
+                        </div>
+                        <div>
+                            <div class="role-title">매니저 대시보드</div>
+                            <div class="role-subtitle">매장 운영 관리 모드</div>
+                        </div>
+                    </div>
+                    <ul class="role-features">
+                        <li>실시간 주문 관리</li>
+                        <li>직원 스케줄 관리</li>
+                        <li>고객 서비스 모니터링</li>
+                        <li>매장 성과 분석</li>
+                    </ul>
+                    <div class="role-stats">
+                        <div class="role-stat">
+                            <div class="role-stat-number">12명</div>
+                            <div class="role-stat-label">출근 직원</div>
+                        </div>
+                        <div class="role-stat">
+                            <div class="role-stat-number">8분</div>
+                            <div class="role-stat-label">평균 대기</div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- 직원 대시보드 -->
+                <a href="/employee-dashboard" class="role-dashboard-card employee">
+                    <div class="role-header">
+                        <div class="role-icon employee">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div class="role-title">직원 대시보드</div>
+                            <div class="role-subtitle">일반 직원 모드</div>
+                        </div>
+                    </div>
+                    <ul class="role-features">
+                        <li>출퇴근 기록</li>
+                        <li>근무 스케줄 확인</li>
+                        <li>주문 처리</li>
+                        <li>개인 업무 관리</li>
+                    </ul>
+                    <div class="role-stats">
+                        <div class="role-stat">
+                            <div class="role-stat-number">6시간</div>
+                            <div class="role-stat-label">근무 시간</div>
+                        </div>
+                        <div class="role-stat">
+                            <div class="role-stat-number">15건</div>
+                            <div class="role-stat-label">처리 주문</div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- 팀리드 대시보드 -->
+                <a href="/teamlead-dashboard" class="role-dashboard-card teamlead">
+                    <div class="role-header">
+                        <div class="role-icon teamlead">
+                            <i class="fas fa-user-friends"></i>
+                        </div>
+                        <div>
+                            <div class="role-title">팀리드 대시보드</div>
+                            <div class="role-subtitle">팀 관리 모드</div>
+                        </div>
+                    </div>
+                    <ul class="role-features">
+                        <li>팀원 관리 및 지시</li>
+                        <li>팀 성과 모니터링</li>
+                        <li>업무 분배 및 관리</li>
+                        <li>팀 스케줄 관리</li>
+                    </ul>
+                    <div class="role-stats">
+                        <div class="role-stat">
+                            <div class="role-stat-number">8명</div>
+                            <div class="role-stat-label">팀원 수</div>
+                        </div>
+                        <div class="role-stat">
+                            <div class="role-stat-number">100%</div>
+                            <div class="role-stat-label">출근률</div>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
 

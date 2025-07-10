@@ -1,4 +1,4 @@
-import { Calendar, ChefHat, Home, Settings, TrendingUp, Users, UtensilsCrossed, Wallet } from "lucide-react"
+import { Calendar, ChefHat, Home, Settings, TrendingUp, Users, UtensilsCrossed, Wallet, Activity } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -44,6 +44,11 @@ const menuItems = [
     title: "Staff",
     url: "/staff",
     icon: Users,
+  },
+  {
+    title: "IoT Dashboard",
+    url: "/iot",
+    icon: Activity,
   },
   {
     title: "Finance",

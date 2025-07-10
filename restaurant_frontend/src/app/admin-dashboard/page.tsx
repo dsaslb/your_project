@@ -27,12 +27,12 @@ import {
 import useUserStore from '@/store/useUserStore';
 import { useRouter } from 'next/navigation';
 
-export default function SuperAdminDashboard() {
-  const { user, isSuperAdmin } = useUserStore();
+export default function AdminDashboard() {
+  const { user } = useUserStore();
   const router = useRouter();
 
   // 권한 확인
-  if (!user || !isSuperAdmin()) {
+  if (!user || (user.role !== 'brand_manager' && user.role !== 'super_admin')) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
         <Card className="w-96 shadow-2xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
@@ -42,7 +42,7 @@ export default function SuperAdminDashboard() {
             </div>
             <CardTitle className="text-red-600 dark:text-red-400">접근 권한 없음</CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-400">
-              슈퍼 관리자 권한이 필요합니다.
+              관리자 권한이 필요합니다.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -119,10 +119,10 @@ export default function SuperAdminDashboard() {
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              슈퍼 관리자 대시보드
+              관리자 대시보드
             </h1>
             <p className="text-slate-600 dark:text-slate-400 text-lg">
-              전체 시스템 현황 및 관리
+              매장 관리 및 운영 현황
             </p>
           </div>
           <div className="flex items-center space-x-3">

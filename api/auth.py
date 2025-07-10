@@ -70,12 +70,25 @@ def api_login():
         "branch_id": user.branch_id,
     }
 
+    # 역할별 리다이렉트 페이지 결정
+    redirect_to = "/dashboard"  # 기본값
+    if user.role == "super_admin":
+        redirect_to = "/super-admin"
+    elif user.role == "admin":
+        redirect_to = "/admin-dashboard"
+    elif user.role == "manager":
+        redirect_to = "/manager-dashboard"
+    elif user.role == "employee":
+        redirect_to = "/employee-dashboard"
+    elif user.role == "teamlead":
+        redirect_to = "/teamlead-dashboard"
+
     return jsonify({
         "message": "로그인 성공",
         "access_token": access_token,
         "refresh_token": refresh_token,
         "user": user_data,
-        "redirect_to": "/dashboard",
+        "redirect_to": redirect_to,
         "success": True
     }), 200
 
@@ -144,11 +157,24 @@ def login():
 
         login_user(user)
 
-        # next 파라미터가 있으면 해당 페이지로, 없으면 대시보드로
+        # 역할별 리다이렉트 페이지 결정
+        redirect_to = "/dashboard"  # 기본값
+        if user.role == "super_admin":
+            redirect_to = "/super-admin"
+        elif user.role == "admin":
+            redirect_to = "/admin-dashboard"
+        elif user.role == "manager":
+            redirect_to = "/manager-dashboard"
+        elif user.role == "employee":
+            redirect_to = "/employee-dashboard"
+        elif user.role == "teamlead":
+            redirect_to = "/teamlead-dashboard"
+
+        # next 파라미터가 있으면 해당 페이지로, 없으면 역할별 페이지로
         next_page = request.args.get("next")
         if next_page and next_page.startswith("/"):
             return redirect(next_page)
-        return redirect(url_for("dashboard"))
+        return redirect(redirect_to)
 
     return render_template("auth/login.html")
 

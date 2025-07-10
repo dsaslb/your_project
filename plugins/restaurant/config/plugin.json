@@ -1,0 +1,127 @@
+{
+  "name": "Restaurant Management",
+  "version": "1.0.0",
+  "description": "외식업을 위한 종합 관리 시스템 플러그인",
+  "author": "Restaurant Platform Team",
+  "category": "business",
+  "dependencies": [],
+  "permissions": [
+    "staff_management",
+    "inventory_management", 
+    "order_management",
+    "schedule_management",
+    "attendance_management",
+    "qsc_management",
+    "analytics",
+    "iot_management"
+  ],
+  "enabled": true,
+  "config": {
+    "features": {
+      "staff_management": {
+        "enabled": true,
+        "permissions": ["view", "create", "edit", "delete"]
+      },
+      "inventory_management": {
+        "enabled": true,
+        "permissions": ["view", "create", "edit", "delete", "export"]
+      },
+      "order_management": {
+        "enabled": true,
+        "permissions": ["view", "create", "edit", "delete", "process"]
+      },
+      "schedule_management": {
+        "enabled": true,
+        "permissions": ["view", "create", "edit", "delete", "approve"]
+      },
+      "attendance_management": {
+        "enabled": true,
+        "permissions": ["view", "create", "edit", "approve", "report"]
+      },
+      "qsc_management": {
+        "enabled": true,
+        "permissions": ["view", "create", "edit", "evaluate", "report"]
+      },
+      "analytics": {
+        "enabled": true,
+        "permissions": ["view", "export", "custom"]
+      },
+      "iot_management": {
+        "enabled": true,
+        "permissions": ["view", "control", "monitor", "configure"]
+      }
+    },
+    "ui": {
+      "dashboard_layout": "grid",
+      "default_theme": "light",
+      "responsive": true,
+      "modules": [
+        {
+          "id": "staff_overview",
+          "title": "직원 현황",
+          "type": "widget",
+          "position": {"x": 0, "y": 0, "w": 6, "h": 4},
+          "enabled": true
+        },
+        {
+          "id": "inventory_status",
+          "title": "재고 현황",
+          "type": "widget",
+          "position": {"x": 6, "y": 0, "w": 6, "h": 4},
+          "enabled": true
+        },
+        {
+          "id": "order_summary",
+          "title": "주문 요약",
+          "type": "widget",
+          "position": {"x": 0, "y": 4, "w": 6, "h": 4},
+          "enabled": true
+        },
+        {
+          "id": "schedule_calendar",
+          "title": "근무 일정",
+          "type": "widget",
+          "position": {"x": 6, "y": 4, "w": 6, "h": 4},
+          "enabled": true
+        },
+        {
+          "id": "qsc_dashboard",
+          "title": "품질 관리",
+          "type": "widget",
+          "position": {"x": 0, "y": 8, "w": 12, "h": 4},
+          "enabled": true
+        },
+        {
+          "id": "iot_monitoring",
+          "title": "IoT 모니터링",
+          "type": "widget",
+          "position": {"x": 0, "y": 12, "w": 12, "h": 4},
+          "enabled": true
+        }
+      ]
+    },
+    "notifications": {
+      "email": true,
+      "push": true,
+      "sms": false,
+      "webhook": true
+    },
+    "integrations": {
+      "pos_system": {
+        "enabled": false,
+        "type": "api",
+        "endpoint": ""
+      },
+      "accounting": {
+        "enabled": false,
+        "type": "api",
+        "endpoint": ""
+      },
+      "delivery": {
+        "enabled": false,
+        "type": "api",
+        "endpoint": ""
+      }
+    }
+  }
+} 

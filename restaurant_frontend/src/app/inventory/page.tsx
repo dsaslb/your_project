@@ -32,12 +32,11 @@ export default function InventoryPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Store에서 데이터 가져오기
-  const { 
-    inventoryItems, 
-    loading, 
-    error,
-    fetchInventory 
+    // Store에서 데이터 가져오기
+  const {
+    items: inventoryItems,
+    syncStatus,
+    fetchInventory
   } = useInventoryStore();
 
   useEffect(() => {
@@ -54,13 +53,13 @@ export default function InventoryPage() {
     id: item.id,
     name: item.name,
     category: item.category,
-    currentStock: item.current_stock,
-    minStock: item.min_stock,
+    currentStock: item.currentStock,
+    minStock: item.minStock,
     unit: item.unit,
-    price: item.unit_price,
+    price: item.price,
     supplier: item.supplier,
-    lastUpdated: new Date(item.updated_at).toLocaleDateString(),
-    status: getStockLevel(item.current_stock, item.min_stock),
+    lastUpdated: new Date(item.lastUpdated).toLocaleDateString(),
+    status: getStockLevel(item.currentStock, item.minStock),
   })) : [
     {
       id: 1,
