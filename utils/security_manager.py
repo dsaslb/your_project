@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import hmac
 import secrets
 import time
@@ -43,7 +43,7 @@ class SecurityManager:
     
     def _generate_encryption_key(self) -> bytes:
         """암호화 키 생성"""
-        salt = b'restaurant_security_salt'
+        salt = b'your_program_security_salt'
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,

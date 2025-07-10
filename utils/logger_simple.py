@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import logging.handlers
 import os
 from datetime import datetime
@@ -7,7 +7,7 @@ from datetime import datetime
 def setup_logger(app=None):
     """간소화된 로거 설정"""
     log_level = logging.INFO
-    log_file = "logs/restaurant.log"
+    log_file = "logs/your_program.log"
 
     # 로그 디렉토리 생성
     log_dir = os.path.dirname(log_file)
@@ -15,7 +15,7 @@ def setup_logger(app=None):
         os.makedirs(log_dir)
 
     # 로거 설정
-    logger = logging.getLogger("restaurant")
+    logger = logging.getLogger("your_program")
     logger.setLevel(log_level)
 
     # 기존 핸들러 제거
@@ -48,7 +48,7 @@ def setup_logger(app=None):
 
 def log_action(user_id, action, message=None, ip_address=None):
     """사용자 액션 로깅"""
-    logger = logging.getLogger("restaurant")
+    logger = logging.getLogger("your_program")
     log_message = f"USER_ACTION: user_id={user_id}, action={action}"
     if message:
         log_message += f", message={message}"
@@ -59,7 +59,7 @@ def log_action(user_id, action, message=None, ip_address=None):
 
 def log_error(error, user_id=None, additional_info=None):
     """에러 로깅"""
-    logger = logging.getLogger("restaurant")
+    logger = logging.getLogger("your_program")
     log_message = f"ERROR: {str(error)}"
     if user_id:
         log_message += f", user_id={user_id}"
@@ -70,10 +70,11 @@ def log_error(error, user_id=None, additional_info=None):
 
 def log_security_event(user_id, event_type, details=None, ip_address=None):
     """보안 이벤트 로깅"""
-    logger = logging.getLogger("restaurant")
+    logger = logging.getLogger("your_program")
     log_message = f"SECURITY_EVENT: user_id={user_id}, event={event_type}"
     if details:
         log_message += f", details={details}"
     if ip_address:
         log_message += f", ip={ip_address}"
     logger.warning(log_message)
+

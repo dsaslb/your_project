@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, current_app
+﻿from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import and_, or_
@@ -548,7 +548,7 @@ def create_staff():
         staff_profile.phone = data['phone']
         staff_profile.join_date = datetime.strptime(data.get('join_date', datetime.now().strftime('%Y-%m-%d')), '%Y-%m-%d').date()
         staff_profile.salary = data.get('salary', '2500000')
-        staff_profile.restaurant_id = current_user.branch_id
+        staff_profile.your_program_id = current_user.branch_id
         staff_profile.user_id = new_user.id
         
         db.session.add(staff_profile)
@@ -890,7 +890,7 @@ def get_dummy_staff_data():
             'position': '주방장',
             'department': '주방',
             'phone': '010-1234-5678',
-            'email': 'kim@restaurant.com',
+            'email': 'kim@your_program.com',
             'status': 'active',
             'join_date': '2023-01-15',
             'salary': 3500000,
@@ -932,7 +932,7 @@ def get_dummy_staff_data():
             'position': '서버',
             'department': '홀',
             'phone': '010-2345-6789',
-            'email': 'lee@restaurant.com',
+            'email': 'lee@your_program.com',
             'status': 'active',
             'join_date': '2023-03-20',
             'salary': 2800000,

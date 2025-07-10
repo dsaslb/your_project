@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 운영 배포 자동화 스크립트
 MVP 완성 후 운영 환경 배포를 위한 스크립트
@@ -119,7 +119,7 @@ def setup_logging():
     log_dir.mkdir(exist_ok=True)
 
     # 로그 파일 권한 설정
-    log_files = ["restaurant_prod.log", "action.log"]
+    log_files = ["your_program_prod.log", "action.log"]
     for log_file in log_files:
         log_path = log_dir / log_file
         if not log_path.exists():
@@ -161,7 +161,7 @@ def create_startup_scripts():
 
     # Windows 배치 파일
     windows_script = """@echo off
-echo Restaurant Staff Management System 시작 중...
+echo your_program Staff Management System 시작 중...
 set FLASK_ENV=production
 set FLASK_APP=app.py
 cd /d "%~dp0"
@@ -175,7 +175,7 @@ pause
 
     # Linux/Mac 쉘 스크립트
     unix_script = """#!/bin/bash
-echo "Restaurant Staff Management System 시작 중..."
+echo "your_program Staff Management System 시작 중..."
 export FLASK_ENV=production
 export FLASK_APP=app.py
 cd "$(dirname "$0")"
@@ -238,7 +238,7 @@ def create_deployment_checklist():
 - [ ] Slack 알림 테스트 (설정된 경우)
 
 ## 📞 문제 발생 시
-- 로그 확인: logs/restaurant_prod.log
+- 로그 확인: logs/your_program_prod.log
 - 데이터베이스 연결 확인
 - 환경 변수 설정 재확인
 - 서버 리소스 사용량 확인
@@ -257,7 +257,7 @@ def create_deployment_checklist():
 
 def main():
     """메인 배포 프로세스"""
-    print("🚀 Restaurant Staff Management System - 운영 배포 준비")
+    print("🚀 your_program Staff Management System - 운영 배포 준비")
     print("=" * 60)
 
     # 1. 환경 점검
@@ -303,7 +303,7 @@ def main():
     print(
         "4. start_production.bat (Windows) 또는 start_production.sh (Linux/Mac)를 실행하세요"
     )
-    print("\n📞 문제가 발생하면 로그 파일을 확인하세요: logs/restaurant_prod.log")
+    print("\n📞 문제가 발생하면 로그 파일을 확인하세요: logs/your_program_prod.log")
 
     return True
 
@@ -311,3 +311,4 @@ def main():
 if __name__ == "__main__":
     success = main()
     sys.exit(0 if success else 1)
+

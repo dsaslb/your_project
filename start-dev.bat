@@ -1,5 +1,5 @@
 @echo off
-echo 🚀 Restaurant Management System - Development Server
+echo 🚀 your_program Management System - Development Server
 echo ================================================
 
 echo.
@@ -16,7 +16,7 @@ timeout /t 3 /nobreak > nul
 
 echo.
 echo 🎨 Starting frontend server (Next.js)...
-cd restaurant_frontend
+cd your_program_frontend
 start "Frontend Server" cmd /k "npm run dev"
 
 echo.

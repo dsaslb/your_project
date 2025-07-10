@@ -1,4 +1,4 @@
-import io
+﻿import io
 import logging
 import os
 import smtplib
@@ -190,7 +190,7 @@ def send_email(to_email, subject, body, attach_path=None, html_body=None):
         smtp_port = int(os.getenv("SMTP_PORT", "587"))
         smtp_username = os.getenv("SMTP_USERNAME")
         smtp_password = os.getenv("SMTP_PASSWORD")
-        from_email = os.getenv("FROM_EMAIL", "noreply@restaurant.com")
+        from_email = os.getenv("FROM_EMAIL", "noreply@your_program.com")
 
         if not all([smtp_username, smtp_password]):
             logger.warning("SMTP 설정이 없어 테스트 모드로 실행")
@@ -425,3 +425,4 @@ def generate_attendance_report(start_date, end_date, user_id=None):
     except Exception as e:
         logger.error(f"근태 리포트 생성 실패: {e}")
         return None
+

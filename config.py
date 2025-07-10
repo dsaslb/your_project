@@ -1,4 +1,4 @@
-import os
+﻿import os
 from datetime import timedelta
 
 from dotenv import load_dotenv
@@ -19,7 +19,7 @@ class Config:
 
     SECRET_KEY = os.environ.get("SECRET_KEY", "super-secret-key")
     SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL", "sqlite:///restaurant_dev.sqlite3"
+        "DATABASE_URL", "sqlite:///your_program_dev.sqlite3"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = bool(int(os.getenv("DEBUG", "0")))
@@ -144,7 +144,7 @@ class DevelopmentConfig(Config):
 
     # 개발용 로깅 - 상세한 디버그 정보
     LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
-    LOG_FILE = os.getenv("LOG_FILE", "logs/restaurant_dev.log")
+    LOG_FILE = os.getenv("LOG_FILE", "logs/your_program_dev.log")
 
     DASHBOARD_MODE = "solo"  # 개발 시에는 1인 사장님 모드
 
@@ -162,7 +162,7 @@ class ProductionConfig(Config):
 
     # 운영용 로깅 - WARNING 이상만 기록
     LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING")
-    LOG_FILE = os.getenv("LOG_FILE", "logs/restaurant_prod.log")
+    LOG_FILE = os.getenv("LOG_FILE", "logs/your_program_prod.log")
 
     DASHBOARD_MODE = os.environ.get("DASHBOARD_MODE", "franchise")  # 운영 시 기본값
 
@@ -190,7 +190,7 @@ class TestConfig(Config):
 
     # 테스트용 로깅 - 디버그 정보 포함
     LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
-    LOG_FILE = os.getenv("LOG_FILE", "logs/restaurant_test.log")
+    LOG_FILE = os.getenv("LOG_FILE", "logs/your_program_test.log")
 
     DASHBOARD_MODE = "solo"
 
@@ -212,3 +212,4 @@ config_by_name = {
 
 # COOKIE_SECURE 설정 (app.py에서 import용)
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "False").lower() == "true"
+

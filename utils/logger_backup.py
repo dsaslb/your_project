@@ -1,4 +1,4 @@
-import gzip
+﻿import gzip
 import logging
 import logging.handlers
 import os
@@ -20,12 +20,12 @@ def setup_logger(app=None):
     """애플리케이션 로거 설정"""
     if app:
         log_level = getattr(logging, app.config.get("LOG_LEVEL", "INFO"))
-        log_file = app.config.get("LOG_FILE", "logs/restaurant.log")
+        log_file = app.config.get("LOG_FILE", "logs/your_program.log")
         max_bytes = app.config.get("LOG_MAX_BYTES", 10 * 1024 * 1024)  # 10MB
         backup_count = app.config.get("LOG_BACKUP_COUNT", 5)
     else:
         log_level = logging.INFO
-        log_file = "logs/restaurant.log"
+        log_file = "logs/your_program.log"
         max_bytes = 10 * 1024 * 1024
         backup_count = 5
 
@@ -35,7 +35,7 @@ def setup_logger(app=None):
         os.makedirs(log_dir)
 
     # 로거 설정
-    logger = logging.getLogger("restaurant")
+    logger = logging.getLogger("your_program")
     logger.setLevel(log_level)
 
     # 기존 핸들러 제거
@@ -136,7 +136,7 @@ def setup_error_logger():
 
 def log_action(user_id, action, message=None, ip_address=None):
     """사용자 액션 로깅"""
-    logger = logging.getLogger("restaurant")
+    logger = logging.getLogger("your_program")
     log_message = f"USER_ACTION: user_id={user_id}, action={action}"
     if message:
         log_message += f", message={message}"
@@ -392,5 +392,6 @@ def log_action_consistency(user_id, action, details=None, ip_address=None):
 
     except Exception as e:
         # 로깅 실패 시 기본 로거에 기록
-        basic_logger = logging.getLogger("restaurant")
+        basic_logger = logging.getLogger("your_program")
         basic_logger.error(f"Action logging failed: {e}")
+

@@ -1,4 +1,4 @@
-import json
+﻿import json
 import re
 import logging
 from datetime import datetime
@@ -165,7 +165,7 @@ class ChatbotManager:
         self.conversation_contexts = {}
         
         # 기본 정보
-        self.restaurant_info = {
+        self.your_program_info = {
             "name": "레스토랑 매니저",
             "phone": "02-1234-5678",
             "address": "서울시 강남구 테헤란로 123",
@@ -223,13 +223,13 @@ class ChatbotManager:
                     response = response.replace(placeholder, str(value))
         
         # 레스토랑 정보 치환
-        response = response.replace("{phone_number}", self.restaurant_info["phone"])
-        response = response.replace("{address}", self.restaurant_info["address"])
-        response = response.replace("{hours}", self.restaurant_info["hours"])
+        response = response.replace("{phone_number}", self.your_program_info["phone"])
+        response = response.replace("{address}", self.your_program_info["address"])
+        response = response.replace("{hours}", self.your_program_info["hours"])
         
         # 메뉴 정보 치환
         if "menu_list" in response:
-            menu_list = ", ".join(self.restaurant_info["popular_menus"])
+            menu_list = ", ".join(self.your_program_info["popular_menus"])
             response = response.replace("{menu_list}", menu_list)
         
         return response

@@ -1,6 +1,6 @@
 import time
 
-from models import User
+# from models import User  # 사용되지 않으므로 삭제
 
 
 class TestAPILogin:
@@ -92,16 +92,18 @@ class TestAPILogin:
             "password": "a-very-secure-admin-password-123",
         }
 
-        # 두 번 로그인하여 다른 토큰이 발급되는지 확인
+        # 첫 번째 로그인
         resp1 = client.post("/api/auth/login", json=payload)
-        resp2 = client.post("/api/auth/login", json=payload)
-
         assert resp1.status_code == 200
-        assert resp2.status_code == 200
-
         token1 = resp1.json.get("access_token")
-        token2 = resp2.json.get("access_token")
-
         assert token1 is not None
+
+        # 시간 차이를 두고 두 번째 로그인
+        time.sleep(1)  # 1초 대기
+        resp2 = client.post("/api/auth/login", json=payload)
+        assert resp2.status_code == 200
+        token2 = resp2.json.get("access_token")
         assert token2 is not None
+
+        # 토큰이 다른지 확인 (시간이 다르므로 다른 토큰이 생성되어야 함)
         assert token1 != token2

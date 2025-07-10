@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify, current_app
+﻿from flask import Blueprint, request, jsonify, current_app
 from functools import wraps
-from models import db, User, Order, Schedule, Attendance, RestaurantOrder
+from models import db, User, Order, Schedule, Attendance, your_programOrder
 from api.gateway import token_required, role_required
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_, text
@@ -112,32 +112,32 @@ def get_orders_stats_optimized(current_user):
     try:
         # 단일 쿼리로 모든 통계 계산
         stats_query = db.session.query(
-            func.count(RestaurantOrder.id).label('total_orders'),
-            func.count(RestaurantOrder.id).filter(RestaurantOrder.status == 'completed').label('completed_orders'),
-            func.count(RestaurantOrder.id).filter(RestaurantOrder.status == 'pending').label('pending_orders'),
-            func.avg(RestaurantOrder.total_amount).label('avg_amount'),
-            func.sum(RestaurantOrder.total_amount).label('total_amount')
+            func.count(your_programOrder.id).label('total_orders'),
+            func.count(your_programOrder.id).filter(your_programOrder.status == 'completed').label('completed_orders'),
+            func.count(your_programOrder.id).filter(your_programOrder.status == 'pending').label('pending_orders'),
+            func.avg(your_programOrder.total_amount).label('avg_amount'),
+            func.sum(your_programOrder.total_amount).label('total_amount')
         )
         
         # 권한별 필터
         if current_user.role == 'store_manager':
-            stats_query = stats_query.filter(RestaurantOrder.store_id == current_user.branch_id)
+            stats_query = stats_query.filter(your_programOrder.store_id == current_user.branch_id)
         elif current_user.role == 'brand_manager':
-            stats_query = stats_query.filter(RestaurantOrder.store_id == current_user.branch_id)
+            stats_query = stats_query.filter(your_programOrder.store_id == current_user.branch_id)
         
         stats = stats_query.first()
         
         # 최근 7일 통계
         week_ago = datetime.utcnow() - timedelta(days=7)
         recent_stats = db.session.query(
-            func.count(RestaurantOrder.id).label('recent_orders'),
-            func.sum(RestaurantOrder.total_amount).label('recent_amount')
-        ).filter(RestaurantOrder.created_at >= week_ago)
+            func.count(your_programOrder.id).label('recent_orders'),
+            func.sum(your_programOrder.total_amount).label('recent_amount')
+        ).filter(your_programOrder.created_at >= week_ago)
         
         if current_user.role == 'store_manager':
-            recent_stats = recent_stats.filter(RestaurantOrder.store_id == current_user.branch_id)
+            recent_stats = recent_stats.filter(your_programOrder.store_id == current_user.branch_id)
         elif current_user.role == 'brand_manager':
-            recent_stats = recent_stats.filter(RestaurantOrder.store_id == current_user.branch_id)
+            recent_stats = recent_stats.filter(your_programOrder.store_id == current_user.branch_id)
         
         recent = recent_stats.first()
         
@@ -175,18 +175,18 @@ def get_dashboard_lazy(current_user):
         # 기본 통계만 먼저 반환
         basic_stats = {
             'user_count': User.query.count(),
-            'order_count': RestaurantOrder.query.count(),
+            'order_count': your_programOrder.query.count(),
             'schedule_count': Schedule.query.count()
         }
         
         # 권한별 필터 적용
         if current_user.role == 'store_manager':
             basic_stats['user_count'] = User.query.filter_by(branch_id=current_user.branch_id).count()
-            basic_stats['order_count'] = RestaurantOrder.query.filter_by(store_id=current_user.branch_id).count()
+            basic_stats['order_count'] = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
             basic_stats['schedule_count'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
         elif current_user.role == 'brand_manager':
             basic_stats['user_count'] = User.query.filter_by(branch_id=current_user.branch_id).count()
-            basic_stats['order_count'] = RestaurantOrder.query.filter_by(store_id=current_user.branch_id).count()
+            basic_stats['order_count'] = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
             basic_stats['schedule_count'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
         
         return jsonify({
@@ -241,7 +241,7 @@ def get_cached_stats(current_user):
         # 캐시가 없으면 새로 계산
         stats = {
             'total_users': User.query.count(),
-            'total_orders': RestaurantOrder.query.count(),
+            'total_orders': your_programOrder.query.count(),
             'total_schedules': Schedule.query.count(),
             'total_attendance': Attendance.query.count()
         }
@@ -249,12 +249,12 @@ def get_cached_stats(current_user):
         # 권한별 필터 적용
         if current_user.role == 'store_manager':
             stats['total_users'] = User.query.filter_by(branch_id=current_user.branch_id).count()
-            stats['total_orders'] = RestaurantOrder.query.filter_by(store_id=current_user.branch_id).count()
+            stats['total_orders'] = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
             stats['total_schedules'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
             stats['total_attendance'] = Attendance.query.filter_by(user_id=current_user.id).count()
         elif current_user.role == 'brand_manager':
             stats['total_users'] = User.query.filter_by(branch_id=current_user.branch_id).count()
-            stats['total_orders'] = RestaurantOrder.query.filter_by(store_id=current_user.branch_id).count()
+            stats['total_orders'] = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
             stats['total_schedules'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
             stats['total_attendance'] = Attendance.query.filter_by(user_id=current_user.id).count()
         

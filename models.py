@@ -1,4 +1,4 @@
-import re
+﻿import re
 from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Any
@@ -1218,7 +1218,7 @@ class StockMovement(db.Model):
     before_stock = db.Column(db.Integer, nullable=False)  # 변동 전 재고
     after_stock = db.Column(db.Integer, nullable=False)  # 변동 후 재고
     reason = db.Column(db.String(200))  # 변동 사유
-    reference_type = db.Column(db.String(20))  # 참조 타입 (order, restaurant_order, manual)
+    reference_type = db.Column(db.String(20))  # 참조 타입 (order, your_program_order, manual)
     reference_id = db.Column(db.Integer)  # 참조 ID
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
@@ -1659,10 +1659,10 @@ class FeedbackIssue(db.Model):
         return f"<FeedbackIssue {self.title}>"
 
 
-class RestaurantOrder(db.Model):
+class your_programOrder(db.Model):
     """레스토랑 주문 처리 시간 측정 모델"""
 
-    __tablename__ = "restaurant_orders"
+    __tablename__ = "your_program_orders"
     id = db.Column(db.Integer, primary_key=True)
     order_number = db.Column(
         db.String(50), unique=True, nullable=False, index=True
@@ -1700,21 +1700,21 @@ class RestaurantOrder(db.Model):
     stock_consumed = db.Column(db.Boolean, default=False)  # 재고 소비 처리 여부
 
     # 관계 설정
-    store = db.relationship("Branch", backref="restaurant_orders")
+    store = db.relationship("Branch", backref="your_program_orders")
     employee = db.relationship("User", backref="processed_orders")
 
     # 복합 인덱스 추가
     __table_args__ = (
-        db.Index("idx_restaurant_order_store_status", "store_id", "status"),
-        db.Index("idx_restaurant_order_employee_date", "employee_id", "created_at"),
-        db.Index("idx_restaurant_order_processing_time", "processing_minutes"),
+        db.Index("idx_your_program_order_store_status", "store_id", "status"),
+        db.Index("idx_your_program_order_employee_date", "employee_id", "created_at"),
+        db.Index("idx_your_program_order_processing_time", "processing_minutes"),
         db.Index(
-            "idx_restaurant_order_created_completed", "created_at", "completed_at"
+            "idx_your_program_order_created_completed", "created_at", "completed_at"
         ),
     )
 
     def __repr__(self):
-        return f"<RestaurantOrder {self.order_number} {self.status}>"
+        return f"<your_programOrder {self.order_number} {self.status}>"
 
     @property
     def is_over_standard(self):
@@ -1844,13 +1844,13 @@ class Staff(db.Model):
     join_date = db.Column(db.Date, nullable=False)
     salary = db.Column(db.String(50))  # 급여 정보
     department = db.Column(db.String(100))
-    restaurant_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=False, index=True)
+    your_program_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)  # 시스템 사용자와 연결
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 관계 설정
-    restaurant = db.relationship("Branch", backref="staff")
+    your_program = db.relationship("Branch", backref="staff")
     user = db.relationship("User", backref="staff_profile")
     contracts = db.relationship("Contract", back_populates="staff", cascade="all, delete-orphan")
     health_certificates = db.relationship("HealthCertificate", back_populates="staff", cascade="all, delete-orphan")
@@ -2504,5 +2504,6 @@ class AutomationRule(db.Model):
     
     def __repr__(self):
         return f'<AutomationRule {self.name}>'
+
 
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Slack Webhook을 통한 알림 시스템"""
 
 import logging
@@ -40,8 +40,8 @@ def send_slack_alert(message: str, level: str = "INFO") -> bool:
 
     payload = {
         "text": formatted_message,
-        "username": "Restaurant System Bot",
-        "icon_emoji": ":restaurant:",
+        "username": "your_program System Bot",
+        "icon_emoji": ":your_program:",
     }
 
     try:
@@ -221,3 +221,4 @@ def send_slack_alert_if_prod(message: str, level: str = "INFO") -> bool:
     if os.getenv("FLASK_ENV") == "production":
         return send_slack_alert(message, level)
     return False
+

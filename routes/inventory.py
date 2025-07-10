@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify, render_template, request
+﻿from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
-from models import db, InventoryItem, StockMovement, Order, RestaurantOrder, User, Branch
+from models import db, InventoryItem, StockMovement, Order, your_programOrder, User, Branch
 import json
 
 inventory_bp = Blueprint('inventory', __name__)
@@ -372,7 +372,7 @@ def consume_stock():
                 before_stock=old_stock,
                 after_stock=inventory_item.current_stock,
                 reason=f'주문 처리 (주문번호: {order_id})',
-                reference_type='restaurant_order',
+                reference_type='your_program_order',
                 reference_id=order_id,
                 created_by=current_user.id
             )

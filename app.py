@@ -1,4 +1,4 @@
-import os
+﻿import os
 from datetime import date, datetime, timedelta
 
 import click
@@ -191,24 +191,32 @@ def index():
 
 @app.route("/dashboard")
 def dashboard():
-    """대시보드 페이지 - 역할별 리다이렉트"""
-    # 로그인된 사용자가 있으면 역할별 대시보드로 리다이렉트
-    if current_user.is_authenticated:
-        if current_user.role == "super_admin":
-            return redirect("/super-admin")
-        elif current_user.role == "admin":
-            return redirect("/admin-dashboard")
-        elif current_user.role == "manager":
-            return redirect("/manager-dashboard")
-        elif current_user.role == "employee":
-            return redirect("/employee-dashboard")
-        elif current_user.role == "teamlead":
-            return redirect("/teamlead-dashboard")
-        else:
-            return redirect("/super-admin")  # 기본값
+    """대시보드 페이지 - 계층별 권한에 따른 자동 분기"""
+    if not current_user.is_authenticated:
+        return redirect("/login")
     
-    # 로그인되지 않은 경우 로그인 페이지로 리다이렉트
-    return redirect("/auth/login")
+    # 계층별 대시보드 분기 처리
+    if current_user.role == "super_admin":
+        # 최고관리자: 업종별 본사/최고관리자 대시보드
+        return redirect("/super-admin")
+    elif current_user.role == "admin":
+        # 관리자: 브랜드 관리자 대시보드
+        return redirect("/admin-dashboard")
+    elif current_user.role == "brand_manager":
+        # 브랜드 관리자: 매장 관리자 대시보드
+        return redirect("/brand-manager-dashboard")
+    elif current_user.role == "store_manager":
+        # 매장 관리자: 직원 관리 대시보드
+        return redirect("/store-manager-dashboard")
+    elif current_user.role == "manager":
+        # 매장관리자: 일반 관리 대시보드
+        return redirect("/manager-dashboard")
+    elif current_user.role == "employee":
+        # 직원: 직원 대시보드
+        return redirect("/employee-dashboard")
+    else:
+        # 기본 직원 대시보드
+        return redirect("/employee-dashboard")
 
 @app.route("/api/dashboard")
 def api_dashboard():
@@ -1404,7 +1412,7 @@ def create_admin(username, password):
         username=username,
         password_hash=hashed_password,
         role='admin',
-        email=f"{username}@restaurant.com",
+        email=f"{username}@your_program.com",
         name=username,
         status='approved'
     )
@@ -1566,6 +1574,30 @@ def employee_dashboard():
 def teamlead_dashboard():
     """팀리드 대시보드 - 프론트엔드로 리다이렉트"""
     return redirect("http://192.168.45.44:3000/teamlead-dashboard")
+
+@app.route("/brand-manager-dashboard")
+def brand_manager_dashboard():
+    """브랜드 관리자 대시보드 - 매장 관리"""
+    if not current_user.is_authenticated:
+        return redirect("/login")
+    
+    if current_user.role not in ["brand_manager", "admin", "super_admin"]:
+        flash("접근 권한이 없습니다.", "error")
+        return redirect("/dashboard")
+    
+    return redirect("http://192.168.45.44:3000/brand-manager-dashboard")
+
+@app.route("/store-manager-dashboard")
+def store_manager_dashboard():
+    """매장 관리자 대시보드 - 직원 관리"""
+    if not current_user.is_authenticated:
+        return redirect("/login")
+    
+    if current_user.role not in ["store_manager", "brand_manager", "admin", "super_admin"]:
+        flash("접근 권한이 없습니다.", "error")
+        return redirect("/dashboard")
+    
+    return redirect("http://192.168.45.44:3000/store-manager-dashboard")
 
 # 최고 관리자 API 엔드포인트들
 @app.route("/api/admin/dashboard-stats")
@@ -2172,6 +2204,11 @@ def momentjs():
     from datetime import datetime
     return datetime.now()
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "healthy"})
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
+

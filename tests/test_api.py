@@ -2,7 +2,6 @@ import pytest
 import json
 from app import app, db
 from models import User
-from werkzeug.security import generate_password_hash
 
 @pytest.fixture
 def client():
@@ -27,7 +26,7 @@ def auth_headers():
 def test_user():
     """테스트 사용자 생성 (브랜드도 함께 생성)"""
     from models import Brand, db
-    brand = Brand(name="테스트브랜드", status="active")
+    brand = Brand(name="테스트브랜드", code="test_brand", status="active")
     db.session.add(brand)
     db.session.commit()
     user = User()
@@ -88,7 +87,7 @@ class TestUserManagementAPI:
     def test_get_users_success(self, client, auth_headers):
         """사용자 목록 조회 성공 테스트 (client context 내에서 모든 작업)"""
         from models import Brand, User, db
-        brand = Brand(name="테스트브랜드", status="active")
+        brand = Brand(name="테스트브랜드", code="test_brand_2", status="active")
         db.session.add(brand)
         db.session.commit()
         user = User()

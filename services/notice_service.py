@@ -1,52 +1,19 @@
-from models import Notice, NoticeHistory, db
+from models import Notice, db
+from datetime import datetime
 
 
-def update_notice(notice_id, data, file, editor_id):
-    """
-    공지사항을 수정하고 이력을 기록합니다.
-    :param notice_id: 수정할 공지사항 ID
-    :param data: 수정할 데이터 (dict)
-    :param file: 업로드된 파일 객체
-    :param editor_id: 수정자 ID
-    :return: 수정된 Notice 객체 또는 None
-    """
-    notice = Notice.query.get(notice_id)
-    if not notice:
-        return None
-
-    # 1. 변경 이력 저장
-    history = NoticeHistory(
-        notice_id=notice.id,
-        editor_id=editor_id,
-        before_title=notice.title,
-        before_content=notice.content,
-        before_file_path=notice.file_path,
-        before_file_type=notice.file_type,
-        action="edit",
-    )
-    db.session.add(history)
-
-    # 2. 실제 데이터 수정
-    notice.title = data.get("title", notice.title)
-    notice.content = data.get("content", notice.content)
-    notice.category = data.get("category", notice.category)
-
-    # 3. 파일 처리
-    if file and file.filename != "":
-        from utils.file_utils import delete_file, save_file
-
-        # 기존 파일 삭제
-        if notice.file_path:
-            delete_file(notice.file_path)
-
-        # 새 파일 저장
-        file_path, file_type = save_file(file)
-        notice.file_path = file_path
-        notice.file_type = file_type
-
-    db.session.commit()
-
-    return notice
+def update_notice(notice_id, title, content, category=None):
+    """공지사항 수정"""
+    notice = Notice.query.filter_by(id=notice_id).first()
+    if notice:
+        notice.title = title
+        notice.content = content
+        if category:
+            notice.category = category
+        notice.updated_at = datetime.utcnow()
+        db.session.commit()
+        return notice
+    return None
 
 def create_notice_for_event(title, content, type, priority, author_id, target_audience=None, category=None):
     """
@@ -60,12 +27,11 @@ def create_notice_for_event(title, content, type, priority, author_id, target_au
     :param category: 카테고리(발주/스케줄/재고 등, 옵션)
     :return: 생성된 Notice 객체
     """
-    notice = Notice(
-        title=title,
-        content=content,
-        category=category,
-        author_id=author_id,
-    )
+    notice = Notice()
+    notice.title = title
+    notice.content = content
+    notice.category = category
+    notice.author_id = author_id
     # type, priority, target_audience 등은 Notice 모델에 따라 커스텀 필드로 추가 필요시 확장
     db.session.add(notice)
     db.session.commit()

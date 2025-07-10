@@ -1,4 +1,4 @@
-import json
+﻿import json
 import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -76,8 +76,8 @@ class NotificationService:
                         "object_type": "text",
                         "text": message,
                         "link": {
-                            "web_url": "https://your-restaurant-app.com",
-                            "mobile_web_url": "https://your-restaurant-app.com",
+                            "web_url": "https://your-your_program-app.com",
+                            "mobile_web_url": "https://your-your_program-app.com",
                         },
                     }
                 )
@@ -251,7 +251,7 @@ def notify_approval_result(user, approved):
 회원가입이 승인되었습니다!
 
 이제 시스템에 로그인하여 사용하실 수 있습니다.
-로그인: https://your-restaurant-app.com/login
+로그인: https://your-your_program-app.com/login
 
 감사합니다.
 레스토랑 관리 시스템
@@ -569,3 +569,4 @@ def send_notification_simple(user, message):
     # 예: requests.post 또는 SMTP, 문자 발송 등
     logger.info(f"[알림] to {user.name or user.username}: {message}")
     return True
+

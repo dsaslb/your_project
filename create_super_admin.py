@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 슈퍼 관리자 계정 생성 스크립트
 """
@@ -37,7 +37,7 @@ def create_super_admin():
             admin.status = 'approved'
             admin.grade = 'ceo'
             admin.name = '슈퍼 관리자'
-            admin.email = 'admin@restaurant.com'
+            admin.email = 'admin@your_program.com'
             admin.position = '최고관리자'
             admin.department = '경영진'
             admin.set_password('admin123!')
@@ -47,7 +47,7 @@ def create_super_admin():
             # 새 슈퍼 관리자 계정 생성
             admin = User(
                 username='admin',
-                email='admin@restaurant.com',
+                email='admin@your_program.com',
                 name='슈퍼 관리자',
                 role='super_admin',
                 grade='ceo',

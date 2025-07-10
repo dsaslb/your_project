@@ -2,7 +2,6 @@ from functools import wraps
 
 import jwt
 from flask import current_app, jsonify, request
-from flask_login import login_required
 
 from models import User
 
@@ -23,7 +22,7 @@ def token_required(f):
             data = jwt.decode(
                 token, current_app.config["JWT_SECRET_KEY"], algorithms=["HS256"]
             )
-            current_user = User.query.get(data["user_id"])
+            current_user = User.query.filter_by(id=data["user_id"]).first()
         except Exception:
             return jsonify({"message": "Token is invalid!"}), 401
 
@@ -51,7 +50,7 @@ def admin_required(f):
             data = jwt.decode(
                 token, current_app.config["JWT_SECRET_KEY"], algorithms=["HS256"]
             )
-            current_user = User.query.get(data["user_id"])
+            current_user = User.query.filter_by(id=data["user_id"]).first()
         except Exception:
             return jsonify({"message": "Token is invalid!"}), 401
 
@@ -61,3 +60,28 @@ def admin_required(f):
         return f(current_user, *args, **kwargs)
 
     return decorated
+
+
+def get_current_user():
+    """현재 사용자 조회"""
+    import jwt
+    from flask import current_app
+    
+    token = None
+    if 'Authorization' in request.headers:
+        auth_header = request.headers['Authorization']
+        if auth_header.startswith('Bearer '):
+            token = auth_header[7:]
+        else:
+            token = auth_header
+    
+    if not token:
+        return None
+    
+    try:
+        jwt_secret = current_app.config.get("JWT_SECRET_KEY", "your-secret-key")
+        data = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+        current_user = User.query.filter_by(id=data["user_id"]).first()
+        return current_user
+    except:
+        return None

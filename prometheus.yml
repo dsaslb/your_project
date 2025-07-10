@@ -13,14 +13,14 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # 백엔드 API 모니터링
-  - job_name: 'restaurant-backend'
+  - job_name: 'your_program-backend'
     static_configs:
       - targets: ['backend:5000']
     metrics_path: '/api/metrics'
     scrape_interval: 30s
 
   # 프론트엔드 모니터링
-  - job_name: 'restaurant-frontend'
+  - job_name: 'your_program-frontend'
     static_configs:
       - targets: ['frontend:3000']
     metrics_path: '/api/metrics'

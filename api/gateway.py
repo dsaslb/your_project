@@ -1,13 +1,11 @@
 """
 API Gateway - 중앙화된 인증/인가 처리 및 역할 기반 라우팅
 """
-import json
 import time
 import logging
 from functools import wraps
-from flask import Blueprint, request, jsonify, current_app, g
-from flask_login import current_user, login_required
-from models import User, db
+from flask import Blueprint, request, jsonify, g
+from models import User
 import jwt
 from datetime import datetime, timedelta
 
@@ -63,7 +61,7 @@ def token_required(f):
         
         try:
             data = jwt.decode(token, jwt_secret, algorithms=["HS256"])
-            user = User.query.get(data['user_id'])
+            user = User.query.filter_by(id=data['user_id']).first()
             if not user:
                 return jsonify({'error': '유효하지 않은 토큰입니다'}), 401
             
@@ -76,7 +74,7 @@ def token_required(f):
             
         except jwt.ExpiredSignatureError:
             return jsonify({'error': '토큰이 만료되었습니다'}), 401
-        except jwt.InvalidTokenError as e:
+        except jwt.InvalidTokenError:
             return jsonify({'error': '유효하지 않은 토큰입니다'}), 401
     
     return decorated_function
@@ -188,7 +186,7 @@ def refresh_token():
     
     try:
         payload = jwt.decode(refresh_token, jwt_secret, algorithms=["HS256"])
-        user = User.query.get(payload.get('user_id'))
+        user = User.query.filter_by(id=payload.get('user_id')).first()
         
         if not user:
             return jsonify({'error': 'Invalid user'}), 401

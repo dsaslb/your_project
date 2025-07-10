@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 import time
 from datetime import date, datetime, timedelta
@@ -702,7 +702,7 @@ def check_document_expiry():
             staff = Staff.query.get(contract.staff_id)
             if staff:
                 # 관리자에게 알림 발송
-                managers = User.query.filter_by(role='manager', restaurant_id=staff.restaurant_id).all()
+                managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
                 for manager in managers:
                     notification = Notification(
                         user_id=manager.id,
@@ -730,7 +730,7 @@ def check_document_expiry():
             staff = Staff.query.get(health_cert.staff_id)
             if staff:
                 # 관리자에게 알림 발송
-                managers = User.query.filter_by(role='manager', restaurant_id=staff.restaurant_id).all()
+                managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
                 for manager in managers:
                     notification = Notification(
                         user_id=manager.id,
@@ -756,7 +756,7 @@ def check_document_expiry():
         for contract in expired_contracts:
             staff = Staff.query.get(contract.staff_id)
             if staff:
-                managers = User.query.filter_by(role='manager', restaurant_id=staff.restaurant_id).all()
+                managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
                 for manager in managers:
                     notification = Notification(
                         user_id=manager.id,
@@ -780,7 +780,7 @@ def check_document_expiry():
         for health_cert in expired_health_certs:
             staff = Staff.query.get(health_cert.staff_id)
             if staff:
-                managers = User.query.filter_by(role='manager', restaurant_id=staff.restaurant_id).all()
+                managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
                 for manager in managers:
                     notification = Notification(
                         user_id=manager.id,
@@ -895,3 +895,4 @@ def run_scheduler():
 
 if __name__ == "__main__":
     run_scheduler()
+

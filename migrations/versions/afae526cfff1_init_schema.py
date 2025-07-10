@@ -1,4 +1,4 @@
-"""init schema
+﻿"""init schema
 
 Revision ID: afae526cfff1
 Revises: 
@@ -882,7 +882,7 @@ def upgrade():
         batch_op.create_index('idx_reason_edit_date', ['edited_at'], unique=False)
         batch_op.create_index('idx_reason_edit_editor', ['edited_by'], unique=False)
 
-    op.create_table('restaurant_orders',
+    op.create_table('your_program_orders',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('order_number', sa.String(length=50), nullable=False),
     sa.Column('customer_name', sa.String(length=100), nullable=True),
@@ -902,18 +902,18 @@ def upgrade():
     sa.ForeignKeyConstraint(['store_id'], ['branches.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    with op.batch_alter_table('restaurant_orders', schema=None) as batch_op:
-        batch_op.create_index('idx_restaurant_order_created_completed', ['created_at', 'completed_at'], unique=False)
-        batch_op.create_index('idx_restaurant_order_employee_date', ['employee_id', 'created_at'], unique=False)
-        batch_op.create_index('idx_restaurant_order_processing_time', ['processing_minutes'], unique=False)
-        batch_op.create_index('idx_restaurant_order_store_status', ['store_id', 'status'], unique=False)
-        batch_op.create_index(batch_op.f('ix_restaurant_orders_completed_at'), ['completed_at'], unique=False)
-        batch_op.create_index(batch_op.f('ix_restaurant_orders_created_at'), ['created_at'], unique=False)
-        batch_op.create_index(batch_op.f('ix_restaurant_orders_employee_id'), ['employee_id'], unique=False)
-        batch_op.create_index(batch_op.f('ix_restaurant_orders_order_number'), ['order_number'], unique=True)
-        batch_op.create_index(batch_op.f('ix_restaurant_orders_processing_minutes'), ['processing_minutes'], unique=False)
-        batch_op.create_index(batch_op.f('ix_restaurant_orders_status'), ['status'], unique=False)
-        batch_op.create_index(batch_op.f('ix_restaurant_orders_store_id'), ['store_id'], unique=False)
+    with op.batch_alter_table('your_program_orders', schema=None) as batch_op:
+        batch_op.create_index('idx_your_program_order_created_completed', ['created_at', 'completed_at'], unique=False)
+        batch_op.create_index('idx_your_program_order_employee_date', ['employee_id', 'created_at'], unique=False)
+        batch_op.create_index('idx_your_program_order_processing_time', ['processing_minutes'], unique=False)
+        batch_op.create_index('idx_your_program_order_store_status', ['store_id', 'status'], unique=False)
+        batch_op.create_index(batch_op.f('ix_your_program_orders_completed_at'), ['completed_at'], unique=False)
+        batch_op.create_index(batch_op.f('ix_your_program_orders_created_at'), ['created_at'], unique=False)
+        batch_op.create_index(batch_op.f('ix_your_program_orders_employee_id'), ['employee_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_your_program_orders_order_number'), ['order_number'], unique=True)
+        batch_op.create_index(batch_op.f('ix_your_program_orders_processing_minutes'), ['processing_minutes'], unique=False)
+        batch_op.create_index(batch_op.f('ix_your_program_orders_status'), ['status'], unique=False)
+        batch_op.create_index(batch_op.f('ix_your_program_orders_store_id'), ['store_id'], unique=False)
 
     op.create_table('schedule',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -951,17 +951,17 @@ def upgrade():
     sa.Column('join_date', sa.Date(), nullable=False),
     sa.Column('salary', sa.String(length=50), nullable=True),
     sa.Column('department', sa.String(length=100), nullable=True),
-    sa.Column('restaurant_id', sa.Integer(), nullable=False),
+    sa.Column('your_program_id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['restaurant_id'], ['branches.id'], ),
+    sa.ForeignKeyConstraint(['your_program_id'], ['branches.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('staff', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_staff_created_at'), ['created_at'], unique=False)
-        batch_op.create_index(batch_op.f('ix_staff_restaurant_id'), ['restaurant_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_staff_your_program_id'), ['your_program_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_staff_status'), ['status'], unique=False)
         batch_op.create_index(batch_op.f('ix_staff_user_id'), ['user_id'], unique=False)
 
@@ -1352,7 +1352,7 @@ def downgrade():
     with op.batch_alter_table('staff', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_staff_user_id'))
         batch_op.drop_index(batch_op.f('ix_staff_status'))
-        batch_op.drop_index(batch_op.f('ix_staff_restaurant_id'))
+        batch_op.drop_index(batch_op.f('ix_staff_your_program_id'))
         batch_op.drop_index(batch_op.f('ix_staff_created_at'))
 
     op.drop_table('staff')
@@ -1363,20 +1363,20 @@ def downgrade():
         batch_op.drop_index('idx_schedule_branch_id')
 
     op.drop_table('schedule')
-    with op.batch_alter_table('restaurant_orders', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_restaurant_orders_store_id'))
-        batch_op.drop_index(batch_op.f('ix_restaurant_orders_status'))
-        batch_op.drop_index(batch_op.f('ix_restaurant_orders_processing_minutes'))
-        batch_op.drop_index(batch_op.f('ix_restaurant_orders_order_number'))
-        batch_op.drop_index(batch_op.f('ix_restaurant_orders_employee_id'))
-        batch_op.drop_index(batch_op.f('ix_restaurant_orders_created_at'))
-        batch_op.drop_index(batch_op.f('ix_restaurant_orders_completed_at'))
-        batch_op.drop_index('idx_restaurant_order_store_status')
-        batch_op.drop_index('idx_restaurant_order_processing_time')
-        batch_op.drop_index('idx_restaurant_order_employee_date')
-        batch_op.drop_index('idx_restaurant_order_created_completed')
+    with op.batch_alter_table('your_program_orders', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_your_program_orders_store_id'))
+        batch_op.drop_index(batch_op.f('ix_your_program_orders_status'))
+        batch_op.drop_index(batch_op.f('ix_your_program_orders_processing_minutes'))
+        batch_op.drop_index(batch_op.f('ix_your_program_orders_order_number'))
+        batch_op.drop_index(batch_op.f('ix_your_program_orders_employee_id'))
+        batch_op.drop_index(batch_op.f('ix_your_program_orders_created_at'))
+        batch_op.drop_index(batch_op.f('ix_your_program_orders_completed_at'))
+        batch_op.drop_index('idx_your_program_order_store_status')
+        batch_op.drop_index('idx_your_program_order_processing_time')
+        batch_op.drop_index('idx_your_program_order_employee_date')
+        batch_op.drop_index('idx_your_program_order_created_completed')
 
-    op.drop_table('restaurant_orders')
+    op.drop_table('your_program_orders')
     with op.batch_alter_table('reason_edit_logs', schema=None) as batch_op:
         batch_op.drop_index('idx_reason_edit_editor')
         batch_op.drop_index('idx_reason_edit_date')
@@ -1663,3 +1663,4 @@ def downgrade():
 
     op.drop_table('brands')
     # ### end Alembic commands ###
+
