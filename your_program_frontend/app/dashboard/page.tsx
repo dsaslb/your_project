@@ -3,6 +3,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { 
   Users, 
   TrendingUp, 
@@ -15,6 +16,14 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
+  );
+}
+
+function DashboardContent() {
   const stats = [
     {
       title: "총 매장 수",

@@ -5,14 +5,12 @@
 
 import os
 import sys
-from datetime import datetime
 
 # 프로젝트 루트 디렉토리를 Python 경로에 추가
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import app, db
-from models import User, Branch
-from werkzeug.security import generate_password_hash
+from models import User
 
 def create_test_users():
     """테스트용 사용자 계정 생성"""

@@ -1,0 +1,107 @@
+{
+  "name": "레스토랑 관리",
+  "version": "1.0.0",
+  "description": "레스토랑 업종 전용 관리 기능",
+  "author": "Your Program Team",
+  "category": "restaurant",
+  "dependencies": [],
+  "permissions": ["restaurant_management"],
+  "enabled": true,
+  "created_at": "2024-12-01T00:00:00Z",
+  "updated_at": "2024-12-01T00:00:00Z",
+  "config": {
+    "auto_order": true,
+    "inventory_alert_threshold": 10,
+    "order_timeout": 30,
+    "payment_methods": "card"
+  },
+  "routes": [
+    {
+      "path": "/menu",
+      "methods": ["GET", "POST"],
+      "handler": "handle_menu",
+      "auth_required": true,
+      "roles": ["admin", "manager"],
+      "description": "메뉴 관리 API"
+    },
+    {
+      "path": "/orders",
+      "methods": ["GET", "POST", "PUT"],
+      "handler": "handle_orders",
+      "auth_required": true,
+      "roles": ["admin", "manager", "employee"],
+      "description": "주문 관리 API"
+    },
+    {
+      "path": "/inventory",
+      "methods": ["GET", "POST", "PUT"],
+      "handler": "handle_inventory",
+      "auth_required": true,
+      "roles": ["admin", "manager"],
+      "description": "재고 관리 API"
+    }
+  ],
+  "menus": [
+    {
+      "title": "메뉴 관리",
+      "path": "/restaurant/menu",
+      "icon": "utensils",
+      "parent": "restaurant",
+      "roles": ["admin", "manager"],
+      "order": 1
+    },
+    {
+      "title": "주문 관리",
+      "path": "/restaurant/orders",
+      "icon": "shopping-cart",
+      "parent": "restaurant",
+      "roles": ["admin", "manager", "employee"],
+      "order": 2,
+      "badge": "New"
+    },
+    {
+      "title": "재고 관리",
+      "path": "/restaurant/inventory",
+      "icon": "package",
+      "parent": "restaurant",
+      "roles": ["admin", "manager"],
+      "order": 3
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "auto_order",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "description": "자동 주문 처리 활성화"
+    },
+    {
+      "key": "inventory_alert_threshold",
+      "type": "number",
+      "default": 10,
+      "required": false,
+      "description": "재고 부족 알림 임계값"
+    },
+    {
+      "key": "order_timeout",
+      "type": "number",
+      "default": 30,
+      "required": false,
+      "description": "주문 타임아웃 시간(분)"
+    },
+    {
+      "key": "payment_methods",
+      "type": "select",
+      "default": "card",
+      "required": false,
+      "description": "결제 방법",
+      "options": ["card", "cash", "mobile", "all"]
+    }
+  ],
+  "db_migrations": [
+    "001_create_menu_table.sql",
+    "002_create_orders_table.sql",
+    "003_create_inventory_table.sql"
+  ]
+} 

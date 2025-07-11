@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급 분석 대시보드 - Your Program</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">
+                            <i class="fas fa-chart-line mr-2 text-blue-600"></i>
+                            고급 분석 대시보드
+                        </h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="refreshBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>새로고침
+                        </button>
+                        <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-download mr-2"></i>내보내기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- KPI 카드 섹션 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- 매출 KPI -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">오늘 매출</p>
+                            <p id="todayRevenue" class="text-2xl font-bold text-gray-900">₩0</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <i class="fas fa-dollar-sign text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <span id="revenueGrowth" class="text-sm text-green-600">+0%</span>
+                        <span class="text-sm text-gray-500">어제 대비</span>
+                    </div>
+                </div>
+
+                <!-- 주문 KPI -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">오늘 주문</p>
+                            <p id="todayOrders" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <i class="fas fa-shopping-cart text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <span id="orderGrowth" class="text-sm text-green-600">+0%</span>
+                        <span class="text-sm text-gray-500">어제 대비</span>
+                    </div>
+                </div>
+
+                <!-- 고객 KPI -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">오늘 고객</p>
+                            <p id="todayCustomers" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                        <div class="bg-purple-100 p-3 rounded-full">
+                            <i class="fas fa-users text-purple-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <span id="customerGrowth" class="text-sm text-green-600">+0%</span>
+                        <span class="text-sm text-gray-500">어제 대비</span>
+                    </div>
+                </div>
+
+                <!-- 만족도 KPI -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">고객 만족도</p>
+                            <p id="customerSatisfaction" class="text-2xl font-bold text-gray-900">0.0</p>
+                        </div>
+                        <div class="bg-yellow-100 p-3 rounded-full">
+                            <i class="fas fa-star text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center">
+                            <div class="flex text-yellow-400">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 차트 섹션 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- 매출 트렌드 차트 -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">매출 트렌드</h3>
+                    <div class="h-64">
+                        <canvas id="salesTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 고객 세그먼트 차트 -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">고객 세그먼트</h3>
+                    <div class="h-64">
+                        <canvas id="customerSegmentsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 추가 차트 섹션 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- 메뉴 성과 차트 -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">메뉴 성과</h3>
+                    <div class="h-64">
+                        <canvas id="menuPerformanceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 시간대별 고객 유입 차트 -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">시간대별 고객 유입</h3>
+                    <div class="h-64">
+                        <canvas id="hourlyTrafficChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 실시간 현황 섹션 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">실시간 현황</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- 주문 현황 -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h4 class="font-medium text-gray-900 mb-3">주문 현황</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">대기 중</span>
+                                <span id="pendingOrders" class="font-medium">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">조리 중</span>
+                                <span id="preparingOrders" class="font-medium">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">완료</span>
+                                <span id="completedOrders" class="font-medium">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 시스템 상태 -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h4 class="font-medium text-gray-900 mb-3">시스템 상태</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">POS 시스템</span>
+                                <span id="posStatus" class="text-green-600 text-sm">온라인</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">주방 디스플레이</span>
+                                <span id="kitchenStatus" class="text-green-600 text-sm">온라인</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">결제 시스템</span>
+                                <span id="paymentStatus" class="text-green-600 text-sm">온라인</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 현재 고객 -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h4 class="font-medium text-gray-900 mb-3">현재 고객</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">현재 고객</span>
+                                <span id="currentCustomers" class="font-medium">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">대기 고객</span>
+                                <span id="waitingCustomers" class="font-medium">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">피크 시간</span>
+                                <span id="peakCustomers" class="font-medium">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 차트 객체들
+        let salesTrendChart, customerSegmentsChart, menuPerformanceChart, hourlyTrafficChart;
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadKPIData();
+            loadRealtimeData();
+            loadSalesTrendChart();
+            loadCustomerSegmentsChart();
+            loadMenuPerformanceChart();
+            loadHourlyTrafficChart();
+        });
+
+        // 새로고침 버튼
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            loadKPIData();
+            loadRealtimeData();
+        });
+
+        // 내보내기 버튼
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            exportAnalyticsData();
+        });
+
+        // KPI 데이터 로드
+        async function loadKPIData() {
+            try {
+                const response = await axios.get('/api/analytics/dashboard/kpi');
+                const data = response.data.kpi_data;
+                
+                // 매출 데이터
+                document.getElementById('todayRevenue').textContent = 
+                    '₩' + data.revenue.today_revenue.toLocaleString();
+                document.getElementById('revenueGrowth').textContent = 
+                    '+' + (data.revenue.revenue_growth * 100).toFixed(1) + '%';
+                
+                // 주문 데이터
+                document.getElementById('todayOrders').textContent = 
+                    data.orders.today_orders.toLocaleString();
+                document.getElementById('orderGrowth').textContent = 
+                    '+' + (data.orders.order_growth * 100).toFixed(1) + '%';
+                
+                // 고객 데이터
+                document.getElementById('todayCustomers').textContent = 
+                    data.customers.today_customers.toLocaleString();
+                document.getElementById('customerGrowth').textContent = 
+                    '+' + (data.customers.customer_satisfaction * 100).toFixed(1) + '%';
+                
+                // 만족도 데이터
+                document.getElementById('customerSatisfaction').textContent = 
+                    data.customers.customer_satisfaction.toFixed(1);
+                
+            } catch (error) {
+                console.error('KPI 데이터 로드 실패:', error);
+            }
+        }
+
+        // 실시간 데이터 로드
+        async function loadRealtimeData() {
+            try {
+                const response = await axios.get('/api/analytics/dashboard/realtime');
+                const data = response.data.realtime_data;
+                
+                // 주문 현황
+                document.getElementById('pendingOrders').textContent = data.orders.pending_orders;
+                document.getElementById('preparingOrders').textContent = data.orders.preparing_orders;
+                document.getElementById('completedOrders').textContent = data.orders.completed_orders;
+                
+                // 시스템 상태
+                document.getElementById('posStatus').textContent = data.system_status.pos_system;
+                document.getElementById('kitchenStatus').textContent = data.system_status.kitchen_display;
+                document.getElementById('paymentStatus').textContent = data.system_status.payment_system;
+                
+                // 현재 고객
+                document.getElementById('currentCustomers').textContent = data.customers.current_customers;
+                document.getElementById('waitingCustomers').textContent = data.customers.waiting_customers;
+                document.getElementById('peakCustomers').textContent = data.customers.peak_hour_customers;
+                
+            } catch (error) {
+                console.error('실시간 데이터 로드 실패:', error);
+            }
+        }
+
+        // 매출 트렌드 차트 로드
+        async function loadSalesTrendChart() {
+            try {
+                const response = await axios.get('/api/analytics/charts/sales-trend?days=30');
+                const data = response.data.chart_data;
+                
+                if (salesTrendChart) {
+                    salesTrendChart.destroy();
+                }
+                
+                const ctx = document.getElementById('salesTrendChart').getContext('2d');
+                salesTrendChart = new Chart(ctx, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '₩' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('매출 트렌드 차트 로드 실패:', error);
+            }
+        }
+
+        // 고객 세그먼트 차트 로드
+        async function loadCustomerSegmentsChart() {
+            try {
+                const response = await axios.get('/api/analytics/charts/customer-segments');
+                const data = response.data.chart_data;
+                
+                if (customerSegmentsChart) {
+                    customerSegmentsChart.destroy();
+                }
+                
+                const ctx = document.getElementById('customerSegmentsChart').getContext('2d');
+                customerSegmentsChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('고객 세그먼트 차트 로드 실패:', error);
+            }
+        }
+
+        // 메뉴 성과 차트 로드
+        async function loadMenuPerformanceChart() {
+            try {
+                const response = await axios.get('/api/analytics/charts/menu-performance');
+                const data = response.data.chart_data;
+                
+                if (menuPerformanceChart) {
+                    menuPerformanceChart.destroy();
+                }
+                
+                const ctx = document.getElementById('menuPerformanceChart').getContext('2d');
+                menuPerformanceChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('메뉴 성과 차트 로드 실패:', error);
+            }
+        }
+
+        // 시간대별 고객 유입 차트 로드
+        async function loadHourlyTrafficChart() {
+            try {
+                const response = await axios.get('/api/analytics/charts/hourly-traffic');
+                const data = response.data.chart_data;
+                
+                if (hourlyTrafficChart) {
+                    hourlyTrafficChart.destroy();
+                }
+                
+                const ctx = document.getElementById('hourlyTrafficChart').getContext('2d');
+                hourlyTrafficChart = new Chart(ctx, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('시간대별 고객 유입 차트 로드 실패:', error);
+            }
+        }
+
+        // 분석 데이터 내보내기
+        async function exportAnalyticsData() {
+            try {
+                const response = await axios.get('/api/analytics/export?type=summary&format=json');
+                const data = response.data.export_data;
+                
+                // JSON 파일로 다운로드
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `analytics_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                alert('분석 데이터가 성공적으로 내보내졌습니다.');
+                
+            } catch (error) {
+                console.error('데이터 내보내기 실패:', error);
+                alert('데이터 내보내기에 실패했습니다.');
+            }
+        }
+
+        // 30초마다 실시간 데이터 업데이트
+        setInterval(function() {
+            loadRealtimeData();
+        }, 30000);
+    </script>
+</body>
+</html> 

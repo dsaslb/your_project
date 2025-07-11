@@ -12,7 +12,7 @@ class TestAPILogin:
         session.commit()
         payload = {
             "username": admin_user.username,
-            "password": "a-very-secure-admin-password-123",
+            "password": "admin123",
         }
         resp = client.post("/api/auth/login", json=payload)
 
@@ -31,7 +31,7 @@ class TestAPILogin:
 
     def test_api_login_missing_username(self, client):
         """사용자명 누락 테스트"""
-        payload = {"password": "a-very-secure-admin-password-123"}
+        payload = {"password": "admin123"}
         resp = client.post("/api/auth/login", json=payload)
 
         assert resp.status_code == 400
@@ -72,7 +72,7 @@ class TestAPILogin:
         session.commit()
         payload = {
             "username": admin_user.username,
-            "password": "a-very-secure-admin-password-123",
+            "password": "admin123",
         }
         resp = client.post("/api/auth/login", json=payload)
 
@@ -89,7 +89,7 @@ class TestAPILogin:
         session.commit()
         payload = {
             "username": admin_user.username,
-            "password": "a-very-secure-admin-password-123",
+            "password": "admin123",
         }
 
         # 첫 번째 로그인

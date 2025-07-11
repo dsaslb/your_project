@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 from flask_login import login_required, current_user
 from models import Branch, User, Order, Notification, SystemLog
 from extensions import db
@@ -57,7 +57,11 @@ def update_user_status(user_id):
     user = User.query.get(user_id)
     if not user:
         return jsonify({'success': False, 'error': '사용자를 찾을 수 없습니다.'}), 404
+    
     data = request.json
+    if not data:
+        return jsonify({'success': False, 'error': '요청 데이터가 없습니다.'}), 400
+    
     new_status = data.get('status')
     if new_status not in ['approved', 'blocked', 'pending']:
         return jsonify({'success': False, 'error': '잘못된 상태 값'}), 400
@@ -81,4 +85,13 @@ def system_logs():
             'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'details': log.details if hasattr(log, 'details') else '',
         })
-    return jsonify({'success': True, 'logs': log_list}) 
+    return jsonify({'success': True, 'logs': log_list})
+
+# 4. 고급 분석 대시보드 페이지
+@admin_dashboard_api.route('/advanced-analytics')
+@login_required
+def advanced_analytics_page():
+    """고급 분석 대시보드 페이지"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': '권한이 없습니다.'}), 403
+    return render_template('admin/advanced_analytics_dashboard.html') 

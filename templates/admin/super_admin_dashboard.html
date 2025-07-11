@@ -463,8 +463,20 @@
 </head>
 <body>
     <div class="admin-header">
-        <h1><i class="fas fa-shield-alt"></i> 최고 관리자 대시보드</h1>
-        <p>시스템 전체 현황 및 관리 기능</p>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1><i class="fas fa-shield-alt"></i> 최고 관리자 대시보드</h1>
+                <p>시스템 전체 현황 및 관리 기능</p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <a href="http://192.168.45.44:3000/super-admin" target="_blank" style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 500; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.3);">
+                    <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>프론트엔드 접속
+                </a>
+                <a href="/auth/logout" style="background: rgba(255,255,255,0.1); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 500; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.2);">
+                    <i class="fas fa-sign-out-alt" style="margin-right: 0.5rem;"></i>로그아웃
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="container">
@@ -630,6 +642,13 @@
                         <h2 class="card-title"><i class="fas fa-bolt"></i> 빠른 액션</h2>
                     </div>
                     <div class="quick-actions">
+                        <a href="http://192.168.45.44:3000/super-admin" target="_blank" class="action-btn" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                            <div class="action-icon"><i class="fas fa-external-link-alt"></i></div>
+                            <div class="action-text">
+                                <div class="action-title">프론트엔드 대시보드</div>
+                                <div class="action-desc">Next.js 기반 현대적 UI</div>
+                            </div>
+                        </a>
                         <a href="/admin/staff-management?token=${token}" class="action-btn">
                             <div class="action-icon"><i class="fas fa-users"></i></div>
                             <div class="action-text">

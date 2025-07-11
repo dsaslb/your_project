@@ -4,10 +4,7 @@ import sys
 # Add the parent directory to sys.path to allow importing app
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import time
-
 import pytest
-import requests
 
 from app import app as flask_app
 from config import TestConfig
@@ -120,7 +117,7 @@ def admin_user(session):
     user.email = "admin@example.com"
     user.role = "admin"
     user.status = "approved"
-    user.set_password("a-very-secure-admin-password-123")
+    user.set_password("admin123")
     session.add(user)
     session.flush()
     return user
@@ -147,7 +144,7 @@ def admin_token(client, admin_user, session):
 
     login_payload = {
         "username": admin_user.username,
-        "password": "a-very-secure-admin-password-123",
+        "password": "admin123",
     }
     resp = client.post("/api/auth/login", json=login_payload)
 
@@ -180,7 +177,7 @@ def logged_in_admin_client(client, admin_user, session):
             "/auth/login",
             data={
                 "username": admin_user.username,
-                "password": "a-very-secure-admin-password-123",
+                "password": "admin123",
             },
             follow_redirects=True,
         )

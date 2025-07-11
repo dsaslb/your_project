@@ -153,7 +153,7 @@ class ApiClient {
   // 인증 관련 API
   async login(username: string, password: string) {
     try {
-      const response = await this.axiosInstance.post('/auth/login', {
+      const response = await this.axiosInstance.post('/api/security/auth/login', {
         username,
         password,
       }, {
@@ -162,10 +162,10 @@ class ApiClient {
         }
       });
       
-      const { access_token, refresh_token, user, redirect_to } = response.data;
-      this.tokenManager.setTokens(access_token, refresh_token);
+      const { token, user } = response.data;
+      this.tokenManager.setTokens(token, token); // JWT 토큰 사용
       
-      return { user, redirect_to };
+      return { user, redirect_to: user.role === 'admin' ? '/admin-dashboard' : '/dashboard' };
     } catch (error: any) {
       console.error('Login API error:', error);
       if (error.code === 'ERR_NETWORK' || error.response?.status >= 500) {
@@ -177,7 +177,7 @@ class ApiClient {
 
   async logout() {
     try {
-      await this.axiosInstance.post('/api/auth/logout');
+      await this.axiosInstance.post('/api/security/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

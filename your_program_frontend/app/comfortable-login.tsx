@@ -17,16 +17,42 @@ export default function ComfortableLoginPage() {
     
     try {
       if (username && password) {
-        // 실제 로그인 로직은 나중에 구현
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 1000)
+        // 실제 API 호출
+        const response = await fetch('http://localhost:5000/api/security/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: username,
+            password: password
+          })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          // 토큰을 로컬 스토리지에 저장
+          localStorage.setItem('token', data.token)
+          localStorage.setItem('user', JSON.stringify(data.user))
+          
+          // 권한에 따라 리다이렉트
+          if (data.user.role === 'admin') {
+            router.push("/admin-dashboard")
+          } else {
+            router.push("/dashboard")
+          }
+        } else {
+          setError(data.error || "로그인에 실패했습니다.")
+          setIsLoading(false)
+        }
       } else {
         setError("아이디와 비밀번호를 입력해주세요")
         setIsLoading(false)
       }
-    } catch {
-      setError("로그인에 실패했습니다. 다시 시도해주세요.")
+    } catch (error) {
+      console.error('Login error:', error)
+      setError("서버 연결에 실패했습니다. 다시 시도해주세요.")
       setIsLoading(false)
     }
   }

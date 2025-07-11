@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>플러그인 관리 - Your Program</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">플러그인 관리</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="scanPlugins" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                            플러그인 스캔
+                        </button>
+                        <button id="loadAllPlugins" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                            전체 로드
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">전체 플러그인</dt>
+                                    <dd id="totalPlugins" class="text-lg font-medium text-gray-900">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">활성화됨</dt>
+                                    <dd id="enabledPlugins" class="text-lg font-medium text-gray-900">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">로드됨</dt>
+                                    <dd id="loadedPlugins" class="text-lg font-medium text-gray-900">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-red-500 rounded-md flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">오류</dt>
+                                    <dd id="errorPlugins" class="text-lg font-medium text-gray-900">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plugins Table -->
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">플러그인 목록</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">시스템에 등록된 모든 플러그인을 관리합니다.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">플러그인</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">버전</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">카테고리</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">라우트</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pluginsTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- 플러그인 목록이 여기에 동적으로 로드됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Plugin Details Modal -->
+            <div id="pluginModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+                <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                    <div class="mt-3">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 id="modalTitle" class="text-lg font-medium text-gray-900">플러그인 상세 정보</h3>
+                            <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="modalContent" class="space-y-4">
+                            <!-- 플러그인 상세 정보가 여기에 로드됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 플러그인 관리 JavaScript
+        class PluginManager {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.loadPlugins();
+                this.bindEvents();
+            }
+
+            bindEvents() {
+                document.getElementById('scanPlugins').addEventListener('click', () => this.scanPlugins());
+                document.getElementById('loadAllPlugins').addEventListener('click', () => this.loadAllPlugins());
+                document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
+            }
+
+            async loadPlugins() {
+                try {
+                    const response = await fetch('/api/plugins');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.updateStats(data);
+                        this.renderPluginsTable(data.plugins);
+                    } else {
+                        this.showError('플러그인 목록을 불러오는데 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('플러그인 로드 오류:', error);
+                    this.showError('플러그인 목록을 불러오는데 실패했습니다.');
+                }
+            }
+
+            updateStats(data) {
+                document.getElementById('totalPlugins').textContent = data.total;
+                document.getElementById('enabledPlugins').textContent = data.enabled;
+                document.getElementById('loadedPlugins').textContent = data.loaded;
+                document.getElementById('errorPlugins').textContent = data.total - data.loaded;
+            }
+
+            renderPluginsTable(plugins) {
+                const tbody = document.getElementById('pluginsTableBody');
+                tbody.innerHTML = '';
+
+                plugins.forEach(plugin => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                        <span class="text-sm font-medium text-gray-700">${plugin.name.charAt(0)}</span>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">${plugin.name}</div>
+                                    <div class="text-sm text-gray-500">${plugin.description}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${plugin.version}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${plugin.category}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                plugin.enabled && plugin.loaded 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : plugin.enabled 
+                                        ? 'bg-yellow-100 text-yellow-800' 
+                                        : 'bg-red-100 text-red-800'
+                            }">
+                                ${plugin.enabled && plugin.loaded ? '활성' : plugin.enabled ? '비활성' : '오류'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${plugin.routes_count}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex space-x-2">
+                                <button onclick="pluginManager.showPluginDetails('${plugin.id}')" 
+                                        class="text-indigo-600 hover:text-indigo-900">상세</button>
+                                ${plugin.enabled 
+                                    ? `<button onclick="pluginManager.disablePlugin('${plugin.id}')" 
+                                         class="text-red-600 hover:text-red-900">비활성화</button>`
+                                    : `<button onclick="pluginManager.enablePlugin('${plugin.id}')" 
+                                         class="text-green-600 hover:text-green-900">활성화</button>`
+                                }
+                                <button onclick="pluginManager.reloadPlugin('${plugin.id}')" 
+                                        class="text-blue-600 hover:text-blue-900">재로드</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            async scanPlugins() {
+                try {
+                    const response = await fetch('/api/plugins/scan', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showSuccess(data.message);
+                        this.loadPlugins(); // 목록 새로고침
+                    } else {
+                        this.showError('플러그인 스캔에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('플러그인 스캔 오류:', error);
+                    this.showError('플러그인 스캔에 실패했습니다.');
+                }
+            }
+
+            async loadAllPlugins() {
+                try {
+                    const response = await fetch('/api/plugins/load-all', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showSuccess(data.message);
+                        this.loadPlugins(); // 목록 새로고침
+                    } else {
+                        this.showError('플러그인 일괄 로드에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('플러그인 로드 오류:', error);
+                    this.showError('플러그인 일괄 로드에 실패했습니다.');
+                }
+            }
+
+            async enablePlugin(pluginId) {
+                try {
+                    const response = await fetch(`/api/plugins/${pluginId}/enable`, { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showSuccess(data.message);
+                        this.loadPlugins(); // 목록 새로고침
+                    } else {
+                        this.showError(data.error || '플러그인 활성화에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('플러그인 활성화 오류:', error);
+                    this.showError('플러그인 활성화에 실패했습니다.');
+                }
+            }
+
+            async disablePlugin(pluginId) {
+                try {
+                    const response = await fetch(`/api/plugins/${pluginId}/disable`, { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showSuccess(data.message);
+                        this.loadPlugins(); // 목록 새로고침
+                    } else {
+                        this.showError(data.error || '플러그인 비활성화에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('플러그인 비활성화 오류:', error);
+                    this.showError('플러그인 비활성화에 실패했습니다.');
+                }
+            }
+
+            async reloadPlugin(pluginId) {
+                try {
+                    const response = await fetch(`/api/plugins/${pluginId}/reload`, { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showSuccess(data.message);
+                        this.loadPlugins(); // 목록 새로고침
+                    } else {
+                        this.showError(data.error || '플러그인 재로드에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('플러그인 재로드 오류:', error);
+                    this.showError('플러그인 재로드에 실패했습니다.');
+                }
+            }
+
+            async showPluginDetails(pluginId) {
+                try {
+                    const response = await fetch(`/api/plugins/${pluginId}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.renderPluginModal(data.plugin);
+                        this.openModal();
+                    } else {
+                        this.showError('플러그인 상세 정보를 불러오는데 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('플러그인 상세 정보 오류:', error);
+                    this.showError('플러그인 상세 정보를 불러오는데 실패했습니다.');
+                }
+            }
+
+            renderPluginModal(plugin) {
+                document.getElementById('modalTitle').textContent = plugin.config?.name || plugin.id;
+                
+                const content = document.getElementById('modalContent');
+                content.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-medium text-gray-900">기본 정보</h4>
+                            <dl class="mt-2 space-y-2">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">ID</dt>
+                                    <dd class="text-sm text-gray-900">${plugin.id}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">버전</dt>
+                                    <dd class="text-sm text-gray-900">${plugin.config?.version || 'N/A'}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">설명</dt>
+                                    <dd class="text-sm text-gray-900">${plugin.config?.description || 'N/A'}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">카테고리</dt>
+                                    <dd class="text-sm text-gray-900">${plugin.config?.category || 'N/A'}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-900">상태 정보</h4>
+                            <dl class="mt-2 space-y-2">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">활성화 상태</dt>
+                                    <dd class="text-sm text-gray-900">
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                            plugin.enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                        }">
+                                            ${plugin.enabled ? '활성화됨' : '비활성화됨'}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">로드 상태</dt>
+                                    <dd class="text-sm text-gray-900">
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                            plugin.loaded ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                        }">
+                                            ${plugin.loaded ? '로드됨' : '로드되지 않음'}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">라우트 수</dt>
+                                    <dd class="text-sm text-gray-900">${plugin.config?.routes?.length || 0}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">메뉴 수</dt>
+                                    <dd class="text-sm text-gray-900">${plugin.config?.menus?.length || 0}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                    ${plugin.config?.config ? `
+                        <div>
+                            <h4 class="font-medium text-gray-900">설정</h4>
+                            <pre class="mt-2 p-3 bg-gray-100 rounded text-sm overflow-auto">${JSON.stringify(plugin.config.config, null, 2)}</pre>
+                        </div>
+                    ` : ''}
+                `;
+            }
+
+            openModal() {
+                document.getElementById('pluginModal').classList.remove('hidden');
+            }
+
+            closeModal() {
+                document.getElementById('pluginModal').classList.add('hidden');
+            }
+
+            showSuccess(message) {
+                // 간단한 성공 메시지 표시
+                alert('성공: ' + message);
+            }
+
+            showError(message) {
+                // 간단한 오류 메시지 표시
+                alert('오류: ' + message);
+            }
+        }
+
+        // 플러그인 매니저 초기화
+        const pluginManager = new PluginManager();
+    </script>
+</body>
+</html> 

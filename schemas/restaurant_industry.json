@@ -1,0 +1,128 @@
+{
+  "schema_type": "industry",
+  "schema_id": "restaurant",
+  "schema_name": "레스토랑 업종",
+  "version": "1.0.0",
+  "created_at": "2024-12-01T00:00:00+00:00",
+  "updated_at": "2024-12-01T00:00:00+00:00",
+  "fields": [
+    {
+      "name": "restaurant_type",
+      "type": "select",
+      "label": "레스토랑 유형",
+      "required": true,
+      "default": "korean",
+      "options": ["korean", "western", "chinese", "japanese", "fusion", "fast_food", "cafe"],
+      "order": 1,
+      "category": "basic",
+      "description": "레스토랑의 주요 음식 유형"
+    },
+    {
+      "name": "seating_capacity",
+      "type": "number",
+      "label": "좌석 수",
+      "required": true,
+      "default": 50,
+      "validation": {
+        "min": 1,
+        "max": 1000
+      },
+      "order": 2,
+      "category": "basic",
+      "description": "레스토랑의 총 좌석 수"
+    },
+    {
+      "name": "average_price",
+      "type": "number",
+      "label": "평균 메뉴 가격",
+      "required": false,
+      "default": 15000,
+      "validation": {
+        "min": 1000,
+        "max": 100000
+      },
+      "order": 3,
+      "category": "pricing",
+      "description": "메인 메뉴의 평균 가격"
+    },
+    {
+      "name": "delivery_available",
+      "type": "boolean",
+      "label": "배달 서비스",
+      "required": false,
+      "default": false,
+      "order": 4,
+      "category": "service",
+      "description": "배달 서비스 제공 여부"
+    },
+    {
+      "name": "takeout_available",
+      "type": "boolean",
+      "label": "포장 서비스",
+      "required": false,
+      "default": true,
+      "order": 5,
+      "category": "service",
+      "description": "포장 서비스 제공 여부"
+    },
+    {
+      "name": "reservation_required",
+      "type": "boolean",
+      "label": "예약 필수",
+      "required": false,
+      "default": false,
+      "order": 6,
+      "category": "service",
+      "description": "예약이 필수인지 여부"
+    },
+    {
+      "name": "opening_hours",
+      "type": "json",
+      "label": "영업 시간",
+      "required": true,
+      "default": {
+        "monday": {"open": "09:00", "close": "22:00"},
+        "tuesday": {"open": "09:00", "close": "22:00"},
+        "wednesday": {"open": "09:00", "close": "22:00"},
+        "thursday": {"open": "09:00", "close": "22:00"},
+        "friday": {"open": "09:00", "close": "23:00"},
+        "saturday": {"open": "10:00", "close": "23:00"},
+        "sunday": {"open": "10:00", "close": "21:00"}
+      },
+      "order": 7,
+      "category": "operation",
+      "description": "요일별 영업 시간"
+    },
+    {
+      "name": "payment_methods",
+      "type": "select",
+      "label": "결제 방법",
+      "required": true,
+      "default": "all",
+      "options": ["cash", "card", "mobile", "all"],
+      "order": 8,
+      "category": "payment",
+      "description": "지원하는 결제 방법"
+    },
+    {
+      "name": "kitchen_equipment",
+      "type": "json",
+      "label": "주방 장비",
+      "required": false,
+      "default": [],
+      "order": 9,
+      "category": "equipment",
+      "description": "주방에 설치된 장비 목록"
+    },
+    {
+      "name": "special_dietary_options",
+      "type": "json",
+      "label": "특별 식단 옵션",
+      "required": false,
+      "default": [],
+      "order": 10,
+      "category": "menu",
+      "description": "채식, 알레르기 대응 등 특별 식단 옵션"
+    }
+  ]
+} 
