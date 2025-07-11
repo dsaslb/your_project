@@ -1,5 +1,9 @@
 ﻿// Theme Provider for Flask your_program Management System
-class ThemeProvider {
+// 중복 로드 방지
+if (typeof window.BackendThemeProvider !== 'undefined') {
+  console.warn('BackendThemeProvider already loaded, skipping...');
+} else {
+class BackendThemeProvider {
   constructor() {
     this.theme = this.getStoredTheme();
     this.systemTheme = this.getSystemTheme();
@@ -240,8 +244,18 @@ if (document.head) {
 let themeProvider = null;
 
 function initThemeProvider() {
+  // 프론트엔드 환경이나 Next.js 환경에서는 백엔드 테마 시스템을 비활성화
+  if (window.location.hostname === 'localhost' && (window.location.port === '3000' || window.location.port === '')) {
+    return;
+  }
+  
+  // 이미 다른 테마 시스템이 로드되어 있는지 확인
+  if (window.__NEXT_DATA__ || document.querySelector('[data-nextjs-router]')) {
+    return;
+  }
+  
   if (!themeProvider) {
-    themeProvider = new ThemeProvider();
+    themeProvider = new BackendThemeProvider();
     window.themeProvider = themeProvider;
   }
 }
@@ -255,5 +269,9 @@ if (document.readyState === 'loading') {
 
 // 모듈 내보내기 (ES6 모듈 지원)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ThemeProvider;
+  module.exports = BackendThemeProvider;
+}
+
+// 전역에 클래스 등록
+window.BackendThemeProvider = BackendThemeProvider;
 } 

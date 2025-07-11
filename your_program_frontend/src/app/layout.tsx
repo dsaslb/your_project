@@ -7,6 +7,7 @@ import OfflineSyncIndicator from "../components/OfflineSyncIndicator";
 import PWAInstallPrompt from "../components/PWAInstallPrompt";
 import Sidebar from '@/components/Sidebar'
 import RealTimeSync from '@/components/RealTimeSync'
+import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -32,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
@@ -41,16 +42,23 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="레스토랑 관리" />
       </head>
       <body className={inter.className}>
-        <RealTimeSync />
-        <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-          <Sidebar />
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
-        </div>
-        <NotificationCenter />
-        <OfflineSyncIndicator />
-        <PWAInstallPrompt />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <RealTimeSync />
+          <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+            <Sidebar />
+            <main className="flex-1 overflow-auto">
+              {children}
+            </main>
+          </div>
+          <NotificationCenter />
+          <OfflineSyncIndicator />
+          <PWAInstallPrompt />
+        </ThemeProvider>
       </body>
     </html>
   )

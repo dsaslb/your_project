@@ -63,6 +63,14 @@ export default function LoginPage() {
 
   const userRoles: UserRole[] = [
     {
+      id: "super-admin",
+      name: "슈퍼 관리자",
+      description: "시스템 전체 관리 및 설정",
+      icon: <Shield className="h-6 w-6" />,
+      color: "from-pink-600 to-pink-700",
+      route: "/super-admin"
+    },
+    {
       id: "brand-admin",
       name: "브랜드 관리자",
       description: "전체 매장 관리 및 통계",

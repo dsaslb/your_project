@@ -1551,9 +1551,15 @@ def api_dashboard_stats_jwt():
 
 
 @app.route("/super-admin")
+@login_required
 def super_admin_dashboard():
-    """최고 관리자 대시보드 - 프론트엔드로 리다이렉트"""
-    return redirect("http://192.168.45.44:3000/super-admin")
+    """최고 관리자 대시보드"""
+    if current_user.role != 'super_admin':
+        flash("최고 관리자 권한이 필요합니다.", "error")
+        return redirect("/dashboard")
+    
+    # 슈퍼관리자 대시보드 템플릿 렌더링
+    return render_template("admin/super_admin_dashboard.html", user=current_user)
 
 @app.route("/admin-dashboard")
 def admin_dashboard_route():
