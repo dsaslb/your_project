@@ -1,5 +1,5 @@
 // API 유틸리티 함수들
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // 백엔드 연결 상태 확인
 export const checkBackendConnection = async (): Promise<boolean> => {

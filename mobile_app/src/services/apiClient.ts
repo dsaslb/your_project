@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-netinfo/netinfo';
 
 // API 기본 설정
-const API_BASE_URL = 'http://192.168.45.44:5000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 // Axios 인스턴스 생성
 export const apiClient = axios.create({
