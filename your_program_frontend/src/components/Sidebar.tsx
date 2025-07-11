@@ -166,6 +166,11 @@ export default function Sidebar() {
               roles: ['super_admin']
             },
             {
+              title: '알림 관리',
+              href: '/notification-management',
+              roles: ['super_admin']
+            },
+            {
               title: '보안 감사',
               href: '/security-audit',
               roles: ['super_admin']

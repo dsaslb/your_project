@@ -97,6 +97,22 @@ try:
 except Exception as e:
     logger.error(f"플러그인 모니터링 대시보드 API 블루프린트 등록 실패: {e}")
 
+# 알림 관리 API 블루프린트 등록
+try:
+    from routes.notification_management import notification_bp
+    app.register_blueprint(notification_bp, name='notification_management')
+    logger.info("알림 관리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"알림 관리 API 블루프린트 등록 실패: {e}")
+
+# 성능 최적화 API 블루프린트 등록
+try:
+    from routes.performance_optimization import performance_bp
+    app.register_blueprint(performance_bp, name='performance_optimization')
+    logger.info("성능 최적화 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"성능 최적화 API 블루프린트 등록 실패: {e}")
+
 # 플러그인 시스템 초기화 및 시작
 try:
     from core.backend.plugin_optimizer import plugin_optimizer
@@ -128,6 +144,21 @@ for blueprint_name, blueprint in plugin_manager.blueprints.items():
 from core.backend.schema_initializer import initialize_default_schemas, create_sample_brand_schema
 initialize_default_schemas()
 create_sample_brand_schema()
+
+# Initialize Query Optimizer
+try:
+    from utils.query_optimizer import initialize_query_optimizer
+    query_optimizer, connection_pool_optimizer = initialize_query_optimizer(
+        db.engine, 
+        config={
+            'slow_query_threshold': 1.0,
+            'analysis_interval': 3600,
+            'monitoring_enabled': True
+        }
+    )
+    logger.info("쿼리 최적화 시스템 초기화 완료")
+except Exception as e:
+    logger.error(f"쿼리 최적화 시스템 초기화 실패: {e}")
 
 # Login manager setup
 login_manager.init_app(app)
