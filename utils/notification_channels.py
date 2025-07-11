@@ -307,7 +307,7 @@ class NotificationManager:
             <body>
                 <h2>{message.title}</h2>
                 <p><strong>Level:</strong> {message.level.upper()}</p>
-                <p><strong>Time:</strong> {message.timestamp.strftime('%Y-%m-%d %H:%M:%S')}</p>
+                <p><strong>Time:</strong> {message.timestamp.strftime('%Y-%m-%d %H:%M:%S') if message.timestamp else 'N/A'}</p>
                 <p><strong>Message:</strong></p>
                 <p>{message.message}</p>
             </body>
@@ -359,7 +359,7 @@ class NotificationManager:
                             },
                             {
                                 "title": "Time",
-                                "value": message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                                "value": message.timestamp.strftime('%Y-%m-%d %H:%M:%S') if message.timestamp else 'N/A',
                                 "short": True
                             }
                         ],
@@ -402,7 +402,7 @@ class NotificationManager:
                             },
                             {
                                 "name": "Time",
-                                "value": message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                                "value": message.timestamp.strftime('%Y-%m-%d %H:%M:%S') if message.timestamp else 'N/A',
                                 "inline": True
                             }
                         ],
@@ -427,17 +427,21 @@ class NotificationManager:
             provider = config.get('provider', 'twilio')
             
             if provider == 'twilio':
-                from twilio.rest import Client
-                
-                client = Client(config.get('account_sid'), config.get('auth_token'))
-                
-                sms_message = client.messages.create(
-                    body=f"[{message.level.upper()}] {message.title}: {message.message}",
-                    from_=config.get('from_number'),
-                    to=message.recipient or config.get('to_number')
-                )
-                
-                return sms_message.sid is not None
+                try:
+                    from twilio.rest import Client
+                    
+                    client = Client(config.get('account_sid'), config.get('auth_token'))
+                    
+                    sms_message = client.messages.create(
+                        body=f"[{message.level.upper()}] {message.title}: {message.message}",
+                        from_=config.get('from_number'),
+                        to=message.recipient or config.get('to_number')
+                    )
+                    
+                    return sms_message.sid is not None
+                except ImportError:
+                    self.logger.warning("Twilio library not installed. Install with: pip install twilio")
+                    return False
             else:
                 self.logger.warning(f"SMS provider {provider} not supported")
                 return False
@@ -460,7 +464,7 @@ class NotificationManager:
                 "title": message.title,
                 "message": message.message,
                 "level": message.level,
-                "timestamp": message.timestamp.isoformat(),
+                "timestamp": message.timestamp.isoformat() if message.timestamp else None,
                 "channel": channel.name,
                 "metadata": message.metadata or {}
             }

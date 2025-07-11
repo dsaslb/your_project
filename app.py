@@ -148,15 +148,26 @@ create_sample_brand_schema()
 # Initialize Query Optimizer
 try:
     from utils.query_optimizer import initialize_query_optimizer
-    query_optimizer, connection_pool_optimizer = initialize_query_optimizer(
-        db.engine, 
-        config={
-            'slow_query_threshold': 1.0,
-            'analysis_interval': 3600,
-            'monitoring_enabled': True
-        }
-    )
-    logger.info("쿼리 최적화 시스템 초기화 완료")
+    
+    def init_query_optimizer():
+        with app.app_context():
+            query_optimizer, connection_pool_optimizer = initialize_query_optimizer(
+                db.engine, 
+                config={
+                    'slow_query_threshold': 1.0,
+                    'analysis_interval': 3600,
+                    'monitoring_enabled': True
+                }
+            )
+            logger.info("쿼리 최적화 시스템 초기화 완료")
+            return query_optimizer, connection_pool_optimizer
+    
+    # 백그라운드에서 초기화
+    import threading
+    init_thread = threading.Thread(target=init_query_optimizer)
+    init_thread.daemon = True
+    init_thread.start()
+    
 except Exception as e:
     logger.error(f"쿼리 최적화 시스템 초기화 실패: {e}")
 

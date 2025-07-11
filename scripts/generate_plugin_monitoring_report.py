@@ -1,322 +1,201 @@
 #!/usr/bin/env python3
 """
-플러그인 모니터링 리포트 생성 스크립트
-플러그인 성능 모니터링 시스템의 상태와 성능을 분석하여 리포트를 생성합니다.
+플러그인 모니터링 리포트 생성기
 """
 
-import os
-import sys
 import json
-import time
+import logging
+from datetime import datetime
+from typing import Dict, List, Any
 import requests
-import psutil
-from pathlib import Path
-from datetime import datetime, timedelta
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class PluginMonitoringReportGenerator:
-    def __init__(self, base_url="http://localhost:5000"):
+    """플러그인 모니터링 리포트 생성기"""
+    
+    def __init__(self, base_url: str = "http://localhost:5000"):
         self.base_url = base_url
-        self.report = {
-            "timestamp": datetime.now().isoformat(),
-            "system_info": {},
-            "plugin_status": {},
-            "performance_metrics": {},
-            "alerts": {},
-            "recommendations": [],
-            "summary": {}
-        }
+        self.report_data = {}
     
-    def collect_system_info(self):
-        """시스템 정보 수집"""
-        try:
-            # 시스템 리소스 정보
-            cpu_percent = psutil.cpu_percent(interval=1)
-            memory = psutil.virtual_memory()
-            disk = psutil.disk_usage('/')
-            
-            self.report["system_info"] = {
-                "cpu_usage_percent": cpu_percent,
-                "memory_usage_percent": memory.percent,
-                "memory_used_gb": memory.used / 1024 / 1024 / 1024,
-                "memory_available_gb": memory.available / 1024 / 1024 / 1024,
-                "disk_usage_percent": disk.percent,
-                "disk_used_gb": disk.used / 1024 / 1024 / 1024,
-                "disk_free_gb": disk.free / 1024 / 1024 / 1024,
-                "timestamp": datetime.now().isoformat()
-            }
-            
-            print("✅ 시스템 정보 수집 완료")
-            return True
-            
-        except Exception as e:
-            print(f"❌ 시스템 정보 수집 실패: {e}")
-            return False
-    
-    def collect_plugin_status(self):
-        """플러그인 상태 정보 수집"""
+    def collect_plugin_status(self) -> Dict[str, Any]:
+        """플러그인 상태 수집"""
         try:
             response = requests.get(f"{self.base_url}/api/admin/plugin-monitoring/status", timeout=10)
-            
             if response.status_code == 200:
-                status_data = response.json()
-                self.report["plugin_status"] = {
-                    "total_plugins": len(status_data.get("plugins", [])),
-                    "active_plugins": len([p for p in status_data.get("plugins", []) if p.get("status") == "active"]),
-                    "inactive_plugins": len([p for p in status_data.get("plugins", []) if p.get("status") == "inactive"]),
-                    "error_plugins": len([p for p in status_data.get("plugins", []) if p.get("status") == "error"]),
-                    "plugins": status_data.get("plugins", []),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                print("✅ 플러그인 상태 정보 수집 완료")
-                return True
+                return response.json()
             else:
-                print(f"❌ 플러그인 상태 API 실패: {response.status_code}")
-                return False
-                
+                logger.error(f"플러그인 상태 수집 실패: {response.status_code}")
+                return {}
         except Exception as e:
-            print(f"❌ 플러그인 상태 수집 실패: {e}")
-            return False
+            logger.error(f"플러그인 상태 수집 오류: {e}")
+            return {}
     
-    def collect_performance_metrics(self):
+    def collect_performance_metrics(self) -> Dict[str, Any]:
         """성능 메트릭 수집"""
         try:
-            response = requests.get(f"{self.base_url}/api/admin/plugin-monitoring/metrics", timeout=10)
-            
+            response = requests.get(f"{self.base_url}/api/admin/plugin-monitoring/performance", timeout=10)
             if response.status_code == 200:
-                metrics_data = response.json()
-                self.report["performance_metrics"] = {
-                    "plugins_metrics": metrics_data.get("plugins", []),
-                    "system_metrics": metrics_data.get("system", {}),
-                    "performance_trends": metrics_data.get("trends", {}),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                print("✅ 성능 메트릭 수집 완료")
-                return True
+                return response.json()
             else:
-                print(f"❌ 성능 메트릭 API 실패: {response.status_code}")
-                return False
-                
+                logger.error(f"성능 메트릭 수집 실패: {response.status_code}")
+                return {}
         except Exception as e:
-            print(f"❌ 성능 메트릭 수집 실패: {e}")
-            return False
+            logger.error(f"성능 메트릭 수집 오류: {e}")
+            return {}
     
-    def collect_alerts(self):
-        """알림 정보 수집"""
+    def collect_health_data(self) -> Dict[str, Any]:
+        """헬스 데이터 수집"""
         try:
-            response = requests.get(f"{self.base_url}/api/admin/plugin-monitoring/alerts", timeout=10)
-            
+            response = requests.get(f"{self.base_url}/api/admin/plugin-monitoring/health", timeout=10)
             if response.status_code == 200:
-                alerts_data = response.json()
-                self.report["alerts"] = {
-                    "total_alerts": len(alerts_data.get("alerts", [])),
-                    "critical_alerts": len([a for a in alerts_data.get("alerts", []) if a.get("level") == "critical"]),
-                    "warning_alerts": len([a for a in alerts_data.get("alerts", []) if a.get("level") == "warning"]),
-                    "info_alerts": len([a for a in alerts_data.get("alerts", []) if a.get("level") == "info"]),
-                    "alerts": alerts_data.get("alerts", []),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                print("✅ 알림 정보 수집 완료")
-                return True
+                return response.json()
             else:
-                print(f"❌ 알림 API 실패: {response.status_code}")
-                return False
-                
+                logger.error(f"헬스 데이터 수집 실패: {response.status_code}")
+                return {}
         except Exception as e:
-            print(f"❌ 알림 정보 수집 실패: {e}")
-            return False
+            logger.error(f"헬스 데이터 수집 오류: {e}")
+            return {}
     
-    def analyze_performance(self):
-        """성능 분석"""
-        recommendations = []
+    def generate_report(self) -> Dict[str, Any]:
+        """리포트 생성"""
+        logger.info("플러그인 모니터링 리포트 생성 시작")
         
-        # CPU 사용량 분석
-        cpu_usage = self.report["system_info"].get("cpu_usage_percent", 0)
-        if cpu_usage > 80:
-            recommendations.append("CPU 사용량이 높습니다 ({}%). 플러그인 최적화가 필요합니다.".format(cpu_usage))
-        elif cpu_usage > 60:
-            recommendations.append("CPU 사용량이 중간 수준입니다 ({}%). 모니터링을 지속하세요.".format(cpu_usage))
+        # 데이터 수집
+        plugin_status = self.collect_plugin_status()
+        performance_metrics = self.collect_performance_metrics()
+        health_data = self.collect_health_data()
         
-        # 메모리 사용량 분석
-        memory_usage = self.report["system_info"].get("memory_usage_percent", 0)
-        if memory_usage > 85:
-            recommendations.append("메모리 사용량이 높습니다 ({}%). 메모리 누수 검사가 필요합니다.".format(memory_usage))
-        elif memory_usage > 70:
-            recommendations.append("메모리 사용량이 중간 수준입니다 ({}%). 모니터링을 지속하세요.".format(memory_usage))
+        # 리포트 구조 생성
+        report = {
+            "report_info": {
+                "generated_at": datetime.now().isoformat(),
+                "base_url": self.base_url,
+                "version": "1.0"
+            },
+            "plugin_status": plugin_status,
+            "performance_metrics": performance_metrics,
+            "health_data": health_data,
+            "summary": self._generate_summary(plugin_status, performance_metrics, health_data)
+        }
         
-        # 디스크 사용량 분석
-        disk_usage = self.report["system_info"].get("disk_usage_percent", 0)
-        if disk_usage > 90:
-            recommendations.append("디스크 사용량이 높습니다 ({}%). 정리가 필요합니다.".format(disk_usage))
-        elif disk_usage > 80:
-            recommendations.append("디스크 사용량이 중간 수준입니다 ({}%). 모니터링을 지속하세요.".format(disk_usage))
+        self.report_data = report
+        logger.info("플러그인 모니터링 리포트 생성 완료")
+        return report
+    
+    def _generate_summary(self, plugin_status: Dict, performance_metrics: Dict, health_data: Dict) -> Dict[str, Any]:
+        """요약 정보 생성"""
+        summary = {
+            "total_plugins": 0,
+            "active_plugins": 0,
+            "inactive_plugins": 0,
+            "error_plugins": 0,
+            "avg_response_time": 0,
+            "avg_cpu_usage": 0,
+            "avg_memory_usage": 0,
+            "health_score": 0
+        }
         
         # 플러그인 상태 분석
-        plugin_status = self.report["plugin_status"]
-        error_plugins = plugin_status.get("error_plugins", 0)
-        if error_plugins > 0:
-            recommendations.append("오류 상태의 플러그인이 {}개 있습니다. 확인이 필요합니다.".format(error_plugins))
-        
-        inactive_plugins = plugin_status.get("inactive_plugins", 0)
-        if inactive_plugins > 0:
-            recommendations.append("비활성 플러그인이 {}개 있습니다. 활성화를 고려하세요.".format(inactive_plugins))
-        
-        # 알림 분석
-        alerts = self.report["alerts"]
-        critical_alerts = alerts.get("critical_alerts", 0)
-        if critical_alerts > 0:
-            recommendations.append("중요한 알림이 {}개 있습니다. 즉시 확인이 필요합니다.".format(critical_alerts))
-        
-        warning_alerts = alerts.get("warning_alerts", 0)
-        if warning_alerts > 0:
-            recommendations.append("경고 알림이 {}개 있습니다. 주의가 필요합니다.".format(warning_alerts))
+        if "plugins" in plugin_status:
+            plugins = plugin_status["plugins"]
+            summary["total_plugins"] = len(plugins)
+            
+            for plugin in plugins:
+                status = plugin.get("status", "unknown")
+                if status == "active":
+                    summary["active_plugins"] += 1
+                elif status == "inactive":
+                    summary["inactive_plugins"] += 1
+                elif status == "error":
+                    summary["error_plugins"] += 1
         
         # 성능 메트릭 분석
-        plugins_metrics = self.report["performance_metrics"].get("plugins_metrics", [])
-        for plugin in plugins_metrics:
-            plugin_name = plugin.get("name", "Unknown")
+        if "metrics" in performance_metrics:
+            metrics = performance_metrics["metrics"]
             
-            # CPU 사용량 체크
-            cpu_usage = plugin.get("cpu_usage", 0)
-            if cpu_usage > 80:
-                recommendations.append("플러그인 '{}'의 CPU 사용량이 높습니다 ({}%)".format(plugin_name, cpu_usage))
+            response_times = []
+            cpu_usage = []
+            memory_usage = []
             
-            # 메모리 사용량 체크
-            memory_usage = plugin.get("memory_usage", 0)
-            if memory_usage > 85:
-                recommendations.append("플러그인 '{}'의 메모리 사용량이 높습니다 ({}%)".format(plugin_name, memory_usage))
+            for metric in metrics:
+                if "response_time" in metric:
+                    response_times.append(metric["response_time"])
+                if "cpu_usage" in metric:
+                    cpu_usage.append(metric["cpu_usage"])
+                if "memory_usage" in metric:
+                    memory_usage.append(metric["memory_usage"])
             
-            # 응답 시간 체크
-            response_time = plugin.get("response_time", 0)
-            if response_time > 2000:
-                recommendations.append("플러그인 '{}'의 응답 시간이 느립니다 ({}ms)".format(plugin_name, response_time))
+            if response_times:
+                summary["avg_response_time"] = sum(response_times) / len(response_times)
+            if cpu_usage:
+                summary["avg_cpu_usage"] = sum(cpu_usage) / len(cpu_usage)
+            if memory_usage:
+                summary["avg_memory_usage"] = sum(memory_usage) / len(memory_usage)
         
-        if not recommendations:
-            recommendations.append("시스템 성능이 양호합니다. 현재 상태를 유지하세요.")
+        # 헬스 점수 계산
+        if summary["total_plugins"] > 0:
+            health_score = (
+                (summary["active_plugins"] / summary["total_plugins"]) * 0.6 +
+                (1 - summary["avg_cpu_usage"] / 100) * 0.2 +
+                (1 - summary["avg_memory_usage"] / 100) * 0.2
+            ) * 100
+            summary["health_score"] = round(health_score, 2)
         
-        self.report["recommendations"] = recommendations
+        return summary
     
-    def generate_summary(self):
-        """요약 정보 생성"""
-        system_info = self.report["system_info"]
-        plugin_status = self.report["plugin_status"]
-        alerts = self.report["alerts"]
+    def save_report(self, filename: str = None) -> str:
+        """리포트 저장"""
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"plugin_monitoring_report_{timestamp}.json"
         
-        # 전체 상태 평가
-        overall_status = "GOOD"
-        if (system_info.get("cpu_usage_percent", 0) > 80 or 
-            system_info.get("memory_usage_percent", 0) > 85 or
-            plugin_status.get("error_plugins", 0) > 0 or
-            alerts.get("critical_alerts", 0) > 0):
-            overall_status = "CRITICAL"
-        elif (system_info.get("cpu_usage_percent", 0) > 60 or 
-              system_info.get("memory_usage_percent", 0) > 70 or
-              alerts.get("warning_alerts", 0) > 0):
-            overall_status = "WARNING"
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(self.report_data, f, indent=2, ensure_ascii=False)
         
-        self.report["summary"] = {
-            "overall_status": overall_status,
-            "system_health": {
-                "cpu_usage": system_info.get("cpu_usage_percent", 0),
-                "memory_usage": system_info.get("memory_usage_percent", 0),
-                "disk_usage": system_info.get("disk_usage_percent", 0)
-            },
-            "plugin_health": {
-                "total_plugins": plugin_status.get("total_plugins", 0),
-                "active_plugins": plugin_status.get("active_plugins", 0),
-                "error_plugins": plugin_status.get("error_plugins", 0)
-            },
-            "alert_summary": {
-                "total_alerts": alerts.get("total_alerts", 0),
-                "critical_alerts": alerts.get("critical_alerts", 0),
-                "warning_alerts": alerts.get("warning_alerts", 0)
-            },
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    def save_report(self, filename="plugin-monitoring-report.json"):
-        """리포트를 파일로 저장"""
-        try:
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(self.report, f, indent=2, ensure_ascii=False)
-            
-            print(f"✅ 리포트가 {filename}에 저장되었습니다.")
-            return True
-            
-        except Exception as e:
-            print(f"❌ 리포트 저장 실패: {e}")
-            return False
+        logger.info(f"리포트 저장됨: {filename}")
+        return filename
     
     def print_summary(self):
         """요약 정보 출력"""
-        summary = self.report["summary"]
+        if not self.report_data:
+            logger.warning("리포트 데이터가 없습니다. generate_report()를 먼저 실행하세요.")
+            return
         
-        print("\n" + "="*60)
-        print("플러그인 모니터링 시스템 리포트")
-        print("="*60)
-        print(f"생성 시간: {self.report['timestamp']}")
-        print(f"전체 상태: {summary['overall_status']}")
+        summary = self.report_data.get("summary", {})
         
-        print("\n시스템 상태:")
-        system_health = summary["system_health"]
-        print(f"  CPU 사용량: {system_health['cpu_usage']:.1f}%")
-        print(f"  메모리 사용량: {system_health['memory_usage']:.1f}%")
-        print(f"  디스크 사용량: {system_health['disk_usage']:.1f}%")
-        
-        print("\n플러그인 상태:")
-        plugin_health = summary["plugin_health"]
-        print(f"  총 플러그인: {plugin_health['total_plugins']}")
-        print(f"  활성 플러그인: {plugin_health['active_plugins']}")
-        print(f"  오류 플러그인: {plugin_health['error_plugins']}")
-        
-        print("\n알림 요약:")
-        alert_summary = summary["alert_summary"]
-        print(f"  총 알림: {alert_summary['total_alerts']}")
-        print(f"  중요 알림: {alert_summary['critical_alerts']}")
-        print(f"  경고 알림: {alert_summary['warning_alerts']}")
-        
-        print("\n권장사항:")
-        for i, rec in enumerate(self.report["recommendations"], 1):
-            print(f"  {i}. {rec}")
-        
-        print("="*60)
-    
-    def generate_all(self):
-        """전체 리포트 생성"""
-        print("플러그인 모니터링 리포트 생성 시작...")
-        
-        # 데이터 수집
-        self.collect_system_info()
-        self.collect_plugin_status()
-        self.collect_performance_metrics()
-        self.collect_alerts()
-        
-        # 분석 및 요약
-        self.analyze_performance()
-        self.generate_summary()
-        
-        # 저장 및 출력
-        self.save_report()
-        self.print_summary()
-        
-        return self.report
+        print("\n=== 플러그인 모니터링 리포트 요약 ===")
+        print(f"생성 시간: {self.report_data['report_info']['generated_at']}")
+        print(f"총 플러그인 수: {summary.get('total_plugins', 0)}")
+        print(f"활성 플러그인: {summary.get('active_plugins', 0)}")
+        print(f"비활성 플러그인: {summary.get('inactive_plugins', 0)}")
+        print(f"오류 플러그인: {summary.get('error_plugins', 0)}")
+        print(f"평균 응답 시간: {summary.get('avg_response_time', 0):.3f}초")
+        print(f"평균 CPU 사용률: {summary.get('avg_cpu_usage', 0):.2f}%")
+        print(f"평균 메모리 사용률: {summary.get('avg_memory_usage', 0):.2f}%")
+        print(f"헬스 점수: {summary.get('health_score', 0):.1f}/100")
+        print("=" * 50)
 
 def main():
-    """메인 함수"""
-    generator = PluginMonitoringReportGenerator()
-    report = generator.generate_all()
+    """메인 실행 함수"""
+    print("플러그인 모니터링 리포트 생성기 시작")
     
-    if report["summary"]["overall_status"] == "CRITICAL":
-        print("\n⚠️  시스템에 중요한 문제가 발견되었습니다. 즉시 확인하세요!")
-        sys.exit(1)
-    elif report["summary"]["overall_status"] == "WARNING":
-        print("\n⚠️  시스템에 주의가 필요한 문제가 있습니다.")
-        sys.exit(0)
-    else:
-        print("\n✅ 시스템이 정상적으로 작동하고 있습니다.")
-        sys.exit(0)
+    # 리포트 생성기 인스턴스 생성
+    generator = PluginMonitoringReportGenerator()
+    
+    # 리포트 생성
+    report = generator.generate_report()
+    
+    # 요약 출력
+    generator.print_summary()
+    
+    # 리포트 저장
+    filename = generator.save_report()
+    
+    print(f"\n리포트가 {filename}에 저장되었습니다.")
+    print("플러그인 모니터링 리포트 생성 완료")
 
 if __name__ == "__main__":
     main() 

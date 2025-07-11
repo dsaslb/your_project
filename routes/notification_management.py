@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
-from database import db
+from extensions import db
 from models.notification_models import (
     NotificationHistory, NotificationChannel, NotificationTemplate,
     NotificationRule, NotificationEscalation, NotificationStatistics

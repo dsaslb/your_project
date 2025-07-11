@@ -5,9 +5,9 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, ForeignKey, Index
 from sqlalchemy.orm import relationship
-from database import Base
+from extensions import db
 
-class NotificationHistory(Base):
+class NotificationHistory(db.Model):
     """알림 히스토리"""
     __tablename__ = 'notification_history'
     
@@ -30,7 +30,7 @@ class NotificationHistory(Base):
         Index('idx_notification_success', 'success'),
     )
 
-class NotificationChannel(Base):
+class NotificationChannel(db.Model):
     """알림 채널 설정"""
     __tablename__ = 'notification_channels'
     
@@ -51,7 +51,7 @@ class NotificationChannel(Base):
         Index('idx_channel_priority', 'priority'),
     )
 
-class NotificationTemplate(Base):
+class NotificationTemplate(db.Model):
     """알림 템플릿"""
     __tablename__ = 'notification_templates'
     
@@ -71,7 +71,7 @@ class NotificationTemplate(Base):
         Index('idx_template_level', 'level'),
     )
 
-class NotificationRule(Base):
+class NotificationRule(db.Model):
     """알림 규칙"""
     __tablename__ = 'notification_rules'
     
@@ -96,7 +96,7 @@ class NotificationRule(Base):
         Index('idx_rule_condition_type', 'condition_type'),
     )
 
-class NotificationEscalation(Base):
+class NotificationEscalation(db.Model):
     """알림 에스컬레이션"""
     __tablename__ = 'notification_escalations'
     
@@ -115,7 +115,7 @@ class NotificationEscalation(Base):
         Index('idx_escalation_enabled', 'enabled'),
     )
 
-class NotificationStatistics(Base):
+class NotificationStatistics(db.Model):
     """알림 통계"""
     __tablename__ = 'notification_statistics'
     
