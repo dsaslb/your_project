@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테스트 로그인 - 레스토랑 관리 시스템</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e293b, #334155, #1e293b);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .test-container {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .test-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #fbbf24;
+        }
+
+        .test-header p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .test-section h3 {
+            color: #60a5fa;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .test-btn {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .test-btn:hover {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            transform: translateY(-1px);
+        }
+
+        .test-btn.secondary {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .test-btn.secondary:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        .test-btn.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .test-btn.warning:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+        }
+
+        .test-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .test-info strong {
+            color: #60a5fa;
+        }
+
+        .back-btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(148, 163, 184, 0.2);
+            color: #e2e8f0;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(148, 163, 184, 0.3);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🧪 테스트 로그인</h1>
+            <p>다양한 역할로 시스템을 테스트해보세요</p>
+        </div>
+
+        <div class="test-info">
+            <strong>테스트 계정:</strong><br>
+            모든 계정의 비밀번호는 <strong>admin123</strong>입니다.
+        </div>
+
+        <div class="test-section">
+            <h3>🔐 역할별 로그인 테스트</h3>
+            <button class="test-btn" onclick="testLogin('admin', 'admin123')">
+                👑 슈퍼관리자 (admin)
+            </button>
+            <button class="test-btn secondary" onclick="testLogin('manager', 'admin123')">
+                👨‍💼 매니저 (manager)
+            </button>
+            <button class="test-btn warning" onclick="testLogin('employee', 'admin123')">
+                👷 직원 (employee)
+            </button>
+            <button class="test-btn" onclick="testLogin('teamlead', 'admin123')">
+                🎯 팀리드 (teamlead)
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 직접 페이지 접근</h3>
+            <a href="/super-admin" class="test-btn">슈퍼관리자 대시보드</a>
+            <a href="/admin-dashboard" class="test-btn secondary">관리자 대시보드</a>
+            <a href="/manager-dashboard" class="test-btn warning">매니저 대시보드</a>
+            <a href="/employee-dashboard" class="test-btn">직원 대시보드</a>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 API 테스트</h3>
+            <button class="test-btn" onclick="testAPI()">API 연결 테스트</button>
+            <button class="test-btn secondary" onclick="testJWT()">JWT 토큰 테스트</button>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/" class="back-btn">← 메인 페이지로 돌아가기</a>
+        </div>
+    </div>
+
+    <script>
+        async function testLogin(username, password) {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ ${username} 로그인 성공!\n역할: ${data.user.role}\n리다이렉트: ${data.redirect_to}`);
+                    
+                    // JWT 토큰 저장
+                    if (data.access_token) {
+                        localStorage.setItem('jwt_token', data.access_token);
+                    }
+                    
+                    // 2초 후 리다이렉트
+                    setTimeout(() => {
+                        window.location.href = data.redirect_to;
+                    }, 2000);
+                } else {
+                    alert(`❌ 로그인 실패: ${data.message}`);
+                }
+            } catch (error) {
+                alert(`❌ 오류 발생: ${error.message}`);
+            }
+        }
+
+        async function testAPI() {
+            try {
+                const response = await fetch('/api/dashboard/stats');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ API 연결 성공!\n데이터: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    alert(`❌ API 연결 실패: ${data.message || '알 수 없는 오류'}`);
+                }
+            } catch (error) {
+                alert(`❌ API 오류: ${error.message}`);
+            }
+        }
+
+        async function testJWT() {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                alert('❌ JWT 토큰이 없습니다. 먼저 로그인해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ JWT 토큰 유효!\n사용자: ${data.user.username}\n역할: ${data.user.role}`);
+                } else {
+                    alert(`❌ JWT 토큰 무효: ${data.message}`);
+                }
+            } catch (error) {
+                alert(`❌ JWT 테스트 오류: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html> 

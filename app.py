@@ -1583,6 +1583,23 @@ def teamlead_dashboard():
     """팀리드 대시보드 - 프론트엔드로 리다이렉트"""
     return redirect("http://192.168.45.44:3000/teamlead-dashboard")
 
+@app.route("/my-attendance")
+@login_required
+def my_attendance():
+    """내 근태 조회 페이지"""
+    return render_template("attendance/my_attendance.html", user=current_user)
+
+@app.route("/my-schedule")
+@login_required
+def my_schedule():
+    """내 스케줄 조회 페이지"""
+    return render_template("schedule/my_schedule.html", user=current_user)
+
+@app.route("/test-login")
+def test_login():
+    """테스트 로그인 페이지"""
+    return render_template("test_login.html")
+
 @app.route("/brand-manager-dashboard")
 def brand_manager_dashboard():
     """브랜드 관리자 대시보드 - 매장 관리"""
