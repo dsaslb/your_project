@@ -1,0 +1,369 @@
+name: Plugin Performance Monitoring CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'plugins/**'
+      - 'api/modules/**'
+      - 'routes/admin_*.py'
+      - 'utils/plugin_*.py'
+      - 'your_program_frontend/src/app/plugin-*/**'
+      - 'your_program_frontend/src/components/Plugin*.tsx'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'plugins/**'
+      - 'api/modules/**'
+      - 'routes/admin_*.py'
+      - 'utils/plugin_*.py'
+      - 'your_program_frontend/src/app/plugin-*/**'
+      - 'your_program_frontend/src/components/Plugin*.tsx'
+  workflow_dispatch:
+    inputs:
+      plugin_name:
+        description: 'Plugin name to test'
+        required: false
+        type: string
+      test_type:
+        description: 'Type of test to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - performance
+        - security
+        - integration
+        - e2e
+
+env:
+  PLUGIN_TEST_TIMEOUT: 300
+  PERFORMANCE_THRESHOLD_CPU: 80
+  PERFORMANCE_THRESHOLD_MEMORY: 85
+  PERFORMANCE_THRESHOLD_RESPONSE_TIME: 2000
+
+jobs:
+  # 플러그인 코드 품질 검사
+  plugin-code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: your_program_frontend/package-lock.json
+          
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8 black isort mypy bandit safety
+          
+      - name: Install Node.js dependencies
+        run: |
+          cd your_program_frontend
+          npm ci
+          
+      - name: Run Python linting for plugin code
+        run: |
+          flake8 plugins/ api/modules/ routes/admin_*.py utils/plugin_*.py --count --select=E9,F63,F7,F82 --show-source --statistics
+          black --check plugins/ api/modules/ routes/admin_*.py utils/plugin_*.py
+          isort --check-only plugins/ api/modules/ routes/admin_*.py utils/plugin_*.py
+          
+      - name: Run TypeScript linting for plugin frontend
+        run: |
+          cd your_program_frontend
+          npm run lint -- src/app/plugin-*/ src/components/Plugin*.tsx
+          
+      - name: Run security scan for plugins
+        run: |
+          bandit -r plugins/ -f json -o bandit-report.json || true
+          safety check --json --output safety-report.json || true
+          
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+          
+  # 플러그인 단위 테스트
+  plugin-unit-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: your_program_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+          
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: your_program_frontend/package-lock.json
+          
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-mock pytest-asyncio
+          
+      - name: Install Node.js dependencies
+        run: |
+          cd your_program_frontend
+          npm ci
+          
+      - name: Run plugin unit tests
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/your_program_test
+          REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key
+        run: |
+          python -m pytest tests/test_plugin_*.py -v --cov=plugins --cov=api.modules --cov-report=xml --cov-report=html
+          
+      - name: Run plugin frontend tests
+        run: |
+          cd your_program_frontend
+          npm test -- --testPathPattern="plugin|Plugin" --coverage --watchAll=false
+          
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: plugin-tests
+          name: plugin-coverage
+          
+  # 플러그인 성능 테스트
+  plugin-performance-tests:
+    runs-on: ubuntu-latest
+    needs: plugin-unit-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install locust psutil
+          
+      - name: Start test application
+        run: |
+          python app.py &
+          sleep 10
+          
+      - name: Run performance tests
+        run: |
+          # 플러그인 API 성능 테스트
+          locust -f tests/performance/plugin_performance_test.py --headless --users 10 --spawn-rate 2 --run-time 60s --html=plugin-performance-report.html
+          
+      - name: Run resource usage tests
+        run: |
+          python tests/performance/test_plugin_resource_usage.py
+          
+      - name: Upload performance reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-reports
+          path: |
+            plugin-performance-report.html
+            plugin-resource-usage.json
+          
+  # 플러그인 통합 테스트
+  plugin-integration-tests:
+    runs-on: ubuntu-latest
+    needs: plugin-performance-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build test images
+        run: |
+          docker build -f Dockerfile.backend -t your-program-backend:plugin-test .
+          docker build -f your_program_frontend/Dockerfile -t your-program-frontend:plugin-test ./your_program_frontend
+          
+      - name: Start services
+        run: |
+          docker-compose up -d postgres redis
+          sleep 10
+          
+      - name: Run plugin integration tests
+        env:
+          DATABASE_URL: postgresql://your_program:password@localhost:5432/your_program
+          REDIS_URL: redis://localhost:6379
+        run: |
+          python -m pytest tests/integration/test_plugin_*.py -v
+          
+      - name: Test plugin monitoring APIs
+        run: |
+          python tests/integration/test_plugin_monitoring_apis.py
+          
+  # 플러그인 E2E 테스트
+  plugin-e2e-tests:
+    runs-on: ubuntu-latest
+    needs: plugin-integration-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: your_program_frontend/package-lock.json
+          
+      - name: Install dependencies
+        run: |
+          cd your_program_frontend
+          npm ci
+          
+      - name: Build application
+        run: |
+          cd your_program_frontend
+          npm run build
+          
+      - name: Start application
+        run: |
+          docker-compose up -d
+          sleep 30
+          
+      - name: Run plugin E2E tests
+        run: |
+          cd your_program_frontend
+          npm run test:e2e -- --spec "cypress/e2e/plugin-*.cy.ts"
+          
+  # 플러그인 보안 테스트
+  plugin-security-tests:
+    runs-on: ubuntu-latest
+    needs: plugin-integration-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run plugin security scan
+        run: |
+          # 플러그인 코드 보안 스캔
+          bandit -r plugins/ -f json -o plugin-security-report.json
+          
+      - name: Run dependency vulnerability scan
+        run: |
+          safety check --json --output plugin-dependency-report.json
+          
+      - name: Test plugin sandboxing
+        run: |
+          python tests/security/test_plugin_sandbox.py
+          
+      - name: Upload security test reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-test-reports
+          path: |
+            plugin-security-report.json
+            plugin-dependency-report.json
+            plugin-sandbox-test-results.json
+          
+  # 플러그인 배포 테스트
+  plugin-deploy-test:
+    runs-on: ubuntu-latest
+    needs: [plugin-e2e-tests, plugin-security-tests]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build plugin-enabled images
+        run: |
+          docker build -f Dockerfile.backend -t your-program-backend:plugin-latest .
+          docker build -f your_program_frontend/Dockerfile -t your-program-frontend:plugin-latest ./your_program_frontend
+          
+      - name: Test plugin deployment
+        run: |
+          # 플러그인 배포 테스트
+          python scripts/test_plugin_deployment.py
+          
+      - name: Test plugin monitoring deployment
+        run: |
+          # 플러그인 모니터링 시스템 배포 테스트
+          python scripts/test_plugin_monitoring_deployment.py
+          
+  # 플러그인 모니터링 알림
+  plugin-monitoring-alerts:
+    runs-on: ubuntu-latest
+    needs: plugin-deploy-test
+    if: always()
+    steps:
+      - name: Check plugin monitoring health
+        run: |
+          # 플러그인 모니터링 시스템 헬스체크
+          curl -f http://localhost:5000/api/admin/plugin-monitoring/health || echo "Plugin monitoring health check failed"
+          
+      - name: Check plugin performance metrics
+        run: |
+          # 플러그인 성능 메트릭 확인
+          curl -f http://localhost:5000/api/admin/plugin-monitoring/metrics || echo "Plugin metrics check failed"
+          
+      - name: Generate plugin monitoring report
+        run: |
+          python scripts/generate_plugin_monitoring_report.py
+          
+      - name: Upload plugin monitoring report
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-monitoring-report
+          path: plugin-monitoring-report.json
+          
+      - name: Send plugin monitoring notification
+        run: |
+          echo "Plugin monitoring notification skipped - SLACK_WEBHOOK_URL not configured"
+        continue-on-error: true 

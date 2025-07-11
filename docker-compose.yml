@@ -21,7 +21,7 @@ services:
       - your-program-network
     restart: unless-stopped
 
-  # Backend API Service
+  # Backend API Service with Plugin Monitoring
   backend:
     build:
       context: .
@@ -34,6 +34,12 @@ services:
       - REDIS_URL=redis://redis:6379
       - SECRET_KEY=${SECRET_KEY}
       - AI_SERVER_URL=http://ai-server:8002
+      - PLUGIN_MONITORING_ENABLED=true
+      - PLUGIN_BACKUP_ENABLED=true
+      - PLUGIN_ALERT_ENABLED=true
+      - PLUGIN_MONITORING_INTERVAL=300
+      - PLUGIN_BACKUP_INTERVAL=3600
+      - PLUGIN_ALERT_INTERVAL=30
     depends_on:
       - postgres
       - redis
@@ -43,6 +49,9 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
+      - ./plugins:/app/plugins
+      - ./backups:/app/backups
+      - ./monitoring:/app/monitoring
 
   # AI Server Service
   ai-server:

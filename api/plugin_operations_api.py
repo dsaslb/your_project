@@ -345,4 +345,136 @@ def record_operation():
         return jsonify({
             'status': 'error',
             'message': f'운영 로그 기록 실패: {e}'
+        }), 500
+
+@plugin_operations_bp.route('/<plugin_name>/status', methods=['GET'])
+def get_plugin_status(plugin_name):
+    """특정 플러그인 상태 조회"""
+    try:
+        if plugin_operations_manager is None:
+            return jsonify({
+                'status': 'error',
+                'message': '플러그인 운영 관리자가 초기화되지 않았습니다'
+            }), 500
+        
+        # 플러그인 이름 검증
+        if not plugin_name or not isinstance(plugin_name, str):
+            return jsonify({
+                'status': 'error',
+                'message': '유효하지 않은 플러그인 이름입니다'
+            }), 400
+        
+        # 플러그인 존재 여부 확인
+        from core.backend.plugin_loader import plugin_loader
+        if plugin_name not in plugin_loader.loaded_plugins:
+            return jsonify({
+                'status': 'error',
+                'message': f'플러그인 "{plugin_name}"을 찾을 수 없습니다'
+            }), 404
+        
+        # 플러그인 상태 조회
+        status = plugin_operations_manager.get_plugin_status(plugin_name)
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'plugin_name': plugin_name,
+                'status': status,
+                'last_updated': plugin_operations_manager.get_last_update_time(plugin_name)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"플러그인 {plugin_name} 상태 조회 실패: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'플러그인 상태 조회 실패: {e}'
+        }), 500
+
+@plugin_operations_bp.route('/<plugin_name>/metrics', methods=['GET'])
+def get_plugin_metrics(plugin_name):
+    """특정 플러그인 성능 메트릭 조회"""
+    try:
+        if plugin_operations_manager is None:
+            return jsonify({
+                'status': 'error',
+                'message': '플러그인 운영 관리자가 초기화되지 않았습니다'
+            }), 500
+        
+        # 플러그인 이름 검증
+        if not plugin_name or not isinstance(plugin_name, str):
+            return jsonify({
+                'status': 'error',
+                'message': '유효하지 않은 플러그인 이름입니다'
+            }), 400
+        
+        # 플러그인 존재 여부 확인
+        from core.backend.plugin_loader import plugin_loader
+        if plugin_name not in plugin_loader.loaded_plugins:
+            return jsonify({
+                'status': 'error',
+                'message': f'플러그인 "{plugin_name}"을 찾을 수 없습니다'
+            }), 404
+        
+        # 메트릭 타입 필터링
+        metric_type = request.args.get('type', 'all')
+        
+        # 플러그인 메트릭 조회
+        metrics = plugin_operations_manager.get_plugin_metrics(plugin_name, metric_type)
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'plugin_name': plugin_name,
+                'metrics': metrics,
+                'last_updated': plugin_operations_manager.get_last_update_time(plugin_name)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"플러그인 {plugin_name} 메트릭 조회 실패: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'플러그인 메트릭 조회 실패: {e}'
+        }), 500
+
+@plugin_operations_bp.route('/<plugin_name>/restart', methods=['POST'])
+def restart_plugin(plugin_name):
+    """특정 플러그인 재시작"""
+    try:
+        if plugin_operations_manager is None:
+            return jsonify({
+                'status': 'error',
+                'message': '플러그인 운영 관리자가 초기화되지 않았습니다'
+            }), 500
+        
+        # 플러그인 이름 검증
+        if not plugin_name or not isinstance(plugin_name, str):
+            return jsonify({
+                'status': 'error',
+                'message': '유효하지 않은 플러그인 이름입니다'
+            }), 400
+        
+        # 플러그인 존재 여부 확인
+        from core.backend.plugin_loader import plugin_loader
+        if plugin_name not in plugin_loader.loaded_plugins:
+            return jsonify({
+                'status': 'error',
+                'message': f'플러그인 "{plugin_name}"을 찾을 수 없습니다'
+            }), 404
+        
+        # 플러그인 재시작
+        result = plugin_operations_manager.restart_plugin(plugin_name)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'플러그인 "{plugin_name}"이 재시작되었습니다',
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"플러그인 {plugin_name} 재시작 실패: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'플러그인 재시작 실패: {e}'
         }), 500 

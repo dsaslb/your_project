@@ -1,5 +1,5 @@
-# 백엔드 Dockerfile
-FROM python:3.10-slim
+# 백엔드 Dockerfile - 플러그인 성능 모니터링 시스템 포함
+FROM python:3.11-slim
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -9,26 +9,53 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libpq-dev \
+    curl \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Python 의존성 파일 복사 및 설치
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 플러그인 모니터링 관련 추가 패키지 설치
+RUN pip install --no-cache-dir \
+    psutil \
+    locust \
+    bandit \
+    safety \
+    pytest \
+    pytest-cov \
+    pytest-mock \
+    pytest-asyncio
+
 # 애플리케이션 코드 복사
 COPY . .
+
+# 플러그인 디렉토리 생성 및 권한 설정
+RUN mkdir -p /app/plugins /app/backups /app/logs /app/monitoring \
+    && chmod 755 /app/plugins /app/backups /app/logs /app/monitoring
 
 # 환경 변수 설정
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 ENV PYTHONPATH=/app
+ENV PLUGIN_MONITORING_ENABLED=true
+ENV PLUGIN_BACKUP_ENABLED=true
+ENV PLUGIN_ALERT_ENABLED=true
 
 # 포트 노출
 EXPOSE 5000
 
-# 헬스 체크
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/api/health || exit 1
+# 헬스 체크 (플러그인 모니터링 포함)
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/api/admin/plugin-monitoring/health || exit 1
 
-# 애플리케이션 실행
-CMD ["python", "app.py"] 
+# 플러그인 모니터링 시작 스크립트 생성
+RUN echo '#!/bin/bash\n\
+echo "Starting plugin monitoring system..."\n\
+python scripts/start_plugin_monitoring.py &\n\
+echo "Starting main application..."\n\
+exec python app.py' > /app/start.sh && chmod +x /app/start.sh
+
+# 애플리케이션 실행 (플러그인 모니터링 포함)
+CMD ["/app/start.sh"] 
