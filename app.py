@@ -1554,6 +1554,8 @@ def api_dashboard_stats_jwt():
 @login_required
 def super_admin_dashboard():
     """최고 관리자 대시보드"""
+    print(f"현재 사용자: {current_user.username}, 역할: {current_user.role}")
+    
     if current_user.role != 'super_admin':
         flash("최고 관리자 권한이 필요합니다.", "error")
         return redirect("/dashboard")

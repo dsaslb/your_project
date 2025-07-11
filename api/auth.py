@@ -60,6 +60,10 @@ def api_login():
         algorithm='HS256'
     )
 
+    # Flask-Login 세션도 설정 (웹 페이지 접근용)
+    from flask_login import login_user
+    login_user(user)
+
     # 사용자 정보 반환 (비밀번호 제외)
     user_data = {
         "id": user.id,
