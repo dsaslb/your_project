@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 import { 
   Activity, 
   Cpu, 
@@ -45,6 +47,63 @@ export default function PluginPerformancePage() {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastAlertTime, setLastAlertTime] = useState<Record<string, number>>({});
+
+  // 성능 임계치 체크 및 알림
+  const checkPerformanceThresholds = (data: PerformanceData[]) => {
+    const now = Date.now();
+    const alertCooldown = 30000; // 30초 쿨다운
+
+    data.forEach((plugin) => {
+      const alertKey = `${plugin.plugin_name}_${plugin.status}`;
+      const lastAlert = lastAlertTime[alertKey] || 0;
+
+      // 쿨다운 체크
+      if (now - lastAlert < alertCooldown) return;
+
+      // CPU 사용률 임계치 (80% 이상)
+      if (plugin.cpu_usage >= 80) {
+        toast.error(`🚨 ${plugin.plugin_name} CPU 사용률 높음: ${plugin.cpu_usage}%`, {
+          description: '성능 최적화가 필요합니다.',
+          duration: 5000,
+        });
+        setLastAlertTime(prev => ({ ...prev, [alertKey]: now }));
+      }
+
+      // 메모리 사용률 임계치 (85% 이상)
+      if (plugin.memory_usage >= 85) {
+        toast.warning(`⚠️ ${plugin.plugin_name} 메모리 사용률 높음: ${plugin.memory_usage}%`, {
+          description: '메모리 사용량을 확인해주세요.',
+          duration: 5000,
+        });
+        setLastAlertTime(prev => ({ ...prev, [alertKey]: now }));
+      }
+
+      // 응답 시간 임계치 (1000ms 이상)
+      if (plugin.response_time >= 1000) {
+        toast.error(`🐌 ${plugin.plugin_name} 응답 시간 지연: ${plugin.response_time}ms`, {
+          description: '네트워크 또는 처리 성능을 확인해주세요.',
+          duration: 5000,
+        });
+        setLastAlertTime(prev => ({ ...prev, [alertKey]: now }));
+      }
+
+      // 플러그인 상태 알림
+      if (plugin.status === 'error') {
+        toast.error(`❌ ${plugin.plugin_name} 오류 발생`, {
+          description: '플러그인 상태를 확인하고 재시작을 고려해주세요.',
+          duration: 5000,
+        });
+        setLastAlertTime(prev => ({ ...prev, [alertKey]: now }));
+      } else if (plugin.status === 'warning') {
+        toast.warning(`⚠️ ${plugin.plugin_name} 경고 상태`, {
+          description: '플러그인 성능에 주의가 필요합니다.',
+          duration: 5000,
+        });
+        setLastAlertTime(prev => ({ ...prev, [alertKey]: now }));
+      }
+    });
+  };
 
   // 성능 데이터 조회
   const fetchPerformanceData = async () => {
@@ -53,6 +112,7 @@ export default function PluginPerformancePage() {
       if (response.ok) {
         const data = await response.json();
         setPerformanceData(data.data || []);
+        checkPerformanceThresholds(data.data || []); // 데이터 업데이트 시 임계치 체크
       }
     } catch (err) {
       console.error('성능 데이터 조회 실패:', err);
@@ -314,6 +374,7 @@ export default function PluginPerformancePage() {
           </CardContent>
         </Card>
       )}
+      <Toaster />
     </div>
   );
 } 
