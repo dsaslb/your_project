@@ -14,6 +14,7 @@ from api.admin_log import admin_log_bp
 from api.admin_report import admin_report_bp
 from api.admin_report_stat import admin_report_stat_bp
 from api.auth import api_auth_bp, auth_bp
+from api.ai_analysis import ai_analysis_api
 from api.health import health_bp
 from api.comment import api_comment_bp
 from api.comment_report import comment_report_bp
@@ -134,6 +135,7 @@ app.register_blueprint(iot_bp, url_prefix='/api')
 app.register_blueprint(payroll_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(notice_api_bp)
+app.register_blueprint(ai_analysis_api)
 
 # Login manager setup
 login_manager.init_app(app)

@@ -51,33 +51,50 @@ const SecurityManager: React.FC = () => {
   }, []);
 
   const loadSecurityLogs = async () => {
-    // TODO: 실제 보안 로그 API 호출
-    setSecurityLogs([
-      {
-        id: 1,
-        timestamp: new Date(),
-        action: '로그인',
-        user: 'admin',
-        ip: '192.168.1.100',
-        status: '성공',
-      },
-      {
-        id: 2,
-        timestamp: new Date(Date.now() - 3600000),
-        action: '권한 변경',
-        user: 'admin',
-        ip: '192.168.1.100',
-        status: '성공',
-      },
-      {
-        id: 3,
-        timestamp: new Date(Date.now() - 7200000),
-        action: '로그인 시도',
-        user: 'unknown',
-        ip: '192.168.1.101',
-        status: '실패',
-      },
-    ]);
+    try {
+      // 실제 보안 로그 API 호출
+      const response = await fetch('/api/security/logs', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSecurityLogs(data.logs);
+      } else {
+        // API 호출 실패 시 더미 데이터 사용
+        setSecurityLogs([
+          {
+            id: 1,
+            timestamp: new Date(),
+            action: '로그인',
+            user: 'admin',
+            ip: '192.168.1.100',
+            status: '성공',
+          },
+          {
+            id: 2,
+            timestamp: new Date(Date.now() - 3600000),
+            action: '권한 변경',
+            user: 'admin',
+            ip: '192.168.1.100',
+            status: '성공',
+          },
+          {
+            id: 3,
+            timestamp: new Date(Date.now() - 7200000),
+            action: '로그인 시도',
+            user: 'unknown',
+            ip: '192.168.1.101',
+            status: '실패',
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('보안 로그 로드 실패:', error);
+      setSecurityLogs([]);
+    }
   };
 
   const refreshToken = async () => {

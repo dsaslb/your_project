@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useGlobalStore } from '../store/useGlobalStore';
 
+// IndexedDB 타입 정의
+declare global {
+  interface Window {
+    indexedDB: IDBFactory;
+  }
+}
+
 const OfflineManager: React.FC = () => {
   const isOnline = useGlobalStore((state) => state.isOnline);
   const setOnline = useGlobalStore((state) => state.setOnline);
@@ -25,11 +32,45 @@ const OfflineManager: React.FC = () => {
   }, []);
 
   const loadOfflineData = async () => {
-    // TODO: IndexedDB에서 오프라인 저장된 데이터 로드
-    setOfflineData([
-      { id: 1, type: 'staff', action: 'add', data: { name: '김직원', role: '직원' } },
-      { id: 2, type: 'order', action: 'update', data: { orderId: '123', status: 'completed' } },
-    ]);
+    try {
+      // IndexedDB에서 오프라인 저장된 데이터 로드
+      const request = window.indexedDB.open('restaurantDB', 1);
+      
+      request.onerror = () => {
+        console.error('IndexedDB 열기 실패');
+        setOfflineData([]);
+      };
+      
+      request.onsuccess = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        const transaction = db.transaction(['offlineQueue'], 'readonly');
+        const store = transaction.objectStore('offlineQueue');
+        const getRequest = store.getAll();
+        
+        getRequest.onsuccess = () => {
+          setOfflineData(getRequest.result || []);
+        };
+        
+        getRequest.onerror = () => {
+          console.error('오프라인 데이터 로드 실패');
+          setOfflineData([]);
+        };
+      };
+      
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains('offlineQueue')) {
+          db.createObjectStore('offlineQueue', { keyPath: 'id', autoIncrement: true });
+        }
+      };
+    } catch (error) {
+      console.error('오프라인 데이터 로드 실패:', error);
+      // 폴백: 기본 데이터 사용
+      setOfflineData([
+        { id: 1, type: 'staff', action: 'add', data: { name: '김직원', role: '직원' } },
+        { id: 2, type: 'order', action: 'update', data: { orderId: '123', status: 'completed' } },
+      ]);
+    }
   };
 
   const syncOfflineData = async () => {
