@@ -161,6 +161,11 @@ export default function Sidebar() {
               roles: ['super_admin']
             },
             {
+              title: '플러그인 성능',
+              href: '/plugin-performance',
+              roles: ['super_admin']
+            },
+            {
               title: '보안 감사',
               href: '/security-audit',
               roles: ['super_admin']

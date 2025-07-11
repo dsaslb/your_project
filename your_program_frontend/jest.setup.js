@@ -132,11 +132,16 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }))
 
-global.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}))
+global.IntersectionObserver = class {
+  observe() {}
+  disconnect() {}
+  unobserve() {}
+};
+
+// next/link mock
+jest.mock('next/link', () => {
+  return ({ children, href }) => <a href={href}>{children}</a>;
+});
 
 // Next.js의 use-intersection 훅을 위한 추가 polyfill
 global.IntersectionObserverEntry = class IntersectionObserverEntry {
