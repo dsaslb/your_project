@@ -1,0 +1,27 @@
+[
+  {
+    "id": "restaurant",
+    "name": "레스토랑",
+    "description": "레스토랑 업종 전용"
+  },
+  {
+    "id": "retail",
+    "name": "소매",
+    "description": "소매 업종 전용"
+  },
+  {
+    "id": "service",
+    "name": "서비스",
+    "description": "서비스 업종 전용"
+  },
+  {
+    "id": "manufacturing",
+    "name": "제조",
+    "description": "제조 업종 전용"
+  },
+  {
+    "id": "general",
+    "name": "일반",
+    "description": "모든 업종 공통"
+  }
+]

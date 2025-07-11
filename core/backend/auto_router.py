@@ -123,6 +123,10 @@ class AutoRouter:
             
             # 플러그인 관리 블루프린트
             ('api.plugin_management', 'plugin_management_bp'),
+            ('api.plugin_security', 'plugin_security_bp'),
+            ('api.plugin_marketplace_api', 'plugin_marketplace_bp'),
+            ('api.plugin_system_manager_api', 'plugin_system_manager_bp'),
+            ('api.plugin_operations_api', 'plugin_operations_bp'),
             ('api.dynamic_schema', 'dynamic_schema_bp'),
             ('api.realtime_notifications', 'realtime_notifications_bp'),
             ('api.ai_prediction', 'ai_prediction_bp'),
@@ -176,8 +180,8 @@ class AutoRouter:
                 module_name = module_path.split('.')[-1]
                 return f"/api/modules/{module_name}"
             else:
-                # 일반 API는 /api 경로
-                return "/api"
+                # 일반 API는 이미 블루프린트에 프리픽스가 설정되어 있으므로 None 반환
+                return None
         
         # 라우트 모듈
         elif module_path.startswith('routes.'):

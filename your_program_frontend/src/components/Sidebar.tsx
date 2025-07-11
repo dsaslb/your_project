@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, X, ChevronDown, ChevronRight } from 'lucide-react';
 import useUserStore from '@/store/useUserStore';
 import { useOrderStore } from '@/store/useOrderStore';
+import { usePluginMenus } from '@/hooks/usePluginMenus';
 
 interface MenuItem {
   title: string;
@@ -25,6 +26,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, isAuthenticated, hasRole, subscribeToChanges } = useUserStore();
   const { connectWebSocket, disconnectWebSocket } = useOrderStore();
+  const { menus: pluginMenus, loading: pluginMenusLoading } = usePluginMenus();
 
   // 실시간 동기화: 사용자 상태 변경 감지
   useEffect(() => {
@@ -72,6 +74,47 @@ export default function Sidebar() {
         roles: ['super_admin', 'brand_manager', 'store_manager', 'employee']
       }
     ];
+
+    // 플러그인 메뉴 추가
+    if (!pluginMenusLoading && pluginMenus.length > 0) {
+      const userRole = user?.role || 'employee';
+      const userPluginMenus = pluginMenus.filter(menu => {
+        if (!menu.roles || menu.roles.length === 0) return true;
+        return menu.roles.includes(userRole);
+      });
+
+      // 플러그인 메뉴를 그룹별로 구성
+      const pluginGroups: Record<string, MenuItem[]> = {};
+      userPluginMenus.forEach(menu => {
+        const parent = menu.parent || 'plugins';
+        if (!pluginGroups[parent]) {
+          pluginGroups[parent] = [];
+        }
+        pluginGroups[parent].push({
+          title: menu.title,
+          href: menu.path,
+          icon: <div className="w-4 h-4 bg-purple-500 rounded" />,
+          badge: menu.badge,
+          roles: menu.roles
+        });
+      });
+
+      // 플러그인 그룹을 메뉴에 추가
+      Object.entries(pluginGroups).forEach(([groupName, groupMenus]) => {
+        if (groupMenus.length === 1) {
+          // 단일 메뉴인 경우 직접 추가
+          baseItems.push(groupMenus[0]);
+        } else {
+          // 여러 메뉴인 경우 그룹으로 추가
+          baseItems.push({
+            title: groupName === 'plugins' ? '플러그인' : groupName,
+            icon: <div className="w-4 h-4 bg-purple-500 rounded" />,
+            children: groupMenus,
+            roles: groupMenus.flatMap(menu => menu.roles || [])
+          });
+        }
+      });
+    }
 
     // 최고 관리자 메뉴
     if (hasRole('super_admin')) {

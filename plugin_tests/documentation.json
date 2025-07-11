@@ -1,0 +1,89 @@
+{
+  "restaurant_management": {
+    "plugin_id": "restaurant_management",
+    "api_docs": {
+      "endpoints": [
+        {
+          "file": "main.py",
+          "routes": [
+            {
+              "line": 15,
+              "route": "@bp.route('/dashboard')",
+              "method": "GET"
+            },
+            {
+              "line": 25,
+              "route": "@bp.route('/orders', methods=['GET', 'POST'])",
+              "method": "GET,POST"
+            }
+          ]
+        }
+      ],
+      "models": [],
+      "examples": []
+    },
+    "user_guide": "# 레스토랑 관리 플러그인 사용자 가이드\n\n## 개요\n레스토랑 관리 플러그인은 음식점의 전반적인 운영을 관리할 수 있는 종합적인 솔루션입니다.\n\n## 설치\n1. 플러그인을 다운로드합니다.\n2. 플러그인 디렉토리에 설치합니다.\n3. 플러그인을 활성화합니다.\n\n## 설정\n플러그인 설정은 관리자 패널에서 할 수 있습니다.\n\n## 사용법\n자세한 사용법은 플러그인 문서를 참조하세요.\n",
+    "developer_guide": "# 레스토랑 관리 플러그인 개발자 가이드\n\n## 구조\n```\nrestaurant_management/\n├── backend/          # 백엔드 코드\n├── config/           # 설정 파일\n├── templates/        # 템플릿 파일\n└── static/          # 정적 파일\n```\n\n## 의존성\nFlask, SQLAlchemy, Jinja2\n\n## 권한\nadmin, manager, staff\n\n## API\n플러그인 API는 백엔드 디렉토리의 Python 파일에 정의되어 있습니다.\n",
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "date": "2024-01-15T00:00:00",
+        "changes": [
+          "초기 버전",
+          "기본 레스토랑 관리 기능",
+          "주문 관리 시스템"
+        ]
+      },
+      {
+        "version": "1.1.0",
+        "date": "2024-01-20T00:00:00",
+        "changes": [
+          "성능 개선",
+          "UI/UX 개선",
+          "버그 수정"
+        ]
+      }
+    ],
+    "examples": [
+      {
+        "file": "example_usage.py",
+        "description": "기본 사용법 예제",
+        "code": "# 레스토랑 관리 플러그인 사용 예제\nfrom restaurant_management import RestaurantManager\n\n# 매니저 초기화\nmanager = RestaurantManager()\n\n# 주문 생성\norder = manager.create_order({\n    'table': 5,\n    'items': ['파스타', '샐러드'],\n    'total': 25000\n})\n\nprint(f\"주문이 생성되었습니다: {order.id}\")\n"
+      }
+    ],
+    "last_updated": "2024-01-15T12:00:00"
+  },
+  "inventory_management": {
+    "plugin_id": "inventory_management",
+    "api_docs": {
+      "endpoints": [
+        {
+          "file": "inventory.py",
+          "routes": [
+            {
+              "line": 10,
+              "route": "@bp.route('/inventory')",
+              "method": "GET"
+            }
+          ]
+        }
+      ],
+      "models": [],
+      "examples": []
+    },
+    "user_guide": "# 재고 관리 플러그인 사용자 가이드\n\n## 개요\n재고 관리 플러그인은 레스토랑의 재고를 효율적으로 관리할 수 있는 도구입니다.\n\n## 설치 및 설정\n관리자 패널에서 플러그인을 활성화하세요.\n\n## 사용법\n재고 현황을 실시간으로 확인하고 관리할 수 있습니다.\n",
+    "developer_guide": "# 재고 관리 플러그인 개발자 가이드\n\n## 구조\n```\ninventory_management/\n├── backend/\n├── config/\n└── templates/\n```\n\n## 의존성\nFlask, SQLAlchemy\n\n## 권한\nadmin, manager\n",
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "date": "2024-01-10T00:00:00",
+        "changes": [
+          "초기 버전",
+          "기본 재고 관리 기능"
+        ]
+      }
+    ],
+    "examples": [],
+    "last_updated": "2024-01-10T12:00:00"
+  }
+}

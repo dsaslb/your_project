@@ -1,0 +1,157 @@
+{
+  "plugins": {
+    "restaurant_management": {
+      "plugin_id": "restaurant_management",
+      "name": "레스토랑 관리 플러그인",
+      "description": "레스토랑 운영을 위한 종합 관리 플러그인으로 주문, 재고, 직원 관리 기능을 제공합니다.",
+      "author": "Restaurant Team",
+      "version": "1.0.0",
+      "category": "business",
+      "tags": [
+        "sample",
+        "demo"
+      ],
+      "license": "MIT",
+      "homepage": "https://example.com",
+      "repository": "https://github.com/example/plugin",
+      "support_email": "support@example.com",
+      "registered_at": "2025-07-11T21:23:16.336436",
+      "status": "published",
+      "downloads": 150,
+      "rating": 4.5,
+      "rating_count": 3,
+      "package_path": "plugins\\marketplace\\published\\restaurant_management.zip",
+      "file_size": 1858,
+      "checksum": "7cdc04227d35e52da6242ad53313d703e2953fffb95a7cdb2ee20b960d71d60d",
+      "approved_at": "2025-07-11T21:23:16.552849"
+    },
+    "analytics_dashboard": {
+      "plugin_id": "analytics_dashboard",
+      "name": "분석 대시보드 플러그인",
+      "description": "데이터 분석 및 시각화를 위한 대시보드 플러그인입니다.",
+      "author": "Analytics Team",
+      "version": "1.0.0",
+      "category": "analytics",
+      "tags": [
+        "sample",
+        "demo"
+      ],
+      "license": "MIT",
+      "homepage": "https://example.com",
+      "repository": "https://github.com/example/plugin",
+      "support_email": "support@example.com",
+      "registered_at": "2025-07-11T21:23:16.375465",
+      "status": "published",
+      "downloads": 89,
+      "rating": 4.5,
+      "rating_count": 2,
+      "package_path": "plugins\\marketplace\\published\\analytics_dashboard.zip",
+      "file_size": 1792,
+      "checksum": "6d85751c24db83a15faebde607e29a37a38c8012189719dc1780d06f0de357d6",
+      "approved_at": "2025-07-11T21:23:16.552849"
+    },
+    "notification_system": {
+      "plugin_id": "notification_system",
+      "name": "알림 시스템 플러그인",
+      "description": "이메일, SMS, 푸시 알림을 통합 관리하는 알림 시스템 플러그인입니다.",
+      "author": "Communication Team",
+      "version": "1.0.0",
+      "category": "communication",
+      "tags": [
+        "sample",
+        "demo"
+      ],
+      "license": "MIT",
+      "homepage": "https://example.com",
+      "repository": "https://github.com/example/plugin",
+      "support_email": "support@example.com",
+      "registered_at": "2025-07-11T21:23:16.415542",
+      "status": "published",
+      "downloads": 67,
+      "rating": 3.75,
+      "rating_count": 2,
+      "package_path": "plugins\\marketplace\\published\\notification_system.zip",
+      "file_size": 1812,
+      "checksum": "840f8069a12a4a4876c743b02e5f578bbc28b1c0bc5de5b0f1fddab1a6ae676a",
+      "approved_at": "2025-07-11T21:23:16.552849"
+    },
+    "security_monitor": {
+      "plugin_id": "security_monitor",
+      "name": "보안 모니터링 플러그인",
+      "description": "시스템 보안 상태를 실시간으로 모니터링하고 경고를 제공하는 플러그인입니다.",
+      "author": "Security Team",
+      "version": "1.0.0",
+      "category": "security",
+      "tags": [
+        "sample",
+        "demo"
+      ],
+      "license": "MIT",
+      "homepage": "https://example.com",
+      "repository": "https://github.com/example/plugin",
+      "support_email": "support@example.com",
+      "registered_at": "2025-07-11T21:23:16.454437",
+      "status": "pending",
+      "downloads": 45,
+      "rating": 0.0,
+      "rating_count": 0,
+      "package_path": "plugins\\marketplace\\pending\\security_monitor.zip",
+      "file_size": 1838,
+      "checksum": "176902f87a9ad3b4fc101a22dcf48977261e9205b030c01ce7b7c143aba88cb6"
+    },
+    "data_sync": {
+      "plugin_id": "data_sync",
+      "name": "데이터 동기화 플러그인",
+      "description": "외부 시스템과의 데이터 동기화를 관리하는 플러그인입니다.",
+      "author": "Integration Team",
+      "version": "1.0.0",
+      "category": "integration",
+      "tags": [
+        "sample",
+        "demo"
+      ],
+      "license": "MIT",
+      "homepage": "https://example.com",
+      "repository": "https://github.com/example/plugin",
+      "support_email": "support@example.com",
+      "registered_at": "2025-07-11T21:23:16.496149",
+      "status": "pending",
+      "downloads": 34,
+      "rating": 0.0,
+      "rating_count": 0,
+      "package_path": "plugins\\marketplace\\pending\\data_sync.zip",
+      "file_size": 1796,
+      "checksum": "a61b0a07e074afbc786e8224e7e07693550f7cb298eafc3f3ec2669bedb8cdbc"
+    },
+    "backup_manager": {
+      "plugin_id": "backup_manager",
+      "name": "백업 관리 플러그인",
+      "description": "자동 백업 및 복원 기능을 제공하는 유틸리티 플러그인입니다.",
+      "author": "Utility Team",
+      "version": "1.0.0",
+      "category": "utility",
+      "tags": [
+        "sample",
+        "demo"
+      ],
+      "license": "MIT",
+      "homepage": "https://example.com",
+      "repository": "https://github.com/example/plugin",
+      "support_email": "support@example.com",
+      "registered_at": "2025-07-11T21:23:16.537100",
+      "status": "pending",
+      "downloads": 23,
+      "rating": 0.0,
+      "rating_count": 0,
+      "package_path": "plugins\\marketplace\\pending\\backup_manager.zip",
+      "file_size": 1808,
+      "checksum": "d4f31d55a584a501ebea01a8e349c4a0c93e07f37e99b24cfd35406785829509"
+    }
+  },
+  "categories": [],
+  "statistics": {
+    "total_plugins": 3,
+    "total_downloads": 0,
+    "total_ratings": 7
+  }
+}

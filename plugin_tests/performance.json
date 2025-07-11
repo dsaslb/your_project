@@ -1,0 +1,659 @@
+[
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 15.917309466632632,
+    "memory_usage": 24.213519679067694,
+    "response_time": 247.22145995505838,
+    "throughput": 88.32828537365074,
+    "error_rate": 0.4060275368644719,
+    "timestamp": "2025-07-10T20:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 12.350759229139936,
+    "memory_usage": 37.354037413553584,
+    "response_time": 135.2877155501125,
+    "throughput": 83.59502247811504,
+    "error_rate": 1.5273984717675182,
+    "timestamp": "2025-07-10T20:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 7.399008487032852,
+    "memory_usage": 12.677517175779933,
+    "response_time": 129.32196124843804,
+    "throughput": 89.34151020795562,
+    "error_rate": 1.4186856269919796,
+    "timestamp": "2025-07-10T20:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 21.269308835056787,
+    "memory_usage": 36.20321931018155,
+    "response_time": 239.46741799390642,
+    "throughput": 98.3550436379918,
+    "error_rate": 1.4491675510884114,
+    "timestamp": "2025-07-10T21:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 22.32797284927971,
+    "memory_usage": 11.729122138198104,
+    "response_time": 213.80899012517335,
+    "throughput": 88.75532677160412,
+    "error_rate": 0.5558099876763667,
+    "timestamp": "2025-07-10T21:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 12.81496481005966,
+    "memory_usage": 24.368999183026226,
+    "response_time": 155.19057196191284,
+    "throughput": 112.45313494776553,
+    "error_rate": 0.0973518092195258,
+    "timestamp": "2025-07-10T21:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 14.024077199692444,
+    "memory_usage": 29.99804147569068,
+    "response_time": 118.98550797294415,
+    "throughput": 85.21819072892572,
+    "error_rate": 1.1613746192863408,
+    "timestamp": "2025-07-10T22:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 10.221741648324475,
+    "memory_usage": 36.964191164619365,
+    "response_time": 83.96275969996637,
+    "throughput": 107.07833573644675,
+    "error_rate": 1.6720243860058834,
+    "timestamp": "2025-07-10T22:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 14.403980105195801,
+    "memory_usage": 27.8209108736395,
+    "response_time": 240.53376488921975,
+    "throughput": 115.23325188659899,
+    "error_rate": 1.452345982345708,
+    "timestamp": "2025-07-10T22:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 5.824903229714367,
+    "memory_usage": 11.14068271981518,
+    "response_time": 119.44659851732408,
+    "throughput": 82.80413403957245,
+    "error_rate": 1.8884685521405407,
+    "timestamp": "2025-07-10T23:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 7.342155694679531,
+    "memory_usage": 15.788344079153152,
+    "response_time": 179.96364493663725,
+    "throughput": 88.82115780321618,
+    "error_rate": 0.6940424506560281,
+    "timestamp": "2025-07-10T23:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 17.6850323871491,
+    "memory_usage": 38.580626085290476,
+    "response_time": 171.71443677821858,
+    "throughput": 96.53190707639523,
+    "error_rate": 1.625074908587772,
+    "timestamp": "2025-07-10T23:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 10.050077404923748,
+    "memory_usage": 38.627147311442044,
+    "response_time": 275.5823711940575,
+    "throughput": 98.05932825884497,
+    "error_rate": 0.2871776455862589,
+    "timestamp": "2025-07-11T00:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 22.84669523680853,
+    "memory_usage": 36.47384866225622,
+    "response_time": 158.25564360453222,
+    "throughput": 86.13007671183054,
+    "error_rate": 1.3472922507130614,
+    "timestamp": "2025-07-11T00:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 13.273815810390992,
+    "memory_usage": 18.05193688806449,
+    "response_time": 114.73734588023058,
+    "throughput": 109.96807940427011,
+    "error_rate": 0.125953551960319,
+    "timestamp": "2025-07-11T00:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 14.217978302788124,
+    "memory_usage": 33.26540945242522,
+    "response_time": 94.31947740417988,
+    "throughput": 110.14353188496419,
+    "error_rate": 1.1398839435294523,
+    "timestamp": "2025-07-11T01:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 18.240657615324963,
+    "memory_usage": 22.16108608103994,
+    "response_time": 56.49283151459743,
+    "throughput": 108.01259309523935,
+    "error_rate": 1.3498481014824575,
+    "timestamp": "2025-07-11T01:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 22.70777087479368,
+    "memory_usage": 22.68108903696487,
+    "response_time": 131.928761102809,
+    "throughput": 89.71566594278069,
+    "error_rate": 0.03692944420264577,
+    "timestamp": "2025-07-11T01:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 10.93536249470372,
+    "memory_usage": 21.720686883463934,
+    "response_time": 53.03510634542428,
+    "throughput": 114.87337109998174,
+    "error_rate": 1.4038984148169826,
+    "timestamp": "2025-07-11T02:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 7.999136096256903,
+    "memory_usage": 26.975750320167624,
+    "response_time": 207.53860492209694,
+    "throughput": 118.93895265351608,
+    "error_rate": 0.24479442203232415,
+    "timestamp": "2025-07-11T02:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 11.679014685797746,
+    "memory_usage": 12.336139866039513,
+    "response_time": 250.51874271673836,
+    "throughput": 86.70765552744209,
+    "error_rate": 0.11110911991289862,
+    "timestamp": "2025-07-11T02:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 7.707533248509115,
+    "memory_usage": 25.393936458526042,
+    "response_time": 83.41144697242498,
+    "throughput": 104.36281397621521,
+    "error_rate": 1.6839309762696801,
+    "timestamp": "2025-07-11T03:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 8.624382790057208,
+    "memory_usage": 14.612059206042087,
+    "response_time": 296.7813473837201,
+    "throughput": 90.45444066807754,
+    "error_rate": 0.9685280367991314,
+    "timestamp": "2025-07-11T03:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 5.43621046884825,
+    "memory_usage": 18.74845688508311,
+    "response_time": 67.13221120136687,
+    "throughput": 97.88374215517321,
+    "error_rate": 0.2185782205315281,
+    "timestamp": "2025-07-11T03:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 9.289761205926295,
+    "memory_usage": 31.37568723551014,
+    "response_time": 130.0801675351379,
+    "throughput": 89.48852577121153,
+    "error_rate": 1.3578584689689304,
+    "timestamp": "2025-07-11T04:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 22.37165319338105,
+    "memory_usage": 19.48540265112903,
+    "response_time": 241.28964227362223,
+    "throughput": 92.08100070380321,
+    "error_rate": 1.77460550251759,
+    "timestamp": "2025-07-11T04:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 10.819181914568246,
+    "memory_usage": 11.226817020265457,
+    "response_time": 192.05312262749447,
+    "throughput": 97.39239430291926,
+    "error_rate": 0.1853689009454289,
+    "timestamp": "2025-07-11T04:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 22.239348731945828,
+    "memory_usage": 24.321785075105687,
+    "response_time": 77.62763140436125,
+    "throughput": 91.08935497411272,
+    "error_rate": 1.2810356942644867,
+    "timestamp": "2025-07-11T05:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 15.602289323303054,
+    "memory_usage": 29.504548217185967,
+    "response_time": 286.94731704275335,
+    "throughput": 106.7406102647792,
+    "error_rate": 0.259767209373833,
+    "timestamp": "2025-07-11T05:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 12.091103327650064,
+    "memory_usage": 12.303675666709948,
+    "response_time": 118.55089222438663,
+    "throughput": 94.3237631979622,
+    "error_rate": 0.5561354555446136,
+    "timestamp": "2025-07-11T05:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 23.23434434359005,
+    "memory_usage": 34.16055529138961,
+    "response_time": 271.82504662416284,
+    "throughput": 107.28256030439678,
+    "error_rate": 0.3186597662716828,
+    "timestamp": "2025-07-11T06:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 14.264359713770379,
+    "memory_usage": 10.428991040760549,
+    "response_time": 137.75157106506924,
+    "throughput": 84.19898098181444,
+    "error_rate": 1.9525667972130858,
+    "timestamp": "2025-07-11T06:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 16.485057295388206,
+    "memory_usage": 38.690884489011204,
+    "response_time": 228.71069058566053,
+    "throughput": 98.65447264779658,
+    "error_rate": 0.7235547170768646,
+    "timestamp": "2025-07-11T06:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 12.945722124081602,
+    "memory_usage": 15.609259083211423,
+    "response_time": 246.35707192498037,
+    "throughput": 94.8468832206058,
+    "error_rate": 0.9864882580342687,
+    "timestamp": "2025-07-11T07:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 23.82714124456251,
+    "memory_usage": 14.82295579430633,
+    "response_time": 58.48811110548331,
+    "throughput": 83.90415700394746,
+    "error_rate": 0.33560196199616166,
+    "timestamp": "2025-07-11T07:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 14.594608745036888,
+    "memory_usage": 23.59418543585018,
+    "response_time": 101.48349612203072,
+    "throughput": 117.27235527669174,
+    "error_rate": 0.38181516245022085,
+    "timestamp": "2025-07-11T07:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 19.560317170652553,
+    "memory_usage": 38.00799623211496,
+    "response_time": 69.16702885210918,
+    "throughput": 94.63075004671302,
+    "error_rate": 0.020120096864499226,
+    "timestamp": "2025-07-11T08:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 6.341018689229059,
+    "memory_usage": 38.993775291119405,
+    "response_time": 91.61681337084875,
+    "throughput": 91.69708719661654,
+    "error_rate": 0.4440000652292928,
+    "timestamp": "2025-07-11T08:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 10.883354332922384,
+    "memory_usage": 25.023324364858077,
+    "response_time": 66.16968820073961,
+    "throughput": 117.14208593053958,
+    "error_rate": 0.7670944781255868,
+    "timestamp": "2025-07-11T08:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 15.966507383219962,
+    "memory_usage": 10.434461215183283,
+    "response_time": 259.2847751212437,
+    "throughput": 83.17053332849734,
+    "error_rate": 0.25044169983375175,
+    "timestamp": "2025-07-11T09:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 24.25304251625619,
+    "memory_usage": 21.909993275133992,
+    "response_time": 192.28591175018497,
+    "throughput": 99.32797096256238,
+    "error_rate": 0.7951002950674588,
+    "timestamp": "2025-07-11T09:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 8.226844032085687,
+    "memory_usage": 10.407695958277083,
+    "response_time": 91.08816759507589,
+    "throughput": 91.47997726554703,
+    "error_rate": 0.0988482655785341,
+    "timestamp": "2025-07-11T09:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 5.912368526155984,
+    "memory_usage": 22.60937598944151,
+    "response_time": 68.00642650077405,
+    "throughput": 83.20725530400962,
+    "error_rate": 0.46325519960684924,
+    "timestamp": "2025-07-11T10:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 19.696966223193034,
+    "memory_usage": 22.028452053287623,
+    "response_time": 173.52250678543197,
+    "throughput": 99.73543539147875,
+    "error_rate": 0.6183179506654146,
+    "timestamp": "2025-07-11T10:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 7.192045277081826,
+    "memory_usage": 20.44478069808255,
+    "response_time": 246.7440634227968,
+    "throughput": 81.44603030454024,
+    "error_rate": 1.767173182365496,
+    "timestamp": "2025-07-11T10:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 22.4709711963722,
+    "memory_usage": 11.824241700766148,
+    "response_time": 125.23201709877758,
+    "throughput": 113.83862009208397,
+    "error_rate": 1.7688290878295765,
+    "timestamp": "2025-07-11T11:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 11.156788418716996,
+    "memory_usage": 27.80169809593244,
+    "response_time": 108.98214125284642,
+    "throughput": 96.02277134421612,
+    "error_rate": 0.5851066108327005,
+    "timestamp": "2025-07-11T11:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 14.81537453050379,
+    "memory_usage": 27.65723130670997,
+    "response_time": 272.99515575152304,
+    "throughput": 112.43662555453768,
+    "error_rate": 0.8764994897235006,
+    "timestamp": "2025-07-11T11:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 9.740056922014526,
+    "memory_usage": 38.496857043242,
+    "response_time": 275.8115401324904,
+    "throughput": 82.97386248227627,
+    "error_rate": 0.17100598205730488,
+    "timestamp": "2025-07-11T12:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 6.818259939093485,
+    "memory_usage": 28.797897920743594,
+    "response_time": 261.22477018443294,
+    "throughput": 85.23972877576358,
+    "error_rate": 0.786597440904337,
+    "timestamp": "2025-07-11T12:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 16.91085495881569,
+    "memory_usage": 36.93972188620144,
+    "response_time": 203.57383285056787,
+    "throughput": 96.19740997124457,
+    "error_rate": 1.2596989463503538,
+    "timestamp": "2025-07-11T12:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 17.09424827217303,
+    "memory_usage": 30.266063332190825,
+    "response_time": 87.94668084818136,
+    "throughput": 98.60024829960733,
+    "error_rate": 1.119736032708706,
+    "timestamp": "2025-07-11T13:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 12.876454605391594,
+    "memory_usage": 23.95027210998338,
+    "response_time": 283.8756949416442,
+    "throughput": 110.31726691782755,
+    "error_rate": 1.35829907566142,
+    "timestamp": "2025-07-11T13:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 23.4819643934987,
+    "memory_usage": 20.41952682109092,
+    "response_time": 63.150070889677096,
+    "throughput": 85.3048938622328,
+    "error_rate": 1.346792197153526,
+    "timestamp": "2025-07-11T13:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 17.704873526678703,
+    "memory_usage": 39.16724679867276,
+    "response_time": 278.43366325604234,
+    "throughput": 83.7087438506745,
+    "error_rate": 1.681824638678072,
+    "timestamp": "2025-07-11T14:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 13.797562283284972,
+    "memory_usage": 33.15372152939082,
+    "response_time": 287.24241456291134,
+    "throughput": 91.64350737690592,
+    "error_rate": 0.19617378438198685,
+    "timestamp": "2025-07-11T14:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 6.750656101531658,
+    "memory_usage": 22.64288546711449,
+    "response_time": 267.72228977752275,
+    "throughput": 93.06364801732471,
+    "error_rate": 1.8499751052602895,
+    "timestamp": "2025-07-11T14:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 20.02364741607316,
+    "memory_usage": 19.35821368280943,
+    "response_time": 297.14065373526785,
+    "throughput": 90.64545321937531,
+    "error_rate": 0.3706938706127134,
+    "timestamp": "2025-07-11T15:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 24.913331157309912,
+    "memory_usage": 32.57256099414428,
+    "response_time": 62.82905261663719,
+    "throughput": 94.63112534709485,
+    "error_rate": 0.9656590624782697,
+    "timestamp": "2025-07-11T15:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 6.754343516576043,
+    "memory_usage": 30.03524615018117,
+    "response_time": 82.96460669838117,
+    "throughput": 108.07002690171498,
+    "error_rate": 1.2176221000682192,
+    "timestamp": "2025-07-11T15:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 13.299353148927116,
+    "memory_usage": 18.578142562121855,
+    "response_time": 230.59173646143674,
+    "throughput": 86.08909332300172,
+    "error_rate": 0.3414853945600391,
+    "timestamp": "2025-07-11T16:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 5.309217881681702,
+    "memory_usage": 10.967654796902762,
+    "response_time": 228.75181264960514,
+    "throughput": 114.75282845334016,
+    "error_rate": 1.1664688713421696,
+    "timestamp": "2025-07-11T16:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 23.913891410256735,
+    "memory_usage": 34.473247459453844,
+    "response_time": 211.6268909403893,
+    "throughput": 87.69011799987597,
+    "error_rate": 1.1056399792323204,
+    "timestamp": "2025-07-11T16:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 10.544415384453206,
+    "memory_usage": 23.25277451713871,
+    "response_time": 283.6245377597321,
+    "throughput": 95.40568438825505,
+    "error_rate": 0.41337005409523764,
+    "timestamp": "2025-07-11T17:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 7.002809258311979,
+    "memory_usage": 15.39689672002433,
+    "response_time": 260.9203377273462,
+    "throughput": 94.55507224209829,
+    "error_rate": 0.6752444111096534,
+    "timestamp": "2025-07-11T17:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 6.65181435616454,
+    "memory_usage": 22.812694577274367,
+    "response_time": 130.05780405297094,
+    "throughput": 109.43371569710762,
+    "error_rate": 0.7581215860336696,
+    "timestamp": "2025-07-11T17:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 20.351738289584116,
+    "memory_usage": 38.458216937719946,
+    "response_time": 149.1481516861573,
+    "throughput": 113.36850974837878,
+    "error_rate": 1.167162486236662,
+    "timestamp": "2025-07-11T18:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 7.758856524689463,
+    "memory_usage": 15.77616797883126,
+    "response_time": 176.53977550415726,
+    "throughput": 89.3121877142947,
+    "error_rate": 0.6121628397473451,
+    "timestamp": "2025-07-11T18:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 10.010488557402848,
+    "memory_usage": 15.936889124051193,
+    "response_time": 80.53549467857019,
+    "throughput": 106.2188172223827,
+    "error_rate": 1.3492118528489991,
+    "timestamp": "2025-07-11T18:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 21.19307541088443,
+    "memory_usage": 38.526897497644796,
+    "response_time": 257.14533120324586,
+    "throughput": 117.66073968132922,
+    "error_rate": 1.8988574161922882,
+    "timestamp": "2025-07-11T19:42:04.533878"
+  },
+  {
+    "plugin_id": "inventory_management",
+    "cpu_usage": 5.0116247387054464,
+    "memory_usage": 26.964744804154325,
+    "response_time": 278.4446439433479,
+    "throughput": 100.91456459592604,
+    "error_rate": 0.5664117042413863,
+    "timestamp": "2025-07-11T19:42:04.533878"
+  },
+  {
+    "plugin_id": "order_management",
+    "cpu_usage": 13.035270135181356,
+    "memory_usage": 38.83193627657572,
+    "response_time": 217.20453316027826,
+    "throughput": 82.1286044262849,
+    "error_rate": 0.4850198516093982,
+    "timestamp": "2025-07-11T19:42:04.533878"
+  },
+  {
+    "plugin_id": "restaurant_management",
+    "cpu_usage": 2.06,
+    "memory_usage": 4.29,
+    "response_time": 9999.0,
+    "throughput": 100.0,
+    "error_rate": 0.1,
+    "timestamp": "2025-07-11T23:20:06.989555"
+  }
+]

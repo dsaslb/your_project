@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 6,
+    "failed_tests": 0,
+    "success_rate": 100.0,
+    "total_time": 0.003
+  },
+  "performance_metrics": {
+    "plugin_loading_time": 0.0,
+    "marketplace_search_time": 0.0
+  },
+  "test_details": [
+    {
+      "name": "플러그인 디렉토리 존재: plugins",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2025-07-11T21:30:45.131935"
+    },
+    {
+      "name": "플러그인 디렉토리 존재: plugins/samples",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2025-07-11T21:30:45.131935"
+    },
+    {
+      "name": "플러그인 디렉토리 존재: plugins/marketplace",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2025-07-11T21:30:45.131935"
+    },
+    {
+      "name": "플러그인 로딩 성능",
+      "status": "PASS",
+      "details": "로딩 시간: 0.00초",
+      "timestamp": "2025-07-11T21:30:45.132935"
+    },
+    {
+      "name": "마켓플레이스 검색 성능",
+      "status": "PASS",
+      "details": "검색 시간: 0.00초",
+      "timestamp": "2025-07-11T21:30:45.132935"
+    },
+    {
+      "name": "통합 시나리오 테스트",
+      "status": "PASS",
+      "details": "모든 시나리오 실행 완료",
+      "timestamp": "2025-07-11T21:30:45.133935"
+    }
+  ],
+  "timestamp": "2025-07-11T21:30:45.133935"
+}

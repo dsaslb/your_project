@@ -1,0 +1,31 @@
+{
+  "test_timeout": 30,
+  "performance_threshold": {
+    "cpu_usage": 80.0,
+    "memory_usage": 80.0,
+    "response_time": 1000.0,
+    "error_rate": 5.0
+  },
+  "monitoring_interval": 60,
+  "test_suites": {
+    "unit": [
+      "pytest",
+      "-v"
+    ],
+    "integration": [
+      "pytest",
+      "-v",
+      "--integration"
+    ],
+    "performance": [
+      "pytest",
+      "-v",
+      "--performance"
+    ],
+    "security": [
+      "pytest",
+      "-v",
+      "--security"
+    ]
+  }
+}

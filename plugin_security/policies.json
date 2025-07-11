@@ -1,0 +1,56 @@
+[
+  {
+    "plugin_id": "restaurant_management",
+    "security_level": "high",
+    "allowed_ips": [
+      "127.0.0.1",
+      "192.168.1.0/24"
+    ],
+    "allowed_domains": [
+      "localhost",
+      "restaurant.local"
+    ],
+    "max_requests_per_minute": 200,
+    "require_authentication": true,
+    "require_authorization": true,
+    "allowed_permissions": [
+      "read",
+      "write",
+      "admin"
+    ],
+    "created_at": "2025-07-11T20:55:47.747301",
+    "updated_at": "2025-07-11T20:55:47.747301"
+  },
+  {
+    "plugin_id": "analytics_plugin",
+    "security_level": "medium",
+    "allowed_ips": [
+      "127.0.0.1"
+    ],
+    "allowed_domains": [
+      "localhost"
+    ],
+    "max_requests_per_minute": 100,
+    "require_authentication": true,
+    "require_authorization": false,
+    "allowed_permissions": [
+      "read"
+    ],
+    "created_at": "2025-07-11T20:55:47.755371",
+    "updated_at": "2025-07-11T20:55:47.755371"
+  },
+  {
+    "plugin_id": "notification_plugin",
+    "security_level": "low",
+    "allowed_ips": [],
+    "allowed_domains": [],
+    "max_requests_per_minute": 50,
+    "require_authentication": false,
+    "require_authorization": false,
+    "allowed_permissions": [
+      "read"
+    ],
+    "created_at": "2025-07-11T20:55:47.763208",
+    "updated_at": "2025-07-11T20:55:47.763208"
+  }
+]

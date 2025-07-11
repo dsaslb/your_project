@@ -1,0 +1,27 @@
+{
+  "plugin_id": "analytics_dashboard",
+  "name": "분석 대시보드 플러그인",
+  "version": "1.0.0",
+  "description": "데이터 분석 및 시각화를 위한 대시보드 플러그인입니다.",
+  "author": "Analytics Team",
+  "category": "analytics",
+  "dependencies": [],
+  "permissions": [
+    "read",
+    "write"
+  ],
+  "entry_point": "main.py",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "debug_mode": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  }
+}

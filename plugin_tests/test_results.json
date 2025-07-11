@@ -1,0 +1,82 @@
+[
+  {
+    "plugin_id": "restaurant_management",
+    "test_type": "all",
+    "started_at": "2024-01-15T10:00:00",
+    "completed_at": "2024-01-15T10:05:00",
+    "total_tests": 15,
+    "passed_tests": 14,
+    "failed_tests": 1,
+    "status": "passed",
+    "results": [
+      {
+        "test_id": "restaurant_management_unit_1705310400",
+        "plugin_id": "restaurant_management",
+        "test_type": "unit",
+        "status": "passed",
+        "duration": 2.5,
+        "message": "단위 테스트 통과",
+        "details": {
+          "stdout": "test_restaurant_management.py::test_basic_functionality PASSED",
+          "stderr": "",
+          "return_code": 0
+        },
+        "created_at": "2024-01-15T10:00:30"
+      },
+      {
+        "test_id": "restaurant_management_integration_1705310400",
+        "plugin_id": "restaurant_management",
+        "test_type": "integration",
+        "status": "passed",
+        "duration": 8.2,
+        "message": "통합 테스트 통과",
+        "details": {
+          "stdout": "test_integration.py::test_api_endpoints PASSED",
+          "stderr": "",
+          "return_code": 0
+        },
+        "created_at": "2024-01-15T10:01:00"
+      },
+      {
+        "test_id": "restaurant_management_performance_1705310400",
+        "plugin_id": "restaurant_management",
+        "test_type": "performance",
+        "status": "failed",
+        "duration": 15.0,
+        "message": "성능 테스트 실패 - 응답 시간 초과",
+        "details": {
+          "stdout": "test_performance.py::test_response_time FAILED",
+          "stderr": "AssertionError: Response time 1200ms exceeds limit of 1000ms",
+          "return_code": 1
+        },
+        "created_at": "2024-01-15T10:02:00"
+      }
+    ]
+  },
+  {
+    "plugin_id": "inventory_management",
+    "test_type": "unit",
+    "started_at": "2024-01-15T09:30:00",
+    "completed_at": "2024-01-15T09:32:00",
+    "total_tests": 8,
+    "passed_tests": 8,
+    "failed_tests": 0,
+    "status": "passed",
+    "results": [
+      {
+        "test_id": "inventory_management_unit_1705307400",
+        "plugin_id": "inventory_management",
+        "test_type": "unit",
+        "status": "passed",
+        "duration": 1.8,
+        "message": "단위 테스트 통과",
+        "details": {
+          "stdout": "test_inventory.py::test_stock_management PASSED",
+          "stderr": "",
+          "return_code": 0
+        },
+        "created_at": "2024-01-15T09:30:30"
+      }
+    ]
+  }
+]

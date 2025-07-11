@@ -1,0 +1,38 @@
+{
+  "deployments": {
+    "restaurant_management": {
+      "plugin_id": "restaurant_management",
+      "environment": "production",
+      "deployed_at": "2024-01-15T10:30:00",
+      "version": "1.0.0",
+      "status": "deployed"
+    },
+    "analytics_dashboard": {
+      "plugin_id": "analytics_dashboard",
+      "environment": "staging",
+      "deployed_at": "2024-01-14T15:45:00",
+      "version": "1.0.0",
+      "status": "deployed"
+    }
+  },
+  "history": [
+    {
+      "plugin_id": "restaurant_management",
+      "environment": "production",
+      "deployed_at": "2024-01-15T10:30:00",
+      "version": "1.0.0",
+      "status": "deployed",
+      "action": "deploy",
+      "timestamp": "2024-01-15T10:30:00"
+    },
+    {
+      "plugin_id": "analytics_dashboard",
+      "environment": "staging",
+      "deployed_at": "2024-01-14T15:45:00",
+      "version": "1.0.0",
+      "status": "deployed",
+      "action": "deploy",
+      "timestamp": "2024-01-14T15:45:00"
+    }
+  ]
+}

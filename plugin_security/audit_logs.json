@@ -1,0 +1,46 @@
+[
+  {
+    "log_id": "eb32dfba-5193-4a82-956c-59f3b8f0c392",
+    "plugin_id": "restaurant_management",
+    "user_id": "admin",
+    "action": "plugin_access",
+    "resource": "/api/restaurant/orders",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "success": true,
+    "details": {
+      "method": "GET",
+      "status_code": 200
+    },
+    "timestamp": "2025-07-11T20:55:47.783044"
+  },
+  {
+    "log_id": "ac1580a8-b19c-4870-9ae2-8d89e2922fe8",
+    "plugin_id": "restaurant_management",
+    "user_id": "user1",
+    "action": "api_key_validation",
+    "resource": "/api/restaurant/inventory",
+    "ip_address": "192.168.1.100",
+    "user_agent": "Python/3.9 requests/2.25.1",
+    "success": true,
+    "details": {
+      "api_key_id": "sample_key_1"
+    },
+    "timestamp": "2025-07-11T20:55:47.792044"
+  },
+  {
+    "log_id": "518503db-625d-44fc-9d07-89b7406512e6",
+    "plugin_id": "analytics_plugin",
+    "user_id": "analyst",
+    "action": "data_export",
+    "resource": "/api/analytics/reports",
+    "ip_address": "10.0.0.50",
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    "success": false,
+    "details": {
+      "error": "권한 부족",
+      "required_permission": "admin"
+    },
+    "timestamp": "2025-07-11T20:55:47.801497"
+  }
+]

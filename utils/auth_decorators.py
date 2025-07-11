@@ -57,3 +57,19 @@ def role_required(allowed_roles):
             return f(*args, **kwargs)
         return decorated_function
     return decorator 
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # TODO: 실제 관리자 인증 로직 구현
+        # 임시: 항상 통과
+        return f(*args, **kwargs)
+    return decorated_function
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # TODO: 실제 로그인 인증 로직 구현
+        # 임시: 항상 통과
+        return f(*args, **kwargs)
+    return decorated_function 

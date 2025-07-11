@@ -4,7 +4,7 @@
   "description": "레스토랑 업종 전용 관리 기능",
   "author": "Your Program Team",
   "category": "restaurant",
-  "dependencies": [],
+  "dependencies": ["core_management"],
   "permissions": ["restaurant_management"],
   "enabled": true,
   "created_at": "2024-12-01T00:00:00Z",

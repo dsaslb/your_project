@@ -1,0 +1,53 @@
+{
+  "name": "샘플 알림",
+  "version": "1.0.0",
+  "description": "알림 기능을 위한 샘플 플러그인",
+  "author": "Your Program Team",
+  "category": "general",
+  "dependencies": [],
+  "permissions": ["notification_access"],
+  "enabled": true,
+  "created_at": "2024-12-01T00:00:00Z",
+  "updated_at": "2024-12-01T00:00:00Z",
+  "config": {
+    "notification_type": "email",
+    "auto_send": true
+  },
+  "routes": [
+    {
+      "path": "/notifications",
+      "methods": ["GET", "POST"],
+      "handler": "handle_notifications",
+      "auth_required": true,
+      "roles": ["admin", "manager"],
+      "description": "알림 관리 API"
+    }
+  ],
+  "menus": [
+    {
+      "title": "샘플 알림",
+      "path": "/sample/notifications",
+      "icon": "bell",
+      "parent": "notifications",
+      "roles": ["admin", "manager"],
+      "order": 1
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "notification_type",
+      "type": "select",
+      "default": "email",
+      "required": false,
+      "description": "알림 타입",
+      "options": ["email", "sms", "push", "all"]
+    },
+    {
+      "key": "auto_send",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "description": "자동 발송 활성화"
+    }
+  ]
+} 

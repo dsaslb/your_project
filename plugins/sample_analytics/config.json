@@ -1,0 +1,7 @@
+{
+  "name": "sample_analytics",
+  "description": "샘플 분석 플러그인",
+  "version": "1.0.0",
+  "author": "System",
+  "main_file": "main.py"
+}

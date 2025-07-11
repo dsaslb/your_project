@@ -1,0 +1,52 @@
+[
+  {
+    "report_id": "vuln_1",
+    "plugin_id": "restaurant_management",
+    "severity": "medium",
+    "title": "하드코딩된 비밀번호 발견",
+    "description": "설정 파일에서 하드코딩된 데이터베이스 비밀번호가 발견되었습니다.",
+    "cve_id": null,
+    "affected_versions": [
+      "1.0.0",
+      "1.1.0"
+    ],
+    "fixed_versions": [
+      "1.2.0"
+    ],
+    "remediation": "환경 변수를 사용하여 비밀번호를 관리하세요.",
+    "discovered_at": "2025-07-11T20:55:47.802498",
+    "status": "open"
+  },
+  {
+    "report_id": "vuln_2",
+    "plugin_id": "analytics_plugin",
+    "severity": "low",
+    "title": "불필요한 디버그 로그",
+    "description": "프로덕션 환경에서 디버그 로그가 활성화되어 있습니다.",
+    "cve_id": null,
+    "affected_versions": [
+      "2.0.0"
+    ],
+    "fixed_versions": [],
+    "remediation": "프로덕션 환경에서 디버그 로그를 비활성화하세요.",
+    "discovered_at": "2025-07-11T20:55:47.802498",
+    "status": "ignored"
+  },
+  {
+    "report_id": "vuln_3",
+    "plugin_id": "notification_plugin",
+    "severity": "high",
+    "title": "SQL 인젝션 취약점",
+    "description": "사용자 입력이 SQL 쿼리에 직접 삽입되어 SQL 인젝션 공격에 취약합니다.",
+    "cve_id": "CVE-2023-1234",
+    "affected_versions": [
+      "1.0.0"
+    ],
+    "fixed_versions": [
+      "1.1.0"
+    ],
+    "remediation": "매개변수화된 쿼리를 사용하세요.",
+    "discovered_at": "2025-07-11T20:55:47.802498",
+    "status": "fixed"
+  }
+]

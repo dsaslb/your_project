@@ -1,0 +1,102 @@
+[
+  {
+    "id": "review_20250711_202104_user1",
+    "plugin_id": "restaurant_analytics",
+    "user_id": "user1",
+    "user_name": "김레스토랑",
+    "rating": 5,
+    "comment": "매출 분석이 정말 유용합니다. 메뉴별 성과를 한눈에 볼 수 있어서 좋아요!",
+    "created_at": "2025-07-11T20:21:04.427699",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202104_user2",
+    "plugin_id": "restaurant_analytics",
+    "user_id": "user2",
+    "user_name": "이카페",
+    "rating": 4,
+    "comment": "고객 행동 분석 기능이 도움이 됩니다. 다만 UI가 조금 복잡해요.",
+    "created_at": "2025-07-11T20:21:04.450503",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202104_user3",
+    "plugin_id": "inventory_management",
+    "user_id": "user3",
+    "user_name": "박마트",
+    "rating": 5,
+    "comment": "자동 발주 알림이 정말 편리합니다. 재고 부족 걱정이 없어졌어요.",
+    "created_at": "2025-07-11T20:21:04.474268",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202104_user4",
+    "plugin_id": "customer_loyalty",
+    "user_id": "user4",
+    "user_name": "최소매",
+    "rating": 4,
+    "comment": "포인트 적립 시스템이 고객 만족도에 도움이 됩니다.",
+    "created_at": "2025-07-11T20:21:04.497983",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202104_user5",
+    "plugin_id": "employee_scheduling",
+    "user_id": "user5",
+    "user_name": "정매니저",
+    "rating": 5,
+    "comment": "근무표 자동 생성이 정말 편리합니다. 시간이 많이 절약돼요.",
+    "created_at": "2025-07-11T20:21:04.518638",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202111_user1",
+    "plugin_id": "restaurant_analytics",
+    "user_id": "user1",
+    "user_name": "김레스토랑",
+    "rating": 5,
+    "comment": "매출 분석이 정말 유용합니다. 메뉴별 성과를 한눈에 볼 수 있어서 좋아요!",
+    "created_at": "2025-07-11T20:21:11.444416",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202111_user2",
+    "plugin_id": "restaurant_analytics",
+    "user_id": "user2",
+    "user_name": "이카페",
+    "rating": 4,
+    "comment": "고객 행동 분석 기능이 도움이 됩니다. 다만 UI가 조금 복잡해요.",
+    "created_at": "2025-07-11T20:21:11.477655",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202111_user3",
+    "plugin_id": "inventory_management",
+    "user_id": "user3",
+    "user_name": "박마트",
+    "rating": 5,
+    "comment": "자동 발주 알림이 정말 편리합니다. 재고 부족 걱정이 없어졌어요.",
+    "created_at": "2025-07-11T20:21:11.505717",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202111_user4",
+    "plugin_id": "customer_loyalty",
+    "user_id": "user4",
+    "user_name": "최소매",
+    "rating": 4,
+    "comment": "포인트 적립 시스템이 고객 만족도에 도움이 됩니다.",
+    "created_at": "2025-07-11T20:21:11.547851",
+    "helpful_count": 0
+  },
+  {
+    "id": "review_20250711_202111_user5",
+    "plugin_id": "employee_scheduling",
+    "user_id": "user5",
+    "user_name": "정매니저",
+    "rating": 5,
+    "comment": "근무표 자동 생성이 정말 편리합니다. 시간이 많이 절약돼요.",
+    "created_at": "2025-07-11T20:21:11.572272",
+    "helpful_count": 0
+  }
+]
