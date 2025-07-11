@@ -13,11 +13,9 @@ from extensions import db
 
 # UserRole enum 추가
 class UserRole(Enum):
-    SUPER_ADMIN = "super_admin"
     ADMIN = "admin"
-    BRAND_MANAGER = "brand_manager"
-    STORE_MANAGER = "store_manager"
-    MANAGER = "manager"
+    BRAND_ADMIN = "brand_admin"
+    STORE_ADMIN = "store_admin"
     EMPLOYEE = "employee"
 
 
@@ -105,7 +103,7 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.String(120), nullable=False)
     role = db.Column(
         db.String(20), default="employee", index=True
-    )  # 'super_admin', 'admin', 'brand_manager', 'store_manager', 'manager', 'employee'
+    )  # 'admin', 'brand_admin', 'store_admin', 'employee'
     grade = db.Column(
         db.String(20), default="staff", index=True
     )  # 'ceo', 'director', 'manager', 'staff'
@@ -296,7 +294,7 @@ class User(db.Model, UserMixin):
             "reports": {"view": False, "export": False, "admin_only": False},
         }
 
-        if self.role == "super_admin":
+        if self.role == "admin":
             # 최고관리자: 모든 권한
             for module in base_permissions:
                 for action in base_permissions[module]:

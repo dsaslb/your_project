@@ -9,7 +9,7 @@ export interface User {
   username: string;
   name: string;
   email: string;
-  role: 'super_admin' | 'brand_manager' | 'store_manager' | 'employee';
+  role: 'admin' | 'brand_admin' | 'store_admin' | 'employee';
   is_active: boolean;
 }
 
@@ -173,19 +173,19 @@ const useUserStore = create<UserState>()(
       },
 
       isSuperAdmin: () => {
-        return get().hasRole('super_admin');
+        return get().hasRole('admin');
       },
 
       isBrandManager: () => {
-        return get().hasRole(['super_admin', 'brand_manager']);
+        return get().hasRole(['admin', 'brand_admin']);
       },
 
       isStoreManager: () => {
-        return get().hasRole(['super_admin', 'brand_manager', 'store_manager']);
+        return get().hasRole(['admin', 'brand_admin', 'store_admin']);
       },
 
       isEmployee: () => {
-        return get().hasRole(['super_admin', 'brand_manager', 'store_manager', 'employee']);
+        return get().hasRole(['admin', 'brand_admin', 'store_admin', 'employee']);
       },
       
       // 실시간 동기화: 구독자 관리

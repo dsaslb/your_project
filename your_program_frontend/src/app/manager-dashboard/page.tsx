@@ -33,36 +33,37 @@ export default function ManagerDashboard() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // 인증 상태 확인
+    // JWT 토큰 확인
+    const token = localStorage.getItem('jwt_token')
     const savedAuth = localStorage.getItem("authState")
-    if (savedAuth) {
-      const parsedAuth = JSON.parse(savedAuth)
-      setAuthState(parsedAuth)
-      
-      // 인증되지 않았거나 권한이 없는 경우 로그인 페이지로 리다이렉트
-      if (!parsedAuth.isAuthenticated) {
-        router.push("/login")
-        return
-      }
-      
-      // admin 또는 manager 계정만 접근 가능
-      const allowedUsers = ["admin", "manager"]
-      if (!allowedUsers.includes(parsedAuth.username)) {
-        router.push("/login")
-        return
-      }
-      
-      // admin이지만 다른 역할을 선택한 경우 해당 역할의 대시보드로 리다이렉트
-      if (parsedAuth.username === "admin" && parsedAuth.selectedRole && parsedAuth.selectedRole !== "store-manager") {
-        const roleRoutes = {
-          "brand-admin": "/brand-dashboard",
-          "employee": "/employee-dashboard"
-        }
-        const targetRoute = roleRoutes[parsedAuth.selectedRole as keyof typeof roleRoutes]
-        if (targetRoute) {
-          router.push(targetRoute)
+    
+    if (token && savedAuth) {
+      try {
+        const parsedAuth = JSON.parse(savedAuth)
+        setAuthState(parsedAuth)
+        
+        // 인증되지 않았거나 권한이 없는 경우 로그인 페이지로 리다이렉트
+        if (!parsedAuth.isAuthenticated) {
+          router.push("/login")
           return
         }
+        
+        // store_admin 또는 admin 역할만 접근 가능
+        const allowedRoles = ["store_admin", "admin"]
+        if (!allowedRoles.includes(parsedAuth.selectedRole)) {
+          router.push("/login")
+          return
+        }
+        
+        // admin이지만 다른 역할을 선택한 경우 해당 역할의 대시보드로 리다이렉트
+        if (parsedAuth.selectedRole === "admin") {
+          router.push("/admin-dashboard")
+          return
+        }
+      } catch (error) {
+        console.error("인증 상태 파싱 오류:", error)
+        router.push("/login")
+        return
       }
     } else {
       router.push("/login")
@@ -74,6 +75,7 @@ export default function ManagerDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("authState")
+    localStorage.removeItem("jwt_token")
     router.push("/login")
   }
 
@@ -105,13 +107,13 @@ export default function ManagerDashboard() {
               <div>
                 <h1 className="text-xl font-bold text-white">매장 관리자 대시보드</h1>
                 <p className="text-sm text-slate-400">
-                  {authState.username === "admin" ? "최고 관리자" : "매장 관리자"} - 강남점 운영 관리
+                  {authState.username === "admin" ? "업종별 관리자" : "매장 관리자"} - 강남점 운영 관리
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                {authState.username === "admin" ? "최고 관리자" : "매장 관리자"}
+                {authState.username === "admin" ? "업종별 관리자" : "매장 관리자"}
               </Badge>
               <Button 
                 variant="ghost" 

@@ -41,10 +41,10 @@ interface AuthState {
 
 // 사용자별 기본 역할 매핑
 const userRoleMapping: { [key: string]: string } = {
-  "admin": "role-selector", // admin은 역할 선택 화면
-  "brand": "brand-admin",   // brand는 브랜드 관리자
-  "manager": "store-manager", // manager는 매장 관리자
-  "employee": "employee"    // employee는 직원
+  "admin": "admin",           // admin은 업종별 관리자
+  "brand_admin": "brand_admin", // brand_admin은 브랜드 관리자
+  "store_admin": "store_admin", // store_admin은 매장 관리자
+  "employee": "employee"      // employee는 직원
 }
 
 export default function LoginPage() {
@@ -63,15 +63,15 @@ export default function LoginPage() {
 
   const userRoles: UserRole[] = [
     {
-      id: "super-admin",
-      name: "슈퍼 관리자",
+      id: "admin",
+      name: "업종별 관리자",
       description: "시스템 전체 관리 및 설정",
       icon: <Shield className="h-6 w-6" />,
       color: "from-pink-600 to-pink-700",
-      route: "/super-admin"
+      route: "/admin-dashboard"
     },
     {
-      id: "brand-admin",
+      id: "brand_admin",
       name: "브랜드 관리자",
       description: "전체 매장 관리 및 통계",
       icon: <Building2 className="h-6 w-6" />,
@@ -79,12 +79,12 @@ export default function LoginPage() {
       route: "/brand-dashboard"
     },
     {
-      id: "store-manager",
+      id: "store_admin",
       name: "매장 관리자",
       description: "개별 매장 운영 관리",
       icon: <Store className="h-6 w-6" />,
       color: "from-blue-600 to-blue-700",
-      route: "/manager-dashboard"
+      route: "/store-dashboard"
     },
     {
       id: "employee",
@@ -98,17 +98,59 @@ export default function LoginPage() {
 
   // 페이지 로드 시 인증 상태 확인
   useEffect(() => {
-    // 페이지 로드 시 항상 localStorage 클리어 (개발용)
-    localStorage.removeItem("authState")
-    console.log("localStorage 클리어됨")
+    // URL 파라미터에서 JWT 토큰 확인
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
     
-    setAuthState({
-      isAuthenticated: false,
-      username: "",
-      selectedRole: null
-    })
-    setShowRoleSelector(false)
-  }, [])
+    if (token) {
+      // JWT 토큰이 있으면 토큰 검증 및 사용자 정보 가져오기
+      console.log("JWT 토큰 발견:", token)
+      localStorage.setItem('jwt_token', token)
+      
+      // 토큰에서 사용자 정보 추출 (간단한 방법)
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        console.log("토큰 페이로드:", payload)
+        
+        const authState: AuthState = {
+          isAuthenticated: true,
+          username: payload.username,
+          selectedRole: payload.role
+        }
+        
+        setAuthState(authState)
+        localStorage.setItem("authState", JSON.stringify(authState))
+        
+        // 역할에 따라 대시보드로 리다이렉트
+        const roleRoutes = {
+          "admin": "/admin-dashboard",
+          "brand_admin": "/brand-dashboard", 
+          "store_admin": "/store-dashboard",
+          "employee": "/employee-dashboard"
+        }
+        
+        const targetRoute = roleRoutes[payload.role as keyof typeof roleRoutes]
+        if (targetRoute) {
+          console.log("대시보드로 리다이렉트:", targetRoute)
+          router.push(targetRoute)
+        }
+      } catch (error) {
+        console.error("토큰 파싱 오류:", error)
+        setError("토큰이 유효하지 않습니다.")
+      }
+    } else {
+      // 페이지 로드 시 항상 localStorage 클리어 (개발용)
+      localStorage.removeItem("authState")
+      console.log("localStorage 클리어됨")
+      
+      setAuthState({
+        isAuthenticated: false,
+        username: "",
+        selectedRole: null
+      })
+      setShowRoleSelector(false)
+    }
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -117,47 +159,51 @@ export default function LoginPage() {
 
     console.log("로그인 시도:", username)
 
-    // 허용된 계정들 확인
-    const allowedAccounts = {
-      "admin": "admin123",
-      "brand": "brand123", 
-      "manager": "manager123",
-      "employee": "employee123"
-    }
-
-    if (username in allowedAccounts && password === allowedAccounts[username as keyof typeof allowedAccounts]) {
-      console.log("로그인 성공:", username)
-      
-      if (username === "admin") {
-        // admin인 경우 역할 선택 화면 표시
-        console.log("admin 계정 - 역할 선택 화면 표시")
-        setAuthState({
-          isAuthenticated: true,
+    try {
+      // 백엔드 API로 로그인 요청
+      const response = await fetch('http://192.168.45.44:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           username: username,
-          selectedRole: null
+          password: password
         })
-        setShowRoleSelector(true)
-        setIsLoading(false)
-      } else {
-        // 다른 계정들은 자동으로 해당 역할의 대시보드로 이동
-        const roleId = userRoleMapping[username]
-        console.log("다른 계정 - 역할 ID:", roleId)
-        const role = userRoles.find(r => r.id === roleId)
-        if (role) {
-          const authState: AuthState = {
-            isAuthenticated: true,
-            username: username,
-            selectedRole: roleId
-          }
-          setAuthState(authState)
-          localStorage.setItem("authState", JSON.stringify(authState))
-          console.log("대시보드로 이동:", role.route)
-          router.push(role.route)
+      })
+
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        console.log("로그인 성공:", data)
+        
+        // JWT 토큰 저장
+        if (data.access_token) {
+          localStorage.setItem('jwt_token', data.access_token)
         }
+        
+        // 사용자 정보 저장
+        const authState: AuthState = {
+          isAuthenticated: true,
+          username: data.user.username,
+          selectedRole: data.user.role
+        }
+        setAuthState(authState)
+        localStorage.setItem("authState", JSON.stringify(authState))
+        
+        // 백엔드에서 제공한 리다이렉트 URL로 이동
+        if (data.redirect_to) {
+          console.log("리다이렉트:", data.redirect_to)
+          window.location.href = data.redirect_to
+        }
+      } else {
+        console.log("로그인 실패:", data.message)
+        setError(data.message || "로그인에 실패했습니다.")
+        setIsLoading(false)
       }
-    } else {
-      console.log("로그인 실패")
-      setError("아이디 또는 비밀번호가 올바르지 않습니다.")
+    } catch (error) {
+      console.error("로그인 오류:", error)
+      setError("서버 연결에 실패했습니다.")
       setIsLoading(false)
     }
   }

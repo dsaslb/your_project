@@ -1,290 +1,173 @@
-import redis
+import time
 import json
-import pickle
-from datetime import datetime, timedelta
+import hashlib
+from typing import Any, Optional, Dict, List
 from functools import wraps
 import logging
-from typing import Any, Optional, Union, Dict, List
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
 class CacheManager:
-    """Redis 기반 캐싱 시스템"""
+    """고성능 캐싱 시스템"""
     
-    def __init__(self, host='localhost', port=6379, db=0, password=None):
-        try:
-            self.redis_client = redis.Redis(
-                host=host,
-                port=port,
-                db=db,
-                password=password,
-                decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5
-            )
-            # 연결 테스트
-            self.redis_client.ping()
-            self.connected = True
-            logger.info("Redis 캐시 서버에 연결되었습니다.")
-        except Exception as e:
-            logger.warning(f"Redis 연결 실패, 메모리 캐시로 대체: {e}")
-            self.connected = False
-            self.memory_cache = {}
+    def __init__(self):
+        self._cache = {}
+        self._cache_stats = {
+            'hits': 0,
+            'misses': 0,
+            'sets': 0,
+            'deletes': 0
+        }
+        self._default_ttl = 300  # 5분 기본 TTL
+        
+    def _generate_key(self, prefix: str, *args, **kwargs) -> str:
+        """캐시 키 생성"""
+        key_data = f"{prefix}:{args}:{sorted(kwargs.items())}"
+        return hashlib.md5(key_data.encode()).hexdigest()
     
-    def set(self, key: str, value: Any, expire: int = 3600) -> bool:
-        """캐시에 데이터 저장"""
-        try:
-            if self.connected:
-                # JSON 직렬화 가능한 데이터
-                if isinstance(value, (dict, list, str, int, float, bool)):
-                    serialized_value = json.dumps(value, ensure_ascii=False, default=str)
-                    return self.redis_client.setex(key, expire, serialized_value)
-                else:
-                    # 복잡한 객체는 pickle 사용
-                    serialized_value = pickle.dumps(value)
-                    return self.redis_client.setex(key, expire, serialized_value)
-            else:
-                # 메모리 캐시 사용
-                self.memory_cache[key] = {
-                    'value': value,
-                    'expire_at': datetime.now() + timedelta(seconds=expire)
-                }
-                return True
-        except Exception as e:
-            logger.error(f"캐시 저장 실패: {e}")
-            return False
-    
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str) -> Optional[Any]:
         """캐시에서 데이터 조회"""
-        try:
-            if self.connected:
-                value = self.redis_client.get(key)
-                if value is None:
-                    return default
-                
-                # JSON 역직렬화 시도
-                try:
-                    return json.loads(value)
-                except json.JSONDecodeError:
-                    # pickle 역직렬화 시도
-                    try:
-                        return pickle.loads(value.encode('latin1'))
-                    except:
-                        return value
+        if key in self._cache:
+            item = self._cache[key]
+            if item['expires_at'] > datetime.now():
+                self._cache_stats['hits'] += 1
+                return item['data']
             else:
-                # 메모리 캐시에서 조회
-                cache_data = self.memory_cache.get(key)
-                if cache_data and datetime.now() < cache_data['expire_at']:
-                    return cache_data['value']
-                else:
-                    # 만료된 데이터 삭제
-                    self.memory_cache.pop(key, None)
-                    return default
-        except Exception as e:
-            logger.error(f"캐시 조회 실패: {e}")
-            return default
+                # 만료된 항목 제거
+                del self._cache[key]
+        
+        self._cache_stats['misses'] += 1
+        return None
+    
+    def set(self, key: str, data: Any, ttl: Optional[int] = None) -> None:
+        """캐시에 데이터 저장"""
+        ttl = ttl or self._default_ttl
+        expires_at = datetime.now() + timedelta(seconds=ttl)
+        
+        self._cache[key] = {
+            'data': data,
+            'expires_at': expires_at,
+            'created_at': datetime.now()
+        }
+        self._cache_stats['sets'] += 1
+        
+        # 캐시 크기 제한 (메모리 보호)
+        if len(self._cache) > 1000:
+            self._cleanup_expired()
     
     def delete(self, key: str) -> bool:
         """캐시에서 데이터 삭제"""
-        try:
-            if self.connected:
-                return bool(self.redis_client.delete(key))
-            else:
-                return bool(self.memory_cache.pop(key, None))
-        except Exception as e:
-            logger.error(f"캐시 삭제 실패: {e}")
-            return False
+        if key in self._cache:
+            del self._cache[key]
+            self._cache_stats['deletes'] += 1
+            return True
+        return False
     
-    def exists(self, key: str) -> bool:
-        """키 존재 여부 확인"""
-        try:
-            if self.connected:
-                return bool(self.redis_client.exists(key))
-            else:
-                cache_data = self.memory_cache.get(key)
-                return cache_data is not None and datetime.now() < cache_data['expire_at']
-        except Exception as e:
-            logger.error(f"캐시 키 확인 실패: {e}")
-            return False
+    def clear(self) -> None:
+        """전체 캐시 삭제"""
+        self._cache.clear()
+        logger.info("캐시가 완전히 삭제되었습니다.")
     
-    def expire(self, key: str, seconds: int) -> bool:
-        """키 만료 시간 설정"""
-        try:
-            if self.connected:
-                return bool(self.redis_client.expire(key, seconds))
-            else:
-                cache_data = self.memory_cache.get(key)
-                if cache_data:
-                    cache_data['expire_at'] = datetime.now() + timedelta(seconds=seconds)
-                    return True
-                return False
-        except Exception as e:
-            logger.error(f"캐시 만료 시간 설정 실패: {e}")
-            return False
-    
-    def clear_pattern(self, pattern: str) -> int:
-        """패턴에 맞는 키들 삭제"""
-        try:
-            if self.connected:
-                keys = self.redis_client.keys(pattern)
-                if keys:
-                    return self.redis_client.delete(*keys)
-                return 0
-            else:
-                # 메모리 캐시에서 패턴 매칭
-                deleted_count = 0
-                keys_to_delete = []
-                for key in self.memory_cache.keys():
-                    if pattern.replace('*', '') in key:
-                        keys_to_delete.append(key)
-                
-                for key in keys_to_delete:
-                    if self.delete(key):
-                        deleted_count += 1
-                return deleted_count
-        except Exception as e:
-            logger.error(f"패턴 캐시 삭제 실패: {e}")
-            return 0
+    def _cleanup_expired(self) -> None:
+        """만료된 캐시 항목 정리"""
+        now = datetime.now()
+        expired_keys = [
+            key for key, item in self._cache.items()
+            if item['expires_at'] <= now
+        ]
+        
+        for key in expired_keys:
+            del self._cache[key]
+        
+        if expired_keys:
+            logger.info(f"{len(expired_keys)}개의 만료된 캐시 항목이 정리되었습니다.")
     
     def get_stats(self) -> Dict[str, Any]:
-        """캐시 통계 정보"""
-        try:
-            if self.connected:
-                info = self.redis_client.info()
-                return {
-                    'connected': True,
-                    'used_memory': info.get('used_memory_human', 'N/A'),
-                    'connected_clients': info.get('connected_clients', 0),
-                    'total_commands_processed': info.get('total_commands_processed', 0),
-                    'keyspace_hits': info.get('keyspace_hits', 0),
-                    'keyspace_misses': info.get('keyspace_misses', 0)
-                }
-            else:
-                return {
-                    'connected': False,
-                    'memory_cache_size': len(self.memory_cache),
-                    'cache_type': 'memory'
-                }
-        except Exception as e:
-            logger.error(f"캐시 통계 조회 실패: {e}")
-            return {'connected': False, 'error': str(e)}
+        """캐시 통계 반환"""
+        total_requests = self._cache_stats['hits'] + self._cache_stats['misses']
+        hit_rate = (self._cache_stats['hits'] / total_requests * 100) if total_requests > 0 else 0
+        
+        return {
+            'cache_size': len(self._cache),
+            'hits': self._cache_stats['hits'],
+            'misses': self._cache_stats['misses'],
+            'sets': self._cache_stats['sets'],
+            'deletes': self._cache_stats['deletes'],
+            'hit_rate': round(hit_rate, 2),
+            'total_requests': total_requests
+        }
+    
+    def invalidate_pattern(self, pattern: str) -> int:
+        """패턴에 맞는 캐시 항목들 삭제"""
+        deleted_count = 0
+        keys_to_delete = [key for key in self._cache.keys() if pattern in key]
+        
+        for key in keys_to_delete:
+            del self._cache[key]
+            deleted_count += 1
+        
+        logger.info(f"패턴 '{pattern}'에 맞는 {deleted_count}개의 캐시 항목이 삭제되었습니다.")
+        return deleted_count
 
-# 전역 캐시 매니저 인스턴스
+# 전역 캐시 인스턴스
 cache_manager = CacheManager()
 
-def cache_result(expire: int = 3600, key_prefix: str = ""):
-    """함수 결과 캐싱 데코레이터"""
+def cached(prefix: str, ttl: Optional[int] = None):
+    """캐시 데코레이터"""
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             # 캐시 키 생성
-            cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(sorted(kwargs.items())))}"
+            cache_key = cache_manager._generate_key(prefix, *args, **kwargs)
             
             # 캐시에서 조회
             cached_result = cache_manager.get(cache_key)
             if cached_result is not None:
-                logger.debug(f"캐시 히트: {cache_key}")
                 return cached_result
             
             # 함수 실행
             result = func(*args, **kwargs)
             
             # 결과 캐싱
-            cache_manager.set(cache_key, result, expire)
-            logger.debug(f"캐시 저장: {cache_key}")
+            cache_manager.set(cache_key, result, ttl)
             
             return result
         return wrapper
     return decorator
 
-def invalidate_cache(pattern: str):
+def cache_invalidate(prefix: str):
     """캐시 무효화 데코레이터"""
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
-            cache_manager.clear_pattern(pattern)
-            logger.debug(f"캐시 무효화: {pattern}")
+            cache_manager.invalidate_pattern(prefix)
             return result
         return wrapper
     return decorator
 
-# 캐시 키 상수
-class CacheKeys:
-    """캐시 키 상수 정의"""
+# 특정 기능별 캐시 헬퍼 함수들
+class CacheHelpers:
+    """캐시 헬퍼 클래스"""
     
-    # 사용자 관련
-    USER_PROFILE = "user:profile:*"
-    USER_PERMISSIONS = "user:permissions:*"
+    @staticmethod
+    def user_data_key(user_id: int) -> str:
+        return f"user:{user_id}:data"
     
-    # 스케줄 관련
-    SCHEDULE_WEEKLY = "schedule:weekly:*"
-    SCHEDULE_MONTHLY = "schedule:monthly:*"
+    @staticmethod
+    def attendance_data_key(user_id: int, date: str) -> str:
+        return f"attendance:{user_id}:{date}"
     
-    # 출퇴근 관련
-    ATTENDANCE_DAILY = "attendance:daily:*"
-    ATTENDANCE_MONTHLY = "attendance:monthly:*"
+    @staticmethod
+    def dashboard_stats_key(branch_id: Optional[int] = None) -> str:
+        return f"dashboard:stats:{branch_id or 'all'}"
     
-    # 주문 관련
-    ORDERS_TODAY = "orders:today:*"
-    ORDERS_WEEKLY = "orders:weekly:*"
+    @staticmethod
+    def notification_count_key(user_id: int) -> str:
+        return f"notification:count:{user_id}"
     
-    # 재고 관련
-    INVENTORY_STATUS = "inventory:status:*"
-    INVENTORY_LOW_STOCK = "inventory:low_stock:*"
-    
-    # 분석 관련
-    ANALYTICS_SALES = "analytics:sales:*"
-    ANALYTICS_STAFF = "analytics:staff:*"
-    ANALYTICS_INVENTORY = "analytics:inventory:*"
-    
-    # 알림 관련
-    NOTIFICATIONS_UNREAD = "notifications:unread:*"
-    NOTIFICATIONS_COUNT = "notifications:count:*"
-
-# 캐시 유틸리티 함수들
-def cache_user_data(user_id: int, data: Dict[str, Any], expire: int = 1800):
-    """사용자 데이터 캐싱"""
-    key = f"user:data:{user_id}"
-    return cache_manager.set(key, data, expire)
-
-def get_cached_user_data(user_id: int) -> Optional[Dict[str, Any]]:
-    """캐시된 사용자 데이터 조회"""
-    key = f"user:data:{user_id}"
-    return cache_manager.get(key)
-
-def cache_analytics_data(data_type: str, branch_id: int, data: Any, expire: int = 3600):
-    """분석 데이터 캐싱"""
-    key = f"analytics:{data_type}:{branch_id}"
-    return cache_manager.set(key, data, expire)
-
-def get_cached_analytics_data(data_type: str, branch_id: int) -> Any:
-    """캐시된 분석 데이터 조회"""
-    key = f"analytics:{data_type}:{branch_id}"
-    return cache_manager.get(key)
-
-def clear_user_cache(user_id: int):
-    """사용자 관련 캐시 삭제"""
-    patterns = [
-        f"user:data:{user_id}",
-        f"user:profile:{user_id}",
-        f"user:permissions:{user_id}"
-    ]
-    for pattern in patterns:
-        cache_manager.clear_pattern(pattern)
-
-def clear_branch_cache(branch_id: int):
-    """지점 관련 캐시 삭제"""
-    patterns = [
-        f"schedule:*:{branch_id}",
-        f"attendance:*:{branch_id}",
-        f"orders:*:{branch_id}",
-        f"inventory:*:{branch_id}",
-        f"analytics:*:{branch_id}"
-    ]
-    for pattern in patterns:
-        cache_manager.clear_pattern(pattern)
-
-def get_cache_stats() -> Dict[str, Any]:
-    """캐시 통계 조회"""
-    return cache_manager.get_stats() 
+    @staticmethod
+    def ai_analysis_key(analysis_type: str, params: Dict) -> str:
+        param_str = json.dumps(params, sort_keys=True)
+        return f"ai:analysis:{analysis_type}:{hashlib.md5(param_str.encode()).hexdigest()}" 

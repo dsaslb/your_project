@@ -146,24 +146,24 @@
         <div class="test-section">
             <h3>🔐 역할별 로그인 테스트</h3>
             <button class="test-btn" onclick="testLogin('admin', 'admin123')">
-                👑 슈퍼관리자 (admin)
+                👑 업종별 관리자 (admin)
             </button>
-            <button class="test-btn secondary" onclick="testLogin('manager', 'admin123')">
-                👨‍💼 매니저 (manager)
+            <button class="test-btn secondary" onclick="testLogin('brand_admin', 'admin123')">
+                🏢 브랜드 관리자 (brand_admin)
             </button>
-            <button class="test-btn warning" onclick="testLogin('employee', 'admin123')">
+            <button class="test-btn warning" onclick="testLogin('store_admin', 'admin123')">
+                🏪 매장 관리자 (store_admin)
+            </button>
+            <button class="test-btn" onclick="testLogin('employee', 'admin123')">
                 👷 직원 (employee)
-            </button>
-            <button class="test-btn" onclick="testLogin('teamlead', 'admin123')">
-                🎯 팀리드 (teamlead)
             </button>
         </div>
 
         <div class="test-section">
             <h3>🔗 직접 페이지 접근</h3>
-            <a href="/super-admin" class="test-btn">슈퍼관리자 대시보드</a>
-            <a href="/admin-dashboard" class="test-btn secondary">관리자 대시보드</a>
-            <a href="/manager-dashboard" class="test-btn warning">매니저 대시보드</a>
+            <a href="/admin-dashboard" class="test-btn">업종별 관리자 대시보드</a>
+            <a href="/brand-dashboard" class="test-btn secondary">브랜드 관리자 대시보드</a>
+            <a href="/store-dashboard" class="test-btn warning">매장 관리자 대시보드</a>
             <a href="/employee-dashboard" class="test-btn">직원 대시보드</a>
         </div>
 
@@ -202,9 +202,9 @@
                         localStorage.setItem('jwt_token', data.access_token);
                     }
                     
-                    // 2초 후 리다이렉트
+                    // 2초 후 리다이렉트 (토큰을 URL 파라미터로 전달)
                     setTimeout(() => {
-                        window.location.href = data.redirect_to;
+                        window.location.href = `${data.redirect_to}?token=${data.access_token}`;
                     }, 2000);
                 } else {
                     alert(`❌ 로그인 실패: ${data.message}`);

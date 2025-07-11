@@ -1,4 +1,5 @@
-﻿import os
+﻿# -*- coding: utf-8 -*-
+import os
 from datetime import date, datetime, timedelta
 
 import click
@@ -433,12 +434,23 @@ def auth_login():
             "branch_id": user.branch_id,
         }
 
+        # 역할별 리다이렉트 페이지 결정
+        redirect_to = "/dashboard"  # 기본값
+        if user.role == "admin":
+            redirect_to = "/admin-dashboard"
+        elif user.role == "brand_admin":
+            redirect_to = "/brand-dashboard"
+        elif user.role == "store_admin":
+            redirect_to = "/store-dashboard"
+        elif user.role == "employee":
+            redirect_to = "/employee-dashboard"
+
         return jsonify({
             "message": "로그인 성공",
             "access_token": access_token,
             "refresh_token": refresh_token,
             "user": user_data,
-            "redirect_to": "/dashboard"
+            "redirect_to": redirect_to
         }), 200
         
     except Exception as e:

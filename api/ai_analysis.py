@@ -5,10 +5,9 @@ AI 분석 API
 """
 from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
-from models import User, Order, Branch
-from extensions import db
+from models import *
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 
 ai_analysis_api = Blueprint('ai_analysis_api', __name__, url_prefix='/api/ai')
 
@@ -17,9 +16,8 @@ ai_analysis_api = Blueprint('ai_analysis_api', __name__, url_prefix='/api/ai')
 def generate_analysis():
     """AI 분석 리포트 생성"""
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         analysis_type = data.get('analysis_type', 'weekly_summary')
-        date_range = data.get('date_range', 'last_week')
         
         # 권한 확인
         if not current_user.role in ['super_admin', 'admin', 'manager']:
@@ -45,7 +43,6 @@ def generate_weekly_summary():
     """주간 요약 분석"""
     # 실제 데이터베이스에서 데이터 조회
     total_users = User.query.count()
-    total_orders = Order.query.count()
     
     # 더미 데이터 생성 (실제로는 실제 데이터 분석)
     sales_trend = random.uniform(0.8, 1.2)  # 전주 대비 매출 변화

@@ -1,23 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { 
   Building2, 
-  TrendingUp, 
+  Store, 
   Users, 
-  DollarSign, 
-  ShoppingCart, 
-  Calendar,
-  LogOut,
+  TrendingUp, 
+  Calendar, 
   BarChart3,
-  Store,
-  ChefHat,
-  Clock,
-  AlertTriangle
+  Settings,
+  LogOut,
+  Eye,
+  DollarSign,
+  ShoppingCart,
+  ChefHat
 } from "lucide-react"
 
 interface AuthState {
@@ -28,95 +28,95 @@ interface AuthState {
 
 export default function BrandDashboard() {
   const router = useRouter()
-  const [authState, setAuthState] = useState<AuthState | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [authState, setAuthState] = useState<AuthState>({
+    isAuthenticated: false,
+    username: "",
+    selectedRole: null
+  })
 
   useEffect(() => {
-    // 인증 상태 확인
-    const savedAuth = localStorage.getItem("authState")
-    if (savedAuth) {
-      const parsedAuth = JSON.parse(savedAuth)
-      setAuthState(parsedAuth)
-      
-      // 인증되지 않았거나 권한이 없는 경우 로그인 페이지로 리다이렉트
-      if (!parsedAuth.isAuthenticated) {
-        router.push("/login")
-        return
-      }
-      
-      // admin 또는 brand 계정만 접근 가능
-      const allowedUsers = ["admin", "brand"]
-      if (!allowedUsers.includes(parsedAuth.username)) {
-        router.push("/login")
-        return
-      }
-      
-      // admin이지만 다른 역할을 선택한 경우 해당 역할의 대시보드로 리다이렉트
-      if (parsedAuth.username === "admin" && parsedAuth.selectedRole && parsedAuth.selectedRole !== "brand-admin") {
-        const roleRoutes = {
-          "store-manager": "/manager-dashboard",
-          "employee": "/employee-dashboard"
-        }
-        const targetRoute = roleRoutes[parsedAuth.selectedRole as keyof typeof roleRoutes]
-        if (targetRoute) {
-          router.push(targetRoute)
+    // URL 파라미터에서 JWT 토큰 확인
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    
+    if (token) {
+      // JWT 토큰이 있으면 localStorage에 저장
+      localStorage.setItem('jwt_token', token)
+      console.log("JWT 토큰을 URL에서 받아서 저장:", token)
+    }
+
+    // localStorage에서 인증 상태 확인
+    const storedAuth = localStorage.getItem("authState")
+    if (storedAuth) {
+      try {
+        const parsedAuth = JSON.parse(storedAuth)
+        console.log("저장된 인증 상태:", parsedAuth)
+        
+        // brand_admin 또는 admin 역할만 접근 가능
+        const allowedRoles = ["brand_admin", "admin"]
+        if (!allowedRoles.includes(parsedAuth.selectedRole)) {
+          router.push("/login")
           return
         }
+        
+        // admin이지만 다른 역할을 선택한 경우 해당 역할의 대시보드로 리다이렉트
+        if (parsedAuth.selectedRole === "admin") {
+          router.push("/admin-dashboard")
+          return
+        }
+        
+        setAuthState(parsedAuth)
+      } catch (error) {
+        console.error("인증 상태 파싱 오류:", error)
+        router.push("/login")
       }
     } else {
+      console.log("저장된 인증 상태 없음")
       router.push("/login")
-      return
     }
-    
-    setIsLoading(false)
   }, [router])
 
   const handleLogout = () => {
     localStorage.removeItem("authState")
+    localStorage.removeItem("jwt_token")
     router.push("/login")
   }
 
-  if (isLoading) {
+  if (!authState.isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-400">로딩 중...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white mx-auto"></div>
+          <p className="mt-4">인증 확인 중...</p>
         </div>
       </div>
     )
   }
 
-  if (!authState?.isAuthenticated) {
-    return null
-  }
-
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* 헤더 */}
-      <header className="bg-slate-800 border-b border-slate-700">
+      <header className="bg-white/10 backdrop-blur-md border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center">
-                <Building2 className="h-6 w-6 text-white" />
-              </div>
+              <Building2 className="h-8 w-8 text-purple-400" />
               <div>
                 <h1 className="text-xl font-bold text-white">브랜드 관리자 대시보드</h1>
                 <p className="text-sm text-slate-400">
-                  {authState.username === "admin" ? "최고 관리자" : "브랜드 관리자"} - 전체 매장 관리
+                  {authState.username === "admin" ? "업종별 관리자" : "브랜드 관리자"} - 전체 매장 관리
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <Badge variant="secondary" className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-                {authState.username === "admin" ? "최고 관리자" : "브랜드 관리자"}
+                {authState.username === "admin" ? "업종별 관리자" : "브랜드 관리자"}
               </Badge>
               <Button 
                 variant="ghost" 
-                size="sm"
+                size="sm" 
                 onClick={handleLogout}
-                className="text-slate-400 hover:text-white"
+                className="text-white hover:bg-white/10"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 로그아웃
@@ -130,134 +130,134 @@ export default function BrandDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 통계 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">총 매장 수</p>
-                  <p className="text-2xl font-bold text-white">24</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                  <Store className="h-6 w-6 text-blue-400" />
-                </div>
-              </div>
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">총 매장 수</CardTitle>
+              <Store className="h-4 w-4 text-purple-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">24</div>
+              <p className="text-xs text-slate-400">+2 이번 달</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">총 직원 수</p>
-                  <p className="text-2xl font-bold text-white">342</p>
-                </div>
-                <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-                  <Users className="h-6 w-6 text-green-400" />
-                </div>
-              </div>
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">총 직원 수</CardTitle>
+              <Users className="h-4 w-4 text-blue-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">156</div>
+              <p className="text-xs text-slate-400">+12 이번 달</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">월 매출</p>
-                  <p className="text-2xl font-bold text-white">₩2.4억</p>
-                </div>
-                <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-yellow-400" />
-                </div>
-              </div>
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">월 매출</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">₩2.4M</div>
+              <p className="text-xs text-slate-400">+8.2% 지난 달 대비</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">평균 주문</p>
-                  <p className="text-2xl font-bold text-white">₩18,500</p>
-                </div>
-                <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <ShoppingCart className="h-6 w-6 text-purple-400" />
-                </div>
-              </div>
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300">평균 주문</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-orange-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">₩28K</div>
+              <p className="text-xs text-slate-400">+5.1% 지난 주 대비</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* 매장별 현황 */}
+        {/* 매장 관리 섹션 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="bg-slate-800 border-slate-700">
+          {/* 매장 목록 */}
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-blue-400" />
-                매장별 매출 현황
+              <CardTitle className="text-white flex items-center">
+                <Store className="h-5 w-5 mr-2 text-purple-400" />
+                매장 목록
               </CardTitle>
+              <CardDescription className="text-slate-400">
+                전체 매장 현황 및 관리
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {[
-                  { name: "강남점", sales: "₩3,200만", growth: "+12%", status: "success" },
-                  { name: "홍대점", sales: "₩2,800만", growth: "+8%", status: "success" },
-                  { name: "부산점", sales: "₩2,100만", growth: "+5%", status: "warning" },
-                  { name: "대구점", sales: "₩1,900만", growth: "-2%", status: "error" }
+                  { name: "강남점", status: "운영중", sales: "₩450K", employees: 8 },
+                  { name: "홍대점", status: "운영중", sales: "₩380K", employees: 6 },
+                  { name: "부산점", status: "운영중", sales: "₩520K", employees: 10 },
+                  { name: "대구점", status: "준비중", sales: "₩0", employees: 0 }
                 ].map((store, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
-                        <Store className="h-4 w-4 text-slate-300" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">{store.name}</p>
-                        <p className="text-sm text-slate-400">{store.sales}</p>
-                      </div>
+                  <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <div>
+                      <h4 className="font-medium text-white">{store.name}</h4>
+                      <p className="text-sm text-slate-400">{store.employees}명</p>
                     </div>
-                    <Badge 
-                      variant={store.status === "success" ? "default" : store.status === "warning" ? "secondary" : "destructive"}
-                      className={
-                        store.status === "success" ? "bg-green-500/20 text-green-300 border-green-500/30" :
-                        store.status === "warning" ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30" :
-                        "bg-red-500/20 text-red-300 border-red-500/30"
-                      }
-                    >
-                      {store.growth}
-                    </Badge>
+                    <div className="text-right">
+                      <p className="text-sm text-white">{store.sales}</p>
+                      <Badge 
+                        variant={store.status === "운영중" ? "default" : "secondary"}
+                        className={store.status === "운영중" ? "bg-green-500/20 text-green-300" : "bg-yellow-500/20 text-yellow-300"}
+                      >
+                        {store.status}
+                      </Badge>
+                    </div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          {/* 브랜드 통계 */}
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-green-400" />
-                실시간 알림
+              <CardTitle className="text-white flex items-center">
+                <BarChart3 className="h-5 w-5 mr-2 text-blue-400" />
+                브랜드 통계
               </CardTitle>
+              <CardDescription className="text-slate-400">
+                전체 브랜드 성과 지표
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  { type: "warning", message: "강남점 재고 부족 - 치킨 가슴살", time: "5분 전" },
-                  { type: "info", message: "홍대점 신규 직원 등록 완료", time: "15분 전" },
-                  { type: "success", message: "부산점 월 매출 목표 달성", time: "1시간 전" },
-                  { type: "error", message: "대구점 시스템 오류 발생", time: "2시간 전" }
-                ].map((alert, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-slate-700/50 rounded-lg">
-                    <div className={`w-2 h-2 rounded-full mt-2 ${
-                      alert.type === "warning" ? "bg-yellow-400" :
-                      alert.type === "info" ? "bg-blue-400" :
-                      alert.type === "success" ? "bg-green-400" :
-                      "bg-red-400"
-                    }`}></div>
-                    <div className="flex-1">
-                      <p className="text-sm text-white">{alert.message}</p>
-                      <p className="text-xs text-slate-400 mt-1">{alert.time}</p>
-                    </div>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-slate-300">매출 달성률</span>
+                    <span className="text-sm text-white">85%</span>
                   </div>
-                ))}
+                  <div className="w-full bg-slate-700 rounded-full h-2">
+                    <div className="bg-purple-500 h-2 rounded-full" style={{ width: '85%' }}></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-slate-300">고객 만족도</span>
+                    <span className="text-sm text-white">4.8/5.0</span>
+                  </div>
+                  <div className="w-full bg-slate-700 rounded-full h-2">
+                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '96%' }}></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-slate-300">직원 만족도</span>
+                    <span className="text-sm text-white">4.2/5.0</span>
+                  </div>
+                  <div className="w-full bg-slate-700 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: '84%' }}></div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -265,27 +265,30 @@ export default function BrandDashboard() {
 
         {/* 빠른 액션 */}
         <div className="mt-8">
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
             <CardHeader>
-              <CardTitle>빠른 액션</CardTitle>
+              <CardTitle className="text-white">빠른 액션</CardTitle>
+              <CardDescription className="text-slate-400">
+                자주 사용하는 기능들
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button className="h-auto p-4 flex flex-col items-center gap-2 bg-blue-600 hover:bg-blue-700">
-                  <Store className="h-6 w-6" />
-                  <span>매장 관리</span>
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center bg-white/5 border-white/20 text-white hover:bg-white/10">
+                  <Store className="h-6 w-6 mb-2 text-purple-400" />
+                  <span className="text-sm">매장 추가</span>
                 </Button>
-                <Button className="h-auto p-4 flex flex-col items-center gap-2 bg-green-600 hover:bg-green-700">
-                  <Users className="h-6 w-6" />
-                  <span>직원 관리</span>
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center bg-white/5 border-white/20 text-white hover:bg-white/10">
+                  <Users className="h-6 w-6 mb-2 text-blue-400" />
+                  <span className="text-sm">직원 관리</span>
                 </Button>
-                <Button className="h-auto p-4 flex flex-col items-center gap-2 bg-purple-600 hover:bg-purple-700">
-                  <BarChart3 className="h-6 w-6" />
-                  <span>매출 분석</span>
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center bg-white/5 border-white/20 text-white hover:bg-white/10">
+                  <BarChart3 className="h-6 w-6 mb-2 text-green-400" />
+                  <span className="text-sm">성과 분석</span>
                 </Button>
-                <Button className="h-auto p-4 flex flex-col items-center gap-2 bg-yellow-600 hover:bg-yellow-700">
-                  <Calendar className="h-6 w-6" />
-                  <span>스케줄 관리</span>
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center bg-white/5 border-white/20 text-white hover:bg-white/10">
+                  <Settings className="h-6 w-6 mb-2 text-orange-400" />
+                  <span className="text-sm">설정</span>
                 </Button>
               </div>
             </CardContent>

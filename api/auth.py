@@ -1,10 +1,8 @@
 import datetime
-import secrets
 
 import jwt
 from flask import (Blueprint, current_app, flash, jsonify, redirect,
                    render_template, request, url_for)
-from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import User, db
 
@@ -74,18 +72,16 @@ def api_login():
         "branch_id": user.branch_id,
     }
 
-    # 역할별 리다이렉트 페이지 결정
-    redirect_to = "/dashboard"  # 기본값
-    if user.role == "super_admin":
-        redirect_to = "/super-admin"
-    elif user.role == "admin":
-        redirect_to = "/admin-dashboard"
-    elif user.role == "manager":
-        redirect_to = "/manager-dashboard"
+    # 역할별 리다이렉트 페이지 결정 (프론트엔드 Next.js 앱으로 리다이렉트)
+    redirect_to = "http://192.168.45.44:3000/dashboard"  # 기본값
+    if user.role == "admin":
+        redirect_to = "http://192.168.45.44:3000/admin-dashboard"
+    elif user.role == "brand_admin":
+        redirect_to = "http://192.168.45.44:3000/brand-dashboard"
+    elif user.role == "store_admin":
+        redirect_to = "http://192.168.45.44:3000/store-dashboard"
     elif user.role == "employee":
-        redirect_to = "/employee-dashboard"
-    elif user.role == "teamlead":
-        redirect_to = "/teamlead-dashboard"
+        redirect_to = "http://192.168.45.44:3000/employee-dashboard"
 
     return jsonify({
         "message": "로그인 성공",
@@ -161,18 +157,16 @@ def login():
 
         login_user(user)
 
-        # 역할별 리다이렉트 페이지 결정
-        redirect_to = "/dashboard"  # 기본값
-        if user.role == "super_admin":
-            redirect_to = "/super-admin"
-        elif user.role == "admin":
-            redirect_to = "/admin-dashboard"
-        elif user.role == "manager":
-            redirect_to = "/manager-dashboard"
+        # 역할별 리다이렉트 페이지 결정 (프론트엔드 Next.js 앱으로 리다이렉트)
+        redirect_to = "http://192.168.45.44:3000/dashboard"  # 기본값
+        if user.role == "admin":
+            redirect_to = "http://192.168.45.44:3000/admin-dashboard"
+        elif user.role == "brand_admin":
+            redirect_to = "http://192.168.45.44:3000/brand-dashboard"
+        elif user.role == "store_admin":
+            redirect_to = "http://192.168.45.44:3000/store-dashboard"
         elif user.role == "employee":
-            redirect_to = "/employee-dashboard"
-        elif user.role == "teamlead":
-            redirect_to = "/teamlead-dashboard"
+            redirect_to = "http://192.168.45.44:3000/employee-dashboard"
 
         # next 파라미터가 있으면 해당 페이지로, 없으면 역할별 페이지로
         next_page = request.args.get("next")
@@ -282,8 +276,8 @@ def api_quick_admin_login():
             "redirect_to": "/admin-dashboard"
         }), 200
         
-    except Exception as e:
-        return jsonify({"message": f"로그인 실패: {str(e)}"}), 500
+    except Exception:
+        return jsonify({"message": "로그인 실패가 발생했습니다."}), 500
 
 
 @auth_bp.route("/quick_admin_login", methods=["POST", "GET"])
@@ -342,5 +336,5 @@ def api_profile():
         
         return jsonify(user_data), 200
         
-    except Exception as e:
+    except Exception:
         return jsonify({"message": "프로필 조회 중 오류가 발생했습니다."}), 500

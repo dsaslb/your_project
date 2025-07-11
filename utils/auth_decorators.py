@@ -22,7 +22,7 @@ def jwt_required(f):
         
         try:
             # 토큰 디코딩
-            secret_key = current_app.config.get('SECRET_KEY', 'default-secret-key')
+            secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
             payload = jwt.decode(token, secret_key, algorithms=['HS256'])
             
             # 사용자 조회

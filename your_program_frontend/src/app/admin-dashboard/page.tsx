@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   // 권한 확인
-  if (!user || (user.role !== 'brand_manager' && user.role !== 'super_admin')) {
+  if (!user || user.role !== 'admin') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
         <Card className="w-96 shadow-2xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
@@ -119,16 +119,16 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              관리자 대시보드
+              업종별 관리자 대시보드
             </h1>
             <p className="text-slate-600 dark:text-slate-400 text-lg">
-              매장 관리 및 운영 현황
+              전체 시스템 관리 및 운영 현황
             </p>
           </div>
           <div className="flex items-center space-x-3">
             <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg">
               <Crown className="h-4 w-4 mr-1" />
-              슈퍼 관리자
+              업종별 관리자
             </Badge>
             <Button size="sm" variant="outline" className="border-slate-300 dark:border-slate-600">
               <Bell className="h-4 w-4 mr-2" />
