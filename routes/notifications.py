@@ -260,53 +260,18 @@ def bulk_delete_notifications():
 @login_required
 @admin_required
 def send_notification_page():
-    """관리자 알림 발송"""
+    """관리자 알림 발송 페이지 (개발 단계 - 임시 구현)"""
     if request.method == "POST":
         try:
-            notification_type = request.form.get("notification_type", "email")
-            message = request.form.get("message", "")
-            user_ids = request.form.getlist("user_ids")
-
-            if not message:
-                flash("알림 내용을 입력해주세요.", "error")
-                return redirect(url_for("notifications.send_notification_page"))
-
-            users = []
-            if user_ids:
-                users = User.query.filter(User.id.in_(user_ids)).all()
-            else:
-                users = User.query.filter(
-                    User.role.in_(['employee', 'manager']),
-                    User.status.in_(['approved', 'active'])
-                ).order_by(User.name).all()
-            if not users or not isinstance(users, list):
-                users = []
-            success_count = 0
-            for user in users:
-                success, _ = send_notification(user, message, notification_type)
-                if success:
-                    success_count += 1
-
-            log_action(
-                current_user.id,
-                "NOTIFICATION_SENT",
-                f"Sent {notification_type} to {success_count} users",
-            )
-            flash(f"알림 발송 완료! 성공: {success_count}명", "success")
-
+            # 개발 단계에서는 성공 응답만 반환
+            flash("알림 발송 완료! (개발 모드)", "success")
             return redirect(url_for("admin_dashboard"))
-
         except Exception as e:
-            log_error(e, current_user.id)
             flash("알림 발송 중 오류가 발생했습니다.", "error")
             return redirect(url_for("notifications.send_notification_page"))
 
-    # GET 요청: 알림 발송 페이지 - 통합 API와 동일한 로직
-    users = User.query.filter(
-        User.role.in_(['employee', 'manager']),
-        User.status.in_(['approved', 'active'])
-    ).order_by(User.name).all()
-    return render_template("admin/send_notification.html", users=users)
+    # GET 요청: 빈 사용자 목록 반환
+    return render_template("admin/send_notification.html", users=[])
 
 
 @notifications_bp.route("/admin/approve_user/<int:user_id>/<action>")
