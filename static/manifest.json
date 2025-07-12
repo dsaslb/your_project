@@ -145,7 +145,7 @@
   "handle_links": "preferred",
   "protocol_handlers": [
     {
-      "protocol": "web+restaurant",
+      "protocol": "web+your_program",
       "url": "/?action=%s"
     }
   ]

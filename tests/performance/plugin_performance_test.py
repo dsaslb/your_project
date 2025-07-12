@@ -1,5 +1,6 @@
-from locust import HttpUser, task, between
-import json
+# 성능 테스트를 위한 Locust 라이브러리
+# 설치 필요: pip install locust
+from locust import HttpUser, task, between  # type: ignore
 import random
 
 class PluginPerformanceUser(HttpUser):

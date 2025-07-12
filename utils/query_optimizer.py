@@ -4,16 +4,13 @@
 쿼리 성능 분석, 인덱스 추천, 쿼리 캐싱, 연결 풀 관리
 """
 
-import os
-import json
 import logging
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime
+from typing import Dict, List, Any, Optional
 from collections import defaultdict, deque
 from dataclasses import dataclass, asdict
-from sqlalchemy import text, inspect, create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 import threading
 
@@ -87,13 +84,13 @@ class QueryOptimizer:
         from sqlalchemy import event
         
         @event.listens_for(self.db_engine, "before_cursor_execute")
-        def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany):  # type: ignore # noqa
             context._query_start_time = time.time()
             context._query_sql = statement
             context._query_parameters = parameters
         
         @event.listens_for(self.db_engine, "after_cursor_execute")
-        def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        def _after_cursor_execute(conn, cursor, statement, parameters, context, executemany):  # type: ignore # noqa
             execution_time = time.time() - context._query_start_time
             
             # 쿼리 메트릭 수집
@@ -266,7 +263,7 @@ class QueryOptimizer:
         execution_times = [m.execution_time for m in metrics]
         
         analysis = QueryAnalysis(
-            query_id=hash(sql) % 1000000,  # 간단한 해시
+            query_id=str(hash(sql) % 1000000),  # 간단한 해시를 문자열로 변환
             sql=sql,
             execution_count=len(metrics),
             avg_execution_time=sum(execution_times) / len(execution_times),
@@ -348,7 +345,7 @@ class QueryOptimizer:
         column_usage = defaultdict(lambda: defaultdict(int))
         
         for analysis in analysis_results:
-            for column, usage in analysis.index_usage.items():
+            for column, _ in analysis.index_usage.items():
                 column_usage[analysis.table_scans[0] if analysis.table_scans else 'unknown'][column] += analysis.execution_count
         
         # 인덱스 추천 생성
@@ -442,9 +439,6 @@ class ConnectionPoolOptimizer:
     def optimize_pool(self):
         """연결 풀 최적화"""
         try:
-            # 현재 풀 설정 확인
-            current_pool = self.db_engine.pool
-            
             # 최적화된 설정
             optimized_config = {
                 'pool_size': self.config.get('pool_size', 20),
@@ -504,10 +498,10 @@ def initialize_query_optimizer(db_engine, config: Optional[Dict[str, Any]] = Non
     
     return query_optimizer, connection_pool_optimizer
 
-def get_query_optimizer() -> QueryOptimizer:
+def get_query_optimizer() -> Optional[QueryOptimizer]:
     """쿼리 최적화 시스템 인스턴스 반환"""
     return query_optimizer
 
-def get_connection_pool_optimizer() -> ConnectionPoolOptimizer:
+def get_connection_pool_optimizer() -> Optional[ConnectionPoolOptimizer]:
     """연결 풀 최적화 시스템 인스턴스 반환"""
     return connection_pool_optimizer 

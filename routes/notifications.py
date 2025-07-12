@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, url_for)
 from flask_login import current_user, login_required
-from sqlalchemy import and_, or_
 
 from extensions import db
 from models import ApproveLog, Attendance, Notification, User
@@ -277,10 +276,11 @@ def send_notification_page():
                 users = User.query.filter(User.id.in_(user_ids)).all()
             else:
                 users = User.query.filter(
-                User.role.in_(['employee', 'manager']),
-                User.status.in_(['approved', 'active'])
-            ).order_by(User.name).all()
-
+                    User.role.in_(['employee', 'manager']),
+                    User.status.in_(['approved', 'active'])
+                ).order_by(User.name).all()
+            if not users or not isinstance(users, list):
+                users = []
             success_count = 0
             for user in users:
                 success, _ = send_notification(user, message, notification_type)
@@ -339,9 +339,11 @@ def approve_user_with_notification(user_id, action):
             notify_approval_result(user, False)
 
         # 승인 로그 기록
-        approve_log = ApproveLog(
-            user_id=user_id, action=action, admin_id=current_user.id, reason=reason
-        )
+        approve_log = ApproveLog()
+        approve_log.user_id = user_id
+        approve_log.action = action
+        approve_log.admin_id = current_user.id
+        approve_log.reason = reason or ""
         db.session.add(approve_log)
         db.session.commit()
 

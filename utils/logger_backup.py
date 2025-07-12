@@ -167,21 +167,6 @@ def log_security_event(user_id, event_type, details=None, ip_address=None):
     security_logger.warning(log_message)
 
 
-def cleanup_old_logs(days=30):
-    """오래된 로그 정리"""
-    try:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
-
-        # 데이터베이스 로그 정리
-        ActionLog.query.filter(ActionLog.created_at < cutoff_date).delete()
-        db.session.commit()
-
-        logger.info(f"Cleaned up logs older than {days} days")
-
-    except Exception as e:
-        log_error(e)
-
-
 def compress_log_file(filename: str) -> bool:
     """로그 파일 압축"""
     try:

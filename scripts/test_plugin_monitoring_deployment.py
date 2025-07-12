@@ -7,7 +7,7 @@ import json
 import logging
 import requests
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -243,10 +243,10 @@ class PluginMonitoringDeploymentTester:
         
         for test_name, test_func in test_sequence:
             logger.info(f"테스트 실행: {test_name}")
-            result = test_func()
-            results[test_name] = result
+            test_result = test_func()
+            results[test_name] = test_result
             
-            if not result.get('success', False) and not result.get('overall_success', False):
+            if not test_result.get('success', False) and not test_result.get('overall_success', False):
                 overall_success = False
                 logger.error(f"테스트 실패: {test_name}")
         
@@ -285,7 +285,7 @@ class PluginMonitoringDeploymentTester:
         
         return summary
     
-    def save_test_results(self, filename: str = None) -> str:
+    def save_test_results(self, filename: str = "") -> str:
         """테스트 결과 저장"""
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -325,7 +325,7 @@ def main():
     tester = PluginMonitoringDeploymentTester()
     
     # 전체 모니터링 테스트 실행
-    result = tester.run_full_monitoring_test()
+    tester.run_full_monitoring_test()
     
     # 결과 출력
     tester.print_test_summary()

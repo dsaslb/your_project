@@ -99,7 +99,10 @@ def generate_attendance_report_pdf(period="week", user_id=None, admin_view=True)
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
             with open(filepath, "wb") as f:
-                f.write(pdf)
+                if isinstance(pdf, bytes):
+                    f.write(pdf)
+                else:
+                    f.write(str(pdf).encode('utf-8'))
 
             return filepath
 
@@ -227,7 +230,11 @@ def send_email(to_email, subject, body, attach_path=None, html_body=None):
         # SMTP 서버 연결 및 발송
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
-        server.login(smtp_username, smtp_password)
+        if smtp_username and smtp_password:
+            server.login(smtp_username, smtp_password)
+        else:
+            logger.warning("SMTP 인증 정보가 없습니다.")
+            return False
 
         text = msg.as_string()
         server.sendmail(from_email, to_email, text)
@@ -411,9 +418,14 @@ def generate_attendance_report(start_date, end_date, user_id=None):
         }
         
         for attendance in attendances:
+            # date 속성이 있는지 확인
+            attendance_date = getattr(attendance, 'date', None)
+            if attendance_date is None:
+                continue
+                
             report_data["data"].append({
                 "user_id": attendance.user_id,
-                "date": attendance.date.isoformat(),
+                "date": attendance_date.isoformat() if hasattr(attendance_date, 'isoformat') else str(attendance_date),
                 "status": attendance.status,
                 "clock_in": attendance.clock_in.isoformat() if attendance.clock_in else None,
                 "clock_out": attendance.clock_out.isoformat() if attendance.clock_out else None

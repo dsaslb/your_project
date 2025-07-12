@@ -53,14 +53,13 @@ def create_notice():
         if file and file.filename != "":
             file_path, file_type = save_file(file)
 
-        new_notice = Notice(
-            title=title,
-            content=content,
-            author_id=current_user.id,
-            category=category,
-            file_path=file_path,
-            file_type=file_type,
-        )
+        new_notice = Notice()
+        new_notice.title = title
+        new_notice.content = content
+        new_notice.author_id = current_user.id
+        new_notice.category = category
+        new_notice.file_path = file_path
+        new_notice.file_type = file_type
         db.session.add(new_notice)
         db.session.commit()
         log_action(current_user.id, "NOTICE_CREATE", f"New notice created: {title}")
@@ -130,9 +129,10 @@ def hide_notice(notice_id):
 def add_comment(notice_id):
     content = request.form.get("content")
     if content:
-        comment = NoticeComment(
-            content=content, user_id=current_user.id, notice_id=notice_id
-        )
+        comment = NoticeComment()
+        comment.content = content
+        comment.user_id = current_user.id
+        comment.notice_id = notice_id
         db.session.add(comment)
         db.session.commit()
         log_action(
@@ -195,13 +195,12 @@ def report():
         flash("이미 신고한 게시물 또는 댓글입니다.", "warning")
         return redirect(request.referrer)
 
-    new_report = Report(
-        target_type=target_type,
-        target_id=target_id,
-        user_id=current_user.id,
-        reason=reason,
-        category=category,
-    )
+    new_report = Report()
+    new_report.target_type = target_type
+    new_report.target_id = target_id
+    new_report.user_id = current_user.id
+    new_report.reason = reason
+    new_report.category = category
     db.session.add(new_report)
     db.session.commit()
     log_action(

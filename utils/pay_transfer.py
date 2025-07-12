@@ -1,13 +1,17 @@
-import json
-from datetime import datetime
+"""
+급여 이체 시스템
+"""
+
 import logging
-from typing import Dict, List, Optional
+import os
+from datetime import datetime
+from typing import Tuple
 
 import requests
 
 from extensions import db
 from models import ActionLog, User, PayTransfer
-from utils.logger import log_action
+from utils.logger import log_action, log_error
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +60,10 @@ class BankTransferAPI:
     def _log_transfer(self, user_id, amount, reference_id, status, error_msg=""):
         """이체 로그 기록"""
         try:
-            action_log = ActionLog(
-                user_id=user_id,
-                action=f"SALARY_TRANSFER_{status}",
-                message=f"급여 {amount:,}원 이체 - {reference_id} - {error_msg}".strip(),
-            )
+            action_log = ActionLog()
+            action_log.user_id = user_id
+            action_log.action = f"SALARY_TRANSFER_{status}"
+            action_log.message = f"급여 {amount:,}원 이체 - {reference_id} - {error_msg}".strip()
             db.session.add(action_log)
             db.session.commit()
         except Exception as e:
@@ -81,7 +84,7 @@ def transfer_salary(user, amount):
     # r = requests.post(api_url, json=payload, headers=headers)
     # 아래는 테스트용(실제 이체X)
     logger.info(f"[가상이체] {payload}")
-    return True
+    return True, "이체 성공"
 
 
 def bulk_transfer_salary(users_data):
@@ -201,14 +204,13 @@ def process_transfer(from_user_id, to_user_id, amount, description=""):
         logger.info(f"[가상이체] {payload}")
 
         # 이체 기록 생성
-        transfer = PayTransfer(
-            from_user_id=from_user_id,
-            to_user_id=to_user_id,
-            amount=amount,
-            description=description,
-            status="completed",
-            created_at=datetime.utcnow(),
-        )
+        transfer = PayTransfer()
+        transfer.from_user_id = from_user_id
+        transfer.to_user_id = to_user_id
+        transfer.amount = amount
+        transfer.description = description
+        transfer.status = "completed"
+        transfer.created_at = datetime.utcnow()
 
         db.session.add(transfer)
         db.session.commit()

@@ -52,40 +52,38 @@ export default function SuperAdminUsersPage() {
         {
           id: 1,
           username: 'admin',
-          email: 'admin@restaurant.com',
-          role: 'super_admin',
-          status: 'approved',
-          created_at: '2024-01-01T00:00:00Z',
-          last_login: '2024-07-11T10:30:00Z'
+          email: 'admin@your_program.com',
+          role: 'admin',
+          status: 'active',
+          created_at: '2024-01-01',
+          last_login: '2024-01-15 10:30:00'
         },
         {
           id: 2,
           username: 'manager1',
-          email: 'manager1@restaurant.com',
+          email: 'manager1@your_program.com',
           role: 'manager',
-          status: 'approved',
-          branch_id: 1,
-          created_at: '2024-01-15T00:00:00Z',
-          last_login: '2024-07-11T09:15:00Z'
+          status: 'active',
+          created_at: '2024-01-02',
+          last_login: '2024-01-15 09:15:00'
         },
         {
           id: 3,
           username: 'employee1',
-          email: 'employee1@restaurant.com',
+          email: 'employee1@your_program.com',
           role: 'employee',
-          status: 'pending',
-          branch_id: 1,
-          created_at: '2024-07-10T00:00:00Z'
+          status: 'active',
+          created_at: '2024-01-03',
+          last_login: '2024-01-15 08:45:00'
         },
         {
           id: 4,
           username: 'teamlead1',
-          email: 'teamlead1@restaurant.com',
+          email: 'teamlead1@your_program.com',
           role: 'teamlead',
-          status: 'approved',
-          branch_id: 1,
-          created_at: '2024-02-01T00:00:00Z',
-          last_login: '2024-07-10T18:45:00Z'
+          status: 'active',
+          created_at: '2024-01-04',
+          last_login: '2024-01-15 11:20:00'
         }
       ];
       setUsers(mockUsers);

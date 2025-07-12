@@ -1,7 +1,0 @@
-{
-  "name": "sample_notification",
-  "description": "샘플 알림 플러그인",
-  "version": "1.0.0",
-  "author": "System",
-  "main_file": "main.py"
-}

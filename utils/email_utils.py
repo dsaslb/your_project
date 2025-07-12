@@ -20,19 +20,19 @@ logger = logging.getLogger(__name__)
 def send_email(to_addr, subject, body, html_body=None):
     """이메일 발송 함수"""
     try:
-        # SMTP 설정
-        smtp_server = current_app.config.get("SMTP_SERVER", "smtp.gmail.com")
+        # SMTP 설정 확인
+        smtp_server = current_app.config.get("SMTP_SERVER")
         smtp_port = current_app.config.get("SMTP_PORT", 587)
         smtp_username = current_app.config.get("SMTP_USERNAME")
         smtp_password = current_app.config.get("SMTP_PASSWORD")
 
-        if not all([smtp_username, smtp_password]):
+        if not all([smtp_server, smtp_username, smtp_password]):
             logger.warning("SMTP 설정이 완료되지 않았습니다.")
             return False
 
         # 이메일 메시지 생성
         msg = MIMEMultipart("alternative")
-        msg["From"] = smtp_username
+        msg["From"] = smtp_username or ""
         msg["To"] = to_addr
         msg["Subject"] = subject
 
@@ -46,10 +46,15 @@ def send_email(to_addr, subject, body, html_body=None):
             msg.attach(html_part)
 
         # SMTP 서버 연결 및 발송
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_username, smtp_password)
-            server.send_message(msg)
+        if smtp_server:
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.starttls()
+                if smtp_username and smtp_password:
+                    server.login(smtp_username, smtp_password)
+                server.send_message(msg)
+        else:
+            logger.error("SMTP 서버 설정이 없습니다.")
+            return False
 
         logger.info(f"✅ 이메일 발송 성공: {to_addr}")
         return True

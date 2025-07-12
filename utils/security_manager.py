@@ -55,29 +55,19 @@ class SecurityManager:
     
     def generate_jwt_token(self, user_id: int, role: str, expires_in: int = 3600) -> str:
         """JWT 토큰 생성"""
-        payload = {
-            'user_id': user_id,
-            'role': role,
-            'exp': datetime.utcnow() + timedelta(seconds=expires_in),
-            'iat': datetime.utcnow(),
-            'jti': secrets.token_urlsafe(16)  # JWT ID
-        }
-        
-        token = jwt.encode(payload, self.secret_key, algorithm='HS256')
-        
-        # 세션 등록
-        session_id = secrets.token_urlsafe(32)
-        self.active_sessions[session_id] = {
-            'user_id': user_id,
-            'role': role,
-            'created_at': datetime.utcnow(),
-            'last_activity': datetime.utcnow(),
-            'token': token
-        }
-        
-        self._log_security_event('token_generated', user_id, f'Role: {role}')
-        
-        return token
+        try:
+            payload = {
+                'user_id': user_id,
+                'role': role,
+                'exp': datetime.utcnow() + timedelta(seconds=expires_in),
+                'iat': datetime.utcnow()
+            }
+            
+            token = jwt.encode(payload, self.secret_key, algorithm='HS256')
+            return token
+        except Exception as e:
+            self.logger.error(f"JWT 토큰 생성 실패: {e}")
+            raise
     
     def verify_jwt_token(self, token: str) -> Optional[Dict]:
         """JWT 토큰 검증"""
@@ -270,7 +260,7 @@ class SecurityManager:
         self.security_events.append(event)
         
         # 로그 파일에 저장
-        log_message = f"[{event['timestamp']}] {event_type} - User: {user_id} - {details}"
+        log_message = f"[{event['timestamp']}] {event_type} - User: {user_id or 'Unknown'} - {details}"
         self.logger.info(log_message)
         
         # 로그 크기 제한 (최근 1000개만 유지)

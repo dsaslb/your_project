@@ -8,7 +8,7 @@ import logging
 from sqlalchemy import and_, func, or_
 
 from extensions import db
-from models import AttendanceReport, Notification, User
+from models import Attendance, AttendanceReport, Notification, User
 from utils.assignee_manager import assignee_manager
 from utils.logger import log_action, log_error
 from utils.notify import send_notification_enhanced
@@ -55,7 +55,7 @@ class AutoProcessor:
             log_action(
                 user_id=None,
                 action="AUTO_PROCESS_RULES_EXECUTED",
-                details=f"Results: {results}",
+                message=f"Results: {results}",
             )
 
             return results
@@ -92,7 +92,6 @@ class AutoProcessor:
                         user_id=dispute.assignee_id,
                         content=f"{self.rules['sla_warning']['message']}: 신고 #{dispute.id} (SLA: {dispute.sla_due.strftime('%m-%d %H:%M')})",
                         category="SLA",
-                        priority="중요",
                     )
                     processed += 1
 
@@ -129,7 +128,6 @@ class AutoProcessor:
                         user_id=dispute.assignee_id,
                         content=f"{self.rules['sla_overdue']['message']}: 신고 #{dispute.id} (초과: {(now - dispute.sla_due).days}일)",
                         category="SLA",
-                        priority="긴급",
                     )
 
                     # 관리자에게도 알림
@@ -140,7 +138,6 @@ class AutoProcessor:
                                 user_id=admin.id,
                                 content=f"SLA 초과 신고/이의제기: #{dispute.id} (담당자: {dispute.assignee.name or dispute.assignee.username})",
                                 category="SLA",
-                                priority="긴급",
                             )
 
                     processed += 1
@@ -182,7 +179,6 @@ class AutoProcessor:
                     user_id=user_id,
                     content=f"반복 신고자 경고: 최근 30일 내 {count}회 신고/이의제기 접수",
                     category="경고",
-                    priority="중요",
                 )
 
                 # 관리자에게 알림
@@ -193,7 +189,6 @@ class AutoProcessor:
                         user_id=admin.id,
                         content=f"반복 신고자 감지: {user.name or user.username} (최근 30일 {count}회)",
                         category="모니터링",
-                        priority="중요",
                     )
 
                 processed += 1

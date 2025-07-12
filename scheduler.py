@@ -704,13 +704,12 @@ def check_document_expiry():
                 # 관리자에게 알림 발송
                 managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
                 for manager in managers:
-                    notification = Notification(
-                        user_id=manager.id,
-                        title="계약서 만료 임박 알림",
-                        content=f"{staff.name} 직원의 계약서가 {contract.expiry_date.strftime('%Y년 %m월 %d일')}에 만료됩니다. 갱신을 확인해주세요.",
-                        category="document_expiry",
-                        priority="중요"
-                    )
+                    notification = Notification()
+                    notification.user_id = manager.id
+                    notification.title = "계약서 만료 임박 알림"
+                    notification.content = f"{staff.name} 직원의 계약서가 {contract.expiry_date.strftime('%Y년 %m월 %d일')}에 만료됩니다. 갱신을 확인해주세요."
+                    notification.category = "document_expiry"
+                    notification.priority = "중요"
                     db.session.add(notification)
                 
                 # 알림 발송 상태 업데이트
@@ -732,13 +731,12 @@ def check_document_expiry():
                 # 관리자에게 알림 발송
                 managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
                 for manager in managers:
-                    notification = Notification(
-                        user_id=manager.id,
-                        title="보건증 만료 임박 알림",
-                        content=f"{staff.name} 직원의 보건증이 {health_cert.expiry_date.strftime('%Y년 %m월 %d일')}에 만료됩니다. 갱신을 확인해주세요.",
-                        category="document_expiry",
-                        priority="중요"
-                    )
+                    notification = Notification()
+                    notification.user_id = manager.id
+                    notification.title = "보건증 만료 임박 알림"
+                    notification.content = f"{staff.name} 직원의 보건증이 {health_cert.expiry_date.strftime('%Y년 %m월 %d일')}에 만료됩니다. 갱신을 확인해주세요."
+                    notification.category = "document_expiry"
+                    notification.priority = "중요"
                     db.session.add(notification)
                 
                 # 알림 발송 상태 업데이트
@@ -758,13 +756,12 @@ def check_document_expiry():
             if staff:
                 managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
                 for manager in managers:
-                    notification = Notification(
-                        user_id=manager.id,
-                        title="계약서 만료 알림",
-                        content=f"{staff.name} 직원의 계약서가 오늘 만료되었습니다. 즉시 갱신이 필요합니다.",
-                        category="document_expired",
-                        priority="긴급"
-                    )
+                    notification = Notification()
+                    notification.user_id = manager.id
+                    notification.title = "계약서 만료 알림"
+                    notification.content = f"{staff.name} 직원의 계약서가 오늘 만료되었습니다. 즉시 갱신이 필요합니다."
+                    notification.category = "document_expired"
+                    notification.priority = "긴급"
                     db.session.add(notification)
                 
                 contract.expired_notification_sent = True
@@ -782,13 +779,12 @@ def check_document_expiry():
             if staff:
                 managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
                 for manager in managers:
-                    notification = Notification(
-                        user_id=manager.id,
-                        title="보건증 만료 알림",
-                        content=f"{staff.name} 직원의 보건증이 오늘 만료되었습니다. 즉시 갱신이 필요합니다.",
-                        category="document_expired",
-                        priority="긴급"
-                    )
+                    notification = Notification()
+                    notification.user_id = manager.id
+                    notification.title = "보건증 만료 알림"
+                    notification.content = f"{staff.name} 직원의 보건증이 오늘 만료되었습니다. 즉시 갱신이 필요합니다."
+                    notification.category = "document_expired"
+                    notification.priority = "긴급"
                     db.session.add(notification)
                 
                 health_cert.expired_notification_sent = True

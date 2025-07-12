@@ -65,7 +65,11 @@ def bulk_transfer():
                 continue
 
             # 급여 이체 실행
-            success, message = transfer_salary(user, wage, f"{year}년 {month}월 급여")
+            result = transfer_salary(user, wage)
+            if isinstance(result, tuple):
+                success, message = result
+            else:
+                success, message = result, ""
 
             transfer_results.append(
                 {
@@ -165,7 +169,11 @@ def individual_transfer(user_id):
             return redirect(url_for("admin_users"))
 
         # 급여 이체 실행
-        success, message = transfer_salary(user, wage, f"{year}년 {month}월 급여")
+        result = transfer_salary(user, wage)
+        if isinstance(result, tuple):
+            success, message = result
+        else:
+            success, message = result, ""
 
         if success:
             notify_salary_payment(user, wage, year, month)

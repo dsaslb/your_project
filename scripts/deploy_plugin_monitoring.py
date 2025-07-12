@@ -4,14 +4,12 @@
 CI/CD 파이프라인에서 사용되는 자동 배포 스크립트입니다.
 """
 
-import os
-import sys
 import json
 import time
 import subprocess
 import requests
+import sys
 from datetime import datetime
-from pathlib import Path
 
 class PluginMonitoringDeployer:
     def __init__(self, environment="staging"):

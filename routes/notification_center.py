@@ -9,8 +9,6 @@ from extensions import db
 from models import ApproveLog, Attendance, Notification, User
 from utils.decorators import admin_required
 from utils.logger import log_action, log_error
-from utils.notify import (notify_approval_result, notify_attendance_issue,
-                          send_notification)
 
 notification_center_bp = Blueprint("notification_center", __name__)
 

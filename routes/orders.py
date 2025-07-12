@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
-from models import db, Order, InventoryItem, User, Branch
+from models import db, Order, InventoryItem, User, Branch, StockMovement
 import json
 
 orders_bp = Blueprint('orders', __name__)
@@ -70,21 +70,20 @@ def create_order():
                 return jsonify({"success": False, "error": "권한이 없습니다."}), 403
         
         # 새 발주 생성 (발주자 정보 자동 저장)
-        new_order = Order(
-            item=data.get('item'),
-            quantity=data.get('quantity'),
-            unit=data.get('unit', '개'),
-            order_date=datetime.strptime(data.get('order_date', datetime.now().strftime('%Y-%m-%d')), '%Y-%m-%d').date(),
-            ordered_by=current_user.id,  # 현재 로그인 사용자가 발주자
-            status='pending',
-            detail=data.get('detail', ''),
-            memo=data.get('memo', ''),
-            store_id=current_user.branch_id,
-            inventory_item_id=inventory_item.id if inventory_item else None,
-            supplier=data.get('supplier', ''),
-            unit_price=data.get('unit_price', 0),
-            total_cost=(data.get('quantity', 0) * data.get('unit_price', 0))
-        )
+        new_order = Order()
+        new_order.item = data.get('item')
+        new_order.quantity = data.get('quantity')
+        new_order.unit = data.get('unit', '개')
+        new_order.order_date = datetime.strptime(data.get('order_date', datetime.now().strftime('%Y-%m-%d')), '%Y-%m-%d').date()
+        new_order.ordered_by = current_user.id  # 현재 로그인 사용자가 발주자
+        new_order.status = 'pending'
+        new_order.detail = data.get('detail', '')
+        new_order.memo = data.get('memo', '')
+        new_order.store_id = current_user.branch_id
+        new_order.inventory_item_id = inventory_item.id if inventory_item else None
+        new_order.supplier = data.get('supplier', '')
+        new_order.unit_price = data.get('unit_price', 0)
+        new_order.total_cost = (data.get('quantity', 0) * data.get('unit_price', 0))
         
         db.session.add(new_order)
         db.session.commit()
@@ -285,13 +284,14 @@ def deliver_order(order_id):
                 inventory_item.updated_at = datetime.utcnow()
                 
                 # 재고 변동 이력 기록
-                stock_movement = StockMovement(
-                    inventory_item_id=inventory_item.id,
-                    movement_type='in',
-                    quantity=order.quantity,
-                    reason=f'발주 입고 (발주번호: {order.id})',
-                    created_by=current_user.id
-                )
+                stock_movement = StockMovement()
+                stock_movement.inventory_item_id = inventory_item.id
+                stock_movement.movement_type = 'in'
+                stock_movement.quantity = order.quantity
+                stock_movement.before_stock = inventory_item.current_stock
+                stock_movement.after_stock = inventory_item.current_stock + order.quantity
+                stock_movement.reason = f'발주 입고 (발주번호: {order.id})'
+                stock_movement.created_by = current_user.id
                 db.session.add(stock_movement)
         
         db.session.commit()

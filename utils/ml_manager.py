@@ -1,16 +1,21 @@
-import os
+"""
+머신러닝 모델 관리 시스템
+"""
+
+import json
 import joblib
+import logging
+import os
+from datetime import datetime
+from typing import Dict, List, Tuple
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, accuracy_score, classification_report
-import logging
-from typing import Dict, List, Tuple, Optional, Any
-import json
+
+logger = logging.getLogger(__name__)
 
 class MLManager:
     """머신러닝 모델 관리자"""
@@ -44,7 +49,7 @@ class MLManager:
                     except Exception as e:
                         self.logger.error(f"모델 로드 실패 {model_name}: {e}")
     
-    def save_model(self, model_name: str, model, scaler=None, metadata: Dict = None):
+    def save_model(self, model_name: str, model, scaler=None, metadata: Dict = {}):
         """모델 저장"""
         try:
             # 모델 저장

@@ -432,10 +432,15 @@ class NotificationManager:
                     
                     client = Client(config.get('account_sid'), config.get('auth_token'))
                     
+                    to_number = message.recipient or config.get('to_number')
+                    if not to_number:
+                        self.logger.error("No recipient phone number provided for SMS")
+                        return False
+                    
                     sms_message = client.messages.create(
                         body=f"[{message.level.upper()}] {message.title}: {message.message}",
                         from_=config.get('from_number'),
-                        to=message.recipient or config.get('to_number')
+                        to=to_number
                     )
                     
                     return sms_message.sid is not None

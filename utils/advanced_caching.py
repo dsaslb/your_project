@@ -9,11 +9,10 @@ import json
 import pickle
 import hashlib
 import logging
-from datetime import datetime, timedelta
-from typing import Any, Optional, Dict, List, Union, Callable
+from datetime import datetime
+from typing import Any, Optional, Dict, List, Callable
 from functools import wraps
 import threading
-import time
 
 try:
     import redis
@@ -22,10 +21,11 @@ except ImportError:
     REDIS_AVAILABLE = False
 
 try:
-    from cachetools import TTLCache, LRUCache
+    from cachetools import TTLCache  # type: ignore
     CACHETOOLS_AVAILABLE = True
 except ImportError:
     CACHETOOLS_AVAILABLE = False
+    # 캐싱 라이브러리 설치 필요: pip install cachetools
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ class AdvancedCache:
         return key
     
     def get(self, key: str, namespace: str = "default", 
-            levels: List[str] = None) -> Optional[Any]:
+            levels: Optional[List[str]] = None) -> Optional[Any]:
         """캐시에서 값 조회"""
         if levels is None:
             levels = [CacheLevel.L1_MEMORY, CacheLevel.L2_REDIS, CacheLevel.L3_FILE]
@@ -135,11 +135,11 @@ class AdvancedCache:
                     if value is not None:
                         # L1 캐시에 저장
                         if self.l1_cache:
-                            self.l1_cache[cache_key] = pickle.loads(value)
+                            self.l1_cache[cache_key] = pickle.loads(value)  # type: ignore
                         
                         self.stats['hits']['l2'] += 1
                         logger.debug(f"L2 캐시 히트: {cache_key}")
-                        return pickle.loads(value)
+                        return pickle.loads(value)  # type: ignore
                     else:
                         self.stats['misses']['l2'] += 1
                 except Exception as e:
@@ -154,11 +154,13 @@ class AdvancedCache:
                         if self.l1_cache:
                             self.l1_cache[cache_key] = value
                         if self.l2_cache:
-                            self.l2_cache.setex(
-                                cache_key, 
-                                self.config.get('l2_ttl', 3600),
-                                pickle.dumps(value)
-                            )
+                            l2_ttl = self.config.get('l2_ttl', 3600)
+                            if l2_ttl is not None:
+                                self.l2_cache.setex(
+                                    cache_key, 
+                                    l2_ttl,
+                                    pickle.dumps(value)
+                                )
                         
                         self.stats['hits']['l3'] += 1
                         logger.debug(f"L3 캐시 히트: {cache_key}")
@@ -171,8 +173,8 @@ class AdvancedCache:
         logger.debug(f"캐시 미스: {cache_key}")
         return None
     
-    def set(self, key: str, value: Any, ttl: int = None, 
-            namespace: str = "default", levels: List[str] = None,
+    def set(self, key: str, value: Any, ttl: Optional[int] = None, 
+            namespace: str = "default", levels: Optional[List[str]] = None,
             strategy: str = CacheStrategy.WRITE_THROUGH) -> bool:
         """캐시에 값 저장"""
         if levels is None:
@@ -195,7 +197,7 @@ class AdvancedCache:
             # L2 캐시 저장
             if CacheLevel.L2_REDIS in levels and self.l2_cache:
                 try:
-                    redis_ttl = ttl or self.config.get('l2_ttl', 3600)
+                    redis_ttl = ttl if ttl is not None else self.config.get('l2_ttl', 3600)
                     self.l2_cache.setex(
                         cache_key,
                         redis_ttl,
@@ -221,7 +223,7 @@ class AdvancedCache:
         return success
     
     def delete(self, key: str, namespace: str = "default", 
-               levels: List[str] = None) -> bool:
+               levels: Optional[List[str]] = None) -> bool:
         """캐시에서 값 삭제"""
         if levels is None:
             levels = [CacheLevel.L1_MEMORY, CacheLevel.L2_REDIS, CacheLevel.L3_FILE]
@@ -260,7 +262,7 @@ class AdvancedCache:
         
         return success
     
-    def clear(self, namespace: str = None, levels: List[str] = None) -> bool:
+    def clear(self, namespace: Optional[str] = None, levels: Optional[List[str]] = None) -> bool:
         """캐시 전체 삭제"""
         if levels is None:
             levels = [CacheLevel.L1_MEMORY, CacheLevel.L2_REDIS, CacheLevel.L3_FILE]
@@ -291,9 +293,9 @@ class AdvancedCache:
                 try:
                     if namespace:
                         pattern = f"{namespace}:*"
-                        keys = self.l2_cache.keys(pattern)
-                        if keys:
-                            self.l2_cache.delete(*keys)
+                        keys = self.l2_cache.keys(pattern)  # type: ignore
+                        if keys and len(keys) > 0:  # type: ignore
+                            self.l2_cache.delete(*keys)  # type: ignore
                     else:
                         self.l2_cache.flushdb()
                     logger.info(f"L2 캐시 전체 삭제: {namespace or 'all'}")
@@ -461,7 +463,7 @@ class FileCache:
         except Exception as e:
             logger.warning(f"파일 캐시 삭제 실패: {e}")
     
-    def clear(self, namespace: str = None):
+    def clear(self, namespace: Optional[str] = None):
         """캐시 전체 삭제"""
         try:
             if namespace:
@@ -498,7 +500,7 @@ class FileCache:
             logger.warning(f"만료된 캐시 정리 실패: {e}")
 
 def cached(ttl: int = 300, namespace: str = "default", 
-           levels: List[str] = None, key_func: Callable = None):
+           levels: Optional[List[str]] = None, key_func: Optional[Callable] = None):
     """캐시 데코레이터"""
     def decorator(func):
         @wraps(func)

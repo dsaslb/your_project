@@ -1,252 +1,131 @@
 #!/usr/bin/env python3
 """
 플러그인 모니터링 시스템 시작 스크립트
-Docker 컨테이너에서 플러그인 모니터링을 백그라운드로 시작합니다.
 """
 
-import os
 import sys
+import os
+import logging
 import time
-import signal
 import threading
-import requests
-from datetime import datetime
+from pathlib import Path
 
-class PluginMonitoringStarter:
-    def __init__(self, base_url="http://localhost:5000"):
-        self.base_url = base_url
-        self.monitoring_enabled = os.getenv("PLUGIN_MONITORING_ENABLED", "true").lower() == "true"
-        self.backup_enabled = os.getenv("PLUGIN_BACKUP_ENABLED", "true").lower() == "true"
-        self.alert_enabled = os.getenv("PLUGIN_ALERT_ENABLED", "true").lower() == "true"
-        self.running = True
-        
-        # 시그널 핸들러 설정
-        signal.signal(signal.SIGTERM, self.signal_handler)
-        signal.signal(signal.SIGINT, self.signal_handler)
+# 프로젝트 루트를 Python 경로에 추가
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from core.backend.plugin_monitoring import plugin_monitor
+from core.backend.realtime_alert_server import start_alert_server, stop_alert_server
+
+# 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/plugin_monitoring.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+def simulate_plugin_metrics():
+    """테스트용 플러그인 메트릭 시뮬레이션"""
+    import random
     
-    def signal_handler(self, signum, frame):
-        """시그널 핸들러"""
-        print(f"Received signal {signum}, shutting down plugin monitoring...")
-        self.running = False
+    # 샘플 플러그인 등록
+    sample_plugins = [
+        ("analytics_plugin", "분석 플러그인"),
+        ("notification_plugin", "알림 플러그인"),
+        ("reporting_plugin", "리포팅 플러그인"),
+        ("security_plugin", "보안 플러그인"),
+        ("backup_plugin", "백업 플러그인")
+    ]
     
-    def wait_for_application(self, max_wait=60):
-        """애플리케이션 시작 대기"""
-        print("Waiting for main application to start...")
-        
-        for i in range(max_wait):
-            try:
-                response = requests.get(f"{self.base_url}/health", timeout=5)
-                if response.status_code == 200:
-                    print("Main application is ready!")
-                    return True
-            except requests.exceptions.RequestException:
-                pass
-            
-            time.sleep(1)
-            if i % 10 == 0:
-                print(f"Still waiting... ({i}/{max_wait})")
-        
-        print("Warning: Main application may not be ready")
-        return False
+    for plugin_id, plugin_name in sample_plugins:
+        plugin_monitor.register_plugin(plugin_id, plugin_name)
     
-    def start_plugin_monitoring(self):
-        """플러그인 모니터링 시작"""
-        if not self.monitoring_enabled:
-            print("Plugin monitoring is disabled")
-            return
-        
+    logger.info(f"{len(sample_plugins)}개의 샘플 플러그인 등록됨")
+    
+    # 메트릭 시뮬레이션 루프
+    while True:
         try:
-            print("Starting plugin monitoring...")
-            response = requests.post(f"{self.base_url}/api/admin/plugin-monitoring/start", timeout=10)
-            
-            if response.status_code == 200:
-                result = response.json()
-                if result.get("status") == "started":
-                    print("✅ Plugin monitoring started successfully")
-                else:
-                    print(f"⚠️  Plugin monitoring start response: {result}")
-            else:
-                print(f"❌ Failed to start plugin monitoring: {response.status_code}")
+            for plugin_id, plugin_name in sample_plugins:
+                # 랜덤 메트릭 생성
+                metrics = {
+                    'cpu_usage': random.uniform(10, 95),  # 10-95%
+                    'memory_usage': random.uniform(20, 90),  # 20-90%
+                    'response_time': random.uniform(0.1, 8.0),  # 0.1-8초
+                    'error_count': random.randint(0, 10),
+                    'request_count': random.randint(10, 100),
+                    'uptime': random.uniform(100, 86400)  # 100초-24시간
+                }
                 
-        except Exception as e:
-            print(f"❌ Error starting plugin monitoring: {e}")
-    
-    def start_automatic_backup(self):
-        """자동 백업 시작"""
-        if not self.backup_enabled:
-            print("Automatic backup is disabled")
-            return
-        
-        def backup_worker():
-            while self.running:
-                try:
-                    time.sleep(3600)  # 1시간마다 백업
-                    if not self.running:
-                        break
-                    
-                    print("Running automatic plugin backup...")
-                    response = requests.post(f"{self.base_url}/api/admin/plugin-monitoring/backup", timeout=60)
-                    
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get("status") == "success":
-                            print("✅ Automatic backup completed")
-                        else:
-                            print(f"⚠️  Automatic backup failed: {result}")
-                    else:
-                        print(f"❌ Automatic backup API failed: {response.status_code}")
-                        
-                except Exception as e:
-                    print(f"❌ Error in automatic backup: {e}")
-        
-        backup_thread = threading.Thread(target=backup_worker, daemon=True)
-        backup_thread.start()
-        print("✅ Automatic backup worker started")
-    
-    def start_performance_monitoring(self):
-        """성능 모니터링 시작"""
-        def performance_worker():
-            while self.running:
-                try:
-                    time.sleep(300)  # 5분마다 성능 체크
-                    if not self.running:
-                        break
-                    
-                    # 성능 메트릭 수집
-                    response = requests.get(f"{self.base_url}/api/admin/plugin-monitoring/metrics", timeout=10)
-                    
-                    if response.status_code == 200:
-                        metrics = response.json()
-                        plugins = metrics.get("plugins", [])
-                        
-                        # 성능 임계값 체크
-                        for plugin in plugins:
-                            plugin_name = plugin.get("name", "Unknown")
-                            cpu_usage = plugin.get("cpu_usage", 0)
-                            memory_usage = plugin.get("memory_usage", 0)
-                            
-                            if cpu_usage > 80 or memory_usage > 85:
-                                print(f"⚠️  High resource usage detected for plugin '{plugin_name}': CPU={cpu_usage}%, Memory={memory_usage}%")
-                    
-                except Exception as e:
-                    print(f"❌ Error in performance monitoring: {e}")
-        
-        performance_thread = threading.Thread(target=performance_worker, daemon=True)
-        performance_thread.start()
-        print("✅ Performance monitoring worker started")
-    
-    def start_health_check(self):
-        """헬스 체크 시작"""
-        def health_worker():
-            while self.running:
-                try:
-                    time.sleep(60)  # 1분마다 헬스 체크
-                    if not self.running:
-                        break
-                    
-                    response = requests.get(f"{self.base_url}/api/admin/plugin-monitoring/health", timeout=10)
-                    
-                    if response.status_code != 200:
-                        print(f"⚠️  Plugin monitoring health check failed: {response.status_code}")
-                    
-                except Exception as e:
-                    print(f"❌ Error in health check: {e}")
-        
-        health_thread = threading.Thread(target=health_worker, daemon=True)
-        health_thread.start()
-        print("✅ Health check worker started")
-    
-    def start_alert_monitoring(self):
-        """알림 모니터링 시작"""
-        if not self.alert_enabled:
-            print("Alert monitoring is disabled")
-            return
-        
-        def alert_worker():
-            while self.running:
-                try:
-                    time.sleep(30)  # 30초마다 알림 체크
-                    if not self.running:
-                        break
-                    
-                    response = requests.get(f"{self.base_url}/api/admin/plugin-monitoring/alerts", timeout=10)
-                    
-                    if response.status_code == 200:
-                        alerts = response.json()
-                        critical_alerts = [a for a in alerts.get("alerts", []) if a.get("level") == "critical"]
-                        warning_alerts = [a for a in alerts.get("alerts", []) if a.get("level") == "warning"]
-                        
-                        if critical_alerts:
-                            print(f"🚨 Critical alerts detected: {len(critical_alerts)}")
-                            for alert in critical_alerts:
-                                print(f"  - {alert.get('message', 'Unknown alert')}")
-                        
-                        if warning_alerts:
-                            print(f"⚠️  Warning alerts detected: {len(warning_alerts)}")
-                    
-                except Exception as e:
-                    print(f"❌ Error in alert monitoring: {e}")
-        
-        alert_thread = threading.Thread(target=alert_worker, daemon=True)
-        alert_thread.start()
-        print("✅ Alert monitoring worker started")
-    
-    def run(self):
-        """메인 실행 함수"""
-        print("="*60)
-        print("Plugin Monitoring System Starter")
-        print("="*60)
-        print(f"Monitoring enabled: {self.monitoring_enabled}")
-        print(f"Backup enabled: {self.backup_enabled}")
-        print(f"Alert enabled: {self.alert_enabled}")
-        print("="*60)
-        
-        # 애플리케이션 시작 대기
-        if not self.wait_for_application():
-            print("Warning: Proceeding without confirming application readiness")
-        
-        # 플러그인 모니터링 시작
-        self.start_plugin_monitoring()
-        
-        # 백그라운드 워커들 시작
-        self.start_automatic_backup()
-        self.start_performance_monitoring()
-        self.start_health_check()
-        self.start_alert_monitoring()
-        
-        print("✅ All plugin monitoring workers started")
-        print("Plugin monitoring system is running in background...")
-        
-        # 메인 루프
-        try:
-            while self.running:
-                time.sleep(1)
+                # 메트릭 업데이트
+                plugin_monitor.update_metrics(plugin_id, metrics)
+                
+            # 30초 대기
+            time.sleep(30)
+            
         except KeyboardInterrupt:
-            print("\nReceived keyboard interrupt, shutting down...")
-        
-        # 정리
-        self.cleanup()
-    
-    def cleanup(self):
-        """정리 작업"""
-        print("Cleaning up plugin monitoring...")
-        
-        try:
-            # 플러그인 모니터링 중지
-            response = requests.post(f"{self.base_url}/api/admin/plugin-monitoring/stop", timeout=10)
-            if response.status_code == 200:
-                print("✅ Plugin monitoring stopped successfully")
-            else:
-                print(f"⚠️  Failed to stop plugin monitoring: {response.status_code}")
+            logger.info("메트릭 시뮬레이션 중지")
+            break
         except Exception as e:
-            print(f"❌ Error stopping plugin monitoring: {e}")
-        
-        print("Plugin monitoring system shutdown complete")
+            logger.error(f"메트릭 시뮬레이션 오류: {e}")
+            time.sleep(60)
 
 def main():
     """메인 함수"""
-    starter = PluginMonitoringStarter()
-    starter.run()
+    try:
+        logger.info("플러그인 모니터링 시스템 시작")
+        
+        # 로그 디렉토리 생성
+        os.makedirs('logs', exist_ok=True)
+        
+        # 플러그인 모니터링 시작
+        plugin_monitor.start_monitoring()
+        logger.info("플러그인 모니터링 시작됨")
+        
+        # WebSocket 알림 서버 시작
+        alert_server_thread = start_alert_server()
+        logger.info("WebSocket 알림 서버 시작됨")
+        
+        # 테스트용 메트릭 시뮬레이션 시작 (별도 스레드)
+        simulation_thread = threading.Thread(target=simulate_plugin_metrics, daemon=True)
+        simulation_thread.start()
+        logger.info("메트릭 시뮬레이션 시작됨")
+        
+        # 메인 루프
+        try:
+            while True:
+                # 현재 상태 출력
+                active_alerts = plugin_monitor.get_active_alerts()
+                all_metrics = plugin_monitor.get_all_metrics()
+                
+                logger.info(f"활성 알림: {len(active_alerts)}개")
+                logger.info(f"모니터링 중인 플러그인: {len(all_metrics)}개")
+                
+                # 활성 알림이 있으면 출력
+                for alert in active_alerts:
+                    logger.warning(f"알림: {alert.plugin_name} - {alert.message}")
+                
+                # 60초 대기
+                time.sleep(60)
+                
+        except KeyboardInterrupt:
+            logger.info("사용자에 의해 중지됨")
+            
+    except Exception as e:
+        logger.error(f"시스템 시작 오류: {e}")
+        return 1
+    finally:
+        # 정리 작업
+        logger.info("시스템 정리 중...")
+        plugin_monitor.stop_monitoring()
+        stop_alert_server()
+        logger.info("플러그인 모니터링 시스템 종료")
+    
+    return 0
 
 if __name__ == "__main__":
-    main() 
+    exit(main()) 

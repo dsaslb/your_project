@@ -127,7 +127,7 @@ def test_slack_connection() -> bool:
 
 
 def send_event_alert(
-    event: str, user: str = None, detail: str = None, level: str = "INFO"
+    event: str, user: Optional[str] = None, detail: Optional[str] = None, level: str = "INFO"
 ) -> bool:
     """
     주요 이벤트 Slack 알림
@@ -151,7 +151,7 @@ def send_event_alert(
 
 
 def send_security_alert(
-    event: str, user: str = None, ip: str = None, detail: str = None
+    event: str, user: Optional[str] = None, ip: Optional[str] = None, detail: Optional[str] = None
 ) -> bool:
     """
     보안 관련 이벤트 Slack 알림
@@ -178,10 +178,10 @@ def send_security_alert(
 
 def send_data_change_alert(
     event: str,
-    user: str = None,
-    target: str = None,
-    old_value: str = None,
-    new_value: str = None,
+    user: Optional[str] = None,
+    target: Optional[str] = None,
+    old_value: Optional[str] = None,
+    new_value: Optional[str] = None,
 ) -> bool:
     """
     데이터 변경 이벤트 Slack 알림

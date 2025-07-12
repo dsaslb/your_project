@@ -1,16 +1,20 @@
-from datetime import date, datetime
+from datetime import datetime, timedelta
 from functools import wraps
 import logging
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, cast
 
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, url_for)
 from flask_login import current_user, login_required
-from sqlalchemy import and_, extract, func
+from sqlalchemy import and_, extract, func, case
+from sqlalchemy.sql import ColumnElement
 
-from models import Attendance, User, db
+from models import Attendance, User, AttendanceReport, Excuse, ExcuseResponse, db
 from utils.logger import log_action
 from utils.email_utils import send_email
+
+if TYPE_CHECKING:
+    from models import Attendance as AttendanceType
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +85,17 @@ def attendance_stats():
             ):
                 is_early_leave = True
 
+            # 사용자 정보 조회
+            user = User.query.get(att.user_id) if att.user_id else None
+            user_name = ""
+            if user:
+                user_name = user.name if user.name else user.username
+
             result.append(
                 {
                     "id": att.id,
                     "user_id": att.user_id,
-                    "user_name": att.user.name or att.user.username,
+                    "user_name": user_name,
                     "date": att.clock_in.date().isoformat() if att.clock_in else None,
                     "clock_in": (
                         att.clock_in.strftime("%H:%M") if att.clock_in else None
@@ -213,10 +223,15 @@ def eval_attendance(user_id):
         score = int(request.form.get("score", 0))
         grade = request.form.get("grade")
         comment = request.form.get("comment", "")
-        period_from = datetime.strptime(
-            request.form.get("period_from"), "%Y-%m-%d"
-        ).date()
-        period_to = datetime.strptime(request.form.get("period_to"), "%Y-%m-%d").date()
+        period_from_str = request.form.get("period_from")
+        period_to_str = request.form.get("period_to")
+        
+        if not period_from_str or not period_to_str:
+            flash("평가 기간을 입력해주세요.", "error")
+            return redirect(url_for("attendance.staff_attendance_report", user_id=user_id))
+            
+        period_from = datetime.strptime(period_from_str, "%Y-%m-%d").date()
+        period_to = datetime.strptime(period_to_str, "%Y-%m-%d").date()
 
         # 기존 평가 확인
         existing_report = AttendanceReport.query.filter(
@@ -236,15 +251,14 @@ def eval_attendance(user_id):
             report = existing_report
         else:
             # 새 평가 생성
-            report = AttendanceReport(
-                user_id=user_id,
-                period_from=period_from,
-                period_to=period_to,
-                score=score,
-                grade=grade,
-                comment=comment,
-                created_by=current_user.id,
-            )
+            report = AttendanceReport()
+            report.user_id = user_id
+            report.period_from = period_from
+            report.period_to = period_to
+            report.score = score
+            report.grade = grade
+            report.comment = comment
+            report.created_by = current_user.id
             db.session.add(report)
 
         db.session.commit()
@@ -340,13 +354,12 @@ def submit_excuse(user_id):
                 )
 
             # 소명서 생성
-            excuse = Excuse(
-                user_id=user_id,
-                title=title,
-                content=content,
-                category=category,
-                priority=priority,
-            )
+            excuse = Excuse()
+            excuse.user_id = user_id
+            excuse.title = title
+            excuse.content = content
+            excuse.category = category
+            excuse.priority = priority
             db.session.add(excuse)
             db.session.commit()
 
@@ -463,12 +476,11 @@ def review_excuse(excuse_id):
 
         # 답변 추가
         if response_content:
-            response = ExcuseResponse(
-                excuse_id=excuse_id,
-                responder_id=current_user.id,
-                content=response_content,
-                response_type="decision",
-            )
+            response = ExcuseResponse()
+            response.excuse_id = excuse_id
+            response.responder_id = current_user.id
+            response.content = response_content
+            response.response_type = "decision"
             db.session.add(response)
 
         db.session.commit()
@@ -515,12 +527,11 @@ def add_excuse_response(excuse_id):
                 url_for("attendance.admin_excuse_detail", excuse_id=excuse_id)
             )
 
-        response = ExcuseResponse(
-            excuse_id=excuse_id,
-            responder_id=current_user.id,
-            content=content,
-            response_type=response_type,
-        )
+        response = ExcuseResponse()
+        response.excuse_id = excuse_id
+        response.responder_id = current_user.id
+        response.content = content
+        response.response_type = response_type
         db.session.add(response)
         db.session.commit()
 
@@ -656,7 +667,7 @@ def generate_report_pdf():
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
             with open(filepath, "wb") as f:
-                f.write(pdf)
+                f.write(bytes(pdf))
 
             flash(f"PDF 리포트가 생성되었습니다: {filename}", "success")
             return redirect(url_for("static", filename=f"reports/{filename}"))
@@ -861,33 +872,54 @@ def test_weekly_email():
         start_date = end_date - timedelta(days=7)
         
         # 주간 근태 통계
-        weekly_stats = (
-            db.session.query(
-                func.count(Attendance.id).label('total_attendance'),
-                func.count(Attendance.id).filter(Attendance.status == "present").label('present_count'),
-                func.count(Attendance.id).filter(Attendance.status == "late").label('late_count'),
-                func.count(Attendance.id).filter(Attendance.status == "absent").label('absent_count')
-            )
-            .filter(
-                and_(
-                    Attendance.date >= start_date,
-                    Attendance.date <= end_date
-                )
-            )
-            .first()
-        )
+        total_attendance = db.session.query(func.count(Attendance.id)).filter(
+            func.date(Attendance.clock_in) >= start_date
+        ).filter(
+            func.date(Attendance.clock_in) <= end_date
+        ).scalar() or 0
+        
+        present_count = db.session.query(func.count(Attendance.id)).filter(
+            func.date(Attendance.clock_in) >= start_date
+        ).filter(
+            func.date(Attendance.clock_in) <= end_date
+        ).filter(
+            cast(ColumnElement[bool], Attendance.status == "present")
+        ).scalar() or 0
+        
+        late_count = db.session.query(func.count(Attendance.id)).filter(
+            func.date(Attendance.clock_in) >= start_date
+        ).filter(
+            func.date(Attendance.clock_in) <= end_date
+        ).filter(
+            cast(ColumnElement[bool], Attendance.status == "late")
+        ).scalar() or 0
+        
+        absent_count = db.session.query(func.count(Attendance.id)).filter(
+            func.date(Attendance.clock_in) >= start_date
+        ).filter(
+            func.date(Attendance.clock_in) <= end_date
+        ).filter(
+            cast(ColumnElement[bool], Attendance.status == "absent")
+        ).scalar() or 0
         
         # 이메일 내용 생성
-        email_body = f"""
+        if total_attendance > 0:
+            email_body = f"""
 주간 근태 리포트 ({start_date} ~ {end_date})
 
-총 출근: {weekly_stats.total_attendance}건
-정상 출근: {weekly_stats.present_count}건
-지각: {weekly_stats.late_count}건
-결근: {weekly_stats.absent_count}건
+총 출근: {total_attendance}건
+정상 출근: {present_count}건
+지각: {late_count}건
+결근: {absent_count}건
 
-출근률: {round(weekly_stats.present_count / weekly_stats.total_attendance * 100, 1)}%
-        """.strip()
+출근률: {round(present_count / total_attendance * 100, 1)}%
+            """.strip()
+        else:
+            email_body = f"""
+주간 근태 리포트 ({start_date} ~ {end_date})
+
+데이터가 없습니다.
+            """.strip()
         
         # 이메일 발송
         success = send_email(
@@ -923,33 +955,54 @@ def test_monthly_email():
         start_date = end_date.replace(day=1)
         
         # 월간 근태 통계
-        monthly_stats = (
-            db.session.query(
-                func.count(Attendance.id).label('total_attendance'),
-                func.count(Attendance.id).filter(Attendance.status == "present").label('present_count'),
-                func.count(Attendance.id).filter(Attendance.status == "late").label('late_count'),
-                func.count(Attendance.id).filter(Attendance.status == "absent").label('absent_count')
-            )
-            .filter(
-                and_(
-                    Attendance.date >= start_date,
-                    Attendance.date <= end_date
-                )
-            )
-            .first()
-        )
+        total_attendance = db.session.query(func.count(Attendance.id)).filter(
+            func.date(Attendance.clock_in) >= start_date
+        ).filter(
+            func.date(Attendance.clock_in) <= end_date
+        ).scalar() or 0
+        
+        present_count = db.session.query(func.count(Attendance.id)).filter(
+            func.date(Attendance.clock_in) >= start_date
+        ).filter(
+            func.date(Attendance.clock_in) <= end_date
+        ).filter(
+            cast(ColumnElement[bool], Attendance.status == "present")
+        ).scalar() or 0
+        
+        late_count = db.session.query(func.count(Attendance.id)).filter(
+            func.date(Attendance.clock_in) >= start_date
+        ).filter(
+            func.date(Attendance.clock_in) <= end_date
+        ).filter(
+            cast(ColumnElement[bool], Attendance.status == "late")
+        ).scalar() or 0
+        
+        absent_count = db.session.query(func.count(Attendance.id)).filter(
+            func.date(Attendance.clock_in) >= start_date
+        ).filter(
+            func.date(Attendance.clock_in) <= end_date
+        ).filter(
+            cast(ColumnElement[bool], Attendance.status == "absent")
+        ).scalar() or 0
         
         # 이메일 내용 생성
-        email_body = f"""
+        if total_attendance > 0:
+            email_body = f"""
 월간 근태 리포트 ({start_date} ~ {end_date})
 
-총 출근: {monthly_stats.total_attendance}건
-정상 출근: {monthly_stats.present_count}건
-지각: {monthly_stats.late_count}건
-결근: {monthly_stats.absent_count}건
+총 출근: {total_attendance}건
+정상 출근: {present_count}건
+지각: {late_count}건
+결근: {absent_count}건
 
-출근률: {round(monthly_stats.present_count / monthly_stats.total_attendance * 100, 1)}%
-        """.strip()
+출근률: {round(present_count / total_attendance * 100, 1)}%
+            """.strip()
+        else:
+            email_body = f"""
+월간 근태 리포트 ({start_date} ~ {end_date})
+
+데이터가 없습니다.
+            """.strip()
         
         # 이메일 발송
         success = send_email(
@@ -1010,10 +1063,9 @@ def create_or_update_attendance():
         
         # 기존 근태 기록 확인
         existing_attendance = Attendance.query.filter(
-            and_(
-                Attendance.user_id == user_id,
-                func.date(Attendance.clock_in) == date_obj
-            )
+            Attendance.user_id == user_id
+        ).filter(
+            func.date(Attendance.clock_in) == date_obj
         ).first()
         
         if existing_attendance:
@@ -1024,13 +1076,12 @@ def create_or_update_attendance():
             attendance = existing_attendance
         else:
             # 새 기록 생성
-            attendance = Attendance(
-                user_id=user_id,
-                clock_in=clock_in,
-                clock_out=clock_out,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
+            attendance = Attendance()
+            attendance.user_id = user_id
+            attendance.clock_in = clock_in
+            attendance.clock_out = clock_out
+            attendance.created_at = datetime.utcnow()
+            attendance.updated_at = datetime.utcnow()
             db.session.add(attendance)
         
         db.session.commit()

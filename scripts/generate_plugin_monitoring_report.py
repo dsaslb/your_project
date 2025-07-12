@@ -6,7 +6,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, Any
 import requests
 
 # 로깅 설정
@@ -92,10 +92,10 @@ class PluginMonitoringReportGenerator:
             "active_plugins": 0,
             "inactive_plugins": 0,
             "error_plugins": 0,
-            "avg_response_time": 0,
-            "avg_cpu_usage": 0,
-            "avg_memory_usage": 0,
-            "health_score": 0
+            "avg_response_time": 0.0,
+            "avg_cpu_usage": 0.0,
+            "avg_memory_usage": 0.0,
+            "health_score": 0.0
         }
         
         # 플러그인 상태 분석
@@ -146,7 +146,7 @@ class PluginMonitoringReportGenerator:
         
         return summary
     
-    def save_report(self, filename: str = None) -> str:
+    def save_report(self, filename: str = "") -> str:
         """리포트 저장"""
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -186,7 +186,7 @@ def main():
     generator = PluginMonitoringReportGenerator()
     
     # 리포트 생성
-    report = generator.generate_report()
+    generator.generate_report()
     
     # 요약 출력
     generator.print_summary()

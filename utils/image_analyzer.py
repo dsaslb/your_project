@@ -1,11 +1,14 @@
-import cv2
-import numpy as np
-import logging
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass
-import json
-from datetime import datetime
 import base64
+import cv2
+import hashlib
+import logging
+import re
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional
+
+import numpy as np
+from pyzbar import pyzbar
 from PIL import Image
 import io
 

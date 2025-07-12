@@ -1,20 +1,20 @@
-﻿import json
+﻿"""
+알림 시스템
+"""
+
+import json
+import logging
 import smtplib
+import requests
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import logging
-from typing import List, Optional
-
-import requests
 from flask import url_for
+from sqlalchemy import and_
 
 from extensions import db
-from models import ActionLog, Attendance, Notification, User
-from utils.logger import log_action
-
-# from utils.email_utils import send_mail # 실제 이메일 전송 함수
-# from utils.kakao_utils import send_kakao # 실제 카카오톡 전송 함수
+from models import Notification, User
+from utils.logger import log_action, log_error
 
 logger = logging.getLogger(__name__)
 
@@ -107,13 +107,6 @@ class NotificationService:
             return False, f"SMS 발송 실패: {str(e)}"
 
 
-def send_notification(user, message):
-    # 실제 카카오톡/이메일/SMS API 연동 위치
-    # 예: requests.post 또는 SMTP, 문자 발송 등
-    logger.info(f"[알림] to {user.name or user.username}: {message}")
-    return True
-
-
 def send_notification(
     user_id, content, related_url=None, email_info=None, kakao_info=None
 ):
@@ -122,12 +115,11 @@ def send_notification(
     """
     try:
         # 1. 데이터베이스에 알림 저장
-        notification = Notification(
-            user_id=user_id,
-            content=content,
-            related_url=related_url,
-            created_at=datetime.utcnow(),
-        )
+        notification = Notification()
+        notification.user_id = user_id
+        notification.content = content
+        notification.related_url = related_url
+        notification.created_at = datetime.utcnow()
         db.session.add(notification)
         db.session.commit()
 
@@ -165,11 +157,6 @@ def notify_admins(content, related_url=None):
             send_notification(admin.id, content, related_url)
     except Exception as e:
         logger.error(f"Error sending admin notifications: {e}")
-
-
-def send_email(user, subject, body, attachment=None):
-    # 실제 연동은 나중에! 현재는 아무 동작 안 함
-    pass
 
 
 def send_sms(user, message):
@@ -340,7 +327,11 @@ def send_notification_enhanced(user_id, content, category="공지", link=None):
         link: 상세 페이지 링크
     """
     try:
-        n = Notification(user_id=user_id, content=content, category=category, link=link)
+        n = Notification()
+        n.user_id = user_id
+        n.content = content
+        n.category = category
+        n.link = link
         db.session.add(n)
         db.session.commit()
 
@@ -491,13 +482,12 @@ def send_admin_only_notification(content, category="공지", link=None):
     try:
         admins = User.query.filter_by(role="admin").all()
         for admin in admins:
-            notification = Notification(
-                user_id=admin.id,
-                content=content,
-                category=category,
-                link=link,
-                is_admin_only=True,
-            )
+            notification = Notification()
+            notification.user_id = admin.id
+            notification.content = content
+            notification.category = category
+            notification.link = link
+            notification.is_admin_only = True
             db.session.add(notification)
 
         db.session.commit()
@@ -515,13 +505,12 @@ def send_notification_to_role(
     try:
         users = User.query.filter_by(role=role).all()
         for user in users:
-            notification = Notification(
-                user_id=user.id,
-                content=content,
-                category=category,
-                link=link,
-                is_admin_only=is_admin_only,
-            )
+            notification = Notification()
+            notification.user_id = user.id
+            notification.content = content
+            notification.category = category
+            notification.link = link
+            notification.is_admin_only = is_admin_only
             db.session.add(notification)
 
         db.session.commit()

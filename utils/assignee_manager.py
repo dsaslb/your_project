@@ -8,7 +8,8 @@ import logging
 from sqlalchemy import and_, func, or_
 
 from extensions import db
-from models import Attendance, AttendanceReport, User
+from models import Attendance, User
+from models.notification_models import AttendanceReport
 from utils.email_utils import email_service
 from utils.logger import log_action, log_error
 from utils.notify import send_notification_enhanced
@@ -103,7 +104,7 @@ class AssigneeManager:
             log_action(
                 user_id=new_assignee_id,
                 action="DISPUTE_REASSIGNED",
-                details=f"신고/이의제기 {dispute_id} 재배정됨 (사유: {reason})",
+                message=f"신고/이의제기 {dispute_id} 재배정됨 (사유: {reason})",
             )
 
             return True, "담당자가 성공적으로 변경되었습니다."
@@ -131,7 +132,6 @@ class AssigneeManager:
                     user_id=dispute.assignee_id,
                     content=f"⚠️ SLA 초과: 신고/이의제기 처리 기한이 초과되었습니다! (신고자: {dispute.user.name or dispute.user.username})",
                     category="SLA경고",
-                    priority="긴급",
                 )
 
                 # 관리자에게도 알림
@@ -147,7 +147,7 @@ class AssigneeManager:
                 log_action(
                     user_id=dispute.assignee_id,
                     action="SLA_OVERDUE",
-                    details=f"신고/이의제기 {dispute.id} SLA 초과",
+                    message=f"신고/이의제기 {dispute.id} SLA 초과",
                 )
 
             return len(overdue_disputes)
@@ -316,7 +316,7 @@ def assign_dispute(dispute_id, assignee_id=None, reason=None):
             log_action(
                 user_id=assignee_id,
                 action="담당자 배정",
-                details=f"신고 #{dispute.id} -> 담당자 {assignee_id}",
+                message=f"신고 #{dispute.id} -> 담당자 {assignee_id}",
             )
 
             return True, "담당자 배정이 완료되었습니다."

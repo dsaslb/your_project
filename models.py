@@ -618,10 +618,24 @@ class Attendance(db.Model):
     location_out = db.Column(db.String(100))  # 퇴근 위치
     notes = db.Column(db.Text)  # 메모
     reason = db.Column(db.String(200))  # 지각/조퇴/야근 사유 등
+    status = db.Column(db.String(20), default="present", index=True)  # present, late, absent, early_leave
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+    
+    # 업무 배정 관련 필드 추가
+    cleaning_assigned = db.Column(db.Boolean, default=False, index=True)
+    cleaning_task = db.Column(db.String(100))
+    inventory_check_assigned = db.Column(db.Boolean, default=False, index=True)
+    inventory_check_task = db.Column(db.String(100))
+    quality_check_assigned = db.Column(db.Boolean, default=False, index=True)
+    quality_check_task = db.Column(db.String(100))
+    
+    # 날짜 필드 추가 (date 컬럼 대신 사용)
+    @property
+    def date(self):
+        return self.clock_in.date() if self.clock_in else None
 
     # 복합 인덱스 추가 (date 컬럼 관련 인덱스 제거)
     __table_args__ = (
@@ -1295,12 +1309,23 @@ class AttendanceReport(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     warning = db.Column(db.Boolean, default=False)  # 경고 여부 추가
+    
+    # 신고/이의제기 관련 필드 추가
+    status = db.Column(db.String(20), default="pending", index=True)  # pending, processing, resolved, closed
+    dispute_type = db.Column(db.String(20), default="report", index=True)  # report, dispute
+    sla_due = db.Column(db.DateTime, index=True)  # SLA 기한
+    assignee_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)  # 담당자
+    admin_reply = db.Column(db.Text)  # 관리자 답변
+    admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)  # 답변 관리자
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 관계
     user = db.relationship("User", foreign_keys=[user_id], backref="attendance_reports")
     creator = db.relationship(
         "User", foreign_keys=[created_by], backref="created_reports"
     )
+    assignee = db.relationship("User", foreign_keys=[assignee_id], backref="assigned_reports")
+    admin = db.relationship("User", foreign_keys=[admin_id], backref="admin_reports")
 
     def __repr__(self):
         return f"<AttendanceReport {self.user_id} {self.period_from}~{self.period_to}>"

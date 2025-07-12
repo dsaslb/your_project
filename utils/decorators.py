@@ -287,18 +287,18 @@ def permission_required(permission_name):
 
 
 def role_required(allowed_roles):
-    """특정 역할만 접근 가능한 데코레이터"""
+    """지정된 역할을 확인하는 데코레이터"""
 
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 flash("로그인이 필요합니다.", "warning")
-                return redirect(url_for("auth.login"))
+                return redirect(url_for("login"))
 
             if current_user.role not in allowed_roles:
                 logger.warning(
-                    f"Role access denied: {current_user.id} ({current_user.role}) -> {allowed_roles} -> {request.endpoint}"
+                    f"Role access denied: {current_user.id} ({current_user.role}) -> {request.endpoint}"
                 )
                 flash("접근 권한이 없습니다.", "error")
                 return redirect(url_for("dashboard"))
@@ -308,3 +308,25 @@ def role_required(allowed_roles):
         return decorated_function
 
     return decorator
+
+
+def team_lead_required(f):
+    """팀 리드 권한 확인 데코레이터"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash("로그인이 필요합니다.", "warning")
+            return redirect(url_for("login"))
+
+        # 팀 리드 권한 확인 (관리자, 매니저, 또는 팀 리드 역할)
+        if not (current_user.is_admin() or current_user.is_manager() or current_user.role == "team_lead"):
+            logger.warning(
+                f"Team lead access denied: {current_user.id} -> {request.endpoint}"
+            )
+            flash("팀 리드 권한이 필요합니다.", "error")
+            return redirect(url_for("dashboard"))
+
+        return f(*args, **kwargs)
+
+    return decorated_function

@@ -1,24 +1,20 @@
 """
-급여 계산 유틸리티
+급여 관리 시스템
 """
 
-from datetime import datetime, time
 import logging
-import os
+from datetime import date, datetime, time
 from typing import Dict, List, Optional
 
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
-from reportlab.platypus import (Paragraph, SimpleDocTemplate, Spacer, Table,
-                                TableStyle)
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
 
 from extensions import db
-from models import Attendance, Payroll, User
-from utils.logger import log_action
+from models import User, Payroll
+from utils.logger import log_action, log_error
 
 logger = logging.getLogger(__name__)
 

@@ -144,13 +144,16 @@ class TranslationManager:
         
         # 가장 높은 점수의 언어 반환
         if language_scores:
-            detected_lang = max(language_scores, key=language_scores.get)
-            confidence = language_scores[detected_lang]
-            return detected_lang, confidence
+            try:
+                detected_lang = max(language_scores.keys(), key=lambda k: language_scores[k])
+                confidence = language_scores[detected_lang]
+                return detected_lang, confidence
+            except (ValueError, KeyError):
+                return "ko", 0.0
         
         return "ko", 0.0
     
-    def translate_text(self, text: str, target_language: str, source_language: str = None) -> TranslationResult:
+    def translate_text(self, text: str, target_language: str, source_language: Optional[str] = None) -> TranslationResult:
         """텍스트 번역"""
         try:
             start_time = datetime.now()
@@ -297,7 +300,7 @@ class TranslationManager:
             self.logger.error(f"Error translating notification: {str(e)}")
             return notification
     
-    def batch_translate(self, texts: List[str], target_language: str, source_language: str = None) -> List[TranslationResult]:
+    def batch_translate(self, texts: List[str], target_language: str, source_language: Optional[str] = None) -> List[TranslationResult]:
         """배치 번역"""
         results = []
         

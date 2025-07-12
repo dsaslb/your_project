@@ -1,20 +1,21 @@
 import os, smtplib
 from email.mime.text import MIMEText
+from typing import Optional
 
-def send_email(subject, body):
-    host = os.environ.get('EMAIL_HOST')
-    port = int(os.environ.get('EMAIL_PORT', 587))
-    user = os.environ.get('EMAIL_USER')
-    pw = os.environ.get('EMAIL_PASS')
-    to = os.environ.get('EMAIL_TO', user)
+def send_email(subject: str, body: str) -> None:
+    host: Optional[str] = os.environ.get('EMAIL_HOST')
+    port: int = int(os.environ.get('EMAIL_PORT', 587))
+    user: Optional[str] = os.environ.get('EMAIL_USER')
+    pw: Optional[str] = os.environ.get('EMAIL_PASS')
+    to: str = os.environ.get('EMAIL_TO', user or "")
     msg = MIMEText(body)
     msg['Subject'] = subject
-    msg['From'] = user
+    msg['From'] = user or ""
     msg['To'] = to
-    with smtplib.SMTP(host, port) as server:
+    with smtplib.SMTP(host or "", port) as server:
         server.starttls()
-        server.login(user, pw)
-        server.sendmail(user, [to], msg.as_string())
+        server.login(user or "", pw or "")
+        server.sendmail(user or "", [to], msg.as_string())
 
 if __name__ == '__main__':
     import sys

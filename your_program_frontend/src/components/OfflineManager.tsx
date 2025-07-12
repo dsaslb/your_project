@@ -34,7 +34,7 @@ const OfflineManager: React.FC = () => {
   const loadOfflineData = async () => {
     try {
       // IndexedDB에서 오프라인 저장된 데이터 로드
-      const request = window.indexedDB.open('restaurantDB', 1);
+      const request = window.indexedDB.open('your_programDB', 1);
       
       request.onerror = () => {
         console.error('IndexedDB 열기 실패');

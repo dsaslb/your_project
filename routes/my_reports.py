@@ -7,15 +7,15 @@ from datetime import datetime, timedelta
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, url_for)
 from flask_login import current_user, login_required
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func
 
 from extensions import db
-from models import Attendance, AttendanceReport, User
+from models import AttendanceReport, User
 from utils.assignee_manager import assignee_manager
-from utils.decorators import admin_required, team_lead_required
+from utils.decorators import admin_required
 from utils.email_utils import email_service
 from utils.logger import log_action, log_error
-from utils.notification_automation import send_notification
+from utils.notify import send_notification_enhanced
 
 my_reports_bp = Blueprint("my_reports", __name__)
 
@@ -132,11 +132,9 @@ def my_report_reply(report_id):
         db.session.commit()
 
         # 신고자에게 알림 발송
-        send_notification(
+        send_notification_enhanced(
             user_id=dispute.user_id,
             content=f"신고/이의제기에 답변이 등록되었습니다. (상태: {new_status})",
-            category="신고/이의제기",
-            link=f"/attendance/dispute/{dispute.id}",
         )
 
         # 이메일 알림 발송
@@ -153,7 +151,6 @@ def my_report_reply(report_id):
         log_action(
             user_id=current_user.id,
             action=f"담당 신고/이의제기 답변 처리",
-            details=f"신고ID: {dispute.id}, 상태: {new_status}, 답변: {reply[:50]}...",
         )
 
         flash("답변이 성공적으로 등록되었습니다.", "success")
@@ -215,7 +212,6 @@ def my_reports_stats():
         workload = assignee_manager.get_assignee_workload(current_user.id)
 
         # 최근 7일 처리 현황
-        week_ago = datetime.utcnow() - timedelta(days=7)
         daily_stats = []
 
         for i in range(7):
@@ -233,75 +229,87 @@ def my_reports_stats():
             ).count()
 
             daily_stats.append(
-                {"date": date.strftime("%m-%d"), "resolved": resolved_count}
+                {
+                    "date": date.strftime("%m-%d"),
+                    "resolved": resolved_count,
+                }
             )
 
-        daily_stats.reverse()
+        # 유형별 통계
+        type_stats = (
+            db.session.query(AttendanceReport.dispute_type, func.count().label("count"))
+            .filter(AttendanceReport.assignee_id == current_user.id)
+            .group_by(AttendanceReport.dispute_type)
+            .all()
+        )
 
-        # SLA 통계
-        now = datetime.utcnow()
-        sla_urgent = AttendanceReport.query.filter(
-            and_(
-                AttendanceReport.assignee_id == current_user.id,
-                AttendanceReport.status.in_(["pending", "processing"]),
-                AttendanceReport.sla_due <= now + timedelta(hours=24),
-                AttendanceReport.sla_due > now,
-            )
-        ).count()
-
-        sla_overdue = AttendanceReport.query.filter(
-            and_(
-                AttendanceReport.assignee_id == current_user.id,
-                AttendanceReport.status.in_(["pending", "processing"]),
-                AttendanceReport.sla_due < now,
-            )
-        ).count()
+        # 상태별 통계
+        status_stats = (
+            db.session.query(AttendanceReport.status, func.count().label("count"))
+            .filter(AttendanceReport.assignee_id == current_user.id)
+            .group_by(AttendanceReport.status)
+            .all()
+        )
 
         return jsonify(
             {
-                "success": True,
-                "stats": {
-                    "workload": workload,
-                    "daily_stats": daily_stats,
-                    "sla_urgent": sla_urgent,
-                    "sla_overdue": sla_overdue,
+                "workload": workload,
+                "daily_stats": list(reversed(daily_stats)),
+                "type_stats": {
+                    "labels": [t.dispute_type for t in type_stats],
+                    "data": [t.count for t in type_stats],
+                },
+                "status_stats": {
+                    "labels": [s.status for s in status_stats],
+                    "data": [s.count for s in status_stats],
                 },
             }
         )
 
     except Exception as e:
         log_error(e, current_user.id)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"error": "통계 조회 중 오류가 발생했습니다."}), 500
 
 
 @my_reports_bp.route("/admin_dashboard/assignee_stats")
 @login_required
 @admin_required
 def assignee_stats():
-    """전체 담당자 통계 (관리자용)"""
+    """담당자별 통계 API"""
     try:
-        stats = assignee_manager.get_assignee_stats()
-
-        # 담당자 목록 (재배정용)
-        assignees = (
-            User.query.filter(User.role.in_(["admin", "manager", "teamlead"]))
-            .order_by(User.name)
+        # 담당자별 업무량
+        assignee_workload = (
+            db.session.query(
+                User.name,
+                func.count(AttendanceReport.id).label("total"),
+                func.sum(
+                    func.case(
+                        (AttendanceReport.status == "resolved", 1), else_=0
+                    )
+                ).label("resolved"),
+            )
+            .join(AttendanceReport, User.id == AttendanceReport.assignee_id)
+            .group_by(User.id, User.name)
             .all()
         )
 
-        context = {
-            "assignee_stats": stats["assignee_stats"],
-            "sla_overdue": stats["sla_overdue"],
-            "sla_urgent": stats["sla_urgent"],
-            "assignees": assignees,
-        }
-
-        return render_template("admin/assignee_stats.html", **context)
+        return jsonify(
+            {
+                "assignees": [
+                    {
+                        "name": a.name,
+                        "total": a.total,
+                        "resolved": a.resolved or 0,
+                        "pending": a.total - (a.resolved or 0),
+                    }
+                    for a in assignee_workload
+                ]
+            }
+        )
 
     except Exception as e:
         log_error(e, current_user.id)
-        flash("담당자 통계를 불러오는 중 오류가 발생했습니다.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return jsonify({"error": "담당자 통계 조회 중 오류가 발생했습니다."}), 500
 
 
 @my_reports_bp.route(
@@ -313,13 +321,12 @@ def report_reassign(report_id):
     """신고/이의제기 재배정 (관리자용)"""
     try:
         dispute = AttendanceReport.query.get_or_404(report_id)
-
         new_assignee_id = request.form.get("assignee_id")
         reason = request.form.get("reason", "").strip()
 
         if not new_assignee_id:
             flash("새 담당자를 선택해주세요.", "error")
-            return redirect(url_for("admin_reports.admin_reports"))
+            return redirect(url_for("admin_dashboard"))
 
         # 재배정 실행
         success, message = assignee_manager.reassign_dispute(
@@ -331,12 +338,12 @@ def report_reassign(report_id):
         else:
             flash(message, "error")
 
-        return redirect(url_for("admin_reports.admin_reports"))
+        return redirect(url_for("admin_dashboard"))
 
     except Exception as e:
         log_error(e, current_user.id)
         flash("재배정 중 오류가 발생했습니다.", "error")
-        return redirect(url_for("admin_reports.admin_reports"))
+        return redirect(url_for("admin_dashboard"))
 
 
 @my_reports_bp.route("/admin_dashboard/report_chart_data")
@@ -345,54 +352,56 @@ def report_reassign(report_id):
 def report_chart_data():
     """신고/이의제기 차트 데이터 API"""
     try:
-        from sqlalchemy import func
-
-        # 날짜별 신고/이의제기 통계
-        data = (
+        # 최근 30일 신고/이의제기 현황
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        
+        daily_reports = (
             db.session.query(
-                func.strftime("%Y-%m-%d", AttendanceReport.created_at).label("date"),
-                func.count().label("count"),
+                func.date(AttendanceReport.created_at).label("date"),
+                func.count(AttendanceReport.id).label("count"),
             )
-            .group_by(func.strftime("%Y-%m-%d", AttendanceReport.created_at))
-            .order_by("date")
+            .filter(AttendanceReport.created_at >= thirty_days_ago)
+            .group_by(func.date(AttendanceReport.created_at))
+            .order_by(func.date(AttendanceReport.created_at))
             .all()
         )
 
-        # 상태별 통계
-        status_stats = (
-            db.session.query(AttendanceReport.status, func.count().label("count"))
-            .group_by(AttendanceReport.status)
-            .all()
-        )
+        # SLA 임박/초과 현황
+        now = datetime.utcnow()
+        sla_urgent = AttendanceReport.query.filter(
+            and_(
+                AttendanceReport.status.in_(["pending", "processing"]),
+                AttendanceReport.sla_due <= now + timedelta(hours=24),
+                AttendanceReport.sla_due > now,
+            )
+        ).count()
 
-        # 유형별 통계
-        type_stats = (
-            db.session.query(AttendanceReport.dispute_type, func.count().label("count"))
-            .group_by(AttendanceReport.dispute_type)
-            .all()
-        )
+        sla_overdue = AttendanceReport.query.filter(
+            and_(
+                AttendanceReport.status.in_(["pending", "processing"]),
+                AttendanceReport.sla_due < now,
+            )
+        ).count()
 
         return jsonify(
             {
-                "success": True,
-                "daily_data": {
-                    "labels": [d.date for d in data],
-                    "counts": [d.count for d in data],
-                },
-                "status_stats": {
-                    "labels": [s.status for s in status_stats],
-                    "counts": [s.count for s in status_stats],
-                },
-                "type_stats": {
-                    "labels": [t.dispute_type for t in type_stats],
-                    "counts": [t.count for t in type_stats],
+                "daily_reports": [
+                    {
+                        "date": str(d.date),
+                        "count": d.count,
+                    }
+                    for d in daily_reports
+                ],
+                "sla_stats": {
+                    "urgent": sla_urgent,
+                    "overdue": sla_overdue,
                 },
             }
         )
 
     except Exception as e:
         log_error(e, current_user.id)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"error": "차트 데이터 조회 중 오류가 발생했습니다."}), 500
 
 
 @my_reports_bp.route("/admin_dashboard/report_realtime_notifications")
@@ -401,53 +410,42 @@ def report_chart_data():
 def report_realtime_notifications():
     """실시간 신고/이의제기 알림 API"""
     try:
-        # 최근 1시간 내 신고/이의제기 조회
-        from datetime import datetime, timedelta
-
-        recent_time = datetime.utcnow() - timedelta(hours=1)
-        recent_disputes = (
-            AttendanceReport.query.filter(AttendanceReport.created_at >= recent_time)
+        # 최근 1시간 내 신고/이의제기
+        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        
+        recent_reports = (
+            AttendanceReport.query.filter(
+                AttendanceReport.created_at >= one_hour_ago
+            )
             .order_by(AttendanceReport.created_at.desc())
             .limit(10)
             .all()
         )
 
         notifications = []
-        for dispute in recent_disputes:
+        for dispute in recent_reports:
             notifications.append(
                 {
                     "id": dispute.id,
                     "type": dispute.dispute_type,
-                    "user_name": dispute.user.name or dispute.user.username,
-                    "reason": (
-                        dispute.reason[:50] + "..."
-                        if len(dispute.reason) > 50
-                        else dispute.reason
-                    ),
                     "status": dispute.status,
                     "created_at": dispute.created_at.strftime("%H:%M"),
                     "time_ago": get_time_ago(dispute.created_at),
                 }
             )
 
-        return jsonify(
-            {
-                "success": True,
-                "notifications": notifications,
-                "count": len(notifications),
-            }
-        )
+        return jsonify({"notifications": notifications})
 
     except Exception as e:
         log_error(e, current_user.id)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"error": "알림 조회 중 오류가 발생했습니다."}), 500
 
 
 def get_time_ago(dt):
-    """시간 경과 계산"""
+    """시간 차이를 사람이 읽기 쉬운 형태로 반환"""
     now = datetime.utcnow()
     diff = now - dt
-
+    
     if diff.days > 0:
         return f"{diff.days}일 전"
     elif diff.seconds >= 3600:

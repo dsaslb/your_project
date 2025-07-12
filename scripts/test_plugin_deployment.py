@@ -7,7 +7,7 @@ import json
 import logging
 import requests
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -247,7 +247,7 @@ class PluginDeploymentTester:
         
         return summary
     
-    def save_test_results(self, filename: str = None) -> str:
+    def save_test_results(self, filename: str = "") -> str:
         """테스트 결과 저장"""
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -292,7 +292,7 @@ def main():
     tester = PluginDeploymentTester()
     
     # 전체 배포 테스트 실행
-    result = tester.run_full_deployment_test(plugin_file, plugin_name)
+    tester.run_full_deployment_test(plugin_file, plugin_name)
     
     # 결과 출력
     tester.print_test_summary()

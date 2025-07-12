@@ -60,35 +60,33 @@ def create_inventory_item():
             return jsonify({"success": False, "error": "품목명과 카테고리는 필수입니다."}), 400
         
         # 새 재고 품목 생성
-        new_item = InventoryItem(
-            name=data.get('name'),
-            category=data.get('category'),
-            current_stock=data.get('current_stock', 0),
-            min_stock=data.get('min_stock', 0),
-            max_stock=data.get('max_stock', 1000),
-            unit=data.get('unit', '개'),
-            unit_price=data.get('unit_price', 0),
-            supplier=data.get('supplier', ''),
-            description=data.get('description', ''),
-            location=data.get('location', ''),
-            branch_id=current_user.branch_id
-        )
+        new_item = InventoryItem()
+        new_item.name = data.get('name')
+        new_item.category = data.get('category')
+        new_item.current_stock = data.get('current_stock', 0)
+        new_item.min_stock = data.get('min_stock', 0)
+        new_item.max_stock = data.get('max_stock', 1000)
+        new_item.unit = data.get('unit', '개')
+        new_item.unit_price = data.get('unit_price', 0)
+        new_item.supplier = data.get('supplier', '')
+        new_item.description = data.get('description', '')
+        new_item.location = data.get('location', '')
+        new_item.branch_id = current_user.branch_id
         
         db.session.add(new_item)
         db.session.commit()
         
         # 재고 변동 이력 기록
         if new_item.current_stock > 0:
-            movement = StockMovement(
-                inventory_item_id=new_item.id,
-                movement_type='in',
-                quantity=new_item.current_stock,
-                before_stock=0,
-                after_stock=new_item.current_stock,
-                reason='초기 등록',
-                reference_type='manual',
-                created_by=current_user.id
-            )
+            movement = StockMovement()
+            movement.inventory_item_id = new_item.id
+            movement.movement_type = 'in'
+            movement.quantity = new_item.current_stock
+            movement.before_stock = 0
+            movement.after_stock = new_item.current_stock
+            movement.reason = '초기 등록'
+            movement.reference_type = 'manual'
+            movement.created_by = current_user.id
             db.session.add(movement)
             db.session.commit()
         
@@ -146,16 +144,15 @@ def update_inventory_item(item_id):
         
         # 재고량 변경이 있는 경우 이력 기록
         if 'current_stock' in data and data['current_stock'] != old_stock:
-            movement = StockMovement(
-                inventory_item_id=item.id,
-                movement_type='adjust',
-                quantity=data['current_stock'] - old_stock,
-                before_stock=old_stock,
-                after_stock=data['current_stock'],
-                reason=data.get('reason', '수동 조정'),
-                reference_type='manual',
-                created_by=current_user.id
-            )
+            movement = StockMovement()
+            movement.inventory_item_id = item.id
+            movement.movement_type = 'adjust'
+            movement.quantity = data['current_stock'] - old_stock
+            movement.before_stock = old_stock
+            movement.after_stock = data['current_stock']
+            movement.reason = data.get('reason', '수동 조정')
+            movement.reference_type = 'manual'
+            movement.created_by = current_user.id
             db.session.add(movement)
             item.current_stock = data['current_stock']
         
@@ -365,17 +362,16 @@ def consume_stock():
             inventory_item.current_stock -= quantity
             
             # 재고 변동 이력 기록
-            movement = StockMovement(
-                inventory_item_id=item_id,
-                movement_type='out',
-                quantity=-quantity,
-                before_stock=old_stock,
-                after_stock=inventory_item.current_stock,
-                reason=f'주문 처리 (주문번호: {order_id})',
-                reference_type='your_program_order',
-                reference_id=order_id,
-                created_by=current_user.id
-            )
+            movement = StockMovement()
+            movement.inventory_item_id = item_id
+            movement.movement_type = 'out'
+            movement.quantity = -quantity
+            movement.before_stock = old_stock
+            movement.after_stock = inventory_item.current_stock
+            movement.reason = f'주문 처리 (주문번호: {order_id})'
+            movement.reference_type = 'your_program_order'
+            movement.reference_id = order_id
+            movement.created_by = current_user.id
             
             db.session.add(movement)
             consumed_items.append({
@@ -426,16 +422,15 @@ def receive_order():
             inventory_item = InventoryItem.query.get(order.inventory_item_id)
         else:
             # 새 재고 품목 생성
-            inventory_item = InventoryItem(
-                name=order.item,
-                category='기타',
-                current_stock=0,
-                min_stock=0,
-                unit=order.unit,
-                unit_price=order.unit_price or 0,
-                supplier=order.supplier or '',
-                branch_id=current_user.branch_id
-            )
+            inventory_item = InventoryItem()
+            inventory_item.name = order.item
+            inventory_item.category = '기타'
+            inventory_item.current_stock = 0
+            inventory_item.min_stock = 0
+            inventory_item.unit = order.unit
+            inventory_item.unit_price = order.unit_price or 0
+            inventory_item.supplier = order.supplier or ''
+            inventory_item.branch_id = current_user.branch_id
             db.session.add(inventory_item)
             db.session.flush()  # ID 생성
         
@@ -444,17 +439,16 @@ def receive_order():
         inventory_item.current_stock += order.quantity
         
         # 재고 변동 이력 기록
-        movement = StockMovement(
-            inventory_item_id=inventory_item.id,
-            movement_type='in',
-            quantity=order.quantity,
-            before_stock=old_stock,
-            after_stock=inventory_item.current_stock,
-            reason=f'발주 입고 (발주번호: {order_id})',
-            reference_type='order',
-            reference_id=order_id,
-            created_by=current_user.id
-        )
+        movement = StockMovement()
+        movement.inventory_item_id = inventory_item.id
+        movement.movement_type = 'in'
+        movement.quantity = order.quantity
+        movement.before_stock = old_stock
+        movement.after_stock = inventory_item.current_stock
+        movement.reason = f'발주 입고 (발주번호: {order_id})'
+        movement.reference_type = 'order'
+        movement.reference_id = order_id
+        movement.created_by = current_user.id
         
         # 발주 상태 업데이트
         order.status = 'delivered'

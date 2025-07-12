@@ -7,6 +7,7 @@ import OfflineSyncIndicator from "../components/OfflineSyncIndicator";
 import PWAInstallPrompt from "../components/PWAInstallPrompt";
 import Sidebar from '@/components/Sidebar'
 import RealTimeSync from '@/components/RealTimeSync'
+import PluginAlertToast from '@/components/PluginAlertToast'
 import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -58,6 +59,7 @@ export default function RootLayout({
           <NotificationCenter />
           <OfflineSyncIndicator />
           <PWAInstallPrompt />
+          <PluginAlertToast />
         </ThemeProvider>
       </body>
     </html>

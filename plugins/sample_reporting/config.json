@@ -1,7 +1,0 @@
-{
-  "name": "sample_reporting",
-  "description": "샘플 리포트 플러그인",
-  "version": "1.0.0",
-  "author": "System",
-  "main_file": "main.py"
-}
