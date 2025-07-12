@@ -1,0 +1,236 @@
+{
+  "success": false,
+  "total_tests": 5,
+  "success_count": 4,
+  "success_rate": 80.0,
+  "results": {
+    "실시간 예측": {
+      "success": true,
+      "data": {
+        "last_updated": "2025-07-12T15:17:21.644263",
+        "predictions": {
+          "customer_flow": {
+            "peak_hours": [],
+            "tomorrow_predictions": {
+              "00:00": 5,
+              "01:00": 4,
+              "02:00": 5,
+              "03:00": 4,
+              "04:00": 4,
+              "05:00": 4,
+              "06:00": 5,
+              "07:00": 4,
+              "08:00": 5,
+              "09:00": 5,
+              "10:00": 5,
+              "11:00": 4,
+              "12:00": 5,
+              "13:00": 4,
+              "14:00": 5,
+              "15:00": 5,
+              "16:00": 4,
+              "17:00": 4,
+              "18:00": 5,
+              "19:00": 4,
+              "20:00": 5,
+              "21:00": 4,
+              "22:00": 4,
+              "23:00": 5
+            },
+            "total_predicted_customers": 108
+          },
+          "inventory": [],
+          "sales": [
+            {
+              "confidence": 0.9,
+              "date": "2025-07-12",
+              "features": {
+                "noise": 0.10763218820836756,
+                "seasonality": 1.0,
+                "trend_factor": 1.0
+              },
+              "model_type": "linear_regression",
+              "predicted_value": 1107632.19
+            },
+            {
+              "confidence": 0.88,
+              "date": "2025-07-13",
+              "features": {
+                "noise": -0.025096246897501145,
+                "seasonality": 1.078183148246803,
+                "trend_factor": 1.02
+              },
+              "model_type": "linear_regression",
+              "predicted_value": 1072147.29
+            },
+            {
+              "confidence": 0.86,
+              "date": "2025-07-14",
+              "features": {
+                "noise": 0.05670375115917209,
+                "seasonality": 1.0974927912181824,
+                "trend_factor": 1.04
+              },
+              "model_type": "linear_regression",
+              "predicted_value": 1206113.74
+            },
+            {
+              "confidence": 0.84,
+              "date": "2025-07-15",
+              "features": {
+                "noise": -0.035772699415933445,
+                "seasonality": 1.0433883739117558,
+                "trend_factor": 1.06
+              },
+              "model_type": "linear_regression",
+              "predicted_value": 1066427.37
+            },
+            {
+              "confidence": 0.82,
+              "date": "2025-07-16",
+              "features": {
+                "noise": 0.0033483858081368905,
+                "seasonality": 0.9566116260882442,
+                "trend_factor": 1.08
+              },
+              "model_type": "linear_regression",
+              "predicted_value": 1036599.91
+            },
+            {
+              "confidence": 0.8,
+              "date": "2025-07-17",
+              "features": {
+                "noise": 0.003295851693491299,
+                "seasonality": 0.9025072087818177,
+                "trend_factor": 1.1
+              },
+              "model_type": "linear_regression",
+              "predicted_value": 996029.91
+            },
+            {
+              "confidence": 0.78,
+              "date": "2025-07-18",
+              "features": {
+                "noise": 0.05022957431557859,
+                "seasonality": 0.921816851753197,
+                "trend_factor": 1.12
+              },
+              "model_type": "linear_regression",
+              "predicted_value": 1084293.64
+            }
+          ],
+          "staffing": {
+            "current_staff": 1,
+            "needed_staff": 10,
+            "recommendation": "인력 추가 필요",
+            "shortage": 9,
+            "surplus": 0
+          }
+        },
+        "success": true
+      },
+      "message": "실시간 예측 데이터 조회 성공"
+    },
+    "예측 정확도": {
+      "success": true,
+      "data": {
+        "accuracy_trends": {
+          "model_accuracy": {
+            "linear_regression": 0.84
+          },
+          "overall_accuracy": 0.84,
+          "total_predictions": 7
+        },
+        "model_performance": {
+          "arima": {
+            "accuracy": 0.9,
+            "last_updated": "2025-07-12T15:16:59.368987",
+            "mae": 0.1,
+            "mse": 0.01,
+            "r2_score": 0.85,
+            "rmse": 0.1
+          },
+          "linear_regression": {
+            "accuracy": 0.9,
+            "last_updated": "2025-07-12T15:16:59.368987",
+            "mae": 0.1,
+            "mse": 0.01,
+            "r2_score": 0.85,
+            "rmse": 0.1
+          },
+          "lstm": {
+            "accuracy": 0.9,
+            "last_updated": "2025-07-12T15:16:59.368987",
+            "mae": 0.1,
+            "mse": 0.01,
+            "r2_score": 0.85,
+            "rmse": 0.1
+          },
+          "prophet": {
+            "accuracy": 0.9,
+            "last_updated": "2025-07-12T15:16:59.368987",
+            "mae": 0.1,
+            "mse": 0.01,
+            "r2_score": 0.85,
+            "rmse": 0.1
+          },
+          "random_forest": {
+            "accuracy": 0.9,
+            "last_updated": "2025-07-12T15:16:59.368987",
+            "mae": 0.1,
+            "mse": 0.01,
+            "r2_score": 0.85,
+            "rmse": 0.1
+          }
+        },
+        "success": true
+      },
+      "message": "예측 정확도 분석 성공"
+    },
+    "AI 인사이트": {
+      "success": true,
+      "data": {
+        "generated_at": "2025-07-12T15:17:25.716301",
+        "insights": [
+          {
+            "current_staff": 1,
+            "description": "내일 9명의 추가 인력이 필요합니다.",
+            "needed_staff": 10,
+            "priority": "high",
+            "shortage": 9,
+            "title": "인력 부족 위험",
+            "type": "staffing_shortage"
+          }
+        ],
+        "success": true
+      },
+      "message": "AI 인사이트 생성 성공 (1개)"
+    },
+    "예측 알림": {
+      "success": true,
+      "data": {
+        "alerts": [
+          {
+            "action_required": true,
+            "current_staff": 1,
+            "description": "내일 9명의 인력이 부족합니다.",
+            "needed_staff": 10,
+            "severity": "high",
+            "shortage": 9,
+            "title": "인력 부족 위험",
+            "type": "staffing_shortage"
+          }
+        ],
+        "success": true,
+        "total_alerts": 1
+      },
+      "message": "예측 기반 알림 조회 성공 (1개)"
+    },
+    "모델 재훈련": {
+      "success": false,
+      "error": "HTTP 400",
+      "message": "모델 재훈련 실패"
+    }
+  },
+  "timestamp": "2025-07-13T00:17:29.790585"
+}

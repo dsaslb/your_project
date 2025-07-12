@@ -1,0 +1,73 @@
+# 카카오톡 및 SMS 알림 설정 가이드
+
+## 환경변수 설정
+
+### 1. 카카오톡 알림 설정
+```bash
+# 카카오톡 비즈니스 채널 설정
+export KAKAO_ACCESS_TOKEN="your_kakao_access_token"
+export KAKAO_TEMPLATE_ID="your_template_id"
+export KAKAO_TO_NUMBER="01012345678"
+```
+
+### 2. 네이버 클라우드 SMS 설정
+```bash
+# 네이버 클라우드 SMS 설정
+export NAVER_SMS_SERVICE_ID="your_service_id"
+export NAVER_SMS_ACCESS_KEY="your_access_key"
+export NAVER_SMS_SECRET_KEY="your_secret_key"
+export NAVER_SMS_FROM_NUMBER="01012345678"
+export NAVER_SMS_TO_NUMBER="01012345678"
+```
+
+### 3. 기존 알림 채널 설정
+```bash
+# Slack 설정
+export SLACK_WEBHOOK_URL="your_slack_webhook_url"
+
+# 이메일 설정
+export ALERT_SMTP_SERVER="smtp.gmail.com"
+export ALERT_SMTP_PORT="587"
+export ALERT_SMTP_USER="your_email@gmail.com"
+export ALERT_SMTP_PASS="your_app_password"
+export ALERT_FROM_EMAIL="your_email@gmail.com"
+export ALERT_TO_EMAIL="admin@company.com"
+
+# Twilio SMS 설정 (선택)
+export TWILIO_ACCOUNT_SID="your_account_sid"
+export TWILIO_AUTH_TOKEN="your_auth_token"
+export TWILIO_FROM_NUMBER="+1234567890"
+export TWILIO_TO_NUMBER="+1234567890"
+```
+
+## 설정 방법
+
+### 카카오톡 비즈니스 채널 설정
+1. 카카오톡 비즈니스 채널 생성
+2. API 키 발급
+3. 템플릿 메시지 등록
+4. 환경변수에 설정 정보 입력
+
+### 네이버 클라우드 SMS 설정
+1. 네이버 클라우드 플랫폼 가입
+2. SMS 서비스 활성화
+3. 서비스 ID, Access Key, Secret Key 발급
+4. 발신번호 등록
+5. 환경변수에 설정 정보 입력
+
+## 알림 정책
+
+### 기본 알림 정책
+- **Info**: Slack만 전송
+- **Warning**: Slack + 이메일 전송
+- **Critical**: Slack + 이메일 + 카카오톡 + SMS 전송
+
+### 커스터마이징
+`utils/alert_notifier.py`의 `send_alert()` 함수에서 정책을 수정할 수 있습니다.
+
+## 테스트 방법
+
+1. 환경변수 설정 후 서버 재시작
+2. `/alert-management` 페이지 접속
+3. "테스트" 탭에서 각 채널별 테스트 알림 전송
+4. 알림 로그에서 전송 결과 확인 

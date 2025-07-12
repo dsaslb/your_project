@@ -20,6 +20,11 @@ def api_login():
     summary: 사용자 인증 및 JWT 토큰 발급
     description: 사용자명과 비밀번호를 받아 인증 후 JWT 토큰을 반환합니다.
     """
+    # 디버그: JWT_SECRET_KEY 값 출력
+    secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
+    print(f"DEBUG: JWT_SECRET_KEY = {secret_key}")
+    print(f"DEBUG: current_app.config keys = {list(current_app.config.keys())}")
+    
     data = request.json
     if not data or "username" not in data or "password" not in data:
         return jsonify({"message": "사용자명과 비밀번호를 입력해주세요."}), 400

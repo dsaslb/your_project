@@ -3,11 +3,8 @@ from datetime import date, datetime, timedelta
 from enum import Enum
 
 from flask_login import AnonymousUserMixin as BaseAnonymousUserMixin, UserMixin
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
-
-# SQLAlchemy 인스턴스 생성
-db = SQLAlchemy()
+from extensions import db
 
 
 # UserRole enum 추가

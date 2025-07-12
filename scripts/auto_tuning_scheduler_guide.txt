@@ -1,0 +1,23 @@
+# 자동 튜닝 스케줄러 등록 가이드
+
+## Windows 작업 스케줄러 등록
+
+1. PowerShell 또는 명령 프롬프트에서 아래 명령 실행:
+
+schtasks /Create /SC HOURLY /TN "AutoPerformanceTuning" /TR "python C:\\your_program\\scripts\\auto_performance_tuning.py --action tune"
+
+
+## Linux crontab 등록
+
+1. 터미널에서 crontab 편집:
+
+crontab -e
+
+2. 아래 라인 추가 (매시 정각마다 실행):
+
+0 * * * * /usr/bin/python3 /your_program/scripts/auto_performance_tuning.py --action tune
+
+
+## 환경 변수 설정 (Slack 알림 등)
+
+- SLACK_WEBHOOK_URL 환경변수에 Webhook URL을 등록하면 임계치 초과 시 자동 알림이 전송됩니다. 

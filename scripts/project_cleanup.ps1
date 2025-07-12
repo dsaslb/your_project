@@ -67,22 +67,6 @@ foreach ($file in $filesToUpdate) {
 
 # 2. Deleted file reference cleanup
 Write-Host 'Cleaning up deleted file references...'
-$deletedFiles = @(
-    "your_program_frontend/src/app/super-admin/users/page.tsx",
-    "your_program_frontend/src/store/index.ts",
-    "your_program_frontend/src/components/OfflineManager.tsx",
-    "your_program_frontend/src/hooks/useAuth.ts",
-    "your_program_frontend/src/app/admin/plugin-monitoring/page.tsx",
-    "your_program_frontend/src/app/admin/advanced-monitoring/page.tsx"
-)
-$importPatterns = @(
-    "@/store/index",
-    "@/hooks/useAuth",
-    "@/components/OfflineManager",
-    "super-admin/users",
-    "admin/plugin-monitoring",
-    "admin/advanced-monitoring"
-)
 
 # 3. Project name unification
 Write-Host 'Unifying project names...'

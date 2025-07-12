@@ -18,6 +18,7 @@ class Config:
     """기본 설정 클래스"""
 
     SECRET_KEY = os.environ.get("SECRET_KEY", "super-secret-key")
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key")
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL", "sqlite:///your_program_dev.sqlite3"
     )

@@ -1,0 +1,432 @@
+# 플러그인 시스템 배포 설정
+# CI/CD 파이프라인에서 사용되는 환경별 설정
+
+# 스테이징 환경 설정
+staging:
+  host: "${STAGING_HOST}"
+  user: "${STAGING_USER}"
+  ssh_key: "${STAGING_SSH_KEY}"
+  port: 22
+  deploy_path: "/opt/plugin-system"
+  domain: "staging.plugin-system.com"
+  
+  # 애플리케이션 설정
+  app:
+    port: 5000
+    workers: 2
+    max_connections: 100
+    timeout: 30
+    
+  # 환경 변수
+  environment:
+    FLASK_ENV: "staging"
+    DEBUG: "false"
+    LOG_LEVEL: "INFO"
+    DATABASE_URL: "${STAGING_DATABASE_URL}"
+    SECRET_KEY: "${STAGING_SECRET_KEY}"
+    REDIS_URL: "${STAGING_REDIS_URL}"
+    
+  # 리소스 제한
+  resources:
+    cpu_limit: "1.0"
+    memory_limit: "1Gi"
+    disk_limit: "10Gi"
+
+# 프로덕션 환경 설정
+production:
+  host: "${PRODUCTION_HOST}"
+  user: "${PRODUCTION_USER}"
+  ssh_key: "${PRODUCTION_SSH_KEY}"
+  port: 22
+  deploy_path: "/opt/plugin-system"
+  domain: "plugin-system.com"
+  
+  # 애플리케이션 설정
+  app:
+    port: 5000
+    workers: 4
+    max_connections: 500
+    timeout: 60
+    
+  # 환경 변수
+  environment:
+    FLASK_ENV: "production"
+    DEBUG: "false"
+    LOG_LEVEL: "WARNING"
+    DATABASE_URL: "${PRODUCTION_DATABASE_URL}"
+    SECRET_KEY: "${PRODUCTION_SECRET_KEY}"
+    REDIS_URL: "${PRODUCTION_REDIS_URL}"
+    
+  # 리소스 제한
+  resources:
+    cpu_limit: "4.0"
+    memory_limit: "4Gi"
+    disk_limit: "50Gi"
+
+# 데이터베이스 설정
+database:
+  type: "postgresql"  # postgresql, mysql, sqlite
+  host: "${DB_HOST}"
+  port: 5432
+  name: "plugin_system"
+  user: "${DB_USER}"
+  password: "${DB_PASSWORD}"
+  
+  # 연결 풀 설정
+  pool:
+    min_size: 5
+    max_size: 20
+    max_queries: 50000
+    max_inactive_connection_lifetime: 300
+    
+  # 백업 설정
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"  # 매일 새벽 2시
+    retention_days: 30
+    compression: true
+
+# 플러그인 설정
+plugins:
+  # 플러그인 디렉토리
+  directory: "plugins"
+  
+  # 자동 로드 설정
+  auto_load: true
+  load_on_startup: true
+  
+  # 플러그인 검증
+  validation:
+    enabled: true
+    strict_mode: false
+    security_scan: true
+    performance_check: true
+    
+  # 플러그인 업데이트
+  updates:
+    auto_check: true
+    check_interval: 3600  # 1시간
+    auto_update: false
+    backup_before_update: true
+    
+  # 플러그인 백업
+  backup:
+    enabled: true
+    schedule: "0 3 * * *"  # 매일 새벽 3시
+    retention_days: 7
+    include_settings: true
+    include_data: true
+
+# 모니터링 설정
+monitoring:
+  # Grafana 설정
+  grafana:
+    enabled: true
+    port: 3000
+    admin_password: "${GRAFANA_ADMIN_PASSWORD}"
+    admin_user: "admin"
+    
+    # 데이터 소스 설정
+    datasources:
+      - name: "Prometheus"
+        type: "prometheus"
+        url: "http://prometheus:9090"
+        access: "proxy"
+        
+      - name: "PostgreSQL"
+        type: "postgres"
+        url: "${DB_HOST}:5432"
+        database: "plugin_system"
+        user: "${DB_USER}"
+        password: "${DB_PASSWORD}"
+    
+    # 대시보드 설정
+    dashboards:
+      - name: "Plugin System Overview"
+        uid: "plugin-system-overview"
+        title: "플러그인 시스템 개요"
+        
+      - name: "Plugin Performance"
+        uid: "plugin-performance"
+        title: "플러그인 성능"
+        
+      - name: "System Health"
+        uid: "system-health"
+        title: "시스템 상태"
+  
+  # Prometheus 설정
+  prometheus:
+    enabled: true
+    port: 9090
+    
+    # 스크랩 설정
+    scrape_configs:
+      - job_name: "plugin-system"
+        static_configs:
+          - targets: ["localhost:5000"]
+        metrics_path: "/metrics"
+        scrape_interval: 15s
+        
+      - job_name: "node-exporter"
+        static_configs:
+          - targets: ["localhost:9100"]
+        scrape_interval: 30s
+    
+    # 저장 설정
+    storage:
+      retention_days: 30
+      retention_size: "10GB"
+      
+  # Alertmanager 설정
+  alertmanager:
+    enabled: true
+    port: 9093
+    
+    # 알림 규칙
+    rules:
+      - name: "High CPU Usage"
+        condition: "cpu_usage > 80"
+        duration: "5m"
+        severity: "warning"
+        
+      - name: "High Memory Usage"
+        condition: "memory_usage > 85"
+        duration: "5m"
+        severity: "warning"
+        
+      - name: "Plugin Error Rate"
+        condition: "plugin_error_rate > 5"
+        duration: "2m"
+        severity: "critical"
+        
+      - name: "Database Connection Issues"
+        condition: "db_connection_errors > 10"
+        duration: "1m"
+        severity: "critical"
+    
+    # 알림 채널
+    receivers:
+      - name: "slack"
+        slack_configs:
+          - api_url: "${SLACK_WEBHOOK_URL}"
+            channel: "#alerts"
+            title: "플러그인 시스템 알림"
+            
+      - name: "email"
+        email_configs:
+          - to: "${ALERT_EMAIL}"
+            from: "alerts@plugin-system.com"
+            smarthost: "${SMTP_HOST}:587"
+            auth_username: "${SMTP_USER}"
+            auth_password: "${SMTP_PASSWORD}"
+
+# 로깅 설정
+logging:
+  # 로그 레벨
+  level: "INFO"
+  
+  # 로그 포맷
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # 로그 파일
+  file:
+    enabled: true
+    path: "/var/log/plugin-system"
+    max_size: "100MB"
+    backup_count: 5
+    rotation: "daily"
+    
+  # 로그 집계
+  aggregation:
+    enabled: true
+    elasticsearch:
+      hosts: ["${ELASTICSEARCH_HOST}:9200"]
+      index: "plugin-system-logs"
+      username: "${ELASTICSEARCH_USER}"
+      password: "${ELASTICSEARCH_PASSWORD}"
+      
+  # 로그 필터링
+  filters:
+    - name: "sensitive_data"
+      pattern: "(password|secret|key|token)"
+      replacement: "***"
+      
+    - name: "health_checks"
+      pattern: "/health"
+      level: "DEBUG"
+
+# 보안 설정
+security:
+  # SSL/TLS 설정
+  ssl:
+    enabled: true
+    certificate: "/etc/ssl/certs/plugin-system.crt"
+    private_key: "/etc/ssl/private/plugin-system.key"
+    ca_certificate: "/etc/ssl/certs/ca.crt"
+    
+  # 방화벽 설정
+  firewall:
+    enabled: true
+    allowed_ports: [22, 80, 443, 5000, 3000, 9090]
+    allowed_ips: ["${ALLOWED_IPS}"]
+    
+  # 인증 설정
+  authentication:
+    method: "jwt"  # jwt, session, oauth
+    jwt_secret: "${JWT_SECRET}"
+    jwt_expiry: 3600  # 1시간
+    refresh_token_expiry: 604800  # 7일
+    
+  # 권한 설정
+  authorization:
+    enabled: true
+    rbac:
+      enabled: true
+      roles:
+        - name: "admin"
+          permissions: ["*"]
+        - name: "manager"
+          permissions: ["read", "write", "plugin_manage"]
+        - name: "user"
+          permissions: ["read"]
+        - name: "guest"
+          permissions: ["read_public"]
+
+# 성능 최적화 설정
+performance:
+  # 캐싱 설정
+  cache:
+    enabled: true
+    type: "redis"  # redis, memory
+    ttl: 3600  # 1시간
+    max_size: 1000
+    
+  # 데이터베이스 최적화
+  database:
+    connection_pooling: true
+    query_timeout: 30
+    max_connections: 100
+    
+  # 애플리케이션 최적화
+  app:
+    gzip_compression: true
+    static_file_caching: true
+    template_caching: true
+    
+  # CDN 설정
+  cdn:
+    enabled: false
+    provider: "cloudflare"
+    domain: "cdn.plugin-system.com"
+
+# 백업 설정
+backup:
+  # 자동 백업
+  auto_backup:
+    enabled: true
+    schedule: "0 1 * * *"  # 매일 새벽 1시
+    retention_days: 30
+    
+  # 백업 대상
+  targets:
+    - name: "database"
+      type: "database"
+      enabled: true
+      
+    - name: "plugins"
+      type: "directory"
+      path: "plugins"
+      enabled: true
+      
+    - name: "configurations"
+      type: "directory"
+      path: "config"
+      enabled: true
+      
+    - name: "logs"
+      type: "directory"
+      path: "logs"
+      enabled: false
+      
+  # 백업 저장소
+  storage:
+    type: "local"  # local, s3, gcs
+    path: "/backups/plugin-system"
+    
+    # S3 설정 (선택사항)
+    s3:
+      bucket: "${BACKUP_S3_BUCKET}"
+      region: "${BACKUP_S3_REGION}"
+      access_key: "${BACKUP_S3_ACCESS_KEY}"
+      secret_key: "${BACKUP_S3_SECRET_KEY}"
+
+# 알림 설정
+notifications:
+  # 이메일 알림
+  email:
+    enabled: true
+    smtp:
+      host: "${SMTP_HOST}"
+      port: 587
+      username: "${SMTP_USER}"
+      password: "${SMTP_PASSWORD}"
+      use_tls: true
+      
+    recipients:
+      - "${ADMIN_EMAIL}"
+      - "${DEVELOPER_EMAIL}"
+      
+  # Slack 알림
+  slack:
+    enabled: true
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#plugin-system"
+    
+  # 웹훅 알림
+  webhook:
+    enabled: false
+    url: "${WEBHOOK_URL}"
+    secret: "${WEBHOOK_SECRET}"
+    
+  # 알림 이벤트
+  events:
+    - name: "deployment_success"
+      channels: ["email", "slack"]
+      
+    - name: "deployment_failure"
+      channels: ["email", "slack"]
+      
+    - name: "plugin_error"
+      channels: ["slack"]
+      
+    - name: "system_alert"
+      channels: ["email", "slack"]
+      
+    - name: "backup_complete"
+      channels: ["email"]
+
+# 개발 도구 설정
+development:
+  # 디버깅
+  debugging:
+    enabled: false
+    port: 5678
+    host: "0.0.0.0"
+    
+  # 프로파일링
+  profiling:
+    enabled: false
+    cprofile: true
+    memory_profiler: false
+    
+  # 테스트 설정
+  testing:
+    parallel: true
+    coverage_threshold: 80
+    timeout: 300
+    
+  # 문서화
+  documentation:
+    auto_generate: true
+    format: "html"  # html, pdf, markdown
+    include_examples: true 

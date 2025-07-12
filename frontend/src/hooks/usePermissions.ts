@@ -1,4 +1,7 @@
-﻿// 권한 타입 정의
+import React from 'react';
+import { useAuth } from '../components/auth/AuthProvider';
+
+// 권한 타입 정의
 export type Permission = 
   | 'user:read'
   | 'user:write'

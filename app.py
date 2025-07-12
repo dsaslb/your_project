@@ -10,6 +10,7 @@ from flask import (Flask, flash, jsonify, redirect,
                    render_template, request)
 from flask_cors import CORS
 from flask_login import (current_user, login_required, login_user)
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Gauge
 
 logger = logging.getLogger(__name__)
 
@@ -97,13 +98,45 @@ try:
 except Exception as e:
     logger.error(f"플러그인 모니터링 대시보드 API 블루프린트 등록 실패: {e}")
 
+# 고도화된 실시간 알림 시스템 API 블루프린트 등록
+try:
+    from api.enhanced_realtime_alerts_api import enhanced_alerts_bp, init_enhanced_alerts_api
+    app.register_blueprint(enhanced_alerts_bp, name='enhanced_realtime_alerts_api')
+    logger.info("고도화된 실시간 알림 시스템 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"고도화된 실시간 알림 시스템 API 블루프린트 등록 실패: {e}")
+
+# 플러그인 모니터링과 실시간 알림 통합 시스템 시작
+try:
+    from core.backend.plugin_monitoring_integration import plugin_monitoring_integration
+    plugin_monitoring_integration.start_integration()
+    logger.info("플러그인 모니터링과 실시간 알림 통합 시스템 시작")
+except Exception as e:
+    logger.error(f"플러그인 모니터링과 실시간 알림 통합 시스템 시작 실패: {e}")
+
+# 고도화된 플러그인 모니터링 API 블루프린트 등록
+try:
+    from api.advanced_monitoring_api import advanced_monitoring_bp
+    app.register_blueprint(advanced_monitoring_bp, name='advanced_monitoring_api')
+    logger.info("고도화된 플러그인 모니터링 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"고도화된 플러그인 모니터링 API 블루프린트 등록 실패: {e}")
+
 # 알림 관리 API 블루프린트 등록
 try:
-    from routes.notification_management import notification_bp
-    app.register_blueprint(notification_bp, name='notification_management')
+    from api.alert_management_api import alert_management_bp
+    app.register_blueprint(alert_management_bp, name='alert_management_api')
     logger.info("알림 관리 API 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"알림 관리 API 블루프린트 등록 실패: {e}")
+
+# AI 예측 분석 API 블루프린트 등록
+try:
+    from api.ai_prediction_advanced import ai_prediction_advanced_bp
+    app.register_blueprint(ai_prediction_advanced_bp, name='ai_prediction_advanced_api')
+    logger.info("AI 예측 분석 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"AI 예측 분석 API 블루프린트 등록 실패: {e}")
 
 # 성능 최적화 API 블루프린트 등록
 try:
@@ -112,6 +145,98 @@ try:
     logger.info("성능 최적화 API 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"성능 최적화 API 블루프린트 등록 실패: {e}")
+
+# 플러그인 성능 최적화 API 블루프린트 등록
+try:
+    from api.plugin_optimization_api import plugin_optimization_bp
+    app.register_blueprint(plugin_optimization_bp, name='plugin_optimization_api')
+    logger.info("플러그인 성능 최적화 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"플러그인 성능 최적화 API 블루프린트 등록 실패: {e}")
+
+# 고도화된 마켓플레이스 API 블루프린트 등록
+try:
+    from api.enhanced_marketplace_api import enhanced_marketplace_bp
+    app.register_blueprint(enhanced_marketplace_bp, name='enhanced_marketplace_api')
+    logger.info("고도화된 마켓플레이스 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"고도화된 마켓플레이스 API 블루프린트 등록 실패: {e}")
+
+# 고도화된 보안 모니터링 API 블루프린트 등록
+try:
+    from api.enhanced_security_api import enhanced_security_bp
+    app.register_blueprint(enhanced_security_bp, name='enhanced_security_api')
+    logger.info("고도화된 보안 모니터링 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"고도화된 보안 모니터링 API 블루프린트 등록 실패: {e}")
+
+# 플러그인 자동화 및 워크플로우 API 블루프린트 등록
+try:
+    from api.plugin_automation_api import plugin_automation_bp
+    app.register_blueprint(plugin_automation_bp, name='plugin_automation_api')
+    logger.info("플러그인 자동화 및 워크플로우 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"플러그인 자동화 및 워크플로우 API 블루프린트 등록 실패: {e}")
+
+# 플러그인 마이크로서비스 API 블루프린트 등록
+try:
+    from api.plugin_microservice_api import plugin_microservice_bp
+    app.register_blueprint(plugin_microservice_bp, name='plugin_microservice_api')
+    logger.info("플러그인 마이크로서비스 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"플러그인 마이크로서비스 API 블루프린트 등록 실패: {e}")
+
+# 플러그인 AI 분석 및 예측 API 블루프린트 등록
+try:
+    from api.plugin_ai_analytics_api import plugin_ai_analytics_bp
+    app.register_blueprint(plugin_ai_analytics_bp, name='plugin_ai_analytics_api')
+    logger.info("플러그인 AI 분석 및 예측 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"플러그인 AI 분석 및 예측 API 블루프린트 등록 실패: {e}")
+
+# 플러그인 설정 관리 API 블루프린트 등록
+try:
+    from api.plugin_settings_management import plugin_settings_bp, init_settings_manager
+    app.register_blueprint(plugin_settings_bp, name='plugin_settings_api')
+    logger.info("플러그인 설정 관리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"플러그인 설정 관리 API 블루프린트 등록 실패: {e}")
+
+# 플러그인 관리 API 블루프린트 등록
+try:
+    from api.plugin_management import plugin_management_bp
+    app.register_blueprint(plugin_management_bp, name='plugin_management_api')
+    logger.info("플러그인 관리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"플러그인 관리 API 블루프린트 등록 실패: {e}")
+
+# 고도화된 성능 분석 API 블루프린트 등록
+try:
+    from api.advanced_performance_analytics import advanced_performance_bp
+    app.register_blueprint(advanced_performance_bp, name='advanced_performance_api')
+    logger.info("고도화된 성능 분석 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"고도화된 성능 분석 API 블루프린트 등록 실패: {e}")
+
+# 고도화된 AI 예측 API 블루프린트 등록
+try:
+    from api.advanced_ai_prediction import advanced_ai_prediction_bp
+    app.register_blueprint(advanced_ai_prediction_bp, name='advanced_ai_prediction_api')
+    logger.info("고도화된 AI 예측 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"고도화된 AI 예측 API 블루프린트 등록 실패: {e}")
+
+    init_settings_manager(app)
+except Exception as e:
+    logger.error(f"플러그인 설정 관리 API 블루프린트 등록 실패: {e}")
+
+# 성능 분석 API 블루프린트 등록
+try:
+    from api.performance_analytics_api import performance_analytics_bp
+    app.register_blueprint(performance_analytics_bp, name='performance_analytics_api')
+    logger.info("성능 분석 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"성능 분석 API 블루프린트 등록 실패: {e}")
 
 # 플러그인 시스템 초기화 및 시작
 try:
@@ -128,7 +253,33 @@ try:
 except Exception as e:
     logger.error(f"플러그인 자동 백업 시스템 시작 실패: {e}")
 
+# Prometheus 메트릭 객체 생성 (예시: 응답시간, CPU, 메모리, 에러율)
+RESPONSE_TIME_GAUGE = Gauge('app_response_time_seconds', 'Average response time (seconds)')
+MEMORY_USAGE_GAUGE = Gauge('app_memory_usage_percent', 'Memory usage (%)')
+CPU_USAGE_GAUGE = Gauge('app_cpu_usage_percent', 'CPU usage (%)')
+ERROR_RATE_GAUGE = Gauge('app_error_rate_percent', 'Error rate (%)')
 
+@app.route('/metrics')
+def metrics():
+    """Prometheus 메트릭 엔드포인트"""
+    # 최신 성능 데이터 가져오기 (PerformanceAnalytics 활용)
+    try:
+        from core.backend.performance_analytics import PerformanceAnalytics
+        analytics = PerformanceAnalytics()
+        report = analytics.get_performance_report()
+        metrics_summary = report.get('metrics_summary', {})
+        # 메트릭 값 갱신
+        RESPONSE_TIME_GAUGE.set(metrics_summary.get('avg_response_time', 0))
+        MEMORY_USAGE_GAUGE.set(metrics_summary.get('avg_memory_usage', 0))
+        CPU_USAGE_GAUGE.set(metrics_summary.get('avg_cpu_usage', 0))
+        ERROR_RATE_GAUGE.set(metrics_summary.get('avg_error_rate', 0))
+    except Exception as e:
+        # 예외 발생 시 0으로 설정
+        RESPONSE_TIME_GAUGE.set(0)
+        MEMORY_USAGE_GAUGE.set(0)
+        CPU_USAGE_GAUGE.set(0)
+        ERROR_RATE_GAUGE.set(0)
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 # CSRF 보호에서 API 블루프린트 제외
 # 자동 라우터에서 등록된 모든 블루프린트를 CSRF 제외 목록에 추가
