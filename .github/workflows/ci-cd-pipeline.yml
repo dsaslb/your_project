@@ -74,7 +74,7 @@ jobs:
         name: backend-coverage
         
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: backend-test-results-${{ matrix.python-version }}
         path: |
@@ -130,7 +130,7 @@ jobs:
         name: frontend-coverage
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: frontend-build
         path: your_program_frontend/.next/
@@ -197,7 +197,7 @@ jobs:
         pytest tests/e2e/ --headed --slowmo 1000
         
     - name: Upload E2E test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: e2e-test-results
         path: |
@@ -233,7 +233,7 @@ jobs:
         pip-audit --format json --output pip-audit-report.json || true
         
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -274,7 +274,7 @@ jobs:
         python tests/performance/stress_test.py
         
     - name: Upload performance reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-reports
         path: |
@@ -319,7 +319,7 @@ jobs:
         python tests/alert_system_test.py
         
     - name: Upload monitoring test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: monitoring-test-results
         path: |
@@ -351,7 +351,7 @@ jobs:
         python scripts/generate_quality_report.py
         
     - name: Upload quality report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: quality-report
         path: quality-report.html
