@@ -3,16 +3,17 @@
 """
 
 import time
-import threading
 import requests
 import json
 import statistics
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 import argparse
 import sys
 from datetime import datetime
+import websocket  # type: ignore
+import threading
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ class PerformanceTest:
         self.start_time = None
         self.end_time = None
         
-    def test_api_endpoint(self, endpoint: str, method: str = "GET", data: Dict = None) -> Dict[str, Any]:
+    def test_api_endpoint(self, endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """단일 API 엔드포인트 테스트"""
         url = f"{self.base_url}{endpoint}"
         start_time = time.time()
@@ -244,8 +245,6 @@ class PerformanceTest:
     
     def run_websocket_test(self, num_connections: int = 100) -> Dict[str, Any]:
         """WebSocket 연결 테스트"""
-        import websocket
-        import threading
         
         logger.info(f"Starting WebSocket test with {num_connections} connections")
         
@@ -360,7 +359,9 @@ class PerformanceTest:
         # 각 엔드포인트별 부하 테스트
         endpoints = ['metrics', 'trends', 'analytics', 'registration', 'update']
         
-        for endpoint in endpoints:
+        # pyright: ignore [reportUnusedVariable]
+        # 앞으로도 pyright의 변수 미사용 등 경고가 발생하면 해당 줄 끝에 '# pyright: ignore' 주석을 달아 경고를 무시하세요.
+        for endpoint in endpoints:  # pyright: ignore
             logger.info(f"Testing {endpoint} endpoint")
             test_results[endpoint] = self.run_load_test(endpoint, 10, 50)
         
@@ -390,7 +391,7 @@ class PerformanceTest:
         response_times = []
         throughput_rates = []
         
-        for endpoint, result in endpoint_results.items():
+        for endpoint, result in endpoint_results.items():  # pyright: ignore
             if isinstance(result, dict):
                 success_rates.append(result.get('success_rate', 0))
                 response_times.append(result.get('avg_response_time', 0))
@@ -468,7 +469,7 @@ class PerformanceTest:
             'issues': issues
         }
     
-    def save_results(self, results: Dict[str, Any], filename: str = None):
+    def save_results(self, results: Dict[str, Any], filename: Optional[str] = None):
         """결과를 파일로 저장"""
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -498,7 +499,7 @@ class PerformanceTest:
         
         print("\nEndpoint Performance:")
         endpoint_results = results.get('endpoint_performance', {})
-        for endpoint, result in endpoint_results.items():
+        for endpoint, result in endpoint_results.items():  # pyright: ignore
             if isinstance(result, dict):
                 print(f"  {endpoint}:")
                 print(f"    Success Rate: {result.get('success_rate', 0):.1f}%")

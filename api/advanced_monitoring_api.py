@@ -2,11 +2,10 @@
 고급 플러그인 모니터링 API
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_cors import cross_origin
 from functools import wraps
-from datetime import datetime, timedelta
-import json
+from datetime import datetime
 import logging
 
 from core.backend.advanced_plugin_monitoring import advanced_monitor

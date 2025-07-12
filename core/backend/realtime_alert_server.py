@@ -5,7 +5,7 @@
 import asyncio
 import json
 import logging
-from typing import Dict, Set, Optional
+from typing import Dict, Set
 from datetime import datetime
 from websockets.server import serve, WebSocketServerProtocol
 from websockets.exceptions import ConnectionClosed

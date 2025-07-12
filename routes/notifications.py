@@ -8,8 +8,7 @@ from models import db
 from models import ApproveLog, Attendance, Notification, User
 from utils.decorators import admin_required
 from utils.logger import log_action, log_error
-from utils.notify import (notify_approval_result, notify_attendance_issue,
-                          send_notification)
+from utils.notify import (notify_approval_result, notify_attendance_issue)
 
 notifications_bp = Blueprint("notifications", __name__)
 
@@ -266,7 +265,7 @@ def send_notification_page():
             # 개발 단계에서는 성공 응답만 반환
             flash("알림 발송 완료! (개발 모드)", "success")
             return redirect(url_for("admin_dashboard"))
-        except Exception as e:
+        except Exception:
             flash("알림 발송 중 오류가 발생했습니다.", "error")
             return redirect(url_for("notifications.send_notification_page"))
 

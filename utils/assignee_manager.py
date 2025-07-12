@@ -5,7 +5,7 @@
 from datetime import datetime, timedelta
 import logging
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func
 
 from models import db, Attendance, User, AttendanceReport
 from utils.email_utils import email_service
@@ -334,18 +334,14 @@ def assign_cleaning_tasks():
         # 오늘 청소 업무가 배정되지 않은 직원들 찾기
         available_staff = (
             db.session.query(User)
+            .filter(User.role == "staff")
+            .filter(User.status == "approved")
             .filter(
-                and_(
-                    User.role == "staff",
-                    User.status == "approved",
-                    ~db.session.query(Attendance).filter(
-                        and_(
-                            Attendance.user_id == User.id,
-                            Attendance.date == today,
-                            Attendance.cleaning_assigned == True
-                        )
-                    ).exists()
-                )
+                ~db.session.query(Attendance).filter(
+                    Attendance.user_id == User.id,
+                    Attendance.date == today,
+                    Attendance.cleaning_assigned.is_(True)  # type: ignore
+                ).exists()
             )
             .all()
         )
@@ -399,7 +395,7 @@ def assign_inventory_check():
                         and_(
                             Attendance.user_id == User.id,
                             Attendance.date == today,
-                            Attendance.inventory_check_assigned == True
+                            Attendance.inventory_check_assigned.is_(True)
                         )
                     ).exists()
                 )
@@ -447,7 +443,7 @@ def assign_quality_control():
                         and_(
                             Attendance.user_id == User.id,
                             Attendance.date == today,
-                            Attendance.quality_check_assigned == True
+                            Attendance.quality_check_assigned.is_(True)
                         )
                     ).exists()
                 )

@@ -3,11 +3,6 @@
 """
 
 import logging
-from datetime import datetime, timedelta
-from sqlalchemy import and_, or_
-
-from models import db, User, Attendance, AttendanceReport
-from utils.logger import log_error, log_action
 
 logger = logging.getLogger(__name__)
 

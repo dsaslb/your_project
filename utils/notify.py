@@ -10,11 +10,9 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from flask import url_for
-from sqlalchemy import and_
-
 from models import db
 from models import Notification, User
-from utils.logger import log_action, log_error
+from utils.logger import log_action
 
 logger = logging.getLogger(__name__)
 

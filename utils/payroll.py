@@ -3,18 +3,14 @@
 """
 
 import logging
-from datetime import date, datetime, time
-from typing import Dict, List, Optional
+from datetime import time
 
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 
-from models import db
 from models import User, Payroll
-from utils.logger import log_action, log_error
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +92,7 @@ def get_monthly_stats(user_id, year, month, db_session):
     Returns:
         dict: 월별 통계 정보
     """
-    from sqlalchemy import extract, func
+    from sqlalchemy import extract
 
     from models import Attendance
 

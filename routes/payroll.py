@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import extract, func
 
-from models import db
-from models import ActionLog, Attendance, User
+from models import db, User, Attendance, ActionLog
 from utils.decorators import admin_required
 from utils.logger import log_action, log_error
 from utils.notify import notify_salary_payment

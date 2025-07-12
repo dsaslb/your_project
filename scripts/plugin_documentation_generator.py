@@ -14,7 +14,6 @@ from datetime import datetime
 import re
 import yaml
 from jinja2 import Template
-import markdown
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -799,7 +798,7 @@ print(result)""",
                 'version': documentation.version,
                 'description': documentation.description,
                 'author': documentation.author,
-                'generated_at': documentation.generated_at.isoformat(),
+                'generated_at': documentation.generated_at.isoformat() if documentation.generated_at else None,
                 'files': [
                     'README.md',
                     'API.md',
@@ -837,9 +836,6 @@ print(result)""",
                     # 플러그인 설정 파일 찾기
                     config_file = plugin_dir / "config" / "plugin.json"
                     if config_file.exists():
-                        with open(config_file, 'r', encoding='utf-8') as f:
-                            plugin_config = json.load(f)
-                        
                         # 문서 생성
                         self.generate_documentation(str(plugin_dir))
                         
@@ -930,7 +926,7 @@ class DataProcessor:
                     json.dump(plugin_info['config'], f, indent=2, ensure_ascii=False)
                 
                 # 문서 생성
-                documentation = generator.generate_documentation(
+                generator.generate_documentation(
                     str(plugin_path)
                 )
                 

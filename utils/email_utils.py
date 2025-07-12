@@ -1,7 +1,7 @@
 import logging
 import os
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -10,7 +10,6 @@ from email.mime.text import MIMEText
 from flask import render_template_string, current_app
 from sqlalchemy import extract, func
 
-from models import db
 from models import Attendance, AttendanceReport, User
 from utils.logger import log_action, log_error
 
@@ -268,25 +267,6 @@ def send_attendance_reminder():
     except Exception as e:
         logger.error(f"❌ 출근 알림 발송 중 오류: {str(e)}")
         log_error(e, None, "Attendance reminder sending failed")
-
-
-# CLI 명령어 추가
-def create_email_commands(app):
-    """이메일 관련 CLI 명령어 등록"""
-
-    @app.cli.command("send-monthly-reports")
-    def send_monthly_reports_command():
-        """월말 리포트 이메일 발송"""
-        logger.info("월말 리포트 이메일 발송을 시작합니다...")
-        send_monthly_reports()
-        logger.info("완료되었습니다.")
-
-    @app.cli.command("send-attendance-reminder")
-    def send_attendance_reminder_command():
-        """출근 알림 이메일 발송"""
-        logger.info("출근 알림 이메일 발송을 시작합니다...")
-        send_attendance_reminder()
-        logger.info("완료되었습니다.")
 
 
 class EmailService:

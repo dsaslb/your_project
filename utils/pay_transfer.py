@@ -3,15 +3,11 @@
 """
 
 import logging
-import os
 from datetime import datetime
-from typing import Tuple
-
-import requests
 
 from models import db
-from models import ActionLog, User, PayTransfer
-from utils.logger import log_action, log_error
+from models import ActionLog, PayTransfer
+from utils.logger import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +69,6 @@ class BankTransferAPI:
 def transfer_salary(user, amount):
     # 실제 서비스라면 여기에 은행 API 연동
     # 아래는 가상 REST API(POST 방식) 예시
-    api_url = "https://yourbank.example.com/api/transfer"
     payload = {
         "name": user.name or user.username,
         "account": user.account_number,  # User 모델에 추가 필요
@@ -81,7 +76,7 @@ def transfer_salary(user, amount):
     }
     # 예: 인증 토큰이 필요한 경우 headers에 추가
     # headers = {"Authorization": "Bearer ..."}
-    # r = requests.post(api_url, json=payload, headers=headers)
+    # r = requests.post("https://yourbank.example.com/api/transfer", json=payload, headers=headers)
     # 아래는 테스트용(실제 이체X)
     logger.info(f"[가상이체] {payload}")
     return True, "이체 성공"

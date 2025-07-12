@@ -7,14 +7,12 @@
 import json
 import sqlite3
 import logging
-import time
 import os
 import platform
 import pkg_resources
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
-import statistics
 from packaging import version, specifiers
 
 # 로깅 설정
@@ -412,7 +410,9 @@ class PluginCompatibilityChecker:
                 elif '>=' in req or '==' in req or '<=' in req:
                     # Python 패키지 요구사항
                     try:
-                        pkg_resources.require(req)
+                        result = pkg_resources.require(req)  # type: ignore
+                        if result is None:
+                            continue
                     except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict) as e:
                         issues.append(CompatibilityIssue(
                             issue_type="package_missing",

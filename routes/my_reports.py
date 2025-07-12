@@ -320,7 +320,6 @@ def assignee_stats():
 def report_reassign(report_id):
     """신고/이의제기 재배정 (관리자용)"""
     try:
-        dispute = AttendanceReport.query.get_or_404(report_id)
         new_assignee_id = request.form.get("assignee_id")
         reason = request.form.get("reason", "").strip()
 

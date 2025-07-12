@@ -6,9 +6,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required
 from datetime import datetime, timedelta
-from sqlalchemy import func
-from models import db, NotificationHistory, NotificationChannel, NotificationTemplate, NotificationRule
-from utils.notification_channels import notification_manager, NotificationMessage
+from models import NotificationChannel
 from utils.auth_decorators import admin_required
 
 notification_bp = Blueprint('notification', __name__, url_prefix='/api/admin/notifications')
@@ -98,8 +96,6 @@ def delete_channel(channel_id):
 def test_channel(channel_id):
     """알림 채널 테스트 (개발 단계 - 임시 구현)"""
     try:
-        channel = NotificationChannel.query.get_or_404(channel_id)
-        
         # 개발 단계에서는 성공 응답만 반환
         return jsonify({
             'status': 'success',

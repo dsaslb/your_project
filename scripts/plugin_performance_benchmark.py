@@ -215,7 +215,18 @@ class PluginPerformanceBenchmark:
     def _run_single_test(self, plugin_id: str, test_function: Callable, test_id: str) -> BenchmarkMetrics:
         """단일 테스트 실행"""
         start_time = time.time()
-        start_cpu: float = float(psutil.cpu_percent(percpu=False) or 0.0)
+        
+        # CPU 사용률 초기화 (첫 번째 호출은 None을 반환할 수 있음)
+        psutil.cpu_percent(percpu=False)
+        time.sleep(0.1)  # 짧은 대기
+        
+        cpu_percent = psutil.cpu_percent(percpu=False)
+        start_cpu: float = 0.0
+        if cpu_percent is not None:
+            try:
+                start_cpu = float(cpu_percent)  # type: ignore
+            except (ValueError, TypeError):
+                start_cpu = 0.0
         start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
         
         error_count = 0
@@ -223,12 +234,18 @@ class PluginPerformanceBenchmark:
         
         try:
             # 테스트 함수 실행
-            result = test_function()
+            test_function()
             success_count = 1
             
             # 성능 측정
             execution_time = time.time() - start_time
-            end_cpu: float = float(psutil.cpu_percent(percpu=False) or 0.0)
+            end_cpu_percent = psutil.cpu_percent(percpu=False)
+            end_cpu: float = 0.0
+            if end_cpu_percent is not None:
+                try:
+                    end_cpu = float(end_cpu_percent)  # type: ignore
+                except (ValueError, TypeError):
+                    end_cpu = 0.0
             end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
             
             # 메모리 피크 측정
@@ -252,15 +269,21 @@ class PluginPerformanceBenchmark:
         except Exception:
             error_count = 1
             execution_time = time.time() - start_time
-            end_cpu: float = float(psutil.cpu_percent(percpu=False) or 0.0)
-            end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+            error_cpu_percent = psutil.cpu_percent(percpu=False)
+            error_end_cpu: float = 0.0
+            if error_cpu_percent is not None:
+                try:
+                    error_end_cpu = float(error_cpu_percent)  # type: ignore
+                except (ValueError, TypeError):
+                    error_end_cpu = 0.0
+            error_end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
             
             return BenchmarkMetrics(
                 plugin_id=plugin_id,
                 test_name=test_id,
                 execution_time=execution_time,
-                cpu_usage=(start_cpu + end_cpu) / 2.0,
-                memory_usage=(start_memory + end_memory) / 2.0,
+                cpu_usage=(start_cpu + error_end_cpu) / 2.0,
+                memory_usage=(start_memory + error_end_memory) / 2.0,
                 memory_peak=start_memory,
                 throughput=0.0,
                 error_count=error_count,
@@ -359,23 +382,7 @@ class PluginPerformanceBenchmark:
                 return float(func(flat_arr))
             except (TypeError, ValueError):
                 return float(default)
-        def safe_percentile(arr, q, default=0.0) -> float:
-            try:
-                if not isinstance(arr, list) or not arr:
-                    return float(default)
-                float_arr = []
-                for x in arr:
-                    if isinstance(x, list):
-                        for y in x:
-                            if isinstance(y, (int, float)):
-                                float_arr.append(float(y))
-                    elif isinstance(x, (int, float)):
-                        float_arr.append(float(x))
-                if not float_arr:
-                    return float(default)
-                return float(np.percentile(float_arr, q))
-            except Exception:
-                return float(default)
+
 
         avg_execution_time = float(safe_stat(statistics.mean, execution_times))
         avg_cpu_usage = float(safe_stat(statistics.mean, cpu_usages))
@@ -596,7 +603,7 @@ class PluginPerformanceBenchmark:
         
         # 선형 회귀로 트렌드 계산
         x = np.arange(len(scores))
-        slope, intercept = np.polyfit(x, scores, 1)
+        slope, _ = np.polyfit(x, scores, 1)
         
         if slope > 0.1:
             trend = 'improving'
