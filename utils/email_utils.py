@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 from flask import render_template_string, current_app
 from sqlalchemy import extract, func
 
-from extensions import db
+from models import db
 from models import Attendance, AttendanceReport, User
 from utils.logger import log_action, log_error
 

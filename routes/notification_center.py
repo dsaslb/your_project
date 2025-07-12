@@ -5,7 +5,7 @@ from flask import (Blueprint, flash, jsonify, redirect, render_template,
 from flask_login import current_user, login_required
 from sqlalchemy import and_, or_
 
-from extensions import db
+from models import db
 from models import ApproveLog, Attendance, Notification, User
 from utils.decorators import admin_required
 from utils.logger import log_action, log_error

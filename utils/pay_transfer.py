@@ -9,7 +9,7 @@ from typing import Tuple
 
 import requests
 
-from extensions import db
+from models import db
 from models import ActionLog, User, PayTransfer
 from utils.logger import log_action, log_error
 

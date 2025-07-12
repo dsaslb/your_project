@@ -8,7 +8,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import Mapped
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from extensions import db
+# SQLAlchemy 인스턴스 생성
+db = SQLAlchemy()
 
 
 # UserRole enum 추가
@@ -836,6 +837,82 @@ class Notification(db.Model):
 
     def __repr__(self):
         return f"<Notification {self.id} {self.content[:20]}>"
+
+
+class NotificationHistory(db.Model):
+    """알림 이력 모델"""
+    __tablename__ = "notification_histories"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    notification_id = db.Column(db.Integer, db.ForeignKey("notifications.id"), nullable=False, index=True)
+    channel = db.Column(db.String(50), nullable=False, index=True)  # email, sms, push, slack 등
+    status = db.Column(db.String(20), default="sent", index=True)  # sent, failed, pending
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    error_message = db.Column(db.Text)  # 실패 시 오류 메시지
+    retry_count = db.Column(db.Integer, default=0)  # 재시도 횟수
+    
+    # 관계 설정
+    notification = db.relationship("Notification", backref="history")
+    
+    def __repr__(self):
+        return f"<NotificationHistory {self.notification_id} {self.channel}>"
+
+
+class NotificationChannel(db.Model):
+    """알림 채널 모델"""
+    __tablename__ = "notification_channels"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    type = db.Column(db.String(50), nullable=False, index=True)  # email, sms, push, slack, webhook 등
+    enabled = db.Column(db.Boolean, default=True, index=True)
+    config = db.Column(db.JSON)  # 채널별 설정 (API 키, URL 등)
+    priority = db.Column(db.Integer, default=1)  # 우선순위 (1: 높음, 2: 보통, 3: 낮음)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<NotificationChannel {self.name} ({self.type})>"
+
+
+class NotificationTemplate(db.Model):
+    """알림 템플릿 모델"""
+    __tablename__ = "notification_templates"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    title_template = db.Column(db.String(200), nullable=False)
+    content_template = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), nullable=False, index=True)  # 근태, 발주, 청소, 일반 등
+    channels = db.Column(db.JSON)  # 사용할 채널 목록
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<NotificationTemplate {self.name}>"
+
+
+class NotificationRule(db.Model):
+    """알림 규칙 모델"""
+    __tablename__ = "notification_rules"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    event_type = db.Column(db.String(50), nullable=False, index=True)  # attendance_late, order_created 등
+    conditions = db.Column(db.JSON)  # 조건 설정
+    template_id = db.Column(db.Integer, db.ForeignKey("notification_templates.id"), nullable=False)
+    channels = db.Column(db.JSON)  # 사용할 채널 목록
+    recipients = db.Column(db.JSON)  # 수신자 설정 (role, user_id 등)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    template = db.relationship("NotificationTemplate", backref="rules")
+    
+    def __repr__(self):
+        return f"<NotificationRule {self.name}>"
 
 
 # 공지사항 모델
@@ -2402,6 +2479,78 @@ class AutomationRule(db.Model):
     
     def __repr__(self):
         return f'<AutomationRule {self.name}>'
+
+
+# 모든 모델들을 export
+__all__ = [
+    'db',
+    'UserRole',
+    'AnonymousUserMixin',
+    'Brand',
+    'Branch',
+    'User',
+    'Attendance',
+    'ActionLog',
+    'Feedback',
+    'ApproveLog',
+    'ShiftRequest',
+    'Notification',
+    'Notice',
+    'NoticeRead',
+    'NoticeComment',
+    'NoticeHistory',
+    'CommentHistory',
+    'Report',
+    'SystemLog',
+    'Suggestion',
+    'Schedule',
+    'CleaningPlan',
+    'Order',
+    'InventoryItem',
+    'StockMovement',
+    'AttendanceEvaluation',
+    'AttendanceReport',
+    'ReasonTemplate',
+    'ReasonEditLog',
+    'Excuse',
+    'ExcuseResponse',
+    'Team',
+    'FeedbackIssue',
+    'your_programOrder',
+    'OrderFeedback',
+    'OrderRequest',
+    'PayTransfer',
+    'Payroll',
+    'Staff',
+    'Contract',
+    'HealthCertificate',
+    'StaffTemplate',
+    'StaffRegistrationStep',
+    'ChatRoom',
+    'ChatMessage',
+    'ChatParticipant',
+    'IoTDevice',
+    'IoTData',
+    'AIDiagnosis',
+    'ImprovementRequest',
+    'AIImprovementSuggestion',
+    'BrandDataCollection',
+    'StoreDataCollection',
+    'SystemHealth',
+    'ApprovalWorkflow',
+    'Industry',
+    'IndustryPlugin',
+    'BrandPlugin',
+    'DataSyncLog',
+    'OfflineData',
+    'AIIntegration',
+    'AIAnalysisReport',
+    'AutomationRule',
+    'NotificationHistory',
+    'NotificationChannel',
+    'NotificationTemplate',
+    'NotificationRule',
+]
 
 
 

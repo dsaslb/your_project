@@ -12,7 +12,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 
-from extensions import db
+from models import db
 from models import User, Payroll
 from utils.logger import log_action, log_error
 

@@ -12,7 +12,7 @@ from email.mime.text import MIMEText
 from flask import url_for
 from sqlalchemy import and_
 
-from extensions import db
+from models import db
 from models import Notification, User
 from utils.logger import log_action, log_error
 

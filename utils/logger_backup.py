@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 
 from flask import request, session
 
-from extensions import db
+from models import db
 from models import ActionLog, SystemLog
 from utils.logger import log_action
 

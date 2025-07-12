@@ -7,9 +7,7 @@ import logging
 
 from sqlalchemy import and_, func, or_
 
-from extensions import db
-from models import Attendance, User
-from models.notification_models import AttendanceReport
+from models import db, Attendance, User, AttendanceReport
 from utils.email_utils import email_service
 from utils.logger import log_action, log_error
 from utils.notify import send_notification_enhanced

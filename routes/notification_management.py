@@ -7,11 +7,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required
 from datetime import datetime, timedelta
 from sqlalchemy import func
-from extensions import db
-from models.notification_models import (  # type: ignore
-    NotificationHistory, NotificationChannel, NotificationTemplate,
-    NotificationRule
-)
+from models import db, NotificationHistory, NotificationChannel, NotificationTemplate, NotificationRule
 from utils.notification_channels import notification_manager, NotificationMessage
 from utils.auth_decorators import admin_required
 

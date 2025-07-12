@@ -7,7 +7,7 @@ import logging
 
 from sqlalchemy import and_, func, or_
 
-from extensions import db
+from models import db
 from models import Attendance, AttendanceReport, Notification, User
 from utils.assignee_manager import assignee_manager
 from utils.logger import log_action, log_error

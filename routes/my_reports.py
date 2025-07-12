@@ -9,7 +9,7 @@ from flask import (Blueprint, flash, jsonify, redirect, render_template,
 from flask_login import current_user, login_required
 from sqlalchemy import and_, func
 
-from extensions import db
+from models import db
 from models import AttendanceReport, User
 from utils.assignee_manager import assignee_manager
 from utils.decorators import admin_required
