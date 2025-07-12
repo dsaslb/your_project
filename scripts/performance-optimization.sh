@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # Your Program 성능 최적화 스크립트
 # 사용법: ./scripts/performance-optimization.sh [target] [action]
@@ -260,7 +260,7 @@ EOF
 optimize_frontend() {
     log_info "Optimizing frontend performance..."
     
-    cd "$PROJECT_ROOT/your_program_frontend"
+    cd "$PROJECT_ROOT/frontend"
     
     # Next.js 설정 최적화
     log_info "Optimizing Next.js configuration..."

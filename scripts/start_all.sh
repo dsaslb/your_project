@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # Your Program 전체 프로젝트 시작 스크립트
 # 사용법: ./scripts/start_all.sh [environment]
@@ -160,7 +160,7 @@ setup_environment() {
     log_info "환경 변수 설정 중..."
     
     # Frontend 환경 변수
-    cat > "$PROJECT_ROOT/your_program_frontend/.env.local" << EOF
+    cat > "$PROJECT_ROOT/frontend/.env.local" << EOF
 NEXT_PUBLIC_API_URL=$API_URL
 NEXT_PUBLIC_WS_URL=$WS_URL
 NODE_ENV=$NODE_ENV
@@ -243,7 +243,7 @@ start_ai_server() {
 start_frontend() {
     log_info "프론트엔드 서버 시작 중..."
     
-    cd "$PROJECT_ROOT/your_program_frontend"
+    cd "$PROJECT_ROOT/frontend"
     
     # 의존성 설치 확인
     if [ ! -d "node_modules" ]; then

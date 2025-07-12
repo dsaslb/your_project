@@ -1,4 +1,4 @@
-version: '3.8'
+﻿version: '3.8'
 
 services:
   # API Gateway
@@ -78,7 +78,7 @@ services:
   # Frontend Service
   frontend:
     build:
-      context: ./your_program_frontend
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"

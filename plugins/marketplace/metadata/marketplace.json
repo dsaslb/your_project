@@ -1,7 +1,7 @@
-{
+﻿{
   "plugins": {
-    "restaurant_management": {
-      "plugin_id": "restaurant_management",
+    "your_program_management": {
+      "plugin_id": "your_program_management",
       "name": "레스토랑 관리 플러그인",
       "description": "레스토랑 운영을 위한 종합 관리 플러그인으로 주문, 재고, 직원 관리 기능을 제공합니다.",
       "author": "Restaurant Team",
@@ -20,7 +20,7 @@
       "downloads": 150,
       "rating": 4.5,
       "rating_count": 3,
-      "package_path": "plugins\\marketplace\\published\\restaurant_management.zip",
+      "package_path": "plugins\\marketplace\\published\\your_program_management.zip",
       "file_size": 1858,
       "checksum": "7cdc04227d35e52da6242ad53313d703e2953fffb95a7cdb2ee20b960d71d60d",
       "approved_at": "2025-07-11T21:23:16.552849"

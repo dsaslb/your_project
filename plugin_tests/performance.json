@@ -1,6 +1,6 @@
-[
+﻿[
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 15.917309466632632,
     "memory_usage": 24.213519679067694,
     "response_time": 247.22145995505838,
@@ -27,7 +27,7 @@
     "timestamp": "2025-07-10T20:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 21.269308835056787,
     "memory_usage": 36.20321931018155,
     "response_time": 239.46741799390642,
@@ -54,7 +54,7 @@
     "timestamp": "2025-07-10T21:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 14.024077199692444,
     "memory_usage": 29.99804147569068,
     "response_time": 118.98550797294415,
@@ -81,7 +81,7 @@
     "timestamp": "2025-07-10T22:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 5.824903229714367,
     "memory_usage": 11.14068271981518,
     "response_time": 119.44659851732408,
@@ -108,7 +108,7 @@
     "timestamp": "2025-07-10T23:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 10.050077404923748,
     "memory_usage": 38.627147311442044,
     "response_time": 275.5823711940575,
@@ -135,7 +135,7 @@
     "timestamp": "2025-07-11T00:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 14.217978302788124,
     "memory_usage": 33.26540945242522,
     "response_time": 94.31947740417988,
@@ -162,7 +162,7 @@
     "timestamp": "2025-07-11T01:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 10.93536249470372,
     "memory_usage": 21.720686883463934,
     "response_time": 53.03510634542428,
@@ -189,7 +189,7 @@
     "timestamp": "2025-07-11T02:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 7.707533248509115,
     "memory_usage": 25.393936458526042,
     "response_time": 83.41144697242498,
@@ -216,7 +216,7 @@
     "timestamp": "2025-07-11T03:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 9.289761205926295,
     "memory_usage": 31.37568723551014,
     "response_time": 130.0801675351379,
@@ -243,7 +243,7 @@
     "timestamp": "2025-07-11T04:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 22.239348731945828,
     "memory_usage": 24.321785075105687,
     "response_time": 77.62763140436125,
@@ -270,7 +270,7 @@
     "timestamp": "2025-07-11T05:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 23.23434434359005,
     "memory_usage": 34.16055529138961,
     "response_time": 271.82504662416284,
@@ -297,7 +297,7 @@
     "timestamp": "2025-07-11T06:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 12.945722124081602,
     "memory_usage": 15.609259083211423,
     "response_time": 246.35707192498037,
@@ -324,7 +324,7 @@
     "timestamp": "2025-07-11T07:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 19.560317170652553,
     "memory_usage": 38.00799623211496,
     "response_time": 69.16702885210918,
@@ -351,7 +351,7 @@
     "timestamp": "2025-07-11T08:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 15.966507383219962,
     "memory_usage": 10.434461215183283,
     "response_time": 259.2847751212437,
@@ -378,7 +378,7 @@
     "timestamp": "2025-07-11T09:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 5.912368526155984,
     "memory_usage": 22.60937598944151,
     "response_time": 68.00642650077405,
@@ -405,7 +405,7 @@
     "timestamp": "2025-07-11T10:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 22.4709711963722,
     "memory_usage": 11.824241700766148,
     "response_time": 125.23201709877758,
@@ -432,7 +432,7 @@
     "timestamp": "2025-07-11T11:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 9.740056922014526,
     "memory_usage": 38.496857043242,
     "response_time": 275.8115401324904,
@@ -459,7 +459,7 @@
     "timestamp": "2025-07-11T12:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 17.09424827217303,
     "memory_usage": 30.266063332190825,
     "response_time": 87.94668084818136,
@@ -486,7 +486,7 @@
     "timestamp": "2025-07-11T13:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 17.704873526678703,
     "memory_usage": 39.16724679867276,
     "response_time": 278.43366325604234,
@@ -513,7 +513,7 @@
     "timestamp": "2025-07-11T14:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 20.02364741607316,
     "memory_usage": 19.35821368280943,
     "response_time": 297.14065373526785,
@@ -540,7 +540,7 @@
     "timestamp": "2025-07-11T15:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 13.299353148927116,
     "memory_usage": 18.578142562121855,
     "response_time": 230.59173646143674,
@@ -567,7 +567,7 @@
     "timestamp": "2025-07-11T16:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 10.544415384453206,
     "memory_usage": 23.25277451713871,
     "response_time": 283.6245377597321,
@@ -594,7 +594,7 @@
     "timestamp": "2025-07-11T17:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 20.351738289584116,
     "memory_usage": 38.458216937719946,
     "response_time": 149.1481516861573,
@@ -621,7 +621,7 @@
     "timestamp": "2025-07-11T18:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 21.19307541088443,
     "memory_usage": 38.526897497644796,
     "response_time": 257.14533120324586,
@@ -648,7 +648,7 @@
     "timestamp": "2025-07-11T19:42:04.533878"
   },
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "cpu_usage": 2.06,
     "memory_usage": 4.29,
     "response_time": 9999.0,

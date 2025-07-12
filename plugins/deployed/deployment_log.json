@@ -1,7 +1,7 @@
-{
+﻿{
   "deployments": {
-    "restaurant_management": {
-      "plugin_id": "restaurant_management",
+    "your_program_management": {
+      "plugin_id": "your_program_management",
       "environment": "production",
       "deployed_at": "2024-01-15T10:30:00",
       "version": "1.0.0",
@@ -17,7 +17,7 @@
   },
   "history": [
     {
-      "plugin_id": "restaurant_management",
+      "plugin_id": "your_program_management",
       "environment": "production",
       "deployed_at": "2024-01-15T10:30:00",
       "version": "1.0.0",

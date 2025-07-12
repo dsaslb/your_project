@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 플러그인 마켓플레이스 API
 플러그인 등록, 검색, 다운로드, 배포 관리 API 엔드포인트
@@ -44,7 +44,7 @@ except ImportError:
         def search_plugins(self, query="", category="", status="published"):
             return [
                 {
-                    'plugin_id': 'restaurant_management',
+                    'plugin_id': 'your_program_management',
                     'name': '레스토랑 관리 플러그인',
                     'description': '레스토랑 운영을 위한 종합 관리 플러그인',
                     'author': 'Admin',
@@ -83,8 +83,8 @@ except ImportError:
     class DummyDeploymentSystem:
         def get_deployment_status(self, plugin_id=None):
             return {
-                'restaurant_management': {
-                    'plugin_id': 'restaurant_management',
+                'your_program_management': {
+                    'plugin_id': 'your_program_management',
                     'environment': 'production',
                     'status': 'deployed',
                     'deployed_at': '2024-01-15T10:30:00'

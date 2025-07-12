@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM Your Program 전체 프로젝트 정리 스크립트 (Windows)
 REM 사용법: scripts\cleanup_all.bat [type]
 REM type: all, cache, build, test, node_modules, python, docker (기본값: all)
@@ -229,7 +229,7 @@ REM 서브 디렉토리 정리
 call :log_info "서브 디렉토리 정리 중...
 
 REM Frontend 디렉토리
-call :clean_directory "your_program_frontend" "Frontend"
+call :clean_directory "frontend" "Frontend"
 
 REM Mobile 앱 디렉토리
 call :clean_directory "mobile_app" "Mobile App"
@@ -251,14 +251,14 @@ call :log_success "전체 프로젝트 정리 완료!"
 REM 다음 단계 안내
 if "%CLEANUP_TYPE%"=="node_modules" (
     call :log_info "다음 단계:"
-    call :log_info "  Frontend: cd your_program_frontend ^&^& npm install"
+    call :log_info "  Frontend: cd frontend ^&^& npm install"
     call :log_info "  Mobile: cd mobile_app ^&^& npm install"
 ) else if "%CLEANUP_TYPE%"=="python" (
     call :log_info "다음 단계:"
     call :log_info "  AI 모듈: pip install -r ai_requirements.txt"
 ) else if "%CLEANUP_TYPE%"=="all" (
     call :log_info "다음 단계:"
-    call :log_info "  Frontend: cd your_program_frontend ^&^& npm install"
+    call :log_info "  Frontend: cd frontend ^&^& npm install"
     call :log_info "  Mobile: cd mobile_app ^&^& npm install"
     call :log_info "  AI 모듈: pip install -r ai_requirements.txt"
     call :log_info "  전체 실행: scripts\start_all.bat"

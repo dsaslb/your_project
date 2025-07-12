@@ -1,7 +1,7 @@
-[
+﻿[
   {
     "report_id": "vuln_1",
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "severity": "medium",
     "title": "하드코딩된 비밀번호 발견",
     "description": "설정 파일에서 하드코딩된 데이터베이스 비밀번호가 발견되었습니다.",

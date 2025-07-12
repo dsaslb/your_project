@@ -1,7 +1,7 @@
-[
+﻿[
   {
     "log_id": "eb32dfba-5193-4a82-956c-59f3b8f0c392",
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "user_id": "admin",
     "action": "plugin_access",
     "resource": "/api/restaurant/orders",
@@ -16,7 +16,7 @@
   },
   {
     "log_id": "ac1580a8-b19c-4870-9ae2-8d89e2922fe8",
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "user_id": "user1",
     "action": "api_key_validation",
     "resource": "/api/restaurant/inventory",

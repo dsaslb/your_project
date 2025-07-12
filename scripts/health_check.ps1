@@ -1,4 +1,4 @@
-# Your Program 전체 시스템 헬스체크 스크립트
+﻿# Your Program 전체 시스템 헬스체크 스크립트
 # 백엔드, 프론트엔드, 데이터베이스, 권한 시스템 등 전체 상태 확인
 
 $OutputEncoding = [Console]::OutputEncoding = [Text.Encoding]::UTF8
@@ -243,7 +243,7 @@ if ($healthStatus.overall) {
         Write-Host "   - Start backend server: python app.py" -ForegroundColor White
     }
     if (!$healthStatus.frontend) {
-        Write-Host "   - Start frontend server: cd your_program_frontend && npm run dev" -ForegroundColor White
+        Write-Host "   - Start frontend server: cd frontend && npm run dev" -ForegroundColor White
     }
     if (!$healthStatus.database) {
         Write-Host "   - Check database configuration and run migrations" -ForegroundColor White

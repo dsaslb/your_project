@@ -1,6 +1,6 @@
-[
+﻿[
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "security_level": "high",
     "allowed_ips": [
       "127.0.0.1",
@@ -8,7 +8,7 @@
     ],
     "allowed_domains": [
       "localhost",
-      "restaurant.local"
+      "your-program.local"
     ],
     "max_requests_per_minute": 200,
     "require_authentication": true,

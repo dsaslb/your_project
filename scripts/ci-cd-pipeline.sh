@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # Your Program CI/CD 파이프라인 스크립트
 # 사용법: ./scripts/ci-cd-pipeline.sh [stage] [action]
@@ -66,8 +66,8 @@ run_build() {
     fi
     
     # 프론트엔드 의존성
-    if [ -f "$PROJECT_ROOT/your_program_frontend/package.json" ]; then
-        cd "$PROJECT_ROOT/your_program_frontend"
+    if [ -f "$PROJECT_ROOT/frontend/package.json" ]; then
+        cd "$PROJECT_ROOT/frontend"
         npm ci --only=production
         cd "$PROJECT_ROOT"
     fi
@@ -99,12 +99,12 @@ run_build() {
         .
     
     # 프론트엔드 이미지
-    docker build -f your_program_frontend/Dockerfile \
+    docker build -f frontend/Dockerfile \
         -t your-program-frontend:$BUILD_NUMBER \
         -t your-program-frontend:latest \
         --build-arg BUILD_NUMBER=$BUILD_NUMBER \
         --build-arg GIT_COMMIT=$GIT_COMMIT \
-        ./your_program_frontend
+        ./frontend
     
     # Gateway 이미지
     docker build -f Dockerfile.gateway \
@@ -170,8 +170,8 @@ run_tests() {
     # 프론트엔드 테스트
     log_info "Running frontend tests..."
     
-    if [ -f "$PROJECT_ROOT/your_program_frontend/package.json" ]; then
-        cd "$PROJECT_ROOT/your_program_frontend"
+    if [ -f "$PROJECT_ROOT/frontend/package.json" ]; then
+        cd "$PROJECT_ROOT/frontend"
         
         # 단위 테스트
         npm test -- --coverage --watchAll=false --testResultsProcessor=jest-junit || {

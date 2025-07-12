@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 setlocal enabledelayedexpansion
 
 REM Your Program 프로덕션 배포 스크립트 (Windows)
@@ -146,7 +146,7 @@ docker build -f Dockerfile.ai -t your-program-ai:%image_tag% .
 
 REM 프론트엔드 이미지 빌드
 call :log_info "Building frontend image..."
-docker build -f your_program_frontend\Dockerfile -t your-program-frontend:%image_tag% .\your_program_frontend
+docker build -f frontend\Dockerfile -t your-program-frontend:%image_tag% .\frontend
 
 REM Gateway 이미지 빌드
 call :log_info "Building gateway image..."

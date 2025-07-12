@@ -1,4 +1,4 @@
-# 성능 테스트를 위한 Locust 라이브러리
+﻿# 성능 테스트를 위한 Locust 라이브러리
 # 설치 필요: pip install locust
 from locust import HttpUser, task, between  # type: ignore
 import random
@@ -54,7 +54,7 @@ class PluginPerformanceUser(HttpUser):
     @task(1)
     def test_plugin_restart(self):
         """플러그인 재시작 API 테스트"""
-        plugin_name = random.choice(["restaurant_management", "analytics", "automation"])
+        plugin_name = random.choice(["your_program_management", "analytics", "automation"])
         self.client.post(f"/api/admin/plugin-monitoring/restart/{plugin_name}")
     
     @task(1)
@@ -80,7 +80,7 @@ class PluginPerformanceUser(HttpUser):
     @task(1)
     def test_plugin_update(self):
         """플러그인 업데이트 API 테스트"""
-        plugin_name = random.choice(["restaurant_management", "analytics", "automation"])
+        plugin_name = random.choice(["your_program_management", "analytics", "automation"])
         self.client.post(f"/api/admin/plugin-monitoring/update/{plugin_name}")
     
     @task(1)

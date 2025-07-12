@@ -1,4 +1,4 @@
-name: Plugin Performance Monitoring CI/CD
+﻿name: Plugin Performance Monitoring CI/CD
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
       - 'api/modules/**'
       - 'routes/admin_*.py'
       - 'utils/plugin_*.py'
-      - 'your_program_frontend/src/app/plugin-*/**'
-      - 'your_program_frontend/src/components/Plugin*.tsx'
+      - 'frontend/src/app/plugin-*/**'
+      - 'frontend/src/components/Plugin*.tsx'
   pull_request:
     branches: [ main ]
     paths:
@@ -17,8 +17,8 @@ on:
       - 'api/modules/**'
       - 'routes/admin_*.py'
       - 'utils/plugin_*.py'
-      - 'your_program_frontend/src/app/plugin-*/**'
-      - 'your_program_frontend/src/components/Plugin*.tsx'
+      - 'frontend/src/app/plugin-*/**'
+      - 'frontend/src/components/Plugin*.tsx'
   workflow_dispatch:
     inputs:
       plugin_name:
@@ -61,7 +61,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: your_program_frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
           
       - name: Install Python dependencies
         run: |
@@ -71,7 +71,7 @@ jobs:
           
       - name: Install Node.js dependencies
         run: |
-          cd your_program_frontend
+          cd frontend
           npm ci
           
       - name: Run Python linting for plugin code
@@ -82,7 +82,7 @@ jobs:
           
       - name: Run TypeScript linting for plugin frontend
         run: |
-          cd your_program_frontend
+          cd frontend
           npm run lint -- src/app/plugin-*/ src/components/Plugin*.tsx
           
       - name: Run security scan for plugins
@@ -139,7 +139,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: your_program_frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
           
       - name: Install Python dependencies
         run: |
@@ -149,7 +149,7 @@ jobs:
           
       - name: Install Node.js dependencies
         run: |
-          cd your_program_frontend
+          cd frontend
           npm ci
           
       - name: Run plugin unit tests
@@ -162,7 +162,7 @@ jobs:
           
       - name: Run plugin frontend tests
         run: |
-          cd your_program_frontend
+          cd frontend
           npm test -- --testPathPattern="plugin|Plugin" --coverage --watchAll=false
           
       - name: Upload coverage to Codecov
@@ -227,7 +227,7 @@ jobs:
       - name: Build test images
         run: |
           docker build -f Dockerfile.backend -t your-program-backend:plugin-test .
-          docker build -f your_program_frontend/Dockerfile -t your-program-frontend:plugin-test ./your_program_frontend
+          docker build -f frontend/Dockerfile -t your-program-frontend:plugin-test ./frontend
           
       - name: Start services
         run: |
@@ -258,16 +258,16 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: your_program_frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
           
       - name: Install dependencies
         run: |
-          cd your_program_frontend
+          cd frontend
           npm ci
           
       - name: Build application
         run: |
-          cd your_program_frontend
+          cd frontend
           npm run build
           
       - name: Start application
@@ -277,7 +277,7 @@ jobs:
           
       - name: Run plugin E2E tests
         run: |
-          cd your_program_frontend
+          cd frontend
           npm run test:e2e -- --spec "cypress/e2e/plugin-*.cy.ts"
           
   # 플러그인 보안 테스트
@@ -325,7 +325,7 @@ jobs:
       - name: Build plugin-enabled images
         run: |
           docker build -f Dockerfile.backend -t your-program-backend:plugin-latest .
-          docker build -f your_program_frontend/Dockerfile -t your-program-frontend:plugin-latest ./your_program_frontend
+          docker build -f frontend/Dockerfile -t your-program-frontend:plugin-latest ./frontend
           
       - name: Test plugin deployment
         run: |

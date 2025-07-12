@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+﻿name: CI/CD Pipeline
 
 on:
   push:
@@ -95,37 +95,37 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: your_program_frontend/package-lock.json
+        cache-dependency-path: frontend/package-lock.json
         
     - name: Install dependencies
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: npm ci
       
     - name: Run linting
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: |
         npm run lint
         npm run type-check
         
     - name: Run unit tests
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: |
         npm run test:unit -- --coverage --watchAll=false
         npm run test:coverage
         
     - name: Run integration tests
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: |
         npm run test:integration
         
     - name: Build application
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: npm run build
       
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
-        file: your_program_frontend/coverage/lcov.info
+        file: frontend/coverage/lcov.info
         flags: frontend
         name: frontend-coverage
         
@@ -133,7 +133,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: frontend-build
-        path: your_program_frontend/.next/
+        path: frontend/.next/
         
   # E2E 테스트
   e2e-tests:
@@ -168,7 +168,7 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: your_program_frontend/package-lock.json
+        cache-dependency-path: frontend/package-lock.json
         
     - name: Install backend dependencies
       run: |
@@ -176,7 +176,7 @@ jobs:
         pip install -r test-requirements.txt
         
     - name: Install frontend dependencies
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: npm ci
       
     - name: Start backend server
@@ -186,7 +186,7 @@ jobs:
         sleep 10
         
     - name: Start frontend server
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: |
         npm run build
         npm start &
@@ -380,10 +380,10 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
-        cd your_program_frontend && npm ci
+        cd frontend && npm ci
         
     - name: Build frontend
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: npm run build
       
     - name: Deploy to staging (dev mode)
@@ -422,10 +422,10 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
-        cd your_program_frontend && npm ci
+        cd frontend && npm ci
         
     - name: Build frontend
-      working-directory: your_program_frontend
+      working-directory: frontend
       run: npm run build
       
     - name: Create release (dev mode)

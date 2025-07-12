@@ -1,4 +1,4 @@
-# Your Program 프로젝트 복원 스크립트
+﻿# Your Program 프로젝트 복원 스크립트
 # 백업에서 프로젝트 복원 및 롤백 기능
 
 param(
@@ -63,7 +63,7 @@ try {
         # 복원할 폴더 목록
         $restoreFolders = @(
             "templates", "static", "api", "routes", "utils",
-            "your_program_frontend", "mobile_app",
+            "frontend", "mobile_app",
             "kubernetes", "scripts", "docs",
             ".github", ".vscode"
         )

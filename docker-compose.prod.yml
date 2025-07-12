@@ -63,9 +63,9 @@ services:
   # 프론트엔드
   frontend:
     build:
-      context: ./your_program_frontend
+      context: ./frontend
       dockerfile: Dockerfile
-    container_name: your_program_frontend
+    container_name: frontend
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://backend:5000
@@ -139,3 +139,4 @@ volumes:
 networks:
   your_program_network:
     driver: bridge 
+

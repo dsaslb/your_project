@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # Your Program 프로덕션 배포 스크립트
 # 사용법: ./scripts/deploy-production.sh [environment] [action]
@@ -139,7 +139,7 @@ build_images() {
     
     # 프론트엔드 이미지 빌드
     log_info "Building frontend image..."
-    docker build -f your_program_frontend/Dockerfile -t your-program-frontend:$image_tag ./your_program_frontend
+    docker build -f frontend/Dockerfile -t your-program-frontend:$image_tag ./frontend
     
     # Gateway 이미지 빌드
     log_info "Building gateway image..."

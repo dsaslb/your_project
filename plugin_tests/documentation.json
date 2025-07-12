@@ -1,6 +1,6 @@
-{
-  "restaurant_management": {
-    "plugin_id": "restaurant_management",
+﻿{
+  "your_program_management": {
+    "plugin_id": "your_program_management",
     "api_docs": {
       "endpoints": [
         {
@@ -23,7 +23,7 @@
       "examples": []
     },
     "user_guide": "# 레스토랑 관리 플러그인 사용자 가이드\n\n## 개요\n레스토랑 관리 플러그인은 음식점의 전반적인 운영을 관리할 수 있는 종합적인 솔루션입니다.\n\n## 설치\n1. 플러그인을 다운로드합니다.\n2. 플러그인 디렉토리에 설치합니다.\n3. 플러그인을 활성화합니다.\n\n## 설정\n플러그인 설정은 관리자 패널에서 할 수 있습니다.\n\n## 사용법\n자세한 사용법은 플러그인 문서를 참조하세요.\n",
-    "developer_guide": "# 레스토랑 관리 플러그인 개발자 가이드\n\n## 구조\n```\nrestaurant_management/\n├── backend/          # 백엔드 코드\n├── config/           # 설정 파일\n├── templates/        # 템플릿 파일\n└── static/          # 정적 파일\n```\n\n## 의존성\nFlask, SQLAlchemy, Jinja2\n\n## 권한\nadmin, manager, staff\n\n## API\n플러그인 API는 백엔드 디렉토리의 Python 파일에 정의되어 있습니다.\n",
+    "developer_guide": "# 레스토랑 관리 플러그인 개발자 가이드\n\n## 구조\n```\nyour_program_management/\n├── backend/          # 백엔드 코드\n├── config/           # 설정 파일\n├── templates/        # 템플릿 파일\n└── static/          # 정적 파일\n```\n\n## 의존성\nFlask, SQLAlchemy, Jinja2\n\n## 권한\nadmin, manager, staff\n\n## API\n플러그인 API는 백엔드 디렉토리의 Python 파일에 정의되어 있습니다.\n",
     "changelog": [
       {
         "version": "1.0.0",
@@ -48,7 +48,7 @@
       {
         "file": "example_usage.py",
         "description": "기본 사용법 예제",
-        "code": "# 레스토랑 관리 플러그인 사용 예제\nfrom restaurant_management import RestaurantManager\n\n# 매니저 초기화\nmanager = RestaurantManager()\n\n# 주문 생성\norder = manager.create_order({\n    'table': 5,\n    'items': ['파스타', '샐러드'],\n    'total': 25000\n})\n\nprint(f\"주문이 생성되었습니다: {order.id}\")\n"
+        "code": "# 레스토랑 관리 플러그인 사용 예제\nfrom your_program_management import RestaurantManager\n\n# 매니저 초기화\nmanager = RestaurantManager()\n\n# 주문 생성\norder = manager.create_order({\n    'table': 5,\n    'items': ['파스타', '샐러드'],\n    'total': 25000\n})\n\nprint(f\"주문이 생성되었습니다: {order.id}\")\n"
       }
     ],
     "last_updated": "2024-01-15T12:00:00"

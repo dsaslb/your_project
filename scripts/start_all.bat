@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM Your Program 전체 프로젝트 시작 스크립트 (Windows)
 REM 사용법: scripts\start_all.bat [environment]
 REM environment: dev, staging, prod (기본값: dev)
@@ -147,7 +147,7 @@ REM Frontend 환경 변수
 echo NEXT_PUBLIC_API_URL=%API_URL%
 echo NEXT_PUBLIC_WS_URL=%WS_URL%
 echo NODE_ENV=%NODE_ENV%
-) > "%PROJECT_ROOT%\your_program_frontend\.env.local"
+) > "%PROJECT_ROOT%\frontend\.env.local"
 
 REM Backend 환경 변수
 (
@@ -234,7 +234,7 @@ REM 프론트엔드 시작
 :start_frontend
 call :log_info "프론트엔드 서버 시작 중...
 
-cd /d "%PROJECT_ROOT%\your_program_frontend"
+cd /d "%PROJECT_ROOT%\frontend"
 
 REM 의존성 설치 확인
 if not exist "node_modules" (

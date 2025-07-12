@@ -3,17 +3,17 @@
 on:
   push:
     paths:
-      - 'your_program_frontend/**'
+      - 'frontend/**'
   pull_request:
     paths:
-      - 'your_program_frontend/**'
+      - 'frontend/**'
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: your_program_frontend
+        working-directory: frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,3 +29,4 @@ jobs:
         run: npm run build
       - name: Run Playwright tests
         run: npx playwright install --with-deps && npx playwright test 
+

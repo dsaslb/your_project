@@ -1,6 +1,6 @@
-[
+﻿[
   {
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "test_type": "all",
     "started_at": "2024-01-15T10:00:00",
     "completed_at": "2024-01-15T10:05:00",
@@ -10,22 +10,22 @@
     "status": "passed",
     "results": [
       {
-        "test_id": "restaurant_management_unit_1705310400",
-        "plugin_id": "restaurant_management",
+        "test_id": "your_program_management_unit_1705310400",
+        "plugin_id": "your_program_management",
         "test_type": "unit",
         "status": "passed",
         "duration": 2.5,
         "message": "단위 테스트 통과",
         "details": {
-          "stdout": "test_restaurant_management.py::test_basic_functionality PASSED",
+          "stdout": "test_your_program_management.py::test_basic_functionality PASSED",
           "stderr": "",
           "return_code": 0
         },
         "created_at": "2024-01-15T10:00:30"
       },
       {
-        "test_id": "restaurant_management_integration_1705310400",
-        "plugin_id": "restaurant_management",
+        "test_id": "your_program_management_integration_1705310400",
+        "plugin_id": "your_program_management",
         "test_type": "integration",
         "status": "passed",
         "duration": 8.2,
@@ -38,8 +38,8 @@
         "created_at": "2024-01-15T10:01:00"
       },
       {
-        "test_id": "restaurant_management_performance_1705310400",
-        "plugin_id": "restaurant_management",
+        "test_id": "your_program_management_performance_1705310400",
+        "plugin_id": "your_program_management",
         "test_type": "performance",
         "status": "failed",
         "duration": 15.0,

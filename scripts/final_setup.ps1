@@ -1,4 +1,4 @@
-# Your Program 최종 설정 및 문제 해결 스크립트
+﻿# Your Program 최종 설정 및 문제 해결 스크립트
 # 헬스체크 결과에 따른 자동 문제 해결
 
 $OutputEncoding = [Console]::OutputEncoding = [Text.Encoding]::UTF8
@@ -59,7 +59,7 @@ function Repair-FrontendIssues {
     
     try {
         # 프론트엔드 디렉토리로 이동
-        Push-Location "your_program_frontend"
+        Push-Location "frontend"
         
         # 의존성 재설치
         Write-Host "Reinstalling frontend dependencies... (프론트엔드 의존성 재설치)" -ForegroundColor White

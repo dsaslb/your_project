@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # 레스토랑 관리 시스템 배포 스크립트
 # 사용법: ./scripts/deploy.sh [staging|production]
@@ -94,11 +94,11 @@ create_backup() {
         mkdir -p "$BACKUP_DIR"
         
         # PostgreSQL 백업
-        docker exec restaurant_postgres pg_dump -U restaurant_user restaurant_db > "$BACKUP_DIR/database.sql"
+        docker exec your_program_postgres pg_dump -U your_program_user your_program_db > "$BACKUP_DIR/database.sql"
         
         # Redis 백업
-        docker exec restaurant_redis redis-cli BGSAVE
-        docker cp restaurant_redis:/data/dump.rdb "$BACKUP_DIR/redis.rdb"
+        docker exec your_program_redis redis-cli BGSAVE
+        docker cp your_program_redis:/data/dump.rdb "$BACKUP_DIR/redis.rdb"
         
         log_info "백업 완료: $BACKUP_DIR"
     fi

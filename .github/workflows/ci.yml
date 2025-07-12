@@ -17,16 +17,16 @@ jobs:
           node-version: '18'
       - name: Install dependencies
         run: |
-          cd your_program_frontend && npm ci
+          cd frontend && npm ci
       - name: Lint
         run: |
-          cd your_program_frontend && npm run lint
+          cd frontend && npm run lint
       - name: Run tests
         run: |
-          cd your_program_frontend && npm run test
+          cd frontend && npm run test
       - name: Build frontend
         run: |
-          cd your_program_frontend && npm run build
+          cd frontend && npm run build
       - name: Build backend
         run: |
           pip install -r requirements.txt
@@ -38,3 +38,4 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           bash scripts/deploy_prod.sh 
+

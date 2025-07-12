@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # Your Program 전체 프로젝트 정리 스크립트
 # 사용법: ./scripts/cleanup_all.sh [type]
@@ -362,7 +362,7 @@ main() {
     log_info "서브 디렉토리 정리 중..."
     
     # Frontend 디렉토리
-    clean_directory "your_program_frontend" "Frontend"
+    clean_directory "frontend" "Frontend"
     
     # Mobile 앱 디렉토리
     clean_directory "mobile_app" "Mobile App"
@@ -385,7 +385,7 @@ main() {
     case $CLEANUP_TYPE in
         "node_modules")
             log_info "다음 단계:"
-            log_info "  Frontend: cd your_program_frontend && npm install"
+            log_info "  Frontend: cd frontend && npm install"
             log_info "  Mobile: cd mobile_app && npm install"
             ;;
         "python")
@@ -394,7 +394,7 @@ main() {
             ;;
         "all")
             log_info "다음 단계:"
-            log_info "  Frontend: cd your_program_frontend && npm install"
+            log_info "  Frontend: cd frontend && npm install"
             log_info "  Mobile: cd mobile_app && npm install"
             log_info "  AI 모듈: pip install -r ai_requirements.txt"
             log_info "  전체 실행: ./scripts/start_all.sh"

@@ -1,7 +1,7 @@
-[
+﻿[
   {
     "key_id": "cf4f1800-c4f9-4ffb-b93a-76bab6a4a0ba",
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "name": "관리자 API 키",
     "key_hash": "cf6f9c9dbd753ef4f7c9778f95170666e8416ed47bc7194ac7d6f475cfd21841",
     "permissions": [
@@ -16,7 +16,7 @@
   },
   {
     "key_id": "be71caec-1701-4dc6-9963-dcd66ee10291",
-    "plugin_id": "restaurant_management",
+    "plugin_id": "your_program_management",
     "name": "읽기 전용 API 키",
     "key_hash": "d22ef924b974472ddce056cdfe8978789bc934d51b55b46d7ef769669c2c5dcb",
     "permissions": [

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 플러그인 마켓플레이스 시스템 초기화 스크립트
 """
@@ -153,7 +153,7 @@ def init_plugin_marketplace():
     print("📦 샘플 플러그인 생성 중...")
     sample_plugins = [
         {
-            'plugin_id': 'restaurant_management',
+            'plugin_id': 'your_program_management',
             'name': '레스토랑 관리 플러그인',
             'description': '레스토랑 운영을 위한 종합 관리 플러그인으로 주문, 재고, 직원 관리 기능을 제공합니다.',
             'author': 'Restaurant Team',
@@ -233,7 +233,7 @@ def init_plugin_marketplace():
     
     # 일부 플러그인 승인
     print("✅ 플러그인 승인 중...")
-    approved_plugins = ['restaurant_management', 'analytics_dashboard', 'notification_system']
+    approved_plugins = ['your_program_management', 'analytics_dashboard', 'notification_system']
     for plugin_id in approved_plugins:
         success = marketplace.approve_plugin(plugin_id)
         if success:
@@ -244,9 +244,9 @@ def init_plugin_marketplace():
     # 샘플 평점 추가
     print("⭐ 샘플 평점 추가 중...")
     sample_ratings = [
-        ('restaurant_management', 4.5, 'admin'),
-        ('restaurant_management', 4.0, 'user1'),
-        ('restaurant_management', 5.0, 'user2'),
+        ('your_program_management', 4.5, 'admin'),
+        ('your_program_management', 4.0, 'user1'),
+        ('your_program_management', 5.0, 'user2'),
         ('analytics_dashboard', 4.2, 'analyst1'),
         ('analytics_dashboard', 4.8, 'analyst2'),
         ('notification_system', 4.0, 'admin'),
@@ -263,7 +263,7 @@ def init_plugin_marketplace():
     # 샘플 다운로드 기록 추가
     print("📥 샘플 다운로드 기록 추가 중...")
     sample_downloads = [
-        ('restaurant_management', 150),
+        ('your_program_management', 150),
         ('analytics_dashboard', 89),
         ('notification_system', 67),
         ('security_monitor', 45),
@@ -282,7 +282,7 @@ def init_plugin_marketplace():
     print("🚀 샘플 배포 상태 생성 중...")
     sample_deployments = [
         {
-            'plugin_id': 'restaurant_management',
+            'plugin_id': 'your_program_management',
             'environment': 'production',
             'deployed_at': '2024-01-15T10:30:00',
             'version': '1.0.0',

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 플러그인 보안 시스템 초기화 스크립트
 """
@@ -25,10 +25,10 @@ def init_plugin_security_system():
     print("📋 샘플 보안 정책 생성 중...")
     sample_policies = [
         {
-            'plugin_id': 'restaurant_management',
+            'plugin_id': 'your_program_management',
             'security_level': 'high',
             'allowed_ips': ['127.0.0.1', '192.168.1.0/24'],
-            'allowed_domains': ['localhost', 'restaurant.local'],
+            'allowed_domains': ['localhost', 'your-program.local'],
             'max_requests_per_minute': 200,
             'require_authentication': True,
             'require_authorization': True,
@@ -70,13 +70,13 @@ def init_plugin_security_system():
     print("🔑 샘플 API 키 생성 중...")
     sample_api_keys = [
         {
-            'plugin_id': 'restaurant_management',
+            'plugin_id': 'your_program_management',
             'name': '관리자 API 키',
             'permissions': ['read', 'write', 'admin'],
             'expires_in_days': 365
         },
         {
-            'plugin_id': 'restaurant_management',
+            'plugin_id': 'your_program_management',
             'name': '읽기 전용 API 키',
             'permissions': ['read'],
             'expires_in_days': 30
@@ -111,7 +111,7 @@ def init_plugin_security_system():
     print("📝 샘플 감사 로그 생성 중...")
     sample_audit_events = [
         {
-            'plugin_id': 'restaurant_management',
+            'plugin_id': 'your_program_management',
             'user_id': 'admin',
             'action': 'plugin_access',
             'resource': '/api/restaurant/orders',
@@ -121,7 +121,7 @@ def init_plugin_security_system():
             'details': {'method': 'GET', 'status_code': 200}
         },
         {
-            'plugin_id': 'restaurant_management',
+            'plugin_id': 'your_program_management',
             'user_id': 'user1',
             'action': 'api_key_validation',
             'resource': '/api/restaurant/inventory',
@@ -162,7 +162,7 @@ def init_plugin_security_system():
     print("⚠️  샘플 취약점 보고서 생성 중...")
     sample_vulnerabilities = [
         {
-            'plugin_id': 'restaurant_management',
+            'plugin_id': 'your_program_management',
             'severity': 'medium',
             'title': '하드코딩된 비밀번호 발견',
             'description': '설정 파일에서 하드코딩된 데이터베이스 비밀번호가 발견되었습니다.',

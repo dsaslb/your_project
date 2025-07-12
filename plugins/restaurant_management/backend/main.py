@@ -1,4 +1,4 @@
-"""
+﻿"""
 레스토랑 관리 플러그인
 레스토랑 업종 전용 관리 기능을 제공하는 플러그인
 """
@@ -15,7 +15,7 @@ class RestaurantManagementPlugin(BasePlugin):
     
     def __init__(self):
         super().__init__()
-        self.blueprint = Blueprint('restaurant_management', __name__)
+        self.blueprint = Blueprint('your_program_management', __name__)
         self._setup_routes()
         self._setup_menus()
         self._setup_config_schema()
@@ -166,7 +166,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 author="Your Program Team",
                 category="restaurant",
                 dependencies=["core_management"],
-                permissions=["restaurant_management"],
+                permissions=["your_program_management"],
                 enabled=True,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()

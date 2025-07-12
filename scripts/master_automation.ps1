@@ -1,4 +1,4 @@
-# Your Program 마스터 자동화 스크립트
+﻿# Your Program 마스터 자동화 스크립트
 # 백업, 정리, 프로젝트명 변경, 복원을 통합 관리
 
 param(
@@ -153,8 +153,8 @@ function Invoke-Setup {
     
     # 5. 프론트엔드 의존성 설치
     Write-Host "🎨 프론트엔드 의존성 설치 중..." -ForegroundColor Yellow
-    if (Test-Path "your_program_frontend") {
-        Push-Location "your_program_frontend"
+    if (Test-Path "frontend") {
+        Push-Location "frontend"
         npm install
         if ($LASTEXITCODE -ne 0) {
             Write-Host "❌ 프론트엔드 의존성 설치 실패" -ForegroundColor Red

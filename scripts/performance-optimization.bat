@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM Your Program 성능 최적화 스크립트 (Windows)
 REM 사용법: scripts\performance-optimization.bat [target] [action]
 REM target: database, cache, frontend, backend, all (기본값: all)
@@ -221,7 +221,7 @@ REM 프론트엔드 최적화
 :optimize_frontend
 call :log_info "Optimizing frontend performance..."
 
-cd /d "%PROJECT_ROOT%\your_program_frontend"
+cd /d "%PROJECT_ROOT%\frontend"
 
 REM Next.js 설정 최적화
 call :log_info "Optimizing Next.js configuration..."

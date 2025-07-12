@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 플러그인 마켓플레이스 시스템
 플러그인의 검색, 설치, 업데이트, 평가를 관리하는 중앙 집중식 마켓플레이스
@@ -68,8 +68,8 @@ class PluginMarketplace:
         
         # 기본 저장소 설정
         self.repositories = {
-            "official": "https://plugins.restaurant-system.com/api/v1",
-            "community": "https://community-plugins.restaurant-system.com/api/v1"
+            "official": "https://plugins.your-program-system.com/api/v1",
+            "community": "https://community-plugins.your-program-system.com/api/v1"
         }
     
     def _init_database(self):

@@ -1,4 +1,4 @@
-import json
+﻿import json
 import time
 import subprocess
 import threading
@@ -338,7 +338,7 @@ class PluginTestingSystem:
     def _get_active_plugin_ids(self) -> List[str]:
         """활성 플러그인 ID 목록 조회"""
         # 실제 구현에서는 플러그인 매니저에서 조회
-        return ["restaurant_management"]
+        return ["your_program_management"]
     
     def _check_performance_thresholds(self, metrics: List[Dict], threshold: Dict) -> List[Dict]:
         """성능 임계값 확인"""

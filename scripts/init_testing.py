@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 플러그인 테스트/모니터링/문서화 시스템 초기화 스크립트
@@ -45,7 +45,7 @@ def create_sample_test_data(testing_system):
     
     sample_test_results = [
         {
-            "plugin_id": "restaurant_management",
+            "plugin_id": "your_program_management",
             "test_type": "all",
             "started_at": "2024-01-15T10:00:00",
             "completed_at": "2024-01-15T10:05:00",
@@ -55,22 +55,22 @@ def create_sample_test_data(testing_system):
             "status": "passed",
             "results": [
                 {
-                    "test_id": "restaurant_management_unit_1705310400",
-                    "plugin_id": "restaurant_management",
+                    "test_id": "your_program_management_unit_1705310400",
+                    "plugin_id": "your_program_management",
                     "test_type": "unit",
                     "status": "passed",
                     "duration": 2.5,
                     "message": "단위 테스트 통과",
                     "details": {
-                        "stdout": "test_restaurant_management.py::test_basic_functionality PASSED",
+                        "stdout": "test_your_program_management.py::test_basic_functionality PASSED",
                         "stderr": "",
                         "return_code": 0
                     },
                     "created_at": "2024-01-15T10:00:30"
                 },
                 {
-                    "test_id": "restaurant_management_integration_1705310400",
-                    "plugin_id": "restaurant_management",
+                    "test_id": "your_program_management_integration_1705310400",
+                    "plugin_id": "your_program_management",
                     "test_type": "integration",
                     "status": "passed",
                     "duration": 8.2,
@@ -83,8 +83,8 @@ def create_sample_test_data(testing_system):
                     "created_at": "2024-01-15T10:01:00"
                 },
                 {
-                    "test_id": "restaurant_management_performance_1705310400",
-                    "plugin_id": "restaurant_management",
+                    "test_id": "your_program_management_performance_1705310400",
+                    "plugin_id": "your_program_management",
                     "test_type": "performance",
                     "status": "failed",
                     "duration": 15.0,
@@ -142,7 +142,7 @@ def create_sample_performance_data(testing_system):
     sample_metrics = []
     base_time = datetime.now() - timedelta(hours=24)
     
-    plugin_ids = ["restaurant_management", "inventory_management", "order_management"]
+    plugin_ids = ["your_program_management", "inventory_management", "order_management"]
     
     for i in range(24):  # 24시간 데이터
         timestamp = base_time + timedelta(hours=i)
@@ -169,8 +169,8 @@ def create_sample_documentation_data(testing_system):
     print("📚 샘플 문서 데이터 생성 중...")
     
     sample_documentation = {
-        "restaurant_management": {
-            "plugin_id": "restaurant_management",
+        "your_program_management": {
+            "plugin_id": "your_program_management",
             "api_docs": {
                 "endpoints": [
                     {
@@ -212,7 +212,7 @@ def create_sample_documentation_data(testing_system):
 
 ## 구조
 ```
-restaurant_management/
+your_program_management/
 ├── backend/          # 백엔드 코드
 ├── config/           # 설정 파일
 ├── templates/        # 템플릿 파일
@@ -245,7 +245,7 @@ admin, manager, staff
                     "file": "example_usage.py",
                     "description": "기본 사용법 예제",
                     "code": """# 레스토랑 관리 플러그인 사용 예제
-from restaurant_management import RestaurantManager
+from your_program_management import RestaurantManager
 
 # 매니저 초기화
 manager = RestaurantManager()

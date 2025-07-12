@@ -1,4 +1,4 @@
-name: Your Program CI/CD Pipeline
+﻿name: Your Program CI/CD Pipeline
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: your_program_frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
           
       - name: Install Python dependencies
         run: |
@@ -48,7 +48,7 @@ jobs:
           
       - name: Install Node.js dependencies
         run: |
-          cd your_program_frontend
+          cd frontend
           npm ci
           cd ../gateway
           npm ci
@@ -61,14 +61,14 @@ jobs:
           
       - name: Run TypeScript linting
         run: |
-          cd your_program_frontend
+          cd frontend
           npm run lint
           cd ../gateway
           npm run lint
           
       - name: Run type checking
         run: |
-          cd your_program_frontend
+          cd frontend
           npm run type-check
           
   # 보안 스캔
@@ -138,7 +138,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: your_program_frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
           
       - name: Install Python dependencies
         run: |
@@ -148,7 +148,7 @@ jobs:
           
       - name: Install Node.js dependencies
         run: |
-          cd your_program_frontend
+          cd frontend
           npm ci
           cd ../gateway
           npm ci
@@ -163,7 +163,7 @@ jobs:
           
       - name: Run Node.js unit tests
         run: |
-          cd your_program_frontend
+          cd frontend
           npm test -- --coverage --watchAll=false
           cd ../gateway
           npm test
@@ -190,7 +190,7 @@ jobs:
         run: |
           docker build -f Dockerfile.backend -t your-program-backend:test .
           docker build -f Dockerfile.ai -t your-program-ai:test .
-          docker build -f your_program_frontend/Dockerfile -t your-program-frontend:test ./your_program_frontend
+          docker build -f frontend/Dockerfile -t your-program-frontend:test ./frontend
           docker build -f Dockerfile.gateway -t your-program-gateway:test .
           
       - name: Start services
@@ -222,16 +222,16 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: your_program_frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
           
       - name: Install dependencies
         run: |
-          cd your_program_frontend
+          cd frontend
           npm ci
           
       - name: Build application
         run: |
-          cd your_program_frontend
+          cd frontend
           npm run build
           
       - name: Start application
@@ -241,7 +241,7 @@ jobs:
           
       - name: Run E2E tests
         run: |
-          cd your_program_frontend
+          cd frontend
           npm run cypress:run
           
   # 빌드 및 푸시
@@ -299,8 +299,8 @@ jobs:
       - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
-          context: ./your_program_frontend
-          file: ./your_program_frontend/Dockerfile
+          context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
           tags: your-program/frontend:${{ steps.meta.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}

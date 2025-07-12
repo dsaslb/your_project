@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 플러그인 모니터링 시스템 배포 자동화 스크립트
 CI/CD 파이프라인에서 사용되는 자동 배포 스크립트입니다.
@@ -26,12 +26,12 @@ class PluginMonitoringDeployer:
             "staging": {
                 "base_url": "https://staging.yourprogram.com",
                 "docker_registry": "your-registry.com",
-                "namespace": "restaurant-system-staging"
+                "namespace": "your-program-system-staging"
             },
             "production": {
                 "base_url": "https://yourprogram.com",
                 "docker_registry": "your-registry.com",
-                "namespace": "restaurant-system"
+                "namespace": "your-program-system"
             }
         }
         
@@ -95,7 +95,7 @@ class PluginMonitoringDeployer:
             
             # 프론트엔드 이미지 빌드
             success, output = self.run_command(
-                f"docker build -f your_program_frontend/Dockerfile -t {self.config['docker_registry']}/your-program-frontend:plugin-monitoring-{self.environment} ./your_program_frontend"
+                f"docker build -f frontend/Dockerfile -t {self.config['docker_registry']}/your-program-frontend:plugin-monitoring-{self.environment} ./frontend"
             )
             
             if not success:
@@ -406,3 +406,4 @@ def main():
 
 if __name__ == "__main__":
     main() 
+

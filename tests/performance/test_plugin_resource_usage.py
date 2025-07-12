@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 플러그인 리소스 사용량 테스트
 CPU, 메모리, 디스크 I/O, 네트워크 사용량 모니터링
@@ -426,7 +426,7 @@ def main():
     
     # 테스트할 플러그인 목록
     plugins = [
-        'restaurant_management',
+        'your_program_management',
         'sample_analytics',
         'sample_notification'
     ]
