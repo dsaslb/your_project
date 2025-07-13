@@ -187,57 +187,78 @@ def create_sample_stores():
     db.session.commit()
 
 # 1. 브랜드별 통계
-@admin_dashboard_api.route('/brand_stats', methods=['GET'])
+@admin_dashboard_api.route('/brand_stats')
 @login_required
 def brand_stats():
-    """브랜드별 통계 조회"""
-    if not current_user.is_admin():
-        return jsonify({'success': False, 'error': '권한이 없습니다.'}), 403
-    
+    """브랜드 통계 API"""
     try:
-        # 샘플 데이터 생성 (처음 실행 시)
-        create_sample_brands()
-        create_sample_stores()
+        # 전체 브랜드 수
+        total_brands = Brand.query.count()
+        active_brands = Brand.query.filter_by(status='active').count()
         
-        brands = Brand.query.filter_by(status='active').all()
-        stats = []
+        # 브랜드별 매장 수
+        brand_branch_stats = db.session.query(
+            Brand.name,
+            db.func.count(Branch.id).label('branch_count')
+        ).outerjoin(Branch).group_by(Brand.id, Brand.name).all()
         
-        for brand in brands:
-            # 브랜드별 매장 수
-            store_count = Branch.query.filter_by(brand_id=brand.id, status='active').count()
+        # 브랜드별 사용자 수
+        brand_user_stats = db.session.query(
+            Brand.name,
+            db.func.count(User.id).label('user_count')
+        ).outerjoin(Branch).outerjoin(User).group_by(Brand.id, Brand.name).all()
+        
+        # 최근 30일 생성된 브랜드
+        thirty_days_ago = datetime.now() - timedelta(days=30)
+        recent_brands = Brand.query.filter(
+            Brand.created_at >= thirty_days_ago
+        ).count()
+        
+        # 브랜드별 통계 데이터
+        brand_stats = []
+        for brand in Brand.query.all():
+            branch_count = len(brand.stores) if hasattr(brand, 'stores') else 0
+            user_count = User.query.join(Branch).filter(Branch.brand_id == brand.id).count()
             
-            # 브랜드별 직원 수
-            employee_count = User.query.filter_by(brand_id=brand.id, status='approved').count()
-            
-            # 브랜드별 주문 수 (최근 30일)
-            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-            order_count = Order.query.filter(
-                Order.store_id.in_([store.id for store in brand.stores]),
-                Order.created_at >= thirty_days_ago
-            ).count()
-            
-            # 브랜드별 미읽 알림 수
-            unread_notifications = Notification.query.filter(
-                Notification.user_id.in_([user.id for user in brand.brand_manager]),
-                Notification.is_read == False
-            ).count()
-            
-            stats.append({
-                'brand_id': brand.id,
-                'brand_name': brand.name,
-                'brand_code': brand.code,
-                'store_count': store_count,
-                'employee_count': employee_count,
-                'order_count': order_count,
-                'unread_notifications': unread_notifications,
+            brand_stats.append({
+                'id': brand.id,
+                'name': brand.name,
                 'status': brand.status,
+                'branch_count': branch_count,
+                'user_count': user_count,
                 'created_at': brand.created_at.isoformat() if brand.created_at else None
             })
         
-        return jsonify({'success': True, 'stats': stats})
-    
+        return jsonify({
+            'success': True,
+            'data': {
+                'overview': {
+                    'total_brands': total_brands,
+                    'active_brands': active_brands,
+                    'inactive_brands': total_brands - active_brands,
+                    'recent_brands': recent_brands
+                },
+                'brand_stats': brand_stats,
+                'branch_distribution': [
+                    {
+                        'brand_name': stat.name,
+                        'branch_count': stat.branch_count
+                    } for stat in brand_branch_stats
+                ],
+                'user_distribution': [
+                    {
+                        'brand_name': stat.name,
+                        'user_count': stat.user_count
+                    } for stat in brand_user_stats
+                ]
+            }
+        })
+        
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': f'브랜드 통계 조회 실패: {str(e)}'
+        }), 500
 
 # 2. 매장별 통계
 @admin_dashboard_api.route('/store_stats', methods=['GET'])

@@ -439,14 +439,26 @@ def bulk_attendance_notification():
     return redirect(url_for("admin_dashboard"))
 
 
-@notifications_bp.route("/unread-count")
+@notifications_bp.route("/api/notifications/unread-count")
+@login_required
 def api_unread_count():
-    """미확인 알림 개수 API"""
+    """읽지 않은 알림 개수 API"""
     try:
-        # JWT 토큰에서 사용자 ID 추출 (실제 구현에서는 토큰 검증 필요)
-        # 임시로 더미 데이터 반환
-        unread_count = 3  # 실제로는 current_user.id로 조회
+        # 현재 사용자의 읽지 않은 알림 개수 조회
+        unread_count = Notification.query.filter_by(
+            user_id=current_user.id, 
+            is_read=False
+        ).count()
         
-        return jsonify({"unread_count": unread_count})
+        return jsonify({
+            "success": True,
+            "count": unread_count
+        })
+        
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log_error(e, current_user.id if current_user.is_authenticated else None)
+        return jsonify({
+            "success": False,
+            "error": "읽지 않은 알림 개수 조회에 실패했습니다.",
+            "count": 0
+        }), 500

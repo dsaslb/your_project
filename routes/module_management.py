@@ -251,8 +251,8 @@ def get_module_statistics():
         for module_id in user_modules:
             if module_id in marketplace_modules:
                 module = marketplace_modules[module_id]
-                total_downloads += module.get('downloads', 0)
-                avg_rating += module.get('rating', 0)
+                total_downloads += float(module.get('downloads', 0))
+                avg_rating += float(module.get('rating', 0))
                 
                 # 활성화된 모듈 수 계산
                 setting_key = f"{current_user.id}_{module_id}"
