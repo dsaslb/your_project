@@ -114,7 +114,7 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
     hasAccess = true; // 권한 요구사항이 없으면 접근 허용
   }
 
-  return hasAccess ? <>{children}</> : <>{fallback}</>;
+  return hasAccess ? children : fallback;
 };
 
 export default usePermissions; 

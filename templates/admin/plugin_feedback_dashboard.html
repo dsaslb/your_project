@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>플러그인 피드백 대시보드 - 관리자</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .feedback-card {
+            transition: all 0.3s ease;
+        }
+        .feedback-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-open { background-color: #fef3c7; color: #92400e; }
+        .status-in-progress { background-color: #dbeafe; color: #1e40af; }
+        .status-resolved { background-color: #d1fae5; color: #065f46; }
+        .status-closed { background-color: #f3f4f6; color: #374151; }
+        .severity-critical { background-color: #fee2e2; color: #991b1b; }
+        .severity-high { background-color: #fed7aa; color: #c2410c; }
+        .severity-medium { background-color: #fef3c7; color: #92400e; }
+        .severity-low { background-color: #d1fae5; color: #065f46; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">
+                            <i class="fas fa-comments mr-3 text-blue-600"></i>
+                            플러그인 피드백 대시보드
+                        </h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="refreshBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>새로고침
+                        </button>
+                        <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-download mr-2"></i>내보내기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 통계 카드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                            <i class="fas fa-bug text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">총 버그 리포트</p>
+                            <p id="totalBugs" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                            <i class="fas fa-lightbulb text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">기능 요청</p>
+                            <p id="totalFeatures" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600">
+                            <i class="fas fa-star text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">평균 평점</p>
+                            <p id="avgRating" class="text-2xl font-bold text-gray-900">0.0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                            <i class="fas fa-users text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">활성 사용자</p>
+                            <p id="activeUsers" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 차트 섹션 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">버그 리포트 상태 분포</h3>
+                    <canvas id="bugStatusChart" width="400" height="200"></canvas>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">평점 분포</h3>
+                    <canvas id="ratingChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- 필터 및 검색 -->
+            <div class="bg-white rounded-lg shadow p-6 mb-8">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex-1 min-w-64">
+                        <input type="text" id="searchInput" placeholder="검색어를 입력하세요..." 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <select id="pluginFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">모든 플러그인</option>
+                    </select>
+                    
+                    <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">모든 상태</option>
+                        <option value="open">열림</option>
+                        <option value="in_progress">진행 중</option>
+                        <option value="resolved">해결됨</option>
+                        <option value="closed">닫힘</option>
+                    </select>
+                    
+                    <select id="typeFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">모든 유형</option>
+                        <option value="bug">버그 리포트</option>
+                        <option value="feature">기능 요청</option>
+                        <option value="review">리뷰</option>
+                    </select>
+                    
+                    <button id="filterBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        필터 적용
+                    </button>
+                </div>
+            </div>
+
+            <!-- 탭 네비게이션 -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8 px-6">
+                        <button class="tab-btn active py-4 px-1 border-b-2 border-blue-500 text-blue-600 font-medium" data-tab="bugs">
+                            <i class="fas fa-bug mr-2"></i>버그 리포트
+                        </button>
+                        <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="features">
+                            <i class="fas fa-lightbulb mr-2"></i>기능 요청
+                        </button>
+                        <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="reviews">
+                            <i class="fas fa-star mr-2"></i>리뷰
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- 피드백 목록 -->
+            <div id="feedbackList" class="space-y-4">
+                <!-- 동적으로 생성됨 -->
+            </div>
+
+            <!-- 페이지네이션 -->
+            <div id="pagination" class="flex justify-center items-center space-x-2 mt-8">
+                <!-- 동적으로 생성됨 -->
+            </div>
+        </main>
+    </div>
+
+    <!-- 모달 -->
+    <div id="feedbackModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+                <div class="flex items-center justify-between p-6 border-b">
+                    <h3 id="modalTitle" class="text-lg font-semibold text-gray-900">피드백 상세</h3>
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="modalContent" class="p-6">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentTab = 'bugs';
+        let currentPage = 1;
+        let totalPages = 1;
+        let feedbackData = [];
+
+        // 차트 객체
+        let bugStatusChart = null;
+        let ratingChart = null;
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            loadStatistics();
+            loadFeedbackList();
+            setupEventListeners();
+        });
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 탭 변경
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tab = this.dataset.tab;
+                    switchTab(tab);
+                });
+            });
+
+            // 필터 적용
+            document.getElementById('filterBtn').addEventListener('click', function() {
+                currentPage = 1;
+                loadFeedbackList();
+            });
+
+            // 새로고침
+            document.getElementById('refreshBtn').addEventListener('click', function() {
+                loadStatistics();
+                loadFeedbackList();
+            });
+
+            // 모달 닫기
+            document.getElementById('closeModal').addEventListener('click', function() {
+                document.getElementById('feedbackModal').classList.add('hidden');
+            });
+
+            // 모달 외부 클릭 시 닫기
+            document.getElementById('feedbackModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.add('hidden');
+                }
+            });
+        }
+
+        // 탭 변경
+        function switchTab(tab) {
+            currentTab = tab;
+            currentPage = 1;
+            
+            // 탭 버튼 상태 업데이트
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-blue-500', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active', 'border-blue-500', 'text-blue-600');
+            
+            loadFeedbackList();
+        }
+
+        // 차트 초기화
+        function initializeCharts() {
+            // 버그 상태 차트
+            const bugCtx = document.getElementById('bugStatusChart').getContext('2d');
+            bugStatusChart = new Chart(bugCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['열림', '진행 중', '해결됨', '닫힘'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#fbbf24', '#3b82f6', '#10b981', '#6b7280']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // 평점 차트
+            const ratingCtx = document.getElementById('ratingChart').getContext('2d');
+            ratingChart = new Chart(ratingCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['1점', '2점', '3점', '4점', '5점'],
+                    datasets: [{
+                        label: '리뷰 수',
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 통계 로드
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/plugin-feedback/statistics');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalBugs').textContent = data.data.total_bugs || 0;
+                    document.getElementById('totalFeatures').textContent = data.data.total_features || 0;
+                    document.getElementById('avgRating').textContent = (data.data.avg_rating || 0).toFixed(1);
+                    document.getElementById('activeUsers').textContent = data.data.active_users || 0;
+                    
+                    // 차트 업데이트
+                    updateCharts(data.data);
+                }
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+            }
+        }
+
+        // 차트 업데이트
+        function updateCharts(data) {
+            // 버그 상태 차트 업데이트
+            if (data.bug_status_distribution) {
+                bugStatusChart.data.datasets[0].data = [
+                    data.bug_status_distribution.open || 0,
+                    data.bug_status_distribution.in_progress || 0,
+                    data.bug_status_distribution.resolved || 0,
+                    data.bug_status_distribution.closed || 0
+                ];
+                bugStatusChart.update();
+            }
+
+            // 평점 차트 업데이트
+            if (data.rating_distribution) {
+                ratingChart.data.datasets[0].data = [
+                    data.rating_distribution['1'] || 0,
+                    data.rating_distribution['2'] || 0,
+                    data.rating_distribution['3'] || 0,
+                    data.rating_distribution['4'] || 0,
+                    data.rating_distribution['5'] || 0
+                ];
+                ratingChart.update();
+            }
+        }
+
+        // 피드백 목록 로드
+        async function loadFeedbackList() {
+            try {
+                const searchQuery = document.getElementById('searchInput').value;
+                const pluginFilter = document.getElementById('pluginFilter').value;
+                const statusFilter = document.getElementById('statusFilter').value;
+                const typeFilter = document.getElementById('typeFilter').value;
+
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    per_page: 10,
+                    search: searchQuery,
+                    plugin_id: pluginFilter,
+                    status: statusFilter,
+                    type: typeFilter
+                });
+
+                const endpoint = getEndpointByTab();
+                const response = await fetch(`${endpoint}?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    feedbackData = data.data.items || [];
+                    totalPages = data.data.pagination?.pages || 1;
+                    
+                    renderFeedbackList();
+                    renderPagination();
+                }
+            } catch (error) {
+                console.error('피드백 목록 로드 실패:', error);
+            }
+        }
+
+        // 탭별 엔드포인트 반환
+        function getEndpointByTab() {
+            switch (currentTab) {
+                case 'bugs':
+                    return '/api/plugin-feedback/admin/bugs';
+                case 'features':
+                    return '/api/plugin-feedback/admin/features';
+                case 'reviews':
+                    return '/api/plugin-feedback/admin/reviews';
+                default:
+                    return '/api/plugin-feedback/admin/bugs';
+            }
+        }
+
+        // 피드백 목록 렌더링
+        function renderFeedbackList() {
+            const container = document.getElementById('feedbackList');
+            container.innerHTML = '';
+
+            if (feedbackData.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fas fa-inbox text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-500">표시할 피드백이 없습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            feedbackData.forEach(item => {
+                const card = createFeedbackCard(item);
+                container.appendChild(card);
+            });
+        }
+
+        // 피드백 카드 생성
+        function createFeedbackCard(item) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow feedback-card cursor-pointer';
+            
+            const statusClass = getStatusClass(item.status);
+            const severityClass = item.severity ? getSeverityClass(item.severity) : '';
+            
+            card.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <h3 class="text-lg font-semibold text-gray-900">${item.title}</h3>
+                                <span class="status-badge ${statusClass}">${getStatusText(item.status)}</span>
+                                ${item.severity ? `<span class="status-badge ${severityClass}">${getSeverityText(item.severity)}</span>` : ''}
+                            </div>
+                            <p class="text-gray-600 mb-3">${item.description || item.content || ''}</p>
+                            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                <span><i class="fas fa-user mr-1"></i>${item.reporter_name || item.user_name}</span>
+                                <span><i class="fas fa-calendar mr-1"></i>${formatDate(item.created_at)}</span>
+                                ${item.plugin_name ? `<span><i class="fas fa-puzzle-piece mr-1"></i>${item.plugin_name}</span>` : ''}
+                                ${item.rating ? `<span><i class="fas fa-star mr-1"></i>${item.rating}점</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <button class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            card.addEventListener('click', () => showFeedbackDetail(item));
+            return card;
+        }
+
+        // 상태 클래스 반환
+        function getStatusClass(status) {
+            const classes = {
+                'open': 'status-open',
+                'in_progress': 'status-in-progress',
+                'resolved': 'status-resolved',
+                'closed': 'status-closed'
+            };
+            return classes[status] || 'status-open';
+        }
+
+        // 심각도 클래스 반환
+        function getSeverityClass(severity) {
+            const classes = {
+                'critical': 'severity-critical',
+                'high': 'severity-high',
+                'medium': 'severity-medium',
+                'low': 'severity-low'
+            };
+            return classes[severity] || 'severity-medium';
+        }
+
+        // 상태 텍스트 반환
+        function getStatusText(status) {
+            const texts = {
+                'open': '열림',
+                'in_progress': '진행 중',
+                'resolved': '해결됨',
+                'closed': '닫힘'
+            };
+            return texts[status] || status;
+        }
+
+        // 심각도 텍스트 반환
+        function getSeverityText(severity) {
+            const texts = {
+                'critical': '치명적',
+                'high': '높음',
+                'medium': '보통',
+                'low': '낮음'
+            };
+            return texts[severity] || severity;
+        }
+
+        // 날짜 포맷
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR');
+        }
+
+        // 페이지네이션 렌더링
+        function renderPagination() {
+            const container = document.getElementById('pagination');
+            container.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // 이전 페이지 버튼
+            if (currentPage > 1) {
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'px-3 py-2 text-gray-500 hover:text-gray-700';
+                prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                prevBtn.addEventListener('click', () => {
+                    currentPage--;
+                    loadFeedbackList();
+                });
+                container.appendChild(prevBtn);
+            }
+
+            // 페이지 번호
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = `px-3 py-2 mx-1 rounded ${i === currentPage ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'}`;
+                    pageBtn.textContent = i;
+                    pageBtn.addEventListener('click', () => {
+                        currentPage = i;
+                        loadFeedbackList();
+                    });
+                    container.appendChild(pageBtn);
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.className = 'px-3 py-2 text-gray-500';
+                    ellipsis.textContent = '...';
+                    container.appendChild(ellipsis);
+                }
+            }
+
+            // 다음 페이지 버튼
+            if (currentPage < totalPages) {
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'px-3 py-2 text-gray-500 hover:text-gray-700';
+                nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                nextBtn.addEventListener('click', () => {
+                    currentPage++;
+                    loadFeedbackList();
+                });
+                container.appendChild(nextBtn);
+            }
+        }
+
+        // 피드백 상세 보기
+        function showFeedbackDetail(item) {
+            const modal = document.getElementById('feedbackModal');
+            const title = document.getElementById('modalTitle');
+            const content = document.getElementById('modalContent');
+
+            title.textContent = item.title;
+            
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-semibold text-gray-900 mb-2">상세 내용</h4>
+                        <p class="text-gray-600">${item.description || item.content || '내용이 없습니다.'}</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">기본 정보</h4>
+                            <div class="space-y-2 text-sm">
+                                <div><span class="font-medium">상태:</span> <span class="status-badge ${getStatusClass(item.status)}">${getStatusText(item.status)}</span></div>
+                                ${item.severity ? `<div><span class="font-medium">심각도:</span> <span class="status-badge ${getSeverityClass(item.severity)}">${getSeverityText(item.severity)}</span></div>` : ''}
+                                <div><span class="font-medium">작성자:</span> ${item.reporter_name || item.user_name}</div>
+                                <div><span class="font-medium">작성일:</span> ${formatDate(item.created_at)}</div>
+                                ${item.plugin_name ? `<div><span class="font-medium">플러그인:</span> ${item.plugin_name}</div>` : ''}
+                                ${item.rating ? `<div><span class="font-medium">평점:</span> ${item.rating}점</div>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">추가 정보</h4>
+                            <div class="space-y-2 text-sm">
+                                ${item.steps_to_reproduce ? `<div><span class="font-medium">재현 단계:</span> ${item.steps_to_reproduce}</div>` : ''}
+                                ${item.expected_behavior ? `<div><span class="font-medium">예상 동작:</span> ${item.expected_behavior}</div>` : ''}
+                                ${item.actual_behavior ? `<div><span class="font-medium">실제 동작:</span> ${item.actual_behavior}</div>` : ''}
+                                ${item.environment ? `<div><span class="font-medium">환경:</span> ${item.environment}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4 border-t">
+                        <button class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            닫기
+                        </button>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            상태 변경
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        // 자동 새로고침 (30초마다)
+        setInterval(() => {
+            loadStatistics();
+        }, 30000);
+    </script>
+</body>
+</html> 

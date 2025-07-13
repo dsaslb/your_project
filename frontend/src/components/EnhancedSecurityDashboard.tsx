@@ -12,7 +12,6 @@ import { Separator } from '@/components/ui/separator';
 import { 
   Shield, 
   AlertTriangle, 
-  Virus, 
   Eye, 
   Play, 
   Square, 
@@ -400,7 +399,7 @@ const EnhancedSecurityDashboard: React.FC = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
-                <Virus className="w-5 h-5 text-purple-600" />
+                <AlertTriangle className="w-5 h-5 text-purple-600" />
                 <div>
                   <p className="text-sm text-gray-600">활성 악성코드</p>
                   <p className="text-2xl font-bold text-purple-600">{summary.active_malware}</p>
@@ -535,7 +534,7 @@ const EnhancedSecurityDashboard: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Virus className="w-5 h-5 text-purple-600" />
+                <AlertTriangle className="w-5 h-5 text-purple-600" />
                 <span>악성코드 감지</span>
                 <Badge variant="outline">{malwareDetections.length}</Badge>
               </CardTitle>

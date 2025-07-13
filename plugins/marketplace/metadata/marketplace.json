@@ -1,4 +1,4 @@
-﻿{
+{
   "plugins": {
     "your_program_management": {
       "plugin_id": "your_program_management",
@@ -15,15 +15,15 @@
       "homepage": "https://example.com",
       "repository": "https://github.com/example/plugin",
       "support_email": "support@example.com",
-      "registered_at": "2025-07-11T21:23:16.336436",
+      "registered_at": "2025-07-13T16:08:58.017362",
       "status": "published",
       "downloads": 150,
       "rating": 4.5,
       "rating_count": 3,
       "package_path": "plugins\\marketplace\\published\\your_program_management.zip",
-      "file_size": 1858,
-      "checksum": "7cdc04227d35e52da6242ad53313d703e2953fffb95a7cdb2ee20b960d71d60d",
-      "approved_at": "2025-07-11T21:23:16.552849"
+      "file_size": 1862,
+      "checksum": "e7867391acdb3769def58e25f2f8ce726a5e30ebb7a65934914693053550351a",
+      "approved_at": "2025-07-13T16:08:58.252416"
     },
     "analytics_dashboard": {
       "plugin_id": "analytics_dashboard",
@@ -40,15 +40,15 @@
       "homepage": "https://example.com",
       "repository": "https://github.com/example/plugin",
       "support_email": "support@example.com",
-      "registered_at": "2025-07-11T21:23:16.375465",
+      "registered_at": "2025-07-13T16:08:58.065373",
       "status": "published",
       "downloads": 89,
       "rating": 4.5,
       "rating_count": 2,
       "package_path": "plugins\\marketplace\\published\\analytics_dashboard.zip",
       "file_size": 1792,
-      "checksum": "6d85751c24db83a15faebde607e29a37a38c8012189719dc1780d06f0de357d6",
-      "approved_at": "2025-07-11T21:23:16.552849"
+      "checksum": "bc3ffb1d4e868128411cb3c10d68aa9de1a8e4b19be56f24dffdc0dafd30d55c",
+      "approved_at": "2025-07-13T16:08:58.254416"
     },
     "notification_system": {
       "plugin_id": "notification_system",
@@ -65,15 +65,15 @@
       "homepage": "https://example.com",
       "repository": "https://github.com/example/plugin",
       "support_email": "support@example.com",
-      "registered_at": "2025-07-11T21:23:16.415542",
+      "registered_at": "2025-07-13T16:08:58.108382",
       "status": "published",
       "downloads": 67,
       "rating": 3.75,
       "rating_count": 2,
       "package_path": "plugins\\marketplace\\published\\notification_system.zip",
       "file_size": 1812,
-      "checksum": "840f8069a12a4a4876c743b02e5f578bbc28b1c0bc5de5b0f1fddab1a6ae676a",
-      "approved_at": "2025-07-11T21:23:16.552849"
+      "checksum": "5a9bf4f48e5e90f437f32eff980b310ed9aceb67c61f4dcb57551fd84af79e9c",
+      "approved_at": "2025-07-13T16:08:58.256416"
     },
     "security_monitor": {
       "plugin_id": "security_monitor",
@@ -90,14 +90,14 @@
       "homepage": "https://example.com",
       "repository": "https://github.com/example/plugin",
       "support_email": "support@example.com",
-      "registered_at": "2025-07-11T21:23:16.454437",
+      "registered_at": "2025-07-13T16:08:58.155392",
       "status": "pending",
       "downloads": 45,
       "rating": 0.0,
       "rating_count": 0,
       "package_path": "plugins\\marketplace\\pending\\security_monitor.zip",
       "file_size": 1838,
-      "checksum": "176902f87a9ad3b4fc101a22dcf48977261e9205b030c01ce7b7c143aba88cb6"
+      "checksum": "5feb3cbcf9e878273dfbc6718e52fe968196c80544ccc02b9ea3e35dfac710f2"
     },
     "data_sync": {
       "plugin_id": "data_sync",
@@ -114,14 +114,14 @@
       "homepage": "https://example.com",
       "repository": "https://github.com/example/plugin",
       "support_email": "support@example.com",
-      "registered_at": "2025-07-11T21:23:16.496149",
+      "registered_at": "2025-07-13T16:08:58.198402",
       "status": "pending",
       "downloads": 34,
       "rating": 0.0,
       "rating_count": 0,
       "package_path": "plugins\\marketplace\\pending\\data_sync.zip",
       "file_size": 1796,
-      "checksum": "a61b0a07e074afbc786e8224e7e07693550f7cb298eafc3f3ec2669bedb8cdbc"
+      "checksum": "fa1828586464cce520dab853dc3a7f4080e950ec40a3c6e52d8521b6592a8eb1"
     },
     "backup_manager": {
       "plugin_id": "backup_manager",
@@ -138,20 +138,212 @@
       "homepage": "https://example.com",
       "repository": "https://github.com/example/plugin",
       "support_email": "support@example.com",
-      "registered_at": "2025-07-11T21:23:16.537100",
+      "registered_at": "2025-07-13T16:08:58.238411",
       "status": "pending",
       "downloads": 23,
       "rating": 0.0,
       "rating_count": 0,
       "package_path": "plugins\\marketplace\\pending\\backup_manager.zip",
       "file_size": 1808,
-      "checksum": "d4f31d55a584a501ebea01a8e349c4a0c93e07f37e99b24cfd35406785829509"
+      "checksum": "fc1f61ca0a786c899d997b90b7be0741c2f2c20b49e36ad3cede7a4529f01571"
+    },
+    "attendance_module": {
+      "plugin_id": "attendance_module",
+      "name": "출근 관리 모듈",
+      "description": "직원 출근/퇴근 관리, 근무 시간 추적, 출근 통계를 제공하는 모듈입니다.",
+      "author": "Your Program Team",
+      "version": "1.0.0",
+      "category": "attendance",
+      "tags": [
+        "attendance",
+        "employee",
+        "time-tracking"
+      ],
+      "compatibility": [
+        "restaurant",
+        "retail",
+        "service"
+      ],
+      "features": [
+        "출근/퇴근 기록",
+        "근무 시간 계산",
+        "출근 통계 대시보드",
+        "지각/조퇴 관리",
+        "근무 일정 관리"
+      ],
+      "license": "MIT",
+      "homepage": "https://your-program-system.com",
+      "repository": "https://github.com/your-program/modules",
+      "support_email": "support@your-program-system.com",
+      "registered_at": "2025-07-13T16:15:17.166899",
+      "status": "published",
+      "downloads": 120,
+      "rating": 4.42,
+      "rating_count": 5,
+      "package_path": "plugins\\marketplace\\published\\attendance_module.zip",
+      "file_size": 2135,
+      "checksum": "63128eba69f02693bd0a4d807199dd2544c7e0afe52c4464fb8a30270ad2d235",
+      "approved_at": "2025-07-13T16:15:17.180902"
+    },
+    "schedule_module": {
+      "plugin_id": "schedule_module",
+      "name": "일정 관리 모듈",
+      "description": "직원 근무 일정 관리, 교대 근무, 휴가 관리 기능을 제공하는 모듈입니다.",
+      "author": "Your Program Team",
+      "version": "1.0.0",
+      "category": "schedule",
+      "tags": [
+        "schedule",
+        "shift",
+        "vacation"
+      ],
+      "compatibility": [
+        "restaurant",
+        "retail",
+        "service"
+      ],
+      "features": [
+        "근무 일정 생성",
+        "교대 근무 관리",
+        "휴가 신청/승인",
+        "일정 충돌 검사",
+        "일정 알림 기능"
+      ],
+      "license": "MIT",
+      "homepage": "https://your-program-system.com",
+      "repository": "https://github.com/your-program/modules",
+      "support_email": "support@your-program-system.com",
+      "registered_at": "2025-07-13T16:15:17.187904",
+      "status": "published",
+      "downloads": 95,
+      "rating": 4.42,
+      "rating_count": 5,
+      "package_path": "plugins\\marketplace\\published\\schedule_module.zip",
+      "file_size": 2129,
+      "checksum": "34e50bfd917a600f64a13623de1d52f92db7fb6abf6decf4a40c6cd79ac3d9ea",
+      "approved_at": "2025-07-13T16:15:17.201908"
+    },
+    "inventory_module": {
+      "plugin_id": "inventory_module",
+      "name": "재고 관리 모듈",
+      "description": "상품 재고 관리, 입출고 추적, 재고 알림 기능을 제공하는 모듈입니다.",
+      "author": "Your Program Team",
+      "version": "1.0.0",
+      "category": "inventory",
+      "tags": [
+        "inventory",
+        "stock",
+        "warehouse"
+      ],
+      "compatibility": [
+        "restaurant",
+        "retail",
+        "manufacturing"
+      ],
+      "features": [
+        "재고 현황 관리",
+        "입출고 기록",
+        "재고 알림",
+        "재고 분석",
+        "자동 발주 기능"
+      ],
+      "license": "MIT",
+      "homepage": "https://your-program-system.com",
+      "repository": "https://github.com/your-program/modules",
+      "support_email": "support@your-program-system.com",
+      "registered_at": "2025-07-13T16:15:17.208909",
+      "status": "published",
+      "downloads": 78,
+      "rating": 4.42,
+      "rating_count": 5,
+      "package_path": "plugins\\marketplace\\published\\inventory_module.zip",
+      "file_size": 2028,
+      "checksum": "e973c8cbb55a6b9e9f25c70cf7bce3685d81dfa24307322e4df0f42006ce5692",
+      "approved_at": "2025-07-13T16:15:17.226913"
+    },
+    "purchase_module": {
+      "plugin_id": "purchase_module",
+      "name": "구매 관리 모듈",
+      "description": "구매 요청, 승인, 발주, 입고 관리 기능을 제공하는 모듈입니다.",
+      "author": "Your Program Team",
+      "version": "1.0.0",
+      "category": "purchase",
+      "tags": [
+        "purchase",
+        "procurement",
+        "order"
+      ],
+      "compatibility": [
+        "restaurant",
+        "retail",
+        "manufacturing"
+      ],
+      "features": [
+        "구매 요청 관리",
+        "구매 승인 워크플로우",
+        "발주서 생성",
+        "입고 관리",
+        "구매 분석"
+      ],
+      "license": "MIT",
+      "homepage": "https://your-program-system.com",
+      "repository": "https://github.com/your-program/modules",
+      "support_email": "support@your-program-system.com",
+      "registered_at": "2025-07-13T16:15:17.233914",
+      "status": "published",
+      "downloads": 65,
+      "rating": 4.42,
+      "rating_count": 5,
+      "package_path": "plugins\\marketplace\\published\\purchase_module.zip",
+      "file_size": 1998,
+      "checksum": "a4a13b7f60bbf153e5712698e8655342e7d372cbc55ecf215e699f523a8c16d5",
+      "approved_at": "2025-07-13T16:15:17.248919"
+    },
+    "ai_analysis_module": {
+      "plugin_id": "ai_analysis_module",
+      "name": "AI 분석 모듈",
+      "description": "머신러닝을 활용한 데이터 분석, 예측, 인사이트 제공 모듈입니다.",
+      "author": "Your Program Team",
+      "version": "1.0.0",
+      "category": "analytics",
+      "tags": [
+        "ai",
+        "analytics",
+        "prediction",
+        "ml"
+      ],
+      "compatibility": [
+        "restaurant",
+        "retail",
+        "service",
+        "manufacturing"
+      ],
+      "features": [
+        "매출 예측",
+        "고객 행동 분석",
+        "재고 최적화",
+        "인력 계획",
+        "실시간 대시보드"
+      ],
+      "license": "MIT",
+      "homepage": "https://your-program-system.com",
+      "repository": "https://github.com/your-program/modules",
+      "support_email": "support@your-program-system.com",
+      "registered_at": "2025-07-13T16:15:17.256919",
+      "status": "published",
+      "downloads": 45,
+      "rating": 4.42,
+      "rating_count": 5,
+      "package_path": "plugins\\marketplace\\published\\ai_analysis_module.zip",
+      "file_size": 4034,
+      "checksum": "2106fdda65fb6a05cd5cfc414560ef3c94d0b8f52cd7bd0586276ba1eb14599b",
+      "approved_at": "2025-07-13T16:15:17.275925"
     }
   },
   "categories": [],
   "statistics": {
-    "total_plugins": 3,
+    "total_plugins": 8,
     "total_downloads": 0,
-    "total_ratings": 7
+    "total_ratings": 32
   }
 }

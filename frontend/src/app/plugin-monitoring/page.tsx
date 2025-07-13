@@ -12,7 +12,6 @@ import { Switch } from '@/components/ui/switch';
 import { 
   Activity, 
   Cpu, 
-  Memory, 
   HardDrive, 
   AlertTriangle, 
   CheckCircle, 
@@ -22,7 +21,7 @@ import {
   RefreshCw,
   Play,
   Pause,
-  Stop
+  Square
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
@@ -331,7 +330,7 @@ const PluginMonitoringDashboard: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">시스템 메모리</CardTitle>
-            <Memory className="h-4 w-4 text-muted-foreground" />
+                            <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

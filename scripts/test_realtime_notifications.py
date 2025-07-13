@@ -8,6 +8,7 @@ import requests
 import json
 import time
 import logging
+import os
 from datetime import datetime
 from typing import Dict, Any
 
@@ -261,11 +262,47 @@ class RealtimeNotificationsTester:
             filename = f"realtime_notifications_test_results_{timestamp}.json"
         
         try:
+            # 기존 테스트 결과 파일들 정리 (7일 이상 된 파일 삭제)
+            self.cleanup_old_test_files()
+            
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
             logger.info(f"테스트 결과가 {filename}에 저장되었습니다.")
         except Exception as e:
             logger.error(f"테스트 결과 저장 실패: {e}")
+    
+    def cleanup_old_test_files(self, days_to_keep: int = 7):
+        """7일 이상 된 테스트 결과 파일들을 자동으로 삭제"""
+        try:
+            import glob
+            from datetime import datetime, timedelta
+            
+            # 현재 디렉토리에서 테스트 결과 파일들 찾기
+            pattern = "realtime_notifications_test_results_*.json"
+            files = glob.glob(pattern)
+            
+            cutoff_date = datetime.now() - timedelta(days=days_to_keep)
+            deleted_count = 0
+            
+            for file_path in files:
+                try:
+                    # 파일명에서 날짜 추출 (YYYYMMDD_HHMMSS 형식)
+                    filename = os.path.basename(file_path)
+                    date_str = filename.replace("realtime_notifications_test_results_", "").replace(".json", "")
+                    file_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S")
+                    
+                    if file_date < cutoff_date:
+                        os.remove(file_path)
+                        deleted_count += 1
+                        logger.info(f"오래된 테스트 파일 삭제: {filename}")
+                except Exception as e:
+                    logger.warning(f"파일 삭제 중 오류 ({file_path}): {e}")
+            
+            if deleted_count > 0:
+                logger.info(f"총 {deleted_count}개의 오래된 테스트 파일이 정리되었습니다.")
+                
+        except Exception as e:
+            logger.error(f"테스트 파일 정리 중 오류: {e}")
 
 def main():
     """메인 함수"""

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { Bell, X, AlertTriangle, AlertCircle, Info, CheckCircle } from 'lucide-react';
 
 interface Alert {
@@ -208,40 +208,13 @@ const EnhancedRealtimeAlerts: React.FC = () => {
     const Icon = severityIcons[alert.severity];
     const bgColor = severityColors[alert.severity];
     
-    toast.custom((t) => (
-      <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full ${bgColor} shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
-        <div className="flex-1 w-0 p-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <Icon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sm font-medium text-white">
-                {alert.title}
-              </p>
-              <p className="mt-1 text-sm text-white opacity-90">
-                {alert.message}
-              </p>
-              {alert.plugin_id && (
-                <p className="mt-1 text-xs text-white opacity-75">
-                  플러그인: {alert.plugin_name || alert.plugin_id}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex border-l border-white border-opacity-20">
-          <button
-            onClick={() => toast.dismiss(t.id)}
-            className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-white hover:bg-white hover:bg-opacity-10 focus:outline-none focus:ring-2 focus:ring-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-    ), {
+    toast(alert.title, {
+      description: alert.message,
       duration: 8000,
-      position: 'top-right',
+      action: {
+        label: '확인',
+        onClick: () => {},
+      },
     });
   };
 

@@ -48,12 +48,10 @@ import {
   Settings2,
   Cog,
   Wrench,
-  Tool,
   Archive,
   FolderOpen,
   FileCode,
   FileJson,
-  FileYaml,
   FileArchive
 } from 'lucide-react'
 import PluginSettingsManager from '@/components/PluginSettingsManager'
@@ -192,7 +190,7 @@ export default function PluginSettingsPage() {
       let aValue = a[sortBy as keyof Plugin]
       let bValue = b[sortBy as keyof Plugin]
       
-      if (typeof aValue === 'string') {
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
         aValue = aValue.toLowerCase()
         bValue = bValue.toLowerCase()
       }

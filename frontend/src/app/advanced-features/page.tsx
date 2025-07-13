@@ -6,6 +6,7 @@ import RealTimeMonitor from '@/components/RealTimeMonitor';
 import SecurityManager from '@/components/SecurityManager';
 import DataVisualization from '@/components/DataVisualization';
 import MobileOptimizer from '@/components/MobileOptimizer';
+import OfflineManager from '@/components/OfflineManager';
 
 export default function AdvancedFeaturesPage() {
   return (

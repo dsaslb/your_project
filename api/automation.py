@@ -16,132 +16,51 @@ AUTOMATION_TYPES = {
     'maintenance_reminder': '정비 알림'
 }
 
-# 더미 자동화 규칙 데이터
+# 자동화 규칙 데이터 생성 (실제 데이터베이스 기반)
 def generate_automation_rules():
-    """자동화 규칙 데이터 생성"""
-    rules = [
+    """실제 자동화 규칙 데이터 생성"""
+    from models import AutomationRule
+    
+    # 실제 데이터베이스에서 자동화 규칙 조회
+    rules = AutomationRule.query.filter_by(is_active=True).all()
+    
+    return [
         {
-            'id': 1,
-            'name': '재고 부족 자동 알림',
-            'type': 'inventory_alert',
-            'description': '재고가 20% 이하로 떨어지면 자동으로 알림을 보냅니다.',
-            'conditions': {
-                'threshold': 20,
-                'categories': ['신선식품', '냉동식품']
-            },
-            'actions': [
-                {'type': 'notification', 'target': 'admin', 'message': '재고 부족 알림'},
-                {'type': 'email', 'target': 'manager', 'subject': '재고 부족 알림'}
-            ],
-            'is_active': True,
-            'created_at': '2024-01-15T10:00:00Z',
-            'last_triggered': '2024-01-16T14:30:00Z'
-        },
-        {
-            'id': 2,
-            'name': '직원 스케줄 자동 생성',
-            'type': 'staff_schedule',
-            'description': '매주 일요일에 다음 주 스케줄을 자동으로 생성합니다.',
-            'conditions': {
-                'frequency': 'weekly',
-                'day_of_week': 'sunday',
-                'time': '09:00'
-            },
-            'actions': [
-                {'type': 'schedule_generation', 'template': 'default'},
-                {'type': 'notification', 'target': 'all_staff', 'message': '새 스케줄이 생성되었습니다.'}
-            ],
-            'is_active': True,
-            'created_at': '2024-01-10T09:00:00Z',
-            'last_triggered': '2024-01-14T09:00:00Z'
-        },
-        {
-            'id': 3,
-            'name': '주문량 급증 알림',
-            'type': 'order_optimization',
-            'description': '시간당 주문량이 평균의 150%를 초과하면 알림을 보냅니다.',
-            'conditions': {
-                'threshold': 150,
-                'time_window': '1_hour'
-            },
-            'actions': [
-                {'type': 'notification', 'target': 'kitchen', 'message': '주문량 급증'},
-                {'type': 'staff_alert', 'target': 'available_staff'}
-            ],
-            'is_active': True,
-            'created_at': '2024-01-12T11:00:00Z',
-            'last_triggered': '2024-01-16T18:45:00Z'
-        },
-        {
-            'id': 4,
-            'name': '청소 시간 알림',
-            'type': 'cleaning_reminder',
-            'description': '매일 오후 9시에 청소 알림을 보냅니다.',
-            'conditions': {
-                'frequency': 'daily',
-                'time': '21:00'
-            },
-            'actions': [
-                {'type': 'notification', 'target': 'cleaning_staff', 'message': '청소 시간입니다.'},
-                {'type': 'checklist_reminder'}
-            ],
-            'is_active': True,
-            'created_at': '2024-01-08T15:00:00Z',
-            'last_triggered': '2024-01-16T21:00:00Z'
+            'id': rule.id,
+            'name': rule.name,
+            'type': rule.trigger_type,
+            'description': rule.description,
+            'conditions': rule.trigger_config,
+            'actions': rule.action_config,
+            'is_active': rule.is_active,
+            'created_at': rule.created_at.isoformat(),
+            'last_triggered': rule.updated_at.isoformat() if rule.updated_at else None
         }
+        for rule in rules
     ]
-    return rules
 
-# 더미 알림 데이터
+# 알림 데이터 생성 (실제 데이터베이스 기반)
 def generate_notifications():
-    """알림 데이터 생성"""
-    notifications = [
+    """실제 알림 데이터 생성"""
+    from models import Notification
+    
+    # 실제 데이터베이스에서 알림 조회
+    notifications = Notification.query.order_by(Notification.created_at.desc()).limit(10).all()
+    
+    return [
         {
-            'id': 1,
-            'type': 'inventory_alert',
-            'title': '재고 부족 알림',
-            'message': '김치, 된장이 부족합니다. 발주가 필요합니다.',
-            'priority': 'high',
-            'status': 'unread',
-            'created_at': '2024-01-16T14:30:00Z',
-            'target_role': 'admin',
-            'action_required': True
-        },
-        {
-            'id': 2,
-            'type': 'order_alert',
-            'title': '주문량 급증',
-            'message': '현재 시간대 주문량이 평균의 180%를 초과했습니다.',
-            'priority': 'medium',
-            'status': 'read',
-            'created_at': '2024-01-16T18:45:00Z',
-            'target_role': 'manager',
-            'action_required': False
-        },
-        {
-            'id': 3,
-            'type': 'schedule_reminder',
-            'title': '스케줄 생성 완료',
-            'message': '다음 주 직원 스케줄이 자동으로 생성되었습니다.',
-            'priority': 'low',
-            'status': 'read',
-            'created_at': '2024-01-14T09:00:00Z',
-            'target_role': 'admin',
-            'action_required': False
-        },
-        {
-            'id': 4,
-            'type': 'cleaning_reminder',
-            'title': '청소 시간',
-            'message': '오늘의 청소 작업을 시작해주세요.',
-            'priority': 'medium',
-            'status': 'unread',
-            'created_at': '2024-01-16T21:00:00Z',
-            'target_role': 'employee',
-            'action_required': True
+            'id': notification.id,
+            'type': notification.category,
+            'title': notification.title or '알림',
+            'message': notification.content,
+            'priority': notification.priority,
+            'status': 'read' if notification.is_read else 'unread',
+            'created_at': notification.created_at.isoformat(),
+            'target_role': notification.recipient_role,
+            'action_required': notification.priority in ['urgent', 'important']
         }
+        for notification in notifications
     ]
-    return notifications
 
 @automation_bp.route('/api/automation/rules', methods=['GET'])
 @jwt_required()

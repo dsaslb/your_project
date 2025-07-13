@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 관리 - your_program Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/theme.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🍽️ your_program</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">관리자 대시보드</p>
+            </div>
+            
+            <nav class="mt-6">
+                <div class="px-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">메인 메뉴</h3>
+                </div>
+                
+                <a href="/admin_dashboard" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    대시보드
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">브랜드 관리</h3>
+                </div>
+                
+                <div class="space-y-1">
+                    <a href="/admin/brand-manager-approval" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-user-check mr-3"></i>
+                        브랜드 관리자 승인
+                    </a>
+                    <a href="/admin/brand-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-building mr-3"></i>
+                        브랜드별 관리
+                    </a>
+                </div>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">매장 관리</h3>
+                </div>
+                
+                <a href="/admin/store-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-store mr-3"></i>
+                    매장별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">직원 관리</h3>
+                </div>
+                
+                <a href="/admin/employee-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-users mr-3"></i>
+                    직원별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">모듈 관리</h3>
+                </div>
+                
+                <a href="/admin/module-marketplace" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-puzzle-piece mr-3"></i>
+                    모듈 마켓플레이스
+                </a>
+                <a href="/admin/module-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500">
+                    <i class="fas fa-cogs mr-3"></i>
+                    모듈 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">시스템 관리</h3>
+                </div>
+                
+                <a href="/admin/feedback-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-comments mr-3"></i>
+                    피드백 관리
+                </a>
+            </nav>
+            
+            <div class="absolute bottom-0 w-64 p-6">
+                <div class="flex items-center justify-between">
+                    <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                    <a href="/auth/logout" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 overflow-auto">
+            <!-- 헤더 -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">모듈 관리</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">설치된 모듈을 관리하고 설정을 변경하세요</p>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="p-6">
+                <!-- 통계 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                                <i class="fas fa-puzzle-piece text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">설치된 모듈</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="installed-modules">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                                <i class="fas fa-play text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">활성 모듈</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="active-modules">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                                <i class="fas fa-pause text-yellow-600 dark:text-yellow-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">비활성 모듈</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="inactive-modules">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                                <i class="fas fa-exclamation-triangle text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">오류 모듈</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="error-modules">0개</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 모듈 목록 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">설치된 모듈 목록</h3>
+                            <button onclick="refreshModules()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-sync-alt mr-2"></i>새로고침
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">모듈명</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">버전</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">설치일</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="modules-table">
+                                    <!-- 모듈 목록이 여기에 동적으로 로드됩니다 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 모듈 성능 모니터링 -->
+                <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">모듈 성능 모니터링</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">CPU 사용률</h4>
+                                <canvas id="cpuChart" width="400" height="200"></canvas>
+                            </div>
+                            <div>
+                                <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">메모리 사용률</h4>
+                                <canvas id="memoryChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 모듈 설정 모달 -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">모듈 설정</h3>
+                </div>
+                <div class="p-6">
+                    <form id="settings-form">
+                        <div id="settings-content">
+                            <!-- 설정 내용이 여기에 동적으로 로드됩니다 -->
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="button" id="cancel-settings" class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                                취소
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                저장
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cpuChart, memoryChart;
+
+        // 모듈 데이터 로드
+        function loadModules() {
+            fetch('/api/modules/installed')
+                .then(response => response.json())
+                .then(data => {
+                    updateStatistics(data.stats);
+                    renderModulesTable(data.modules);
+                })
+                .catch(error => {
+                    console.error('Error loading modules:', error);
+                });
+        }
+
+        // 통계 업데이트
+        function updateStatistics(stats) {
+            document.getElementById('installed-modules').textContent = stats.installed + '개';
+            document.getElementById('active-modules').textContent = stats.active + '개';
+            document.getElementById('inactive-modules').textContent = stats.inactive + '개';
+            document.getElementById('error-modules').textContent = stats.error + '개';
+        }
+
+        // 모듈 테이블 렌더링
+        function renderModulesTable(modules) {
+            const tbody = document.getElementById('modules-table');
+            tbody.innerHTML = '';
+
+            if (modules.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            설치된 모듈이 없습니다.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            modules.forEach(module => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <div class="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                                    <i class="fas fa-puzzle-piece text-gray-600 dark:text-gray-400"></i>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">${module.name}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${module.description}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        v${module.version}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${getStatusClass(module.status)}">
+                            ${getStatusText(module.status)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        ${new Date(module.installed_at).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div class="flex space-x-2">
+                            <button onclick="toggleModule('${module.id}')" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                ${module.status === 'active' ? '비활성화' : '활성화'}
+                            </button>
+                            <button onclick="openSettings('${module.id}')" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
+                                설정
+                            </button>
+                            <button onclick="uninstallModule('${module.id}')" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                제거
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 상태 클래스 반환
+        function getStatusClass(status) {
+            const classes = {
+                'active': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                'inactive': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+                'error': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+            };
+            return classes[status] || classes['inactive'];
+        }
+
+        // 상태 텍스트 반환
+        function getStatusText(status) {
+            const texts = {
+                'active': '활성',
+                'inactive': '비활성',
+                'error': '오류'
+            };
+            return texts[status] || '알 수 없음';
+        }
+
+        // 모듈 토글
+        function toggleModule(moduleId) {
+            fetch(`/api/modules/${moduleId}/toggle`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadModules();
+                } else {
+                    alert('모듈 상태 변경에 실패했습니다: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling module:', error);
+                alert('모듈 상태 변경에 실패했습니다.');
+            });
+        }
+
+        // 모듈 제거
+        function uninstallModule(moduleId) {
+            if (!confirm('이 모듈을 제거하시겠습니까?')) return;
+
+            fetch(`/api/modules/${moduleId}/uninstall`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('모듈이 성공적으로 제거되었습니다.');
+                    loadModules();
+                } else {
+                    alert('모듈 제거에 실패했습니다: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error uninstalling module:', error);
+                alert('모듈 제거에 실패했습니다.');
+            });
+        }
+
+        // 설정 모달 열기
+        function openSettings(moduleId) {
+            fetch(`/api/modules/${moduleId}/settings`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderSettings(data.settings, moduleId);
+                        document.getElementById('settings-modal').classList.remove('hidden');
+                    } else {
+                        alert('설정을 불러오는데 실패했습니다: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading settings:', error);
+                    alert('설정을 불러오는데 실패했습니다.');
+                });
+        }
+
+        // 설정 렌더링
+        function renderSettings(settings, moduleId) {
+            const container = document.getElementById('settings-content');
+            container.innerHTML = '';
+
+            Object.entries(settings).forEach(([key, setting]) => {
+                const div = document.createElement('div');
+                div.className = 'mb-4';
+                
+                const label = document.createElement('label');
+                label.className = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2';
+                label.textContent = setting.label || key;
+                
+                const input = document.createElement('input');
+                input.type = setting.type || 'text';
+                input.name = key;
+                input.value = setting.value || '';
+                input.className = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white';
+                
+                if (setting.type === 'checkbox') {
+                    input.checked = setting.value;
+                }
+                
+                div.appendChild(label);
+                div.appendChild(input);
+                container.appendChild(div);
+            });
+
+            // 폼 제출 이벤트 설정
+            document.getElementById('settings-form').onsubmit = function(e) {
+                e.preventDefault();
+                saveSettings(moduleId);
+            };
+        }
+
+        // 설정 저장
+        function saveSettings(moduleId) {
+            const form = document.getElementById('settings-form');
+            const formData = new FormData(form);
+            const settings = {};
+            
+            for (let [key, value] of formData.entries()) {
+                settings[key] = value;
+            }
+
+            fetch(`/api/modules/${moduleId}/settings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('설정이 저장되었습니다.');
+                    document.getElementById('settings-modal').classList.add('hidden');
+                } else {
+                    alert('설정 저장에 실패했습니다: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving settings:', error);
+                alert('설정 저장에 실패했습니다.');
+            });
+        }
+
+        // 모듈 새로고침
+        function refreshModules() {
+            loadModules();
+        }
+
+        // 성능 차트 초기화
+        function initPerformanceCharts() {
+            const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+            const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+
+            cpuChart = new Chart(cpuCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'CPU 사용률 (%)',
+                        data: [],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            memoryChart = new Chart(memoryCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '메모리 사용률 (%)',
+                        data: [],
+                        borderColor: 'rgb(16, 185, 129)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        // 성능 데이터 업데이트
+        function updatePerformanceData() {
+            fetch('/api/modules/performance')
+                .then(response => response.json())
+                .then(data => {
+                    const now = new Date().toLocaleTimeString();
+                    
+                    // CPU 차트 업데이트
+                    cpuChart.data.labels.push(now);
+                    cpuChart.data.datasets[0].data.push(data.cpu_usage);
+                    if (cpuChart.data.labels.length > 10) {
+                        cpuChart.data.labels.shift();
+                        cpuChart.data.datasets[0].data.shift();
+                    }
+                    cpuChart.update();
+
+                    // 메모리 차트 업데이트
+                    memoryChart.data.labels.push(now);
+                    memoryChart.data.datasets[0].data.push(data.memory_usage);
+                    if (memoryChart.data.labels.length > 10) {
+                        memoryChart.data.labels.shift();
+                        memoryChart.data.datasets[0].data.shift();
+                    }
+                    memoryChart.update();
+                })
+                .catch(error => {
+                    console.error('Error updating performance data:', error);
+                });
+        }
+
+        // 모달 닫기
+        document.getElementById('cancel-settings').addEventListener('click', function() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        });
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModules();
+            initPerformanceCharts();
+            
+            // 성능 데이터 주기적 업데이트
+            setInterval(updatePerformanceData, 5000);
+        });
+    </script>
+</body>
+</html> 

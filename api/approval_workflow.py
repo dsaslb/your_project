@@ -6,6 +6,7 @@ import json
 
 from extensions import db
 from models import User, ApprovalWorkflow, ImprovementRequest, AIImprovementSuggestion
+from core.backend.approval_workflow_system import ApprovalWorkflowSystem
 
 approval_workflow_bp = Blueprint('approval_workflow', __name__)
 

@@ -12,6 +12,9 @@ try:
 except ImportError:
     enhanced_security_monitor = None
 
+# SQLite import for database operations
+import sqlite3
+
 logger = logging.getLogger(__name__)
 
 enhanced_security_bp = Blueprint('enhanced_security', __name__, url_prefix='/api/enhanced-security')

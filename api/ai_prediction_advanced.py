@@ -17,6 +17,7 @@ import json
 from models import db, Order, User, Branch, Brand, InventoryItem
 from core.backend.ai_prediction import AIPredictionEngine, PredictionType, ModelType
 from utils.alert_notifier import send_alert
+from core.backend.advanced_ai_prediction import AdvancedAIPredictionEngine
 
 logger = logging.getLogger(__name__)
 

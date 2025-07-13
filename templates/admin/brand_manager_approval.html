@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>브랜드 관리자 승인 - your_program Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="/static/js/theme.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🍽️ your_program</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">관리자 대시보드</p>
+            </div>
+            
+            <nav class="mt-6">
+                <div class="px-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">메인 메뉴</h3>
+                </div>
+                
+                <a href="/admin_dashboard" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    대시보드
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">브랜드 관리</h3>
+                </div>
+                
+                <div class="space-y-1">
+                    <a href="/admin/brand-manager-approval" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500">
+                        <i class="fas fa-user-check mr-3"></i>
+                        브랜드 관리자 승인
+                    </a>
+                    <a href="/admin/brand-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-building mr-3"></i>
+                        브랜드별 관리
+                    </a>
+                </div>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">매장 관리</h3>
+                </div>
+                
+                <a href="/admin/store-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-store mr-3"></i>
+                    매장별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">직원 관리</h3>
+                </div>
+                
+                <a href="/admin/employee-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-users mr-3"></i>
+                    직원별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">시스템 관리</h3>
+                </div>
+                
+
+                <a href="/admin/feedback-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-comments mr-3"></i>
+                    피드백 관리
+                </a>
+            </nav>
+            
+            <div class="absolute bottom-0 w-64 p-6">
+                <div class="flex items-center justify-between">
+                    <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                    <a href="/auth/logout" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 overflow-auto">
+            <!-- 헤더 -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">브랜드 관리자 승인</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">브랜드 관리자 신청을 승인하거나 거절할 수 있습니다</p>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="p-6">
+                <!-- 환영 메시지 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        브랜드 관리자 승인 관리 👨‍💼
+                    </h2>
+                    <p class="text-gray-600 dark:text-gray-400">
+                        백다방, 초선마리, 카페베네, 스타벅스 등의 브랜드 관리자 신청을 승인하거나 거절할 수 있습니다. 
+                        승인된 관리자는 해당 브랜드의 매장들을 관리할 수 있습니다.
+                    </p>
+                </div>
+
+                <!-- 브랜드별 통계 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                                <i class="fas fa-store text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 브랜드</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-brands">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                                <i class="fas fa-building text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 매장</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-stores">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                                <i class="fas fa-clock text-yellow-600 dark:text-yellow-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">승인 대기</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="pending-managers">0명</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                                <i class="fas fa-check-circle text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">승인 완료</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="approved-managers">0명</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 브랜드별 요약 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">브랜드별 요약</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="brand-summary">
+                            <!-- 브랜드별 요약이 여기에 동적으로 로드됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 브랜드 관리자 목록 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">브랜드 관리자 목록</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">사용자명</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">이메일</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">브랜드</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">담당 매장</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">신청일</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">액션</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="managers-table-body">
+                                <!-- 데이터가 여기에 동적으로 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // 브랜드별 요약 로드
+        function loadBrandSummary() {
+            fetch('/api/admin/brand_stats')
+                .then(response => response.json())
+                .then(data => {
+                    const brandSummary = document.getElementById('brand-summary');
+                    brandSummary.innerHTML = '';
+                    
+                    let totalBrands = 0;
+                    let totalStores = 0;
+                    let totalManagers = 0;
+                    let pendingManagers = 0;
+                    let approvedManagers = 0;
+                    
+                    data.stats.forEach(brand => {
+                        totalBrands++;
+                        totalStores += brand.store_count;
+                        
+                        const brandCard = document.createElement('div');
+                        brandCard.className = 'bg-gray-50 dark:bg-gray-700 rounded-lg p-4';
+                        brandCard.innerHTML = `
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-gray-900 dark:text-white">${brand.brand_name}</h4>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">${brand.brand_code}</span>
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                <p>매장: ${brand.store_count}개</p>
+                                <p>직원: ${brand.employee_count}명</p>
+                                <p>주문: ${brand.order_count}건</p>
+                            </div>
+                        `;
+                        brandSummary.appendChild(brandCard);
+                    });
+                    
+                    // 통계 업데이트
+                    document.getElementById('total-brands').textContent = totalBrands + '개';
+                    document.getElementById('total-stores').textContent = totalStores + '개';
+                })
+                .catch(error => {
+                    console.error('Error loading brand summary:', error);
+                });
+        }
+
+        // 브랜드 관리자 목록 로드
+        function loadBrandManagers() {
+            fetch('/api/admin/users?role=brand_manager')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('managers-table-body');
+                    tableBody.innerHTML = '';
+                    
+                    let pendingManagers = 0;
+                    let approvedManagers = 0;
+                    
+                    data.users.forEach(manager => {
+                        if (manager.status === 'pending') {
+                            pendingManagers++;
+                        } else if (manager.status === 'approved') {
+                            approvedManagers++;
+                        }
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                ${manager.name || manager.username}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${manager.email}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${manager.brand_name || '-'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${manager.branch_name || '-'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    manager.status === 'approved' 
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                        : manager.status === 'pending'
+                                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                }">
+                                    ${manager.status === 'approved' ? '승인됨' : 
+                                      manager.status === 'pending' ? '대기중' : '거절됨'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${manager.created_at ? new Date(manager.created_at).toLocaleDateString('ko-KR') : '-'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                ${manager.status === 'pending' ? `
+                                    <button onclick="approveManager(${manager.id})" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3">
+                                        승인
+                                    </button>
+                                    <button onclick="rejectManager(${manager.id})" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                        거절
+                                    </button>
+                                ` : '-'}
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // 통계 업데이트
+                    document.getElementById('pending-managers').textContent = pendingManagers + '명';
+                    document.getElementById('approved-managers').textContent = approvedManagers + '명';
+                })
+                .catch(error => {
+                    console.error('Error loading brand managers:', error);
+                });
+        }
+        
+        // 브랜드 관리자 승인
+        function approveManager(userId) {
+            if (confirm('이 사용자를 브랜드 관리자로 승인하시겠습니까?')) {
+                fetch(`/api/admin/user/${userId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: 'approved'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('브랜드 관리자가 승인되었습니다.');
+                        loadBrandManagers();
+                        loadBrandSummary();
+                    } else {
+                        alert('승인 처리 중 오류가 발생했습니다: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error approving manager:', error);
+                    alert('승인 처리 중 오류가 발생했습니다.');
+                });
+            }
+        }
+        
+        // 브랜드 관리자 거절
+        function rejectManager(userId) {
+            if (confirm('이 사용자의 브랜드 관리자 신청을 거절하시겠습니까?')) {
+                fetch(`/api/admin/user/${userId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: 'rejected'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('브랜드 관리자 신청이 거절되었습니다.');
+                        loadBrandManagers();
+                        loadBrandSummary();
+                    } else {
+                        alert('거절 처리 중 오류가 발생했습니다: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error rejecting manager:', error);
+                    alert('거절 처리 중 오류가 발생했습니다.');
+                });
+            }
+        }
+        
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBrandSummary();
+            loadBrandManagers();
+            
+            // 30초마다 데이터 새로고침
+            setInterval(() => {
+                loadBrandSummary();
+                loadBrandManagers();
+            }, 30000);
+        });
+    </script>
+</body>
+</html> 

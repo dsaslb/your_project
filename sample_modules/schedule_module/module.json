@@ -1,0 +1,57 @@
+{
+  "name": "스케줄 관리 모듈",
+  "version": "1.0.0",
+  "description": "직원들의 근무 스케줄을 관리하고 자동 배정하는 모듈입니다.",
+  "author": "your_program 개발팀",
+  "category": "schedule",
+  "tags": ["스케줄", "근무관리", "자동배정", "교대근무"],
+  "compatibility": {
+    "min_version": "1.0.0",
+    "max_version": "2.0.0",
+    "industries": ["restaurant", "retail", "service", "hospital"],
+    "brands": ["all"]
+  },
+  "requirements": [
+    "flask>=2.0.0",
+    "sqlalchemy>=1.4.0",
+    "python-dateutil>=2.8.0"
+  ],
+  "features": [
+    "자동 스케줄 생성",
+    "교대근무 관리",
+    "휴가 신청/승인",
+    "인력 최적화",
+    "스케줄 충돌 감지"
+  ],
+  "api_endpoints": [
+    "/api/schedule/create",
+    "/api/schedule/update",
+    "/api/schedule/auto-generate",
+    "/api/schedule/conflicts"
+  ],
+  "permissions": {
+    "view": ["employee", "manager", "admin"],
+    "edit": ["manager", "admin"],
+    "approve": ["admin"]
+  },
+  "settings": {
+    "work_shifts": {
+      "type": "object",
+      "default": {
+        "morning": {"start": "06:00", "end": "14:00"},
+        "afternoon": {"start": "14:00", "end": "22:00"},
+        "night": {"start": "22:00", "end": "06:00"}
+      }
+    },
+    "auto_scheduling": {
+      "type": "boolean",
+      "default": true,
+      "description": "자동 스케줄 생성 사용 여부"
+    },
+    "min_rest_hours": {
+      "type": "integer",
+      "default": 11,
+      "description": "최소 휴식 시간 (시간)"
+    }
+  }
+} 

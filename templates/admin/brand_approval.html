@@ -1,0 +1,386 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}브랜드 관리자 승인{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-check"></i>
+                        브랜드 관리자 승인
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-primary" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i> 새로고침
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 통계 카드 -->
+                    <div class="row mb-4">
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-info">
+                                <div class="inner">
+                                    <h3 id="total-brands">0</h3>
+                                    <p>전체 브랜드</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-warning">
+                                <div class="inner">
+                                    <h3 id="pending-approvals">0</h3>
+                                    <p>승인 대기</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-success">
+                                <div class="inner">
+                                    <h3 id="active-brands">0</h3>
+                                    <p>활성 브랜드</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-danger">
+                                <div class="inner">
+                                    <h3 id="total-staff">0</h3>
+                                    <p>전체 직원</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 승인 대기 목록 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">승인 대기 중인 브랜드 관리자</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped" id="approval-table">
+                                    <thead>
+                                        <tr>
+                                            <th>신청자</th>
+                                            <th>이메일</th>
+                                            <th>브랜드명</th>
+                                            <th>신청일시</th>
+                                            <th>상태</th>
+                                            <th>작업</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="approval-tbody">
+                                        <!-- 데이터가 여기에 로드됩니다 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 브랜드 통계 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">브랜드별 통계</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped" id="brand-stats-table">
+                                    <thead>
+                                        <tr>
+                                            <th>브랜드명</th>
+                                            <th>관리자</th>
+                                            <th>매장 수</th>
+                                            <th>직원 수</th>
+                                            <th>상태</th>
+                                            <th>등록일</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="brand-stats-tbody">
+                                        <!-- 데이터가 여기에 로드됩니다 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 승인 모달 -->
+<div class="modal fade" id="approvalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">브랜드 관리자 승인</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>정말로 이 브랜드 관리자를 승인하시겠습니까?</p>
+                <div id="approval-details"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-success" onclick="approveUser()">승인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 거절 모달 -->
+<div class="modal fade" id="rejectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">브랜드 관리자 거절</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>브랜드 관리자 신청을 거절하시겠습니까?</p>
+                <div id="rejection-details"></div>
+                <div class="form-group">
+                    <label for="rejection-reason">거절 사유</label>
+                    <textarea class="form-control" id="rejection-reason" rows="3" placeholder="거절 사유를 입력하세요"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-danger" onclick="rejectUser()">거절</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentUserId = null;
+
+// 페이지 로드 시 데이터 로드
+$(document).ready(function() {
+    loadApprovalData();
+    loadBrandStats();
+});
+
+// 승인 대기 데이터 로드
+function loadApprovalData() {
+    $.ajax({
+        url: '/admin/brand-approval/api/pending-approvals',
+        method: 'GET',
+        success: function(response) {
+            if (response.success) {
+                displayApprovalData(response.approvals);
+                $('#pending-approvals').text(response.total_count);
+            } else {
+                showAlert('오류', response.error, 'error');
+            }
+        },
+        error: function() {
+            showAlert('오류', '데이터 로드 중 오류가 발생했습니다.', 'error');
+        }
+    });
+}
+
+// 브랜드 통계 데이터 로드
+function loadBrandStats() {
+    $.ajax({
+        url: '/admin/brand-approval/api/brand-stats',
+        method: 'GET',
+        success: function(response) {
+            if (response.success) {
+                displayBrandStats(response.brand_stats, response.total_stats);
+            } else {
+                showAlert('오류', response.error, 'error');
+            }
+        },
+        error: function() {
+            showAlert('오류', '통계 데이터 로드 중 오류가 발생했습니다.', 'error');
+        }
+    });
+}
+
+// 승인 대기 데이터 표시
+function displayApprovalData(approvals) {
+    const tbody = $('#approval-tbody');
+    tbody.empty();
+    
+    if (approvals.length === 0) {
+        tbody.append('<tr><td colspan="6" class="text-center">승인 대기 중인 신청이 없습니다.</td></tr>');
+        return;
+    }
+    
+    approvals.forEach(function(approval) {
+        const row = `
+            <tr>
+                <td>${approval.name}</td>
+                <td>${approval.email}</td>
+                <td>${approval.brand_name}</td>
+                <td>${approval.request_date}</td>
+                <td><span class="badge badge-warning">승인 대기</span></td>
+                <td>
+                    <button class="btn btn-sm btn-success" onclick="showApprovalModal(${approval.user_id}, '${approval.name}', '${approval.brand_name}')">
+                        <i class="fas fa-check"></i> 승인
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="showRejectionModal(${approval.user_id}, '${approval.name}', '${approval.brand_name}')">
+                        <i class="fas fa-times"></i> 거절
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+// 브랜드 통계 데이터 표시
+function displayBrandStats(brandStats, totalStats) {
+    const tbody = $('#brand-stats-tbody');
+    tbody.empty();
+    
+    // 전체 통계 업데이트
+    $('#total-brands').text(totalStats.total_brands);
+    $('#active-brands').text(totalStats.active_brands);
+    $('#total-staff').text(totalStats.total_staff);
+    
+    brandStats.forEach(function(brand) {
+        const statusBadge = brand.status === 'active' ? 
+            '<span class="badge badge-success">활성</span>' : 
+            '<span class="badge badge-secondary">비활성</span>';
+        
+        const row = `
+            <tr>
+                <td>${brand.brand_name}</td>
+                <td>${brand.admin_name}</td>
+                <td>${brand.branch_count}</td>
+                <td>${brand.staff_count}</td>
+                <td>${statusBadge}</td>
+                <td>${new Date(brand.created_at).toLocaleDateString()}</td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+// 승인 모달 표시
+function showApprovalModal(userId, userName, brandName) {
+    currentUserId = userId;
+    $('#approval-details').html(`
+        <div class="alert alert-info">
+            <strong>신청자:</strong> ${userName}<br>
+            <strong>브랜드:</strong> ${brandName}
+        </div>
+    `);
+    $('#approvalModal').modal('show');
+}
+
+// 거절 모달 표시
+function showRejectionModal(userId, userName, brandName) {
+    currentUserId = userId;
+    $('#rejection-details').html(`
+        <div class="alert alert-warning">
+            <strong>신청자:</strong> ${userName}<br>
+            <strong>브랜드:</strong> ${brandName}
+        </div>
+    `);
+    $('#rejection-reason').val('');
+    $('#rejectionModal').modal('show');
+}
+
+// 사용자 승인
+function approveUser() {
+    if (!currentUserId) return;
+    
+    $.ajax({
+        url: `/admin/brand-approval/api/approve/${currentUserId}`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': $('meta[name="csrf-token"]').attr('content')
+        },
+        success: function(response) {
+            if (response.success) {
+                showAlert('성공', response.message, 'success');
+                $('#approvalModal').modal('hide');
+                loadApprovalData();
+                loadBrandStats();
+            } else {
+                showAlert('오류', response.error, 'error');
+            }
+        },
+        error: function() {
+            showAlert('오류', '승인 처리 중 오류가 발생했습니다.', 'error');
+        }
+    });
+}
+
+// 사용자 거절
+function rejectUser() {
+    if (!currentUserId) return;
+    
+    const reason = $('#rejection-reason').val().trim();
+    if (!reason) {
+        showAlert('오류', '거절 사유를 입력해주세요.', 'error');
+        return;
+    }
+    
+    $.ajax({
+        url: `/admin/brand-approval/api/reject/${currentUserId}`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: JSON.stringify({ reason: reason }),
+        success: function(response) {
+            if (response.success) {
+                showAlert('성공', response.message, 'success');
+                $('#rejectionModal').modal('hide');
+                loadApprovalData();
+                loadBrandStats();
+            } else {
+                showAlert('오류', response.error, 'error');
+            }
+        },
+        error: function() {
+            showAlert('오류', '거절 처리 중 오류가 발생했습니다.', 'error');
+        }
+    });
+}
+
+// 데이터 새로고침
+function refreshData() {
+    loadApprovalData();
+    loadBrandStats();
+}
+
+// 알림 표시 함수
+function showAlert(title, message, type) {
+    Swal.fire({
+        title: title,
+        text: message,
+        icon: type,
+        confirmButtonText: '확인'
+    });
+}
+</script>
+{% endblock %} 

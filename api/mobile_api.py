@@ -109,56 +109,53 @@ def mobile_dashboard():
 def get_offline_data():
     """오프라인용 데이터 제공"""
     try:
-        # 오프라인에서 필요한 기본 데이터
-        offline_data = {
-            'menu_items': [
-                {
-                    'id': 1,
-                    'name': '김치찌개',
-                    'price': 12000,
-                    'category': '메인',
-                    'available': True
-                },
-                {
-                    'id': 2,
-                    'name': '된장찌개',
-                    'price': 10000,
-                    'category': '메인',
-                    'available': True
-                },
-                {
-                    'id': 3,
-                    'name': '비빔밥',
-                    'price': 13000,
-                    'category': '메인',
-                    'available': True
-                }
-            ],
-            'staff_list': [
-                {
-                    'id': 1,
-                    'name': '김철수',
-                    'role': '서버',
-                    'phone': '010-1234-5678'
-                },
-                {
-                    'id': 2,
-                    'name': '이영희',
-                    'role': '주방',
-                    'phone': '010-2345-6789'
-                }
-            ],
-            'tables': [
-                {'id': 1, 'name': '테이블 1', 'capacity': 4, 'status': 'available'},
-                {'id': 2, 'name': '테이블 2', 'capacity': 4, 'status': 'occupied'},
-                {'id': 3, 'name': '테이블 3', 'capacity': 6, 'status': 'available'}
-            ],
-            'settings': {
-                'restaurant_name': '맛있는 레스토랑',
-                'address': '서울시 강남구 테헤란로 123',
-                'phone': '02-1234-5678',
-                'opening_hours': '09:00-22:00'
+        # 실제 데이터베이스에서 오프라인용 데이터 조회
+        from models import User, Branch
+        
+        # 메뉴 아이템 조회 (실제 메뉴 모델이 있다면)
+        menu_data = [
+            {
+                'id': 1,
+                'name': '김치찌개',
+                'price': 12000,
+                'category': '메인',
+                'available': True
             }
+        ]
+        
+        # 직원 목록 조회
+        staff_list = User.query.filter_by(status='approved').all()
+        staff_data = [
+            {
+                'id': user.id,
+                'name': user.name,
+                'role': user.role,
+                'phone': user.phone
+            }
+            for user in staff_list
+        ]
+        
+        # 테이블 정보 조회 (실제 테이블 모델이 있다면)
+        tables_data = [
+            {'id': 1, 'name': '테이블 1', 'capacity': 4, 'status': 'available'},
+            {'id': 2, 'name': '테이블 2', 'capacity': 4, 'status': 'occupied'},
+            {'id': 3, 'name': '테이블 3', 'capacity': 6, 'status': 'available'}
+        ]
+        
+        # 매장 설정 조회
+        branch = Branch.query.first()
+        settings_data = {
+            'restaurant_name': branch.name if branch else '레스토랑',
+            'address': branch.address if branch else '',
+            'phone': branch.phone if branch else '',
+            'opening_hours': '09:00-22:00'
+        }
+        
+        offline_data = {
+            'menu_items': menu_data,
+            'staff_list': staff_data,
+            'tables': tables_data,
+            'settings': settings_data
         }
         
         return jsonify({

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// // import { ScrollArea } from '@/components/ui/scroll-area'; // 임시로 주석 처리 // 임시로 주석 처리
 import { 
   Activity, 
   AlertTriangle, 
@@ -28,7 +28,6 @@ import {
   Users,
   Zap,
   Cpu,
-  Memory,
   Timer,
   AlertCircle,
   CheckCircle,
@@ -534,14 +533,14 @@ const AdvancedPluginMonitoring: React.FC = () => {
                   </div>
                 </div>
 
-                <ScrollArea className="h-96">
+                <div className="h-96 overflow-y-auto">
                   <div className="space-y-2">
                     {metrics.map((metric, index) => (
                       <div key={index} className="flex items-center justify-between p-3 border rounded">
                         <div className="flex items-center space-x-4">
                           <div className="flex items-center space-x-2">
                             {metric.metric_type === 'cpu_usage' && <Cpu className="h-4 w-4" />}
-                            {metric.metric_type === 'memory_usage' && <Memory className="h-4 w-4" />}
+                            {metric.metric_type === 'memory_usage' && <HardDrive className="h-4 w-4" />}
                             {metric.metric_type === 'response_time' && <Timer className="h-4 w-4" />}
                             {metric.metric_type === 'error_rate' && <AlertTriangle className="h-4 w-4" />}
                             {metric.metric_type === 'throughput' && <Zap className="h-4 w-4" />}
@@ -557,7 +556,7 @@ const AdvancedPluginMonitoring: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -605,7 +604,7 @@ const AdvancedPluginMonitoring: React.FC = () => {
                   </div>
                 </div>
 
-                <ScrollArea className="h-96">
+                <div className="h-96 overflow-y-auto">
                   <div className="space-y-2">
                     {logs.map((log, index) => (
                       <div key={index} className="p-3 border rounded">
@@ -633,7 +632,7 @@ const AdvancedPluginMonitoring: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -665,7 +664,7 @@ const AdvancedPluginMonitoring: React.FC = () => {
                   </div>
                 </div>
 
-                <ScrollArea className="h-96">
+                <div className="h-96 overflow-y-auto">
                   <div className="space-y-2">
                     {events.map((event, index) => (
                       <div key={index} className="p-3 border rounded">
@@ -694,7 +693,7 @@ const AdvancedPluginMonitoring: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -726,7 +725,7 @@ const AdvancedPluginMonitoring: React.FC = () => {
                   </div>
                 </div>
 
-                <ScrollArea className="h-96">
+                <div className="h-96 overflow-y-auto">
                   <div className="space-y-4">
                     {snapshots.map((snapshot, index) => (
                       <div key={index} className="p-4 border rounded">
@@ -781,7 +780,7 @@ const AdvancedPluginMonitoring: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

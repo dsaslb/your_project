@@ -12,7 +12,7 @@ import {
   Zap, 
   Database, 
   Cpu, 
-  Memory, 
+  HardDrive, 
   Activity, 
   TrendingUp, 
   TrendingDown,
@@ -254,7 +254,7 @@ export default function PerformanceOptimizationPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">캐시 히트율</CardTitle>
-                <Memory className="h-4 w-4 text-muted-foreground" />
+                <HardDrive className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -347,14 +347,30 @@ export default function PerformanceOptimizationPage() {
                           <span className="text-sm font-medium">
                             {level.toUpperCase()} 캐시
                           </span>
-                          <Badge variant={cacheStats.cache_status[`${level}_enabled`] ? "default" : "secondary"}>
-                            {cacheStats.cache_status[`${level}_enabled`] ? "활성" : "비활성"}
+                          <Badge
+                            // pyright: ignore
+                            variant={
+                              cacheStats.cache_status[
+                                (level + "_enabled") as keyof typeof cacheStats.cache_status
+                              ]
+                                ? "default"
+                                : "secondary"
+                            }
+                          >
+                            {
+                              // pyright: ignore
+                              cacheStats.cache_status[
+                                (level + "_enabled") as keyof typeof cacheStats.cache_status
+                              ]
+                                ? "활성"
+                                : "비활성"
+                            }
                           </Badge>
                         </div>
                         <div className="text-2xl font-bold">{rate.toFixed(1)}%</div>
                         <div className="text-xs text-gray-600">
-                          히트: {cacheStats.hits[level]} / 
-                          미스: {cacheStats.misses[level]}
+                          히트: {cacheStats.hits[level as keyof typeof cacheStats.hits]} / {/* pyright: ignore */}
+                          미스: {cacheStats.misses[level as keyof typeof cacheStats.misses]} {/* pyright: ignore */}
                         </div>
                       </div>
                     ))}
@@ -374,7 +390,11 @@ export default function PerformanceOptimizationPage() {
                         <div className="flex justify-between">
                           <span className="text-sm">총 요청</span>
                           <span className="text-sm font-medium">
-                            {cacheStats.total_requests}
+                            {
+                              // pyright: ignore
+                              Object.values(cacheStats.hits).reduce((a, b) => a + b, 0) +
+                              Object.values(cacheStats.misses).reduce((a, b) => a + b, 0)
+                            }
                           </span>
                         </div>
                       </div>

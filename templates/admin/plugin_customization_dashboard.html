@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>플러그인 커스터마이징 대시보드 - 관리자</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .customization-card {
+            transition: all 0.3s ease;
+        }
+        .customization-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-active { background-color: #d1fae5; color: #065f46; }
+        .status-inactive { background-color: #f3f4f6; color: #374151; }
+        .deployment-pending { background-color: #fef3c7; color: #92400e; }
+        .deployment-in-progress { background-color: #dbeafe; color: #1e40af; }
+        .deployment-completed { background-color: #d1fae5; color: #065f46; }
+        .deployment-failed { background-color: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">
+                            <i class="fas fa-cogs mr-3 text-purple-600"></i>
+                            플러그인 커스터마이징 대시보드
+                        </h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="refreshBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>새로고침
+                        </button>
+                        <button id="addCustomizationBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>커스터마이징 추가
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 통계 카드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                            <i class="fas fa-cogs text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">활성 커스터마이징</p>
+                            <p id="activeCustomizations" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                            <i class="fas fa-rocket text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">배포 중</p>
+                            <p id="deploymentsInProgress" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600">
+                            <i class="fas fa-shield-alt text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">접근 제어</p>
+                            <p id="accessControls" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                            <i class="fas fa-users text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">대상 수</p>
+                            <p id="totalTargets" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 차트 섹션 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">커스터마이징 타입별 분포</h3>
+                    <canvas id="customizationTypeChart" width="400" height="200"></canvas>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">배포 상태 분포</h3>
+                    <canvas id="deploymentStatusChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- 필터 및 검색 -->
+            <div class="bg-white rounded-lg shadow p-6 mb-8">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex-1 min-w-64">
+                        <input type="text" id="searchInput" placeholder="검색어를 입력하세요..." 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+                    
+                    <select id="pluginFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">모든 플러그인</option>
+                    </select>
+                    
+                    <select id="targetTypeFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">모든 대상 타입</option>
+                        <option value="industry">업종</option>
+                        <option value="brand">브랜드</option>
+                        <option value="store">매장</option>
+                        <option value="user">사용자</option>
+                    </select>
+                    
+                    <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">모든 상태</option>
+                        <option value="active">활성</option>
+                        <option value="inactive">비활성</option>
+                    </select>
+                    
+                    <button id="filterBtn" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                        필터 적용
+                    </button>
+                </div>
+            </div>
+
+            <!-- 탭 네비게이션 -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8 px-6">
+                        <button class="tab-btn active py-4 px-1 border-b-2 border-purple-500 text-purple-600 font-medium" data-tab="customizations">
+                            <i class="fas fa-cogs mr-2"></i>커스터마이징
+                        </button>
+                        <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="deployments">
+                            <i class="fas fa-rocket mr-2"></i>배포 관리
+                        </button>
+                        <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="access-controls">
+                            <i class="fas fa-shield-alt mr-2"></i>접근 제어
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- 목록 -->
+            <div id="itemList" class="space-y-4">
+                <!-- 동적으로 생성됨 -->
+            </div>
+
+            <!-- 페이지네이션 -->
+            <div id="pagination" class="flex justify-center items-center space-x-2 mt-8">
+                <!-- 동적으로 생성됨 -->
+            </div>
+        </main>
+    </div>
+
+    <!-- 커스터마이징 추가 모달 -->
+    <div id="addCustomizationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+                <div class="flex items-center justify-between p-6 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">커스터마이징 추가</h3>
+                    <button id="closeAddModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <form id="addCustomizationForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">플러그인</label>
+                            <select id="modalPluginSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                                <option value="">플러그인을 선택하세요</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">대상 타입</label>
+                            <select id="modalTargetTypeSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                                <option value="">대상 타입을 선택하세요</option>
+                                <option value="industry">업종</option>
+                                <option value="brand">브랜드</option>
+                                <option value="store">매장</option>
+                                <option value="user">사용자</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">대상</label>
+                            <select id="modalTargetSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                                <option value="">대상을 선택하세요</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">설정 (JSON)</label>
+                            <textarea id="modalSettings" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder='{"key": "value"}'></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">권한 (JSON)</label>
+                            <textarea id="modalPermissions" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder='{"read": true, "write": false}'></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">메뉴 가시성 (JSON)</label>
+                            <textarea id="modalMenuVisibility" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder='{"menu1": true, "menu2": false}'></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-3 pt-4 border-t">
+                            <button type="button" id="cancelAddBtn" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                취소
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                추가
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 상세 보기 모달 -->
+    <div id="detailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+                <div class="flex items-center justify-between p-6 border-b">
+                    <h3 id="detailModalTitle" class="text-lg font-semibold text-gray-900">상세 정보</h3>
+                    <button id="closeDetailModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="detailModalContent" class="p-6">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentTab = 'customizations';
+        let currentPage = 1;
+        let totalPages = 1;
+        let itemData = [];
+        let plugins = [];
+        let targets = [];
+
+        // 차트 객체
+        let customizationTypeChart = null;
+        let deploymentStatusChart = null;
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            loadStatistics();
+            loadPlugins();
+            loadTargets();
+            loadItemList();
+            setupEventListeners();
+        });
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 탭 변경
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tab = this.dataset.tab;
+                    switchTab(tab);
+                });
+            });
+
+            // 필터 적용
+            document.getElementById('filterBtn').addEventListener('click', function() {
+                currentPage = 1;
+                loadItemList();
+            });
+
+            // 새로고침
+            document.getElementById('refreshBtn').addEventListener('click', function() {
+                loadStatistics();
+                loadItemList();
+            });
+
+            // 커스터마이징 추가
+            document.getElementById('addCustomizationBtn').addEventListener('click', function() {
+                showAddCustomizationModal();
+            });
+
+            // 모달 닫기
+            document.getElementById('closeAddModal').addEventListener('click', function() {
+                document.getElementById('addCustomizationModal').classList.add('hidden');
+            });
+
+            document.getElementById('closeDetailModal').addEventListener('click', function() {
+                document.getElementById('detailModal').classList.add('hidden');
+            });
+
+            // 모달 외부 클릭 시 닫기
+            document.getElementById('addCustomizationModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('detailModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.add('hidden');
+                }
+            });
+
+            // 폼 제출
+            document.getElementById('addCustomizationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitCustomization();
+            });
+
+            // 대상 타입 변경 시 대상 목록 업데이트
+            document.getElementById('modalTargetTypeSelect').addEventListener('change', function() {
+                updateTargetOptions(this.value);
+            });
+
+            // 취소 버튼
+            document.getElementById('cancelAddBtn').addEventListener('click', function() {
+                document.getElementById('addCustomizationModal').classList.add('hidden');
+            });
+        }
+
+        // 탭 변경
+        function switchTab(tab) {
+            currentTab = tab;
+            currentPage = 1;
+            
+            // 탭 버튼 상태 업데이트
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-purple-500', 'text-purple-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active', 'border-purple-500', 'text-purple-600');
+            
+            loadItemList();
+        }
+
+        // 차트 초기화
+        function initializeCharts() {
+            // 커스터마이징 타입 차트
+            const typeCtx = document.getElementById('customizationTypeChart').getContext('2d');
+            customizationTypeChart = new Chart(typeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['업종', '브랜드', '매장', '사용자'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // 배포 상태 차트
+            const deploymentCtx = document.getElementById('deploymentStatusChart').getContext('2d');
+            deploymentStatusChart = new Chart(deploymentCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['대기 중', '진행 중', '완료', '실패'],
+                    datasets: [{
+                        label: '배포 수',
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#fbbf24', '#3b82f6', '#10b981', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 통계 로드
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/plugin-customization/statistics');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('activeCustomizations').textContent = data.data.active_customizations || 0;
+                    document.getElementById('deploymentsInProgress').textContent = data.data.deployments_in_progress || 0;
+                    document.getElementById('accessControls').textContent = data.data.access_controls || 0;
+                    document.getElementById('totalTargets').textContent = data.data.total_targets || 0;
+                    
+                    // 차트 업데이트
+                    updateCharts(data.data);
+                }
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+            }
+        }
+
+        // 차트 업데이트
+        function updateCharts(data) {
+            // 커스터마이징 타입 차트 업데이트
+            if (data.customization_type_distribution) {
+                customizationTypeChart.data.datasets[0].data = [
+                    data.customization_type_distribution.industry || 0,
+                    data.customization_type_distribution.brand || 0,
+                    data.customization_type_distribution.store || 0,
+                    data.customization_type_distribution.user || 0
+                ];
+                customizationTypeChart.update();
+            }
+
+            // 배포 상태 차트 업데이트
+            if (data.deployment_status_distribution) {
+                deploymentStatusChart.data.datasets[0].data = [
+                    data.deployment_status_distribution.pending || 0,
+                    data.deployment_status_distribution.in_progress || 0,
+                    data.deployment_status_distribution.completed || 0,
+                    data.deployment_status_distribution.failed || 0
+                ];
+                deploymentStatusChart.update();
+            }
+        }
+
+        // 플러그인 목록 로드
+        async function loadPlugins() {
+            try {
+                const response = await fetch('/api/marketplace/modules');
+                const data = await response.json();
+                
+                if (data.success) {
+                    plugins = data.data.modules || [];
+                    
+                    // 플러그인 필터 옵션 업데이트
+                    const pluginFilter = document.getElementById('pluginFilter');
+                    const modalPluginSelect = document.getElementById('modalPluginSelect');
+                    
+                    [pluginFilter, modalPluginSelect].forEach(select => {
+                        select.innerHTML = '<option value="">모든 플러그인</option>';
+                        plugins.forEach(plugin => {
+                            const option = document.createElement('option');
+                            option.value = plugin.id;
+                            option.textContent = plugin.name;
+                            select.appendChild(option);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('플러그인 목록 로드 실패:', error);
+            }
+        }
+
+        // 대상 목록 로드
+        async function loadTargets() {
+            try {
+                const response = await fetch('/api/plugin-customization/targets');
+                const data = await response.json();
+                
+                if (data.success) {
+                    targets = data.data.targets || [];
+                }
+            } catch (error) {
+                console.error('대상 목록 로드 실패:', error);
+            }
+        }
+
+        // 대상 옵션 업데이트
+        function updateTargetOptions(targetType) {
+            const targetSelect = document.getElementById('modalTargetSelect');
+            targetSelect.innerHTML = '<option value="">대상을 선택하세요</option>';
+            
+            const filteredTargets = targets.filter(target => target.type === targetType);
+            filteredTargets.forEach(target => {
+                const option = document.createElement('option');
+                option.value = target.id;
+                option.textContent = target.name;
+                targetSelect.appendChild(option);
+            });
+        }
+
+        // 아이템 목록 로드
+        async function loadItemList() {
+            try {
+                const searchQuery = document.getElementById('searchInput').value;
+                const pluginFilter = document.getElementById('pluginFilter').value;
+                const targetTypeFilter = document.getElementById('targetTypeFilter').value;
+                const statusFilter = document.getElementById('statusFilter').value;
+
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    per_page: 10,
+                    search: searchQuery,
+                    plugin_id: pluginFilter,
+                    target_type: targetTypeFilter,
+                    status: statusFilter
+                });
+
+                const endpoint = getEndpointByTab();
+                const response = await fetch(`${endpoint}?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    itemData = data.data.items || [];
+                    totalPages = data.data.pagination?.pages || 1;
+                    
+                    renderItemList();
+                    renderPagination();
+                }
+            } catch (error) {
+                console.error('아이템 목록 로드 실패:', error);
+            }
+        }
+
+        // 탭별 엔드포인트 반환
+        function getEndpointByTab() {
+            switch (currentTab) {
+                case 'customizations':
+                    return '/api/plugin-customization/customizations';
+                case 'deployments':
+                    return '/api/plugin-customization/deployments';
+                case 'access-controls':
+                    return '/api/plugin-customization/access-controls';
+                default:
+                    return '/api/plugin-customization/customizations';
+            }
+        }
+
+        // 아이템 목록 렌더링
+        function renderItemList() {
+            const container = document.getElementById('itemList');
+            container.innerHTML = '';
+
+            if (itemData.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fas fa-inbox text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-500">표시할 항목이 없습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            itemData.forEach(item => {
+                const card = createItemCard(item);
+                container.appendChild(card);
+            });
+        }
+
+        // 아이템 카드 생성
+        function createItemCard(item) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow customization-card cursor-pointer';
+            
+            const statusClass = getStatusClass(item.status || item.is_active);
+            
+            card.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <h3 class="text-lg font-semibold text-gray-900">${item.plugin_name || '플러그인'}</h3>
+                                <span class="status-badge ${statusClass}">${getStatusText(item.status || item.is_active)}</span>
+                            </div>
+                            <p class="text-gray-600 mb-3">
+                                <strong>대상:</strong> ${getTargetTypeText(item.target_type)} - ${item.target_name || item.target_id}
+                            </p>
+                            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                <span><i class="fas fa-calendar mr-1"></i>${formatDate(item.created_at)}</span>
+                                ${item.version ? `<span><i class="fas fa-tag mr-1"></i>v${item.version}</span>` : ''}
+                                ${item.deployment_type ? `<span><i class="fas fa-rocket mr-1"></i>${getDeploymentTypeText(item.deployment_type)}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <button class="text-purple-600 hover:text-purple-800">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            card.addEventListener('click', () => showItemDetail(item));
+            return card;
+        }
+
+        // 상태 클래스 반환
+        function getStatusClass(status) {
+            if (typeof status === 'boolean') {
+                return status ? 'status-active' : 'status-inactive';
+            }
+            
+            const classes = {
+                'pending': 'deployment-pending',
+                'in_progress': 'deployment-in-progress',
+                'completed': 'deployment-completed',
+                'failed': 'deployment-failed',
+                'active': 'status-active',
+                'inactive': 'status-inactive'
+            };
+            return classes[status] || 'status-inactive';
+        }
+
+        // 상태 텍스트 반환
+        function getStatusText(status) {
+            if (typeof status === 'boolean') {
+                return status ? '활성' : '비활성';
+            }
+            
+            const texts = {
+                'pending': '대기 중',
+                'in_progress': '진행 중',
+                'completed': '완료',
+                'failed': '실패',
+                'active': '활성',
+                'inactive': '비활성'
+            };
+            return texts[status] || status;
+        }
+
+        // 대상 타입 텍스트 반환
+        function getTargetTypeText(targetType) {
+            const texts = {
+                'industry': '업종',
+                'brand': '브랜드',
+                'store': '매장',
+                'user': '사용자'
+            };
+            return texts[targetType] || targetType;
+        }
+
+        // 배포 타입 텍스트 반환
+        function getDeploymentTypeText(deploymentType) {
+            const texts = {
+                'immediate': '즉시',
+                'scheduled': '예약',
+                'rolling': '롤링',
+                'blue_green': '블루-그린'
+            };
+            return texts[deploymentType] || deploymentType;
+        }
+
+        // 날짜 포맷
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR');
+        }
+
+        // 페이지네이션 렌더링
+        function renderPagination() {
+            const container = document.getElementById('pagination');
+            container.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // 이전 페이지 버튼
+            if (currentPage > 1) {
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'px-3 py-2 text-gray-500 hover:text-gray-700';
+                prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                prevBtn.addEventListener('click', () => {
+                    currentPage--;
+                    loadItemList();
+                });
+                container.appendChild(prevBtn);
+            }
+
+            // 페이지 번호
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = `px-3 py-2 mx-1 rounded ${i === currentPage ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-gray-700'}`;
+                    pageBtn.textContent = i;
+                    pageBtn.addEventListener('click', () => {
+                        currentPage = i;
+                        loadItemList();
+                    });
+                    container.appendChild(pageBtn);
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.className = 'px-3 py-2 text-gray-500';
+                    ellipsis.textContent = '...';
+                    container.appendChild(ellipsis);
+                }
+            }
+
+            // 다음 페이지 버튼
+            if (currentPage < totalPages) {
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'px-3 py-2 text-gray-500 hover:text-gray-700';
+                nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                nextBtn.addEventListener('click', () => {
+                    currentPage++;
+                    loadItemList();
+                });
+                container.appendChild(nextBtn);
+            }
+        }
+
+        // 커스터마이징 추가 모달 표시
+        function showAddCustomizationModal() {
+            document.getElementById('addCustomizationModal').classList.remove('hidden');
+        }
+
+        // 커스터마이징 제출
+        async function submitCustomization() {
+            try {
+                const formData = {
+                    plugin_id: document.getElementById('modalPluginSelect').value,
+                    target_type: document.getElementById('modalTargetTypeSelect').value,
+                    target_id: document.getElementById('modalTargetSelect').value,
+                    settings: parseJSONField(document.getElementById('modalSettings').value),
+                    permissions: parseJSONField(document.getElementById('modalPermissions').value),
+                    menu_visibility: parseJSONField(document.getElementById('modalMenuVisibility').value)
+                };
+
+                const response = await fetch('/api/plugin-customization/customizations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('커스터마이징이 추가되었습니다.');
+                    document.getElementById('addCustomizationModal').classList.add('hidden');
+                    loadItemList();
+                    loadStatistics();
+                } else {
+                    alert('오류: ' + data.error);
+                }
+            } catch (error) {
+                console.error('커스터마이징 제출 실패:', error);
+                alert('커스터마이징 추가에 실패했습니다.');
+            }
+        }
+
+        // JSON 필드 파싱
+        function parseJSONField(value) {
+            if (!value) return {};
+            try {
+                return JSON.parse(value);
+            } catch (error) {
+                return {};
+            }
+        }
+
+        // 아이템 상세 보기
+        function showItemDetail(item) {
+            const modal = document.getElementById('detailModal');
+            const title = document.getElementById('detailModalTitle');
+            const content = document.getElementById('detailModalContent');
+
+            title.textContent = `${getTargetTypeText(item.target_type)} 커스터마이징`;
+            
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-semibold text-gray-900 mb-2">기본 정보</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div><span class="font-medium">플러그인:</span> ${item.plugin_name || 'N/A'}</div>
+                            <div><span class="font-medium">대상 타입:</span> ${getTargetTypeText(item.target_type)}</div>
+                            <div><span class="font-medium">대상:</span> ${item.target_name || item.target_id}</div>
+                            <div><span class="font-medium">상태:</span> <span class="status-badge ${getStatusClass(item.status || item.is_active)}">${getStatusText(item.status || item.is_active)}</span></div>
+                            <div><span class="font-medium">생성일:</span> ${formatDate(item.created_at)}</div>
+                            <div><span class="font-medium">수정일:</span> ${formatDate(item.updated_at)}</div>
+                        </div>
+                    </div>
+                    
+                    ${item.settings ? `
+                    <div>
+                        <h4 class="font-semibold text-gray-900 mb-2">설정</h4>
+                        <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto">${JSON.stringify(item.settings, null, 2)}</pre>
+                    </div>
+                    ` : ''}
+                    
+                    ${item.permissions ? `
+                    <div>
+                        <h4 class="font-semibold text-gray-900 mb-2">권한</h4>
+                        <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto">${JSON.stringify(item.permissions, null, 2)}</pre>
+                    </div>
+                    ` : ''}
+                    
+                    ${item.menu_visibility ? `
+                    <div>
+                        <h4 class="font-semibold text-gray-900 mb-2">메뉴 가시성</h4>
+                        <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto">${JSON.stringify(item.menu_visibility, null, 2)}</pre>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="flex justify-end space-x-3 pt-4 border-t">
+                        <button class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            닫기
+                        </button>
+                        <button class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                            편집
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        // 자동 새로고침 (30초마다)
+        setInterval(() => {
+            loadStatistics();
+        }, 30000);
+    </script>
+</body>
+</html> 

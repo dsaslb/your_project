@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// import { ScrollArea } from '@/components/ui/scroll-area'; // 임시로 주석 처리
 import { 
   Play, 
   Square, 
@@ -638,7 +638,7 @@ const PluginAutomationDashboard: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-96">
+                <div className="h-96 overflow-y-auto">
                   <div className="space-y-2">
                     {executionLogs.map((log, index) => (
                       <div key={index} className="flex items-start space-x-3 p-2 rounded border">
@@ -661,7 +661,7 @@ const PluginAutomationDashboard: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           ) : (

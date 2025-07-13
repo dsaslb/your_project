@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from core.backend.plugin_automation_workflow import (
     PluginAutomationWorkflow, WorkflowConfig, WorkflowStatus, WorkflowStep
 )
+from core.backend.plugin_automation_manager import PluginAutomationManager
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)

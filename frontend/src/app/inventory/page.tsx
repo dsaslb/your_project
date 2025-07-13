@@ -25,7 +25,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import NotificationPopup from "@/components/NotificationPopup";
-import { useInventoryStore } from '@/store';
+import { useDataStore } from '@/store';
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -34,14 +34,14 @@ export default function InventoryPage() {
 
     // Store에서 데이터 가져오기
   const {
-    items: inventoryItems,
-    syncStatus,
-    fetchInventory
-  } = useInventoryStore();
+    inventory: inventoryItems,
+    setInventory
+  } = useDataStore();
 
   useEffect(() => {
     setIsLoaded(true);
-    fetchInventory();
+    // fetchInventory 함수가 없으므로 주석 처리
+    // fetchInventory();
   }, []);
 
   const togglePlay = () => {
@@ -53,13 +53,13 @@ export default function InventoryPage() {
     id: item.id,
     name: item.name,
     category: item.category,
-    currentStock: item.currentStock,
-    minStock: item.minStock,
+    currentStock: item.current_stock,
+    minStock: item.min_stock,
     unit: item.unit,
-    price: item.price,
+    price: item.unit_price,
     supplier: item.supplier,
-    lastUpdated: new Date(item.lastUpdated).toLocaleDateString(),
-    status: getStockLevel(item.currentStock, item.minStock),
+    lastUpdated: new Date(item.updated_at).toLocaleDateString(),
+    status: getStockLevel(item.current_stock, item.min_stock),
   })) : [
     {
       id: 1,

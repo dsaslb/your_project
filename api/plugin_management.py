@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Any
 import zipfile
 import tempfile
 import shutil
+from werkzeug.utils import secure_filename
 
 from core.backend.plugin_interface import plugin_registry
 from core.backend.plugin_loader import plugin_loader

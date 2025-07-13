@@ -131,13 +131,13 @@ const PermissionNav = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'}>
-                {user.role === 'super_admin' ? '슈퍼 관리자' : 
-                 user.role === 'brand_manager' ? '브랜드 관리자' :
-                 user.role === 'store_manager' ? '매장 관리자' :
+              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                {user.role === 'admin' ? '슈퍼 관리자' : 
+                 user.role === 'brand_admin' ? '브랜드 관리자' :
+                 user.role === 'store_admin' ? '매장 관리자' :
                  user.role === 'employee' ? '직원' : '직원'}
               </Badge>
-              {user.role === 'super_admin' && (
+              {user.role === 'admin' && (
                 <Badge variant="destructive" className="bg-purple-600">
                   <Crown className="w-3 h-3 mr-1" />
                   최고권한

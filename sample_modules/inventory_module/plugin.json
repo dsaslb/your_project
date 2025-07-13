@@ -1,0 +1,47 @@
+{
+  "plugin_id": "inventory_module",
+  "name": "재고 관리 모듈",
+  "version": "1.0.0",
+  "description": "상품 재고 관리, 입출고 추적, 재고 알림 기능을 제공하는 모듈입니다.",
+  "author": "Your Program Team",
+  "category": "inventory",
+  "dependencies": [],
+  "permissions": ["read", "write", "admin"],
+  "entry_point": "main.py",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": {"type": "boolean", "default": true},
+      "auto_reorder": {"type": "boolean", "default": false},
+      "low_stock_threshold": {"type": "integer", "default": 10},
+      "critical_stock_threshold": {"type": "integer", "default": 5},
+      "notification_enabled": {"type": "boolean", "default": true}
+    }
+  },
+  "routes": [
+    {
+      "path": "/inventory",
+      "methods": ["GET", "POST"],
+      "handler": "inventory_handler",
+      "auth_required": true,
+      "roles": ["manager", "admin"]
+    },
+    {
+      "path": "/inventory/stock",
+      "methods": ["GET", "POST"],
+      "handler": "stock_handler",
+      "auth_required": true,
+      "roles": ["manager", "admin"]
+    }
+  ],
+  "menus": [
+    {
+      "title": "재고 관리",
+      "path": "/inventory",
+      "icon": "box",
+      "parent": "modules",
+      "roles": ["manager", "admin"],
+      "order": 3
+    }
+  ]
+} 

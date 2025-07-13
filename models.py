@@ -1103,6 +1103,14 @@ class SystemLog(db.Model):
     # 관계 설정
     user = db.relationship("User", backref="system_logs")
 
+    def __init__(self, user_id=None, action=None, detail=None, ip_address=None, user_agent=None, **kwargs):
+        super().__init__(**kwargs)
+        self.user_id = user_id
+        self.action = action
+        self.detail = detail
+        self.ip_address = ip_address
+        self.user_agent = user_agent
+
     def __repr__(self):
         return f"<SystemLog {self.action} by User {self.user_id}>"
 
@@ -2546,6 +2554,306 @@ __all__ = [
     'NotificationTemplate',
     'NotificationRule',
 ]
+
+
+# 모듈 마켓플레이스 관련 모델들
+class Module(db.Model):
+    """모듈 모델"""
+    __tablename__ = 'modules'
+    
+    id = db.Column(db.String(36), primary_key=True)  # UUID
+    name = db.Column(db.String(100), nullable=False, index=True)
+    description = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), nullable=False, index=True)  # attendance, schedule, inventory, purchase, ai, etc.
+    version = db.Column(db.String(20), default='1.0.0')
+    author = db.Column(db.String(100), nullable=False)
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, approved, rejected
+    downloads = db.Column(db.Integer, default=0)
+    tags = db.Column(db.String(500))  # 쉼표로 구분된 태그
+    compatibility = db.Column(db.JSON)  # 호환성 정보
+    requirements = db.Column(db.JSON)  # 요구사항
+    file_path = db.Column(db.String(500))  # 파일 경로
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    creator = db.relationship('User', backref='created_modules')
+    feedbacks = db.relationship('ModuleFeedback', backref='module', cascade='all, delete-orphan')
+    usages = db.relationship('ModuleUsage', backref='module', cascade='all, delete-orphan')
+    versions = db.relationship('ModuleVersion', backref='module', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f"<Module {self.name}>"
+
+
+class ModuleFeedback(db.Model):
+    """모듈 피드백 모델"""
+    __tablename__ = 'module_feedbacks'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.String(36), db.ForeignKey('modules.id'), nullable=False, index=True)
+    user_name = db.Column(db.String(100), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)  # 1-5점
+    comment = db.Column(db.Text)
+    is_helpful = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    def __repr__(self):
+        return f"<ModuleFeedback {self.module_id}>"
+
+
+class ModuleUsage(db.Model):
+    """모듈 사용 기록 모델"""
+    __tablename__ = 'module_usages'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.String(36), db.ForeignKey('modules.id'), nullable=False, index=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id'), nullable=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    action = db.Column(db.String(50), nullable=False)  # download, install, use, customize
+    customizations = db.Column(db.JSON)  # 커스터마이징 정보
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # 관계 설정
+    brand = db.relationship('Brand', backref='module_usages')
+    user = db.relationship('User', backref='module_usages')
+    
+    def __repr__(self):
+        return f"<ModuleUsage {self.module_id}>"
+
+
+class ModuleVersion(db.Model):
+    """모듈 버전 모델"""
+    __tablename__ = 'module_versions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.String(36), db.ForeignKey('modules.id'), nullable=False, index=True)
+    version = db.Column(db.String(20), nullable=False)
+    changelog = db.Column(db.Text)
+    file_path = db.Column(db.String(500))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    def __repr__(self):
+        return f"<ModuleVersion {self.module_id} v{self.version}>"
+
+
+class ModuleCustomization(db.Model):
+    """모듈 커스터마이징 모델"""
+    __tablename__ = 'module_customizations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.String(36), db.ForeignKey('modules.id'), nullable=False, index=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id'), nullable=False, index=True)
+    customizations = db.Column(db.JSON, nullable=False)  # 커스터마이징 설정
+    is_active = db.Column(db.Boolean, default=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    brand = db.relationship('Brand', backref='module_customizations')
+    creator = db.relationship('User', backref='module_customizations')
+    
+    def __repr__(self):
+        return f"<ModuleCustomization {self.module_id} - {self.brand_id}>"
+
+
+class ModuleApproval(db.Model):
+    """모듈 승인 이력 모델"""
+    __tablename__ = 'module_approvals'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.String(36), db.ForeignKey('modules.id'), nullable=False, index=True)
+    approver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    action = db.Column(db.String(20), nullable=False)  # approve, reject
+    reason = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # 관계 설정
+    approver = db.relationship('User', backref='module_approvals')
+    
+    def __repr__(self):
+        return f"<ModuleApproval {self.module_id} - {self.action}>"
+
+
+# 플러그인 리뷰 및 피드백 모델
+class PluginReview(db.Model):
+    """플러그인 리뷰 모델"""
+    __tablename__ = 'plugin_reviews'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), db.ForeignKey('modules.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    version = db.Column(db.String(20), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)  # 1-5 별점
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    is_public = db.Column(db.Boolean, default=True)
+    status = db.Column(db.String(20), default='active')  # active, hidden, deleted
+    helpful_count = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    plugin = db.relationship('Module', backref='reviews')
+    user = db.relationship('User', backref='plugin_reviews')
+    responses = db.relationship('PluginReviewResponse', backref='review', cascade='all, delete-orphan')
+
+class PluginReviewResponse(db.Model):
+    """플러그인 리뷰 응답 모델 (개발자/관리자 답변)"""
+    __tablename__ = 'plugin_review_responses'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('plugin_reviews.id'), nullable=False)
+    responder_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    responder_type = db.Column(db.String(20), nullable=False)  # developer, admin
+    content = db.Column(db.Text, nullable=False)
+    is_public = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계
+    responder = db.relationship('User', backref='plugin_responses')
+
+class PluginBugReport(db.Model):
+    """플러그인 버그 신고 모델"""
+    __tablename__ = 'plugin_bug_reports'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), db.ForeignKey('modules.id'), nullable=False)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    version = db.Column(db.String(20), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    severity = db.Column(db.String(20), nullable=False)  # low, medium, high, critical
+    status = db.Column(db.String(20), default='open')  # open, in_progress, resolved, closed
+    priority = db.Column(db.String(20), default='normal')  # low, normal, high, urgent
+    steps_to_reproduce = db.Column(db.Text)
+    expected_behavior = db.Column(db.Text)
+    actual_behavior = db.Column(db.Text)
+    environment = db.Column(db.Text)  # OS, browser, etc.
+    attachments = db.Column(db.JSON)  # 첨부파일 정보
+    is_public = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime)
+    
+    # 관계
+    plugin = db.relationship('Module', backref='bug_reports')
+    reporter = db.relationship('User', backref='plugin_bug_reports')
+    comments = db.relationship('PluginBugComment', backref='bug_report', cascade='all, delete-orphan')
+
+class PluginBugComment(db.Model):
+    """플러그인 버그 신고 댓글 모델"""
+    __tablename__ = 'plugin_bug_comments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    bug_report_id = db.Column(db.Integer, db.ForeignKey('plugin_bug_reports.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    is_internal = db.Column(db.Boolean, default=False)  # 내부용 댓글
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계
+    user = db.relationship('User', backref='plugin_bug_comments')
+
+class PluginFeatureRequest(db.Model):
+    """플러그인 기능 요청 모델"""
+    __tablename__ = 'plugin_feature_requests'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), db.ForeignKey('modules.id'), nullable=False)
+    requester_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='open')  # open, under_review, planned, in_progress, completed, rejected
+    priority = db.Column(db.String(20), default='normal')  # low, normal, high, urgent
+    votes = db.Column(db.Integer, default=0)
+    is_public = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    plugin = db.relationship('Module', backref='feature_requests')
+    requester = db.relationship('User', backref='plugin_feature_requests')
+
+# 플러그인 맞춤 설정 및 권한 관리 모델
+class PluginCustomization(db.Model):
+    """플러그인 맞춤 설정 모델"""
+    __tablename__ = 'plugin_customizations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), db.ForeignKey('modules.id'), nullable=False)
+    target_type = db.Column(db.String(20), nullable=False)  # industry, brand, store, user
+    target_id = db.Column(db.String(100), nullable=False)  # 대상 ID
+    is_active = db.Column(db.Boolean, default=True)
+    settings = db.Column(db.JSON)  # 플러그인별 설정값
+    permissions = db.Column(db.JSON)  # 권한 설정
+    menu_visibility = db.Column(db.JSON)  # 메뉴 노출 설정
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    plugin = db.relationship('Module', backref='customizations')
+
+class PluginDeployment(db.Model):
+    """플러그인 배포 관리 모델"""
+    __tablename__ = 'plugin_deployments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), db.ForeignKey('modules.id'), nullable=False)
+    version = db.Column(db.String(20), nullable=False)
+    target_type = db.Column(db.String(20), nullable=False)  # industry, brand, store, user
+    target_id = db.Column(db.String(100), nullable=False)
+    deployment_type = db.Column(db.String(20), nullable=False)  # install, update, rollback
+    status = db.Column(db.String(20), default='pending')  # pending, in_progress, completed, failed
+    scheduled_at = db.Column(db.DateTime)
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    error_message = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계
+    plugin = db.relationship('Module', backref='deployments')
+    creator = db.relationship('User', backref='plugin_deployments')
+
+class PluginAccessControl(db.Model):
+    """플러그인 접근 제어 모델"""
+    __tablename__ = 'plugin_access_controls'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), db.ForeignKey('modules.id'), nullable=False)
+    target_type = db.Column(db.String(20), nullable=False)  # industry, brand, store, user
+    target_id = db.Column(db.String(100), nullable=False)
+    access_type = db.Column(db.String(20), nullable=False)  # install, use, configure, manage
+    is_allowed = db.Column(db.Boolean, default=True)
+    conditions = db.Column(db.JSON)  # 접근 조건 (시간, 역할 등)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    plugin = db.relationship('Module', backref='access_controls')
+
+class PluginVersionHistory(db.Model):
+    """플러그인 버전 이력 모델"""
+    __tablename__ = 'plugin_version_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), db.ForeignKey('modules.id'), nullable=False)
+    version = db.Column(db.String(20), nullable=False)
+    changelog = db.Column(db.Text)
+    release_notes = db.Column(db.Text)
+    compatibility = db.Column(db.JSON)  # 호환성 정보
+    security_notes = db.Column(db.Text)
+    is_stable = db.Column(db.Boolean, default=True)
+    is_deprecated = db.Column(db.Boolean, default=False)
+    release_date = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계
+    plugin = db.relationship('Module', backref='version_history')
 
 
 

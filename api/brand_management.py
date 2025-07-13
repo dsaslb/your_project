@@ -6,6 +6,7 @@ import json
 
 from extensions import db
 from models import Brand, Branch, User, AIDiagnosis, ImprovementRequest, AIImprovementSuggestion, SystemHealth, ApprovalWorkflow
+from core.backend.brand_management_system import BrandManagementSystem
 
 brand_management_bp = Blueprint('brand_management', __name__)
 

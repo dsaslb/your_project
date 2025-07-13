@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>피드백 관리 - your_program Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="/static/js/theme.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🍽️ your_program</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">관리자 대시보드</p>
+            </div>
+            
+            <nav class="mt-6">
+                <div class="px-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">메인 메뉴</h3>
+                </div>
+                
+                <a href="/admin_dashboard" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    대시보드
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">브랜드 관리</h3>
+                </div>
+                
+                <div class="space-y-1">
+                    <a href="/admin/brand-manager-approval" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-user-check mr-3"></i>
+                        브랜드 관리자 승인
+                    </a>
+                    <a href="/admin/brand-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-building mr-3"></i>
+                        브랜드별 관리
+                    </a>
+                </div>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">매장 관리</h3>
+                </div>
+                
+                <a href="/admin/store-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-store mr-3"></i>
+                    매장별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">직원 관리</h3>
+                </div>
+                
+                <a href="/admin/employee-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-users mr-3"></i>
+                    직원별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">시스템 관리</h3>
+                </div>
+                
+                <a href="/admin/feedback-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500">
+                    <i class="fas fa-comments mr-3"></i>
+                    피드백 관리
+                </a>
+            </nav>
+            
+            <div class="absolute bottom-0 w-64 p-6">
+                <div class="flex items-center justify-between">
+                    <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                    <a href="/auth/logout" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 overflow-auto">
+            <!-- 헤더 -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">피드백 관리</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">사용자 피드백을 관리하고 답변을 작성할 수 있습니다</p>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="p-6">
+                <!-- 환영 메시지 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        피드백 관리 💬
+                    </h2>
+                    <p class="text-gray-600 dark:text-gray-400">
+                        백다방, 초선마리, 카페베네, 스타벅스 등의 브랜드에서 받은 사용자 피드백을 확인하고 
+                        적절한 답변을 제공하여 고객 만족도를 높일 수 있습니다.
+                    </p>
+                </div>
+
+                <!-- 통계 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                                <i class="fas fa-comments text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 피드백</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-feedback">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                                <i class="fas fa-clock text-yellow-600 dark:text-yellow-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">답변 대기</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="pending-feedback">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                                <i class="fas fa-check-circle text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">답변 완료</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="answered-feedback">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                                <i class="fas fa-star text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">평균 만족도</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="avg-satisfaction">0.0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 필터 및 검색 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div class="flex-1 min-w-48">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">상태 필터</label>
+                            <select id="status-filter" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                <option value="all">전체 상태</option>
+                                <option value="unanswered">답변 대기</option>
+                                <option value="answered">답변 완료</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 min-w-48">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜드 필터</label>
+                            <select id="brand-filter" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                <option value="all">전체 브랜드</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="applyFilter()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                <i class="fas fa-filter mr-2"></i>필터 적용
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 피드백 목록 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">피드백 목록</h3>
+                            <button onclick="refreshData()" class="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                                <i class="fas fa-sync-alt mr-1"></i>새로고침
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">작성자</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">브랜드</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">내용</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">작성일</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">작업</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="feedback-tbody">
+                                <!-- 데이터가 여기에 동적으로 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 페이지네이션 -->
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-center">
+                            <div class="text-sm text-gray-700 dark:text-gray-300" id="pagination-info">
+                                총 0개 중 0-0개
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button id="prev-page" onclick="changePage(-1)" class="px-3 py-1 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 disabled:opacity-50">
+                                    이전
+                                </button>
+                                <span id="page-info" class="text-sm text-gray-700 dark:text-gray-300">1 / 1</span>
+                                <button id="next-page" onclick="changePage(1)" class="px-3 py-1 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 disabled:opacity-50">
+                                    다음
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 피드백 상세 모달 -->
+    <div id="feedback-detail-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">피드백 상세 정보</h3>
+                    <button onclick="closeFeedbackDetailModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-3">피드백 정보</h4>
+                        <div id="feedback-info" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"></div>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-3">작성자 정보</h4>
+                        <div id="user-info" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-3">피드백 내용</h4>
+                    <div id="feedback-content" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border-l-4 border-blue-500"></div>
+                </div>
+                
+                <div class="mb-6" id="answer-section">
+                    <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-3">답변</h4>
+                    <div id="answer-content" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4"></div>
+                    <div id="answer-form" class="space-y-3">
+                        <textarea id="answer-text" rows="4" placeholder="답변을 입력하세요" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"></textarea>
+                        <button onclick="submitAnswer()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            답변 작성
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-3">관련 피드백</h4>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">내용</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">답변</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">작성일</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="related-feedback-tbody">
+                                <!-- 관련 피드백 데이터가 여기에 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeFeedbackDetailModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300">
+                        닫기
+                    </button>
+                    <button onclick="updateAnswer()" id="update-answer-btn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 hidden">
+                        답변 수정
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFeedbackId = null;
+        let currentPage = 1;
+        let currentStatus = 'all';
+        let currentBrand = 'all';
+
+        // 피드백 데이터 로드
+        function loadFeedbackData() {
+            const params = new URLSearchParams({
+                page: currentPage,
+                status: currentStatus,
+                brand: currentBrand
+            });
+            
+            fetch(`/admin/feedback-management/api/feedbacks?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayFeedbackData(data.feedbacks, data.pagination);
+                        updateStatistics(data.statistics);
+                    } else {
+                        console.error('Error loading feedback data:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading feedback data:', error);
+                });
+        }
+
+        // 통계 업데이트
+        function updateStatistics(stats) {
+            document.getElementById('total-feedback').textContent = stats.total + '개';
+            document.getElementById('pending-feedback').textContent = stats.pending + '개';
+            document.getElementById('answered-feedback').textContent = stats.answered + '개';
+            document.getElementById('avg-satisfaction').textContent = stats.avg_satisfaction.toFixed(1);
+        }
+
+        // 피드백 데이터 표시
+        function displayFeedbackData(feedbacks, pagination) {
+            const tbody = document.getElementById('feedback-tbody');
+            tbody.innerHTML = '';
+            
+            if (feedbacks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">피드백이 없습니다.</td></tr>';
+                return;
+            }
+            
+            feedbacks.forEach(function(feedback) {
+                const statusBadge = feedback.status === 'answered' ? 
+                    '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">답변 완료</span>' : 
+                    '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">답변 대기</span>';
+                
+                const content = feedback.content.length > 100 ? 
+                    feedback.content.substring(0, 100) + '...' : 
+                    feedback.content;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        ${feedback.user_name}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        ${feedback.brand_name}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        ${content}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        ${new Date(feedback.created_at).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        ${statusBadge}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="showFeedbackDetail(${feedback.suggestion_id})" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                            <i class="fas fa-eye mr-1"></i>상세
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 페이지네이션 정보 업데이트
+            updatePagination(pagination);
+        }
+
+        // 페이지네이션 업데이트
+        function updatePagination(pagination) {
+            const start = (pagination.page - 1) * pagination.per_page + 1;
+            const end = Math.min(start + pagination.per_page - 1, pagination.total);
+            
+            document.getElementById('pagination-info').textContent = `총 ${pagination.total}개 중 ${start}-${end}개`;
+            document.getElementById('page-info').textContent = `${pagination.page} / ${pagination.pages}`;
+            
+            document.getElementById('prev-page').disabled = !pagination.has_prev;
+            document.getElementById('next-page').disabled = !pagination.has_next;
+        }
+
+        // 피드백 상세보기
+        function showFeedbackDetail(suggestionId) {
+            currentFeedbackId = suggestionId;
+            
+            fetch(`/admin/feedback-management/api/feedback/${suggestionId}/details`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayFeedbackDetail(data);
+                        document.getElementById('feedback-detail-modal').classList.remove('hidden');
+                    } else {
+                        console.error('Error loading feedback details:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading feedback details:', error);
+                });
+        }
+
+        // 피드백 상세 정보 표시
+        function displayFeedbackDetail(data) {
+            const feedback = data.feedback;
+            
+            // 피드백 정보
+            document.getElementById('feedback-info').innerHTML = `
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="font-medium">작성일:</span>
+                        <span>${new Date(feedback.created_at).toLocaleString('ko-KR')}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">상태:</span>
+                        <span>${feedback.status === 'answered' ? '답변 완료' : '답변 대기'}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">브랜드:</span>
+                        <span>${feedback.brand_name}</span>
+                    </div>
+                </div>
+            `;
+            
+            // 작성자 정보
+            document.getElementById('user-info').innerHTML = `
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="font-medium">이름:</span>
+                        <span>${feedback.user_name}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">이메일:</span>
+                        <span>${feedback.user_email || '-'}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">전화번호:</span>
+                        <span>${feedback.user_phone || '-'}</span>
+                    </div>
+                </div>
+            `;
+            
+            // 피드백 내용
+            document.getElementById('feedback-content').textContent = feedback.content;
+            
+            // 답변 내용
+            const answerContent = document.getElementById('answer-content');
+            const answerForm = document.getElementById('answer-form');
+            const updateAnswerBtn = document.getElementById('update-answer-btn');
+            
+            if (feedback.answer) {
+                answerContent.innerHTML = `
+                    <div class="text-sm text-gray-900 dark:text-white">
+                        ${feedback.answer}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        답변일: ${new Date(feedback.answered_at).toLocaleString('ko-KR')}
+                    </div>
+                `;
+                answerForm.classList.add('hidden');
+                updateAnswerBtn.classList.remove('hidden');
+            } else {
+                answerContent.innerHTML = '<div class="text-sm text-gray-500 dark:text-gray-400">아직 답변이 없습니다.</div>';
+                answerForm.classList.remove('hidden');
+                updateAnswerBtn.classList.add('hidden');
+            }
+            
+            // 관련 피드백
+            const relatedTbody = document.getElementById('related-feedback-tbody');
+            relatedTbody.innerHTML = '';
+            data.related_feedback.forEach(function(related) {
+                const statusBadge = related.status === 'answered' ? 
+                    '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">답변 완료</span>' : 
+                    '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">답변 대기</span>';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                        ${related.content.length > 50 ? related.content.substring(0, 50) + '...' : related.content}
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                        ${related.answer ? (related.answer.length > 50 ? related.answer.substring(0, 50) + '...' : related.answer) : '-'}
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                        ${new Date(related.created_at).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap">
+                        ${statusBadge}
+                    </td>
+                `;
+                relatedTbody.appendChild(row);
+            });
+        }
+
+        // 답변 제출
+        function submitAnswer() {
+            const answerText = document.getElementById('answer-text').value.trim();
+            if (!answerText) {
+                alert('답변 내용을 입력해주세요.');
+                return;
+            }
+            
+            fetch(`/admin/feedback-management/api/feedback/${currentFeedbackId}/answer`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ answer: answerText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('답변이 성공적으로 작성되었습니다.');
+                    closeFeedbackDetailModal();
+                    loadFeedbackData();
+                } else {
+                    alert('답변 작성 중 오류가 발생했습니다: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting answer:', error);
+                alert('답변 작성 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 답변 수정
+        function updateAnswer() {
+            const answerText = prompt('수정할 답변을 입력하세요:');
+            if (!answerText) return;
+            
+            fetch(`/admin/feedback-management/api/feedback/${currentFeedbackId}/answer`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ answer: answerText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('답변이 성공적으로 수정되었습니다.');
+                    closeFeedbackDetailModal();
+                    loadFeedbackData();
+                } else {
+                    alert('답변 수정 중 오류가 발생했습니다: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating answer:', error);
+                alert('답변 수정 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 모달 닫기
+        function closeFeedbackDetailModal() {
+            document.getElementById('feedback-detail-modal').classList.add('hidden');
+            currentFeedbackId = null;
+            document.getElementById('answer-text').value = '';
+        }
+
+        // 필터 적용
+        function applyFilter() {
+            currentStatus = document.getElementById('status-filter').value;
+            currentBrand = document.getElementById('brand-filter').value;
+            currentPage = 1;
+            loadFeedbackData();
+        }
+
+        // 페이지 변경
+        function changePage(delta) {
+            currentPage += delta;
+            if (currentPage < 1) currentPage = 1;
+            loadFeedbackData();
+        }
+
+        // 데이터 새로고침
+        function refreshData() {
+            loadFeedbackData();
+        }
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFeedbackData();
+            
+            // 30초마다 데이터 새로고침
+            setInterval(() => {
+                loadFeedbackData();
+            }, 30000);
+        });
+    </script>
+</body>
+</html> 

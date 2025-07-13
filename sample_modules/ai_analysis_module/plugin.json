@@ -1,0 +1,47 @@
+{
+  "plugin_id": "ai_analysis_module",
+  "name": "AI 분석 모듈",
+  "version": "1.0.0",
+  "description": "머신러닝을 활용한 데이터 분석, 예측, 인사이트 제공 모듈입니다.",
+  "author": "Your Program Team",
+  "category": "analytics",
+  "dependencies": [],
+  "permissions": ["read", "write", "admin"],
+  "entry_point": "main.py",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": {"type": "boolean", "default": true},
+      "prediction_enabled": {"type": "boolean", "default": true},
+      "real_time_analysis": {"type": "boolean", "default": true},
+      "model_update_frequency": {"type": "integer", "default": 24},
+      "notification_enabled": {"type": "boolean", "default": true}
+    }
+  },
+  "routes": [
+    {
+      "path": "/ai-analysis",
+      "methods": ["GET"],
+      "handler": "analysis_handler",
+      "auth_required": true,
+      "roles": ["manager", "admin"]
+    },
+    {
+      "path": "/ai-analysis/predictions",
+      "methods": ["GET"],
+      "handler": "predictions_handler",
+      "auth_required": true,
+      "roles": ["manager", "admin"]
+    }
+  ],
+  "menus": [
+    {
+      "title": "AI 분석",
+      "path": "/ai-analysis",
+      "icon": "brain",
+      "parent": "modules",
+      "roles": ["manager", "admin"],
+      "order": 5
+    }
+  ]
+} 

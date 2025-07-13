@@ -1,0 +1,47 @@
+{
+  "plugin_id": "attendance_module",
+  "name": "출근 관리 모듈",
+  "version": "1.0.0",
+  "description": "직원 출근/퇴근 관리, 근무 시간 추적, 출근 통계를 제공하는 모듈입니다.",
+  "author": "Your Program Team",
+  "category": "attendance",
+  "dependencies": [],
+  "permissions": ["read", "write", "admin"],
+  "entry_point": "main.py",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": {"type": "boolean", "default": true},
+      "auto_checkout": {"type": "boolean", "default": false},
+      "late_threshold": {"type": "integer", "default": 15},
+      "overtime_threshold": {"type": "integer", "default": 8},
+      "notification_enabled": {"type": "boolean", "default": true}
+    }
+  },
+  "routes": [
+    {
+      "path": "/attendance",
+      "methods": ["GET", "POST"],
+      "handler": "attendance_handler",
+      "auth_required": true,
+      "roles": ["employee", "manager", "admin"]
+    },
+    {
+      "path": "/attendance/stats",
+      "methods": ["GET"],
+      "handler": "attendance_stats_handler",
+      "auth_required": true,
+      "roles": ["manager", "admin"]
+    }
+  ],
+  "menus": [
+    {
+      "title": "출근 관리",
+      "path": "/attendance",
+      "icon": "clock",
+      "parent": "modules",
+      "roles": ["employee", "manager", "admin"],
+      "order": 1
+    }
+  ]
+} 

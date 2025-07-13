@@ -1,0 +1,54 @@
+{
+  "name": "재고 관리 모듈",
+  "version": "1.0.0",
+  "description": "매장의 재고를 실시간으로 관리하고 자동 발주를 지원하는 모듈입니다.",
+  "author": "your_program 개발팀",
+  "category": "inventory",
+  "tags": ["재고", "발주", "자동화", "IoT", "바코드"],
+  "compatibility": {
+    "min_version": "1.0.0",
+    "max_version": "2.0.0",
+    "industries": ["restaurant", "retail", "manufacturing"],
+    "brands": ["all"]
+  },
+  "requirements": [
+    "flask>=2.0.0",
+    "sqlalchemy>=1.4.0",
+    "requests>=2.25.0"
+  ],
+  "features": [
+    "실시간 재고 추적",
+    "자동 발주 알림",
+    "바코드 스캔",
+    "IoT 센서 연동",
+    "재고 리포트"
+  ],
+  "api_endpoints": [
+    "/api/inventory/check",
+    "/api/inventory/update",
+    "/api/inventory/order",
+    "/api/inventory/alerts"
+  ],
+  "permissions": {
+    "view": ["employee", "manager", "admin"],
+    "edit": ["manager", "admin"],
+    "approve": ["admin"]
+  },
+  "settings": {
+    "low_stock_threshold": {
+      "type": "integer",
+      "default": 10,
+      "description": "재고 부족 알림 기준"
+    },
+    "auto_order": {
+      "type": "boolean",
+      "default": false,
+      "description": "자동 발주 사용 여부"
+    },
+    "iot_integration": {
+      "type": "boolean",
+      "default": true,
+      "description": "IoT 센서 연동 사용 여부"
+    }
+  }
+} 

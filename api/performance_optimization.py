@@ -20,6 +20,13 @@ except (ImportError, Exception):
     redis_client = None
     logging.warning("Redis not available, using in-memory cache")
 
+# psutil import (시스템 리소스 모니터링용)
+try:
+    import psutil
+except ImportError:
+    psutil = None
+    logging.warning("psutil not available, system monitoring disabled")
+
 # 메모리 기반 캐시 (Redis가 없을 때 사용)
 memory_cache = {}
 cache_lock = threading.Lock()
@@ -126,16 +133,13 @@ def clear_cache():
             if keys:
                 redis_client.delete(*keys)  # type: ignore
                 logger.info(f"Redis 캐시 삭제 완료: {len(keys)}개 키")  # type: ignore
-            deleted_keys = len(keys) if keys else 0
-        else:
-            # 메모리 캐시 삭제
-            with cache_lock:
-                cache_keys = [k for k in memory_cache.keys() if k.startswith("cache:")]
-                for key in cache_keys:
-                    del memory_cache[key]
-                deleted_keys = len(cache_keys)
-                logger.info(f"메모리 캐시 삭제 완료: {deleted_keys}개 키")
-        
+                deleted_keys = len(keys) if isinstance(keys, (list, tuple, set)) else 0  # pyright: ignore
+                # 메모리 캐시도 함께 삭제 (cache:로 시작하는 키만)
+                with cache_lock:
+                    memory_cache_keys = [k for k in memory_cache.keys() if k.startswith("cache:")]
+                    for key in memory_cache_keys:
+                        del memory_cache[key]
+                    logger.info(f"메모리 캐시 삭제 완료: {len(memory_cache_keys)}개 키")
         return jsonify({'message': '캐시가 삭제되었습니다', 'deleted_keys': deleted_keys})
     except Exception as e:
         logger.error(f"캐시 삭제 오류: {e}")

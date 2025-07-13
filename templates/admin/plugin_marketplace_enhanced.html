@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>플러그인 마켓플레이스 - Your Program</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-6">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                            <i class="fas fa-store mr-3 text-blue-600"></i>
+                            플러그인 마켓플레이스
+                        </h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="uploadPluginBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-upload mr-2"></i>
+                            플러그인 업로드
+                        </button>
+                        <button id="createTemplateBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-plus mr-2"></i>
+                            템플릿 생성
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 통계 카드 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                            <i class="fas fa-cube text-blue-600 dark:text-blue-400 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 플러그인</p>
+                            <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="totalPlugins">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                            <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">승인된 플러그인</p>
+                            <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="approvedPlugins">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                            <i class="fas fa-clock text-yellow-600 dark:text-yellow-400 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">대기 중</p>
+                            <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="pendingPlugins">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                            <i class="fas fa-download text-purple-600 dark:text-purple-400 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 다운로드</p>
+                            <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="totalDownloads">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 검색 및 필터 -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">검색</label>
+                        <input type="text" id="searchInput" placeholder="플러그인 이름, 설명, 태그..." 
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">카테고리</label>
+                        <select id="categoryFilter" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                            <option value="">모든 카테고리</option>
+                            <option value="utility">유틸리티</option>
+                            <option value="api">API</option>
+                            <option value="ui">UI</option>
+                            <option value="ai">AI</option>
+                            <option value="security">보안</option>
+                            <option value="analytics">분석</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">상태</label>
+                        <select id="statusFilter" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                            <option value="">모든 상태</option>
+                            <option value="published">승인됨</option>
+                            <option value="pending">대기 중</option>
+                            <option value="rejected">거절됨</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">정렬</label>
+                        <select id="sortFilter" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                            <option value="newest">최신순</option>
+                            <option value="popular">인기순</option>
+                            <option value="rating">평점순</option>
+                            <option value="downloads">다운로드순</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 플러그인 그리드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="pluginsGrid">
+                <!-- 플러그인 카드들이 여기에 동적으로 추가됩니다 -->
+            </div>
+
+            <!-- 페이지네이션 -->
+            <div class="mt-8 flex justify-center">
+                <nav class="flex items-center space-x-2">
+                    <button id="prevPage" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        이전
+                    </button>
+                    <span id="pageInfo" class="px-3 py-2 text-sm text-gray-700">1 / 1</span>
+                    <button id="nextPage" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        다음
+                    </button>
+                </nav>
+            </div>
+        </main>
+    </div>
+
+    <!-- 플러그인 업로드 모달 -->
+    <div id="uploadModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full">
+                <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">플러그인 업로드</h3>
+                    <button id="closeUploadModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <div class="space-y-6">
+                        <!-- 업로드 방법 선택 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">업로드 방법</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <button id="zipUploadBtn" class="upload-method-btn border-2 border-blue-500 bg-blue-50 dark:bg-blue-900">
+                                    <i class="fas fa-file-archive text-2xl mb-2"></i>
+                                    <span class="font-medium">ZIP 파일</span>
+                                    <span class="text-sm text-gray-500">압축된 플러그인 파일</span>
+                                </button>
+                                
+                                <button id="githubUploadBtn" class="upload-method-btn border-2 border-gray-300 dark:border-gray-600">
+                                    <i class="fab fa-github text-2xl mb-2"></i>
+                                    <span class="font-medium">GitHub</span>
+                                    <span class="text-sm text-gray-500">GitHub 저장소</span>
+                                </button>
+                                
+                                <button id="urlUploadBtn" class="upload-method-btn border-2 border-gray-300 dark:border-gray-600">
+                                    <i class="fas fa-link text-2xl mb-2"></i>
+                                    <span class="font-medium">URL</span>
+                                    <span class="text-sm text-gray-500">직접 다운로드 URL</span>
+                                </button>
+                                
+                                <button id="folderUploadBtn" class="upload-method-btn border-2 border-gray-300 dark:border-gray-600">
+                                    <i class="fas fa-folder text-2xl mb-2"></i>
+                                    <span class="font-medium">폴더</span>
+                                    <span class="text-sm text-gray-500">로컬 폴더 경로</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ZIP 파일 업로드 폼 -->
+                        <div id="zipUploadForm" class="upload-form hidden">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ZIP 파일 선택</label>
+                            <input type="file" id="zipFile" accept=".zip" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                        </div>
+
+                        <!-- GitHub 업로드 폼 -->
+                        <div id="githubUploadForm" class="upload-form hidden">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GitHub 저장소 URL</label>
+                                    <input type="url" id="githubUrl" placeholder="https://github.com/username/repository" 
+                                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜치 (선택사항)</label>
+                                    <input type="text" id="githubBranch" placeholder="main" 
+                                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- URL 업로드 폼 -->
+                        <div id="urlUploadForm" class="upload-form hidden">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">다운로드 URL</label>
+                            <input type="url" id="downloadUrl" placeholder="https://example.com/plugin.zip" 
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                        </div>
+
+                        <!-- 폴더 업로드 폼 -->
+                        <div id="folderUploadForm" class="upload-form hidden">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">폴더 경로</label>
+                            <input type="text" id="folderPath" placeholder="/path/to/plugin" 
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                        </div>
+
+                        <!-- 업로드 진행률 -->
+                        <div id="uploadProgress" class="hidden">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">업로드 중...</span>
+                                <span id="uploadPercentage" class="text-sm text-gray-500">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div id="uploadProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                    <button id="cancelUpload" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200">
+                        취소
+                    </button>
+                    <button id="submitUpload" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
+                        업로드
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 템플릿 생성 모달 -->
+    <div id="templateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+                <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">플러그인 템플릿 생성</h3>
+                    <button id="closeTemplateModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">플러그인 이름</label>
+                            <input type="text" id="templateName" placeholder="my_plugin" 
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">템플릿 타입</label>
+                            <select id="templateType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                                <option value="basic">기본 플러그인</option>
+                                <option value="api">API 플러그인</option>
+                                <option value="ui">UI 플러그인</option>
+                                <option value="ai">AI 플러그인</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">개발자 이름</label>
+                            <input type="text" id="templateAuthor" placeholder="Your Name" 
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">이메일</label>
+                            <input type="email" id="templateEmail" placeholder="your.email@example.com" 
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                    <button id="cancelTemplate" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200">
+                        취소
+                    </button>
+                    <button id="createTemplate" class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700">
+                        템플릿 생성
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 플러그인 상세 모달 -->
+    <div id="pluginDetailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+                <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white" id="pluginDetailTitle">플러그인 상세</h3>
+                    <button id="closePluginDetailModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6" id="pluginDetailContent">
+                    <!-- 플러그인 상세 내용이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentPage = 1;
+        let totalPages = 1;
+        let plugins = [];
+        let filteredPlugins = [];
+        let currentUploadMethod = 'zip';
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPlugins();
+            setupEventListeners();
+        });
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 검색 및 필터
+            document.getElementById('searchInput').addEventListener('input', filterPlugins);
+            document.getElementById('categoryFilter').addEventListener('change', filterPlugins);
+            document.getElementById('statusFilter').addEventListener('change', filterPlugins);
+            document.getElementById('sortFilter').addEventListener('change', filterPlugins);
+
+            // 페이지네이션
+            document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+            document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+
+            // 업로드 모달
+            document.getElementById('uploadPluginBtn').addEventListener('click', showUploadModal);
+            document.getElementById('closeUploadModal').addEventListener('click', hideUploadModal);
+            document.getElementById('cancelUpload').addEventListener('click', hideUploadModal);
+
+            // 업로드 방법 선택
+            document.querySelectorAll('.upload-method-btn').forEach(btn => {
+                btn.addEventListener('click', selectUploadMethod);
+            });
+
+            // 템플릿 모달
+            document.getElementById('createTemplateBtn').addEventListener('click', showTemplateModal);
+            document.getElementById('closeTemplateModal').addEventListener('click', hideTemplateModal);
+            document.getElementById('cancelTemplate').addEventListener('click', hideTemplateModal);
+            document.getElementById('createTemplate').addEventListener('click', createTemplate);
+
+            // 플러그인 상세 모달
+            document.getElementById('closePluginDetailModal').addEventListener('click', hidePluginDetailModal);
+        }
+
+        // 플러그인 로드
+        async function loadPlugins() {
+            try {
+                const response = await fetch('/api/marketplace/plugins');
+                const data = await response.json();
+                
+                plugins = data.modules || [];
+                filteredPlugins = [...plugins];
+                
+                updateStatistics(data.stats);
+                renderPlugins();
+                
+            } catch (error) {
+                console.error('플러그인 로드 실패:', error);
+                showNotification('플러그인 로드를 실패했습니다.', 'error');
+            }
+        }
+
+        // 통계 업데이트
+        function updateStatistics(stats) {
+            document.getElementById('totalPlugins').textContent = stats.total_modules || 0;
+            document.getElementById('approvedPlugins').textContent = stats.approved_modules || 0;
+            document.getElementById('pendingPlugins').textContent = (stats.total_modules || 0) - (stats.approved_modules || 0);
+            document.getElementById('totalDownloads').textContent = stats.total_downloads || 0;
+        }
+
+        // 플러그인 렌더링
+        function renderPlugins() {
+            const grid = document.getElementById('pluginsGrid');
+            const startIndex = (currentPage - 1) * 9;
+            const endIndex = startIndex + 9;
+            const pagePlugins = filteredPlugins.slice(startIndex, endIndex);
+
+            grid.innerHTML = '';
+
+            pagePlugins.forEach(plugin => {
+                const card = createPluginCard(plugin);
+                grid.appendChild(card);
+            });
+
+            updatePagination();
+        }
+
+        // 플러그인 카드 생성
+        function createPluginCard(plugin) {
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300';
+            
+            const statusClass = getStatusClass(plugin.status);
+            const statusText = getStatusText(plugin.status);
+
+            card.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">${plugin.name}</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">${plugin.author}</p>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                                ${statusText}
+                            </span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-download mr-1"></i>${plugin.downloads || 0}
+                            </span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-star mr-1"></i>${plugin.rating || 0}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <p class="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">${plugin.description}</p>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">v${plugin.version}</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">${plugin.category}</span>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button onclick="viewPluginDetail('${plugin.plugin_id}')" 
+                                    class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                상세보기
+                            </button>
+                            ${plugin.status === 'published' ? `
+                                <button onclick="downloadPlugin('${plugin.plugin_id}')" 
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                                    다운로드
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // 상태 클래스 반환
+        function getStatusClass(status) {
+            switch (status) {
+                case 'published': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+                case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+            }
+        }
+
+        // 상태 텍스트 반환
+        function getStatusText(status) {
+            switch (status) {
+                case 'published': return '승인됨';
+                case 'pending': return '대기 중';
+                case 'rejected': return '거절됨';
+                default: return '알 수 없음';
+            }
+        }
+
+        // 플러그인 필터링
+        function filterPlugins() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const sortBy = document.getElementById('sortFilter').value;
+
+            filteredPlugins = plugins.filter(plugin => {
+                const matchesSearch = !searchTerm || 
+                    plugin.name.toLowerCase().includes(searchTerm) ||
+                    plugin.description.toLowerCase().includes(searchTerm) ||
+                    (plugin.tags && plugin.tags.some(tag => tag.toLowerCase().includes(searchTerm)));
+                
+                const matchesCategory = !category || plugin.category === category;
+                const matchesStatus = !status || plugin.status === status;
+
+                return matchesSearch && matchesCategory && matchesStatus;
+            });
+
+            // 정렬
+            sortPlugins(sortBy);
+
+            currentPage = 1;
+            renderPlugins();
+        }
+
+        // 플러그인 정렬
+        function sortPlugins(sortBy) {
+            switch (sortBy) {
+                case 'newest':
+                    filteredPlugins.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    break;
+                case 'popular':
+                    filteredPlugins.sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
+                    break;
+                case 'rating':
+                    filteredPlugins.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                    break;
+                case 'downloads':
+                    filteredPlugins.sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
+                    break;
+            }
+        }
+
+        // 페이지 변경
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                renderPlugins();
+            }
+        }
+
+        // 페이지네이션 업데이트
+        function updatePagination() {
+            totalPages = Math.ceil(filteredPlugins.length / 9);
+            
+            document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages;
+        }
+
+        // 업로드 모달 표시
+        function showUploadModal() {
+            document.getElementById('uploadModal').classList.remove('hidden');
+            selectUploadMethod({ target: document.getElementById('zipUploadBtn') });
+        }
+
+        // 업로드 모달 숨김
+        function hideUploadModal() {
+            document.getElementById('uploadModal').classList.add('hidden');
+            resetUploadForms();
+        }
+
+        // 업로드 방법 선택
+        function selectUploadMethod(event) {
+            // 모든 버튼 스타일 초기화
+            document.querySelectorAll('.upload-method-btn').forEach(btn => {
+                btn.className = 'upload-method-btn border-2 border-gray-300 dark:border-gray-600 p-4 rounded-lg text-center hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors duration-200';
+            });
+
+            // 선택된 버튼 스타일 변경
+            event.target.className = 'upload-method-btn border-2 border-blue-500 bg-blue-50 dark:bg-blue-900 p-4 rounded-lg text-center transition-colors duration-200';
+
+            // 모든 폼 숨김
+            document.querySelectorAll('.upload-form').forEach(form => {
+                form.classList.add('hidden');
+            });
+
+            // 선택된 방법에 따른 폼 표시
+            const method = event.target.id.replace('UploadBtn', '');
+            currentUploadMethod = method;
+            
+            const form = document.getElementById(`${method}UploadForm`);
+            if (form) {
+                form.classList.remove('hidden');
+            }
+        }
+
+        // 업로드 폼 초기화
+        function resetUploadForms() {
+            document.getElementById('zipFile').value = '';
+            document.getElementById('githubUrl').value = '';
+            document.getElementById('githubBranch').value = '';
+            document.getElementById('downloadUrl').value = '';
+            document.getElementById('folderPath').value = '';
+            document.getElementById('uploadProgress').classList.add('hidden');
+        }
+
+        // 템플릿 모달 표시
+        function showTemplateModal() {
+            document.getElementById('templateModal').classList.remove('hidden');
+        }
+
+        // 템플릿 모달 숨김
+        function hideTemplateModal() {
+            document.getElementById('templateModal').classList.add('hidden');
+            document.getElementById('templateName').value = '';
+            document.getElementById('templateAuthor').value = '';
+            document.getElementById('templateEmail').value = '';
+        }
+
+        // 템플릿 생성
+        async function createTemplate() {
+            const name = document.getElementById('templateName').value.trim();
+            const type = document.getElementById('templateType').value;
+            const author = document.getElementById('templateAuthor').value.trim();
+            const email = document.getElementById('templateEmail').value.trim();
+
+            if (!name) {
+                showNotification('플러그인 이름을 입력해주세요.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/plugins/register/create-template', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        type: type,
+                        author: author,
+                        email: email
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification('플러그인 템플릿이 생성되었습니다.', 'success');
+                    hideTemplateModal();
+                } else {
+                    showNotification(data.error || '템플릿 생성에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('템플릿 생성 실패:', error);
+                showNotification('템플릿 생성에 실패했습니다.', 'error');
+            }
+        }
+
+        // 플러그인 상세 보기
+        async function viewPluginDetail(pluginId) {
+            try {
+                const response = await fetch(`/api/marketplace/plugins/${pluginId}`);
+                const plugin = await response.json();
+
+                document.getElementById('pluginDetailTitle').textContent = plugin.name;
+                document.getElementById('pluginDetailContent').innerHTML = createPluginDetailContent(plugin);
+                document.getElementById('pluginDetailModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('플러그인 상세 로드 실패:', error);
+                showNotification('플러그인 상세 정보를 불러올 수 없습니다.', 'error');
+            }
+        }
+
+        // 플러그인 상세 내용 생성
+        function createPluginDetailContent(plugin) {
+            return `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">기본 정보</h4>
+                            <dl class="space-y-3">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">이름</dt>
+                                    <dd class="text-sm text-gray-900 dark:text-white">${plugin.name}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">버전</dt>
+                                    <dd class="text-sm text-gray-900 dark:text-white">${plugin.version}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">개발자</dt>
+                                    <dd class="text-sm text-gray-900 dark:text-white">${plugin.author}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">카테고리</dt>
+                                    <dd class="text-sm text-gray-900 dark:text-white">${plugin.category}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">상태</dt>
+                                    <dd class="text-sm">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(plugin.status)}">
+                                            ${getStatusText(plugin.status)}
+                                        </span>
+                                    </dd>
+                                </div>
+                            </dl>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">통계</h4>
+                            <dl class="space-y-3">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">다운로드</dt>
+                                    <dd class="text-sm text-gray-900 dark:text-white">${plugin.downloads || 0}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">평점</dt>
+                                    <dd class="text-sm text-gray-900 dark:text-white">${plugin.rating || 0}/5</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">생성일</dt>
+                                    <dd class="text-sm text-gray-900 dark:text-white">${new Date(plugin.created_at).toLocaleDateString()}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">설명</h4>
+                        <p class="text-gray-600 dark:text-gray-300">${plugin.description}</p>
+                    </div>
+                    
+                    ${plugin.tags && plugin.tags.length > 0 ? `
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">태그</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${plugin.tags.map(tag => `
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                        ${tag}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex justify-end space-x-3">
+                        ${plugin.status === 'published' ? `
+                            <button onclick="downloadPlugin('${plugin.plugin_id}')" 
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                                다운로드
+                            </button>
+                        ` : ''}
+                        <button onclick="hidePluginDetailModal()" 
+                                class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md">
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 플러그인 상세 모달 숨김
+        function hidePluginDetailModal() {
+            document.getElementById('pluginDetailModal').classList.add('hidden');
+        }
+
+        // 플러그인 다운로드
+        async function downloadPlugin(pluginId) {
+            try {
+                const response = await fetch(`/api/marketplace/plugins/${pluginId}/download`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${pluginId}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showNotification('플러그인이 다운로드되었습니다.', 'success');
+                } else {
+                    showNotification('다운로드에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('다운로드 실패:', error);
+                showNotification('다운로드에 실패했습니다.', 'error');
+            }
+        }
+
+        // 알림 표시
+        function showNotification(message, type = 'info') {
+            // 간단한 알림 구현
+            alert(message);
+        }
+    </script>
+
+    <style>
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .upload-method-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100px;
+            cursor: pointer;
+        }
+        
+        .upload-method-btn:hover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        
+        .dark .upload-method-btn:hover {
+            background-color: #1e3a8a;
+        }
+    </style>
+</body>
+</html> 

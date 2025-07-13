@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>직원별 관리 - your_program Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="/static/js/theme.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🍽️ your_program</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">관리자 대시보드</p>
+            </div>
+            
+            <nav class="mt-6">
+                <div class="px-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">메인 메뉴</h3>
+                </div>
+                
+                <a href="/admin_dashboard" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    대시보드
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">브랜드 관리</h3>
+                </div>
+                
+                <div class="space-y-1">
+                    <a href="/admin/brand-manager-approval" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-user-check mr-3"></i>
+                        브랜드 관리자 승인
+                    </a>
+                    <a href="/admin/brand-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-building mr-3"></i>
+                        브랜드별 관리
+                    </a>
+                </div>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">매장 관리</h3>
+                </div>
+                
+                <a href="/admin/store-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-store mr-3"></i>
+                    매장별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">직원 관리</h3>
+                </div>
+                
+                <a href="/admin/employee-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500">
+                    <i class="fas fa-users mr-3"></i>
+                    직원별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">시스템 관리</h3>
+                </div>
+                
+
+                <a href="/admin/feedback-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-comments mr-3"></i>
+                    피드백 관리
+                </a>
+            </nav>
+            
+            <div class="absolute bottom-0 w-64 p-6">
+                <div class="flex items-center justify-between">
+                    <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                    <a href="/auth/logout" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 overflow-auto">
+            <!-- 헤더 -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">직원별 관리</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">직원 현황 및 개선사항을 관리할 수 있습니다</p>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="p-6">
+                <!-- 환영 메시지 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        직원별 관리 👥
+                    </h2>
+                    <p class="text-gray-600 dark:text-gray-400">
+                        백다방, 초선마리, 카페베네, 스타벅스 등의 브랜드와 매장에서 근무하는 직원들을 관리하고 
+                        각 직원의 근무 현황과 성과를 모니터링할 수 있습니다.
+                    </p>
+                </div>
+
+                <!-- 전체 통계 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                                <i class="fas fa-users text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 직원</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-employees">0명</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                                <i class="fas fa-user-check text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">활성 직원</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="active-employees">0명</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                                <i class="fas fa-user-tie text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">매니저</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-managers">0명</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-orange-100 dark:bg-orange-900">
+                                <i class="fas fa-clock text-orange-600 dark:text-orange-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">출근률</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="attendance-rate">0%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 필터 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <div class="flex flex-wrap gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜드 필터</label>
+                            <select id="brand-filter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                <option value="">모든 브랜드</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">매장 필터</label>
+                            <select id="store-filter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                <option value="">모든 매장</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">직급</label>
+                            <select id="role-filter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                <option value="">모든 직급</option>
+                                <option value="manager">매니저</option>
+                                <option value="employee">직원</option>
+                                <option value="part_time">알바</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">상태</label>
+                            <select id="status-filter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                <option value="">모든 상태</option>
+                                <option value="active">활성</option>
+                                <option value="inactive">비활성</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="applyFilters()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                필터 적용
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 직원 목록 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">직원 목록</h3>
+                            <button onclick="openCreateEmployeeModal()" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700">
+                                <i class="fas fa-plus mr-1"></i>새 직원 추가
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">이름</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">이메일</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">브랜드</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">매장</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">직급</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">전화번호</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">액션</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="employees-table-body">
+                                <!-- 데이터가 여기에 동적으로 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 직원 생성 모달 -->
+    <div id="create-employee-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">새 직원 추가</h3>
+                <form id="create-employee-form">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">이름</label>
+                        <input type="text" id="employee-name" name="name" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">이메일</label>
+                        <input type="email" id="employee-email" name="email" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜드</label>
+                        <select id="employee-brand" name="brand_id" required 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="">브랜드를 선택하세요</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">매장</label>
+                        <select id="employee-store" name="store_id" required 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="">매장을 선택하세요</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">직급</label>
+                        <select id="employee-role" name="role" required 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="employee">직원</option>
+                            <option value="manager">매니저</option>
+                            <option value="part_time">알바</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">전화번호</label>
+                        <input type="tel" id="employee-phone" name="phone" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소</label>
+                        <input type="text" id="employee-address" name="address" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeCreateEmployeeModal()" 
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300">
+                            취소
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            생성
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 브랜드 목록 로드
+        function loadBrands() {
+            fetch('/api/admin/brands')
+                .then(response => response.json())
+                .then(data => {
+                    const brandFilter = document.getElementById('brand-filter');
+                    const employeeBrand = document.getElementById('employee-brand');
+                    
+                    // 기존 옵션 제거 (첫 번째 옵션 제외)
+                    brandFilter.innerHTML = '<option value="">모든 브랜드</option>';
+                    employeeBrand.innerHTML = '<option value="">브랜드를 선택하세요</option>';
+                    
+                    data.brands.forEach(brand => {
+                        brandFilter.innerHTML += `<option value="${brand.id}">${brand.name}</option>`;
+                        employeeBrand.innerHTML += `<option value="${brand.id}">${brand.name}</option>`;
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading brands:', error);
+                });
+        }
+
+        // 매장 목록 로드 (브랜드별)
+        function loadStores(brandId = '') {
+            const storeFilter = document.getElementById('store-filter');
+            const employeeStore = document.getElementById('employee-store');
+            
+            const url = brandId ? `/api/admin/stores?brand_id=${brandId}` : '/api/admin/stores';
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // 기존 옵션 제거 (첫 번째 옵션 제외)
+                    storeFilter.innerHTML = '<option value="">모든 매장</option>';
+                    employeeStore.innerHTML = '<option value="">매장을 선택하세요</option>';
+                    
+                    data.stores.forEach(store => {
+                        storeFilter.innerHTML += `<option value="${store.id}">${store.name}</option>`;
+                        employeeStore.innerHTML += `<option value="${store.id}">${store.name}</option>`;
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading stores:', error);
+                });
+        }
+
+        // 직원 목록 로드
+        function loadEmployees(filters = {}) {
+            const queryParams = new URLSearchParams(filters).toString();
+            fetch(`/api/admin/employees?${queryParams}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('employees-table-body');
+                    tableBody.innerHTML = '';
+                    
+                    let totalEmployees = 0;
+                    let activeEmployees = 0;
+                    let totalManagers = 0;
+                    let totalAttendance = 0;
+                    
+                    data.employees.forEach(employee => {
+                        totalEmployees++;
+                        if (employee.status === 'active') {
+                            activeEmployees++;
+                        }
+                        if (employee.role === 'manager') {
+                            totalManagers++;
+                        }
+                        totalAttendance += employee.attendance_rate || 0;
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                ${employee.name}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${employee.email}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${employee.brand_name}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${employee.store_name}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${employee.role === 'manager' ? '매니저' : 
+                                  employee.role === 'part_time' ? '알바' : '직원'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ${employee.phone || '-'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    employee.status === 'active' 
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                }">
+                                    ${employee.status === 'active' ? '활성' : '비활성'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button onclick="viewEmployeeDetails(${employee.id})" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3">
+                                    상세보기
+                                </button>
+                                <button onclick="editEmployee(${employee.id})" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
+                                    편집
+                                </button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // 통계 업데이트
+                    document.getElementById('total-employees').textContent = totalEmployees + '명';
+                    document.getElementById('active-employees').textContent = activeEmployees + '명';
+                    document.getElementById('total-managers').textContent = totalManagers + '명';
+                    document.getElementById('attendance-rate').textContent = totalEmployees > 0 ? 
+                        Math.round(totalAttendance / totalEmployees) + '%' : '0%';
+                })
+                .catch(error => {
+                    console.error('Error loading employees:', error);
+                });
+        }
+
+        // 필터 적용
+        function applyFilters() {
+            const brandFilter = document.getElementById('brand-filter').value;
+            const storeFilter = document.getElementById('store-filter').value;
+            const roleFilter = document.getElementById('role-filter').value;
+            const statusFilter = document.getElementById('status-filter').value;
+            
+            const filters = {};
+            if (brandFilter) filters.brand_id = brandFilter;
+            if (storeFilter) filters.store_id = storeFilter;
+            if (roleFilter) filters.role = roleFilter;
+            if (statusFilter) filters.status = statusFilter;
+            
+            loadEmployees(filters);
+        }
+
+        // 직원 생성 모달
+        function openCreateEmployeeModal() {
+            document.getElementById('create-employee-modal').classList.remove('hidden');
+        }
+
+        function closeCreateEmployeeModal() {
+            document.getElementById('create-employee-modal').classList.add('hidden');
+            document.getElementById('create-employee-form').reset();
+        }
+
+        // 브랜드 선택 시 매장 목록 업데이트
+        document.getElementById('employee-brand').addEventListener('change', function(e) {
+            loadStores(e.target.value);
+        });
+
+        // 직원 생성
+        document.getElementById('create-employee-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            fetch('/api/admin/employees', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('직원이 성공적으로 생성되었습니다.');
+                    closeCreateEmployeeModal();
+                    loadEmployees();
+                } else {
+                    alert('직원 생성 중 오류가 발생했습니다: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error creating employee:', error);
+                alert('직원 생성 중 오류가 발생했습니다.');
+            });
+        });
+
+        // 직원 상세보기
+        function viewEmployeeDetails(employeeId) {
+            // 직원 상세보기 기능 구현
+            alert('직원 상세보기 기능은 추후 구현 예정입니다.');
+        }
+
+        // 직원 편집
+        function editEmployee(employeeId) {
+            // 직원 편집 기능 구현
+            alert('직원 편집 기능은 추후 구현 예정입니다.');
+        }
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBrands();
+            loadStores();
+            loadEmployees();
+            
+            // 30초마다 데이터 새로고침
+            setInterval(() => {
+                loadEmployees();
+            }, 30000);
+        });
+    </script>
+</body>
+</html> 

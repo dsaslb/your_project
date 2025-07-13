@@ -1,0 +1,27 @@
+{
+  "plugin_id": "security_monitor",
+  "name": "보안 모니터링 플러그인",
+  "version": "1.0.0",
+  "description": "시스템 보안 상태를 실시간으로 모니터링하고 경고를 제공하는 플러그인입니다.",
+  "author": "Security Team",
+  "category": "security",
+  "dependencies": [],
+  "permissions": [
+    "read",
+    "write"
+  ],
+  "entry_point": "main.py",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "debug_mode": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  }
+}

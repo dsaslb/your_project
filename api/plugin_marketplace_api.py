@@ -37,48 +37,9 @@ def login_required(f):
 try:
     from core.backend.plugin_marketplace_system import marketplace, deployment_system
 except ImportError:
-    logger.warning("플러그인 마켓플레이스 시스템을 import할 수 없습니다. 더미 데이터를 사용합니다.")
-    
-    # 더미 마켓플레이스 데이터
-    class DummyMarketplace:
-        def search_plugins(self, query="", category="", status="published"):
-            return [
-                {
-                    'plugin_id': 'your_program_management',
-                    'name': '레스토랑 관리 플러그인',
-                    'description': '레스토랑 운영을 위한 종합 관리 플러그인',
-                    'author': 'Admin',
-                    'version': '1.0.0',
-                    'category': 'business',
-                    'status': 'published',
-                    'downloads': 150,
-                    'rating': 4.5,
-                    'rating_count': 25
-                },
-                {
-                    'plugin_id': 'analytics_plugin',
-                    'name': '분석 플러그인',
-                    'description': '데이터 분석 및 리포트 생성 플러그인',
-                    'author': 'Analytics Team',
-                    'version': '2.1.0',
-                    'category': 'analytics',
-                    'status': 'published',
-                    'downloads': 89,
-                    'rating': 4.2,
-                    'rating_count': 18
-                }
-            ]
-        
-        def get_plugin_statistics(self):
-            return {
-                'total_plugins': 2,
-                'total_downloads': 239,
-                'total_ratings': 43,
-                'category_statistics': {
-                    'business': {'count': 1, 'downloads': 150, 'avg_rating': 4.5},
-                    'analytics': {'count': 1, 'downloads': 89, 'avg_rating': 4.2}
-                }
-            }
+    logger.warning("플러그인 마켓플레이스 시스템을 import할 수 없습니다.")
+    marketplace = None
+    deployment_system = None
     
     class DummyDeploymentSystem:
         def get_deployment_status(self, plugin_id=None):
@@ -91,8 +52,9 @@ except ImportError:
                 }
             }
     
-    marketplace = DummyMarketplace()
-    deployment_system = DummyDeploymentSystem()
+    # 마켓플레이스 시스템이 없을 경우 None으로 설정
+    marketplace = None
+    deployment_system = None
 
 @plugin_marketplace_bp.route('/plugins', methods=['GET'])
 @login_required
@@ -275,7 +237,7 @@ def register_plugin():
         
         # 임시 디렉토리에 파일 저장
         temp_dir = tempfile.mkdtemp()
-        filename = secure_filename(file.filename)
+        filename = secure_filename(file.filename or 'plugin.zip')
         file_path = os.path.join(temp_dir, filename)
         file.save(file_path)
         

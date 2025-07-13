@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 마켓플레이스 - your_program Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/theme.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🍽️ your_program</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">관리자 대시보드</p>
+            </div>
+            
+            <nav class="mt-6">
+                <div class="px-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">메인 메뉴</h3>
+                </div>
+                
+                <a href="/admin_dashboard" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    대시보드
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">브랜드 관리</h3>
+                </div>
+                
+                <div class="space-y-1">
+                    <a href="/admin/brand-manager-approval" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-user-check mr-3"></i>
+                        브랜드 관리자 승인
+                    </a>
+                    <a href="/admin/brand-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-building mr-3"></i>
+                        브랜드별 관리
+                    </a>
+                </div>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">매장 관리</h3>
+                </div>
+                
+                <a href="/admin/store-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-store mr-3"></i>
+                    매장별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">직원 관리</h3>
+                </div>
+                
+                <a href="/admin/employee-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-users mr-3"></i>
+                    직원별 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">모듈 관리</h3>
+                </div>
+                
+                <a href="/admin/module-marketplace" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500">
+                    <i class="fas fa-puzzle-piece mr-3"></i>
+                    모듈 마켓플레이스
+                </a>
+                <a href="/admin/module-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-cogs mr-3"></i>
+                    모듈 관리
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">시스템 관리</h3>
+                </div>
+                
+                <a href="/admin/feedback-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-comments mr-3"></i>
+                    피드백 관리
+                </a>
+            </nav>
+            
+            <div class="absolute bottom-0 w-64 p-6">
+                <div class="flex items-center justify-between">
+                    <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                    <a href="/auth/logout" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 overflow-auto">
+            <!-- 헤더 -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">모듈 마켓플레이스</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">다양한 기능 모듈을 검색하고 설치하세요</p>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="p-6">
+                <!-- 검색 및 필터 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1">
+                            <input type="text" id="search-input" placeholder="모듈 검색..." 
+                                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="flex gap-2">
+                            <select id="category-filter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                                <option value="">모든 카테고리</option>
+                                <option value="attendance">출근 관리</option>
+                                <option value="schedule">일정 관리</option>
+                                <option value="inventory">재고 관리</option>
+                                <option value="purchase">구매 관리</option>
+                                <option value="analytics">분석</option>
+                            </select>
+                            <button id="upload-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-upload mr-2"></i>모듈 업로드
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 통계 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                                <i class="fas fa-puzzle-piece text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 모듈</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-modules">0개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                                <i class="fas fa-download text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 다운로드</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-downloads">0회</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                                <i class="fas fa-star text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">평균 평점</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="avg-rating">0.0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-orange-100 dark:bg-orange-900">
+                                <i class="fas fa-check-circle text-orange-600 dark:text-orange-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">승인된 모듈</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="approved-modules">0개</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 모듈 목록 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">모듈 목록</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="modules-grid">
+                            <!-- 모듈 카드들이 여기에 동적으로 로드됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 모듈 업로드 모달 -->
+    <div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">모듈 업로드</h3>
+                </div>
+                <div class="p-6">
+                    <form id="upload-form">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">모듈 파일</label>
+                            <input type="file" id="module-file" accept=".zip" required
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">모듈 이름</label>
+                            <input type="text" id="module-name" required
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">설명</label>
+                            <textarea id="module-description" rows="3"
+                                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-3">
+                            <button type="button" id="cancel-upload" class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                                취소
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                업로드
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 모듈 데이터 로드
+        function loadModules() {
+            fetch('/api/marketplace/modules')
+                .then(response => response.json())
+                .then(data => {
+                    updateStatistics(data.stats);
+                    renderModules(data.modules);
+                })
+                .catch(error => {
+                    console.error('Error loading modules:', error);
+                });
+        }
+
+        // 통계 업데이트
+        function updateStatistics(stats) {
+            document.getElementById('total-modules').textContent = stats.total_modules + '개';
+            document.getElementById('total-downloads').textContent = stats.total_downloads + '회';
+            document.getElementById('avg-rating').textContent = stats.avg_rating.toFixed(1);
+            document.getElementById('approved-modules').textContent = stats.approved_modules + '개';
+        }
+
+        // 모듈 렌더링
+        function renderModules(modules) {
+            const grid = document.getElementById('modules-grid');
+            grid.innerHTML = '';
+
+            modules.forEach(module => {
+                const card = createModuleCard(module);
+                grid.appendChild(card);
+            });
+        }
+
+        // 모듈 카드 생성
+        function createModuleCard(module) {
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow';
+            
+            card.innerHTML = `
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-900 dark:text-white">${module.name}</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">${module.author}</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full ${module.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                        ${module.status === 'published' ? '승인됨' : '대기중'}
+                    </span>
+                </div>
+                <p class="text-gray-600 dark:text-gray-300 mb-4">${module.description}</p>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-download mr-1"></i>${module.downloads}
+                        </span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-star mr-1"></i>${module.rating}
+                        </span>
+                    </div>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">v${module.version}</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="downloadModule('${module.plugin_id}')" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-download mr-2"></i>다운로드
+                    </button>
+                    <button onclick="viewModuleDetails('${module.plugin_id}')" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // 모듈 다운로드
+        function downloadModule(moduleId) {
+            fetch(`/api/marketplace/modules/${moduleId}/download`)
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${moduleId}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    console.error('Download failed:', error);
+                    alert('다운로드에 실패했습니다.');
+                });
+        }
+
+        // 모듈 상세 보기
+        function viewModuleDetails(moduleId) {
+            // 모듈 상세 정보 페이지로 이동
+            window.location.href = `/admin/module-details/${moduleId}`;
+        }
+
+        // 검색 기능
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('#modules-grid > div');
+            
+            cards.forEach(card => {
+                const title = card.querySelector('h4').textContent.toLowerCase();
+                const description = card.querySelector('p').textContent.toLowerCase();
+                
+                if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // 카테고리 필터
+        document.getElementById('category-filter').addEventListener('change', function(e) {
+            const category = e.target.value;
+            if (category) {
+                // 카테고리별 필터링 로직 구현
+                loadModules();
+            }
+        });
+
+        // 업로드 모달
+        document.getElementById('upload-btn').addEventListener('click', function() {
+            document.getElementById('upload-modal').classList.remove('hidden');
+        });
+
+        document.getElementById('cancel-upload').addEventListener('click', function() {
+            document.getElementById('upload-modal').classList.add('hidden');
+        });
+
+        // 업로드 폼 제출
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('file', document.getElementById('module-file').files[0]);
+            formData.append('name', document.getElementById('module-name').value);
+            formData.append('description', document.getElementById('module-description').value);
+            
+            fetch('/api/marketplace/modules/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('모듈이 성공적으로 업로드되었습니다.');
+                    document.getElementById('upload-modal').classList.add('hidden');
+                    document.getElementById('upload-form').reset();
+                    loadModules();
+                } else {
+                    alert('업로드에 실패했습니다: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Upload failed:', error);
+                alert('업로드에 실패했습니다.');
+            });
+        });
+
+        // 페이지 로드 시 모듈 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModules();
+        });
+    </script>
+</body>
+</html> 

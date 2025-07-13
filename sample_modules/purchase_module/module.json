@@ -1,0 +1,54 @@
+{
+  "name": "발주 관리 모듈",
+  "version": "1.0.0",
+  "description": "매장의 발주를 관리하고 공급업체와 연동하는 모듈입니다.",
+  "author": "your_program 개발팀",
+  "category": "purchase",
+  "tags": ["발주", "공급업체", "견적", "배송", "결제"],
+  "compatibility": {
+    "min_version": "1.0.0",
+    "max_version": "2.0.0",
+    "industries": ["restaurant", "retail", "manufacturing"],
+    "brands": ["all"]
+  },
+  "requirements": [
+    "flask>=2.0.0",
+    "sqlalchemy>=1.4.0",
+    "requests>=2.25.0"
+  ],
+  "features": [
+    "자동 발주 생성",
+    "공급업체 관리",
+    "견적 비교",
+    "배송 추적",
+    "결제 관리"
+  ],
+  "api_endpoints": [
+    "/api/purchase/create",
+    "/api/purchase/approve",
+    "/api/purchase/track",
+    "/api/purchase/payment"
+  ],
+  "permissions": {
+    "view": ["manager", "admin"],
+    "edit": ["manager", "admin"],
+    "approve": ["admin"]
+  },
+  "settings": {
+    "auto_approval_limit": {
+      "type": "integer",
+      "default": 100000,
+      "description": "자동 승인 한도 (원)"
+    },
+    "supplier_notifications": {
+      "type": "boolean",
+      "default": true,
+      "description": "공급업체 알림 사용 여부"
+    },
+    "payment_auto": {
+      "type": "boolean",
+      "default": false,
+      "description": "자동 결제 사용 여부"
+    }
+  }
+} 
