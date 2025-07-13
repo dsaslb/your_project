@@ -17,8 +17,12 @@ import {
   Eye,
   DollarSign,
   ShoppingCart,
-  ChefHat
+  ChefHat,
+  CheckCircle,
+  ClipboardList,
+  Monitor
 } from "lucide-react"
+import RealTimeNotifications from "@/components/RealTimeNotifications"
 
 interface AuthState {
   isAuthenticated: boolean
@@ -109,6 +113,7 @@ export default function BrandDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <RealTimeNotifications />
               <Badge variant="secondary" className="bg-purple-500/20 text-purple-300 border-purple-500/30">
                 {authState.username === "admin" ? "업종별 관리자" : "브랜드 관리자"}
               </Badge>
@@ -261,6 +266,56 @@ export default function BrandDashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* 시스템 관리 섹션 */}
+        <div className="mt-8">
+          <h2 className="text-xl font-bold text-white mb-6">시스템 관리</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-colors cursor-pointer" onClick={() => router.push('/qsc-inspection')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-slate-300">QSC 점검</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">24</div>
+                <p className="text-xs text-slate-400">이번 달 점검</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-colors cursor-pointer" onClick={() => router.push('/checklist')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-slate-300">업무 체크리스트</CardTitle>
+                <ClipboardList className="h-4 w-4 text-blue-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">156</div>
+                <p className="text-xs text-slate-400">진행중인 업무</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-colors cursor-pointer" onClick={() => router.push('/cook-time')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-slate-300">조리 시간</CardTitle>
+                <ChefHat className="h-4 w-4 text-orange-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">89</div>
+                <p className="text-xs text-slate-400">등록된 메뉴</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-colors cursor-pointer" onClick={() => router.push('/kitchen-monitor')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-slate-300">주방 모니터링</CardTitle>
+                <Monitor className="h-4 w-4 text-purple-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">12</div>
+                <p className="text-xs text-slate-400">활성 센서</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* 빠른 액션 */}
