@@ -1,8 +1,7 @@
-﻿import re
-from datetime import date, datetime, timedelta
-from enum import Enum
-
-from flask_login import AnonymousUserMixin as BaseAnonymousUserMixin, UserMixin
+﻿import re  # noqa: E402
+from datetime import date, datetime, timedelta  # noqa: E402
+from enum import Enum  # noqa: E402
+from flask_login import AnonymousUserMixin as BaseAnonymousUserMixin, UserMixin  # noqa: E402
 from werkzeug.security import check_password_hash, generate_password_hash
 from extensions import db
 
@@ -712,7 +711,7 @@ class ActionLog(db.Model):
         db.Index("idx_actionlog_action_date", "action", "created_at"),
     )
 
-    def __init__(self, user_id: int | None = None, action: str | None = None, message: str | None = None, ip_address: str | None = None, user_agent: str | None = None, **kwargs):
+    def __init__(self, user_id=None, action=None, message=None, ip_address=None, user_agent=None, **kwargs):
         super().__init__(**kwargs)
         self.user_id = user_id
         self.action = action

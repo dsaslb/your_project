@@ -10,8 +10,7 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from flask import url_for
-from models import db
-from models import Notification, User
+# 순환 import 방지를 위해 함수 내에서 import
 from utils.logger import log_action
 
 logger = logging.getLogger(__name__)
@@ -112,6 +111,9 @@ def send_notification(
     사용자에게 알림을 생성하고 전송합니다.
     """
     try:
+        # 순환 import 방지를 위해 함수 내에서 import
+        from models import db, Notification
+        
         # 1. 데이터베이스에 알림 저장
         notification = Notification()
         notification.user_id = user_id
@@ -150,6 +152,9 @@ def notify_admins(content, related_url=None):
     Sends a notification to all administrators.
     """
     try:
+        # 순환 import 방지를 위해 함수 내에서 import
+        from models import User
+        
         admins = User.query.filter_by(role="admin").all()
         for admin in admins:
             send_notification(admin.id, content, related_url)
