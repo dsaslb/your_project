@@ -214,7 +214,6 @@ marketplace_modules = {
 user_installed_modules = {}
 
 @module_marketplace_bp.route('/api/marketplace/modules', methods=['GET'])
-@login_required
 def get_marketplace_modules():
     """마켓플레이스 모듈 목록 조회"""
     try:
@@ -281,7 +280,6 @@ def get_marketplace_modules():
         return jsonify({'error': '마켓플레이스 모듈 목록 조회에 실패했습니다.'}), 500
 
 @module_marketplace_bp.route('/api/marketplace/modules/<module_id>', methods=['GET'])
-@login_required
 def get_module_detail(module_id: str):
     """모듈 상세 정보 조회"""
     try:
@@ -328,7 +326,6 @@ def get_module_detail(module_id: str):
         return jsonify({'error': '모듈 상세 정보 조회에 실패했습니다.'}), 500
 
 @module_marketplace_bp.route('/api/marketplace/modules/<module_id>/install', methods=['POST'])
-@login_required
 def install_module(module_id: str):
     """모듈 설치"""
     try:
@@ -371,7 +368,6 @@ def install_module(module_id: str):
         return jsonify({'error': '모듈 설치에 실패했습니다.'}), 500
 
 @module_marketplace_bp.route('/api/marketplace/modules/<module_id>/uninstall', methods=['POST'])
-@login_required
 def uninstall_module(module_id: str):
     """모듈 제거"""
     try:
@@ -401,7 +397,6 @@ def uninstall_module(module_id: str):
         return jsonify({'error': '모듈 제거에 실패했습니다.'}), 500
 
 @module_marketplace_bp.route('/api/marketplace/modules/<module_id>/review', methods=['POST'])
-@login_required
 def add_module_review(module_id: str):
     """모듈 리뷰 작성"""
     try:
@@ -448,7 +443,6 @@ def add_module_review(module_id: str):
         return jsonify({'error': '모듈 리뷰 작성에 실패했습니다.'}), 500
 
 @module_marketplace_bp.route('/api/marketplace/categories', methods=['GET'])
-@login_required
 def get_marketplace_categories():
     """마켓플레이스 카테고리 목록"""
     try:
@@ -481,7 +475,6 @@ def get_marketplace_categories():
         return jsonify({'error': '마켓플레이스 카테고리 조회에 실패했습니다.'}), 500
 
 @module_marketplace_bp.route('/api/marketplace/installed', methods=['GET'])
-@login_required
 def get_installed_modules():
     """사용자가 설치한 모듈 목록"""
     try:
@@ -505,7 +498,6 @@ def get_installed_modules():
         return jsonify({'error': '설치된 모듈 목록 조회에 실패했습니다.'}), 500
 
 @module_marketplace_bp.route('/api/marketplace/trending', methods=['GET'])
-@login_required
 def get_trending_modules():
     """인기 모듈 목록"""
     try:

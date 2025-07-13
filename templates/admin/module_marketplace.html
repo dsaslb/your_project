@@ -253,10 +253,15 @@
 
         // 통계 업데이트
         function updateStatistics(stats) {
-            document.getElementById('total-modules').textContent = stats.total_modules + '개';
-            document.getElementById('total-downloads').textContent = stats.total_downloads + '회';
-            document.getElementById('avg-rating').textContent = stats.avg_rating.toFixed(1);
-            document.getElementById('approved-modules').textContent = stats.approved_modules + '개';
+            if (!stats) {
+                console.error('Stats data is undefined');
+                return;
+            }
+            
+            document.getElementById('total-modules').textContent = (stats.total_modules || 0) + '개';
+            document.getElementById('total-downloads').textContent = (stats.total_downloads || 0) + '회';
+            document.getElementById('avg-rating').textContent = (stats.avg_rating || 0).toFixed(1);
+            document.getElementById('approved-modules').textContent = (stats.approved_modules || 0) + '개';
         }
 
         // 모듈 렌더링

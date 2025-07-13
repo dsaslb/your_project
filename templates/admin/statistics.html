@@ -3,263 +3,73 @@
 {% block title %}통계 리포트 - Admin{% endblock %}
 
 {% block content %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>통계 리포트 - 최고관리자</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .container { 
-            width: 100vw;
-            max-width: none;
-            margin: 0;
-            padding: 0;
-            background: white;
-            border-radius: 0;
-            box-shadow: none;
-            overflow: hidden;
-        }
-        .header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-            padding: 20px; 
-            text-align: center;
-            position: relative;
-        }
-        .header h1 { 
-            margin: 0; 
-            font-size: 2rem; 
-            font-weight: 300;
-        }
-        .content {
-            padding: 30px;
-        }
-        .back-btn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-        .back-btn:hover {
-            background: rgba(255,255,255,0.3);
-            color: white;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            background: white;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .stat-error { color: #dc3545; }
-        .stat-warning { color: #ffc107; }
-        .stat-info { color: #17a2b8; }
-        .stat-success { color: #28a745; }
-        .stat-label {
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-        .log-container {
-            background: white;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .log-item {
-            padding: 10px;
-            border-bottom: 1px solid #f8f9fa;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .log-item:last-child {
-            border-bottom: none;
-        }
-        .log-level {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        .level-error { background: #dc3545; color: white; }
-        .level-warning { background: #ffc107; color: #212529; }
-        .level-info { background: #17a2b8; color: white; }
-        .level-debug { background: #6c757d; color: white; }
-        .log-message {
-            flex: 1;
-            margin: 0 15px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-        }
-        .log-time {
-            color: #6c757d;
-            font-size: 0.8rem;
-        }
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            text-decoration: none;
-            display: inline-block;
-            margin-right: 10px;
-        }
-        .btn-primary { background: #007bff; color: white; }
-        .btn-success { background: #28a745; color: white; }
-        .btn-warning { background: #ffc107; color: #212529; }
-        .btn-danger { background: #dc3545; color: white; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <a href="{{ url_for('admin_dashboard') }}" class="back-btn">
-                <i class="fas fa-arrow-left"></i> 대시보드로
-            </a>
-            <h1><i class="fas fa-chart-bar"></i> 통계 리포트</h1>
-            <p>전체 시스템 통계 및 성능 모니터링</p>
+<div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-6 mb-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold">📊 통계 리포트</h1>
+            <p class="text-blue-100 mt-2">전체 시스템 통계 및 성능 모니터링</p>
         </div>
-        
-        <div class="content">
-            <!-- 전체 통계 -->
-            <h3><i class="fas fa-chart-bar"></i> 전체 통계</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number stat-info">{{ stats_data.total_users }}</div>
-                    <div class="stat-label">전체 사용자</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-info">{{ stats_data.total_orders }}</div>
-                    <div class="stat-label">전체 주문</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-success">{{ "{:,}".format(stats_data.total_sales) }}원</div>
-                    <div class="stat-label">총 매출</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-info">{{ stats_data.total_branches }}</div>
-                    <div class="stat-label">전체 매장</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-success">{{ stats_data.active_branches }}</div>
-                    <div class="stat-label">활성 매장</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-success">{{ stats_data.success_rate }}%</div>
-                    <div class="stat-label">시스템 안정성</div>
-                </div>
-            </div>
-            
-            <!-- 시스템 상태 -->
-            <h3><i class="fas fa-server"></i> 시스템 상태</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number stat-error">{{ stats_data.error_count }}</div>
-                    <div class="stat-label">오류</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-warning">{{ stats_data.warning_count }}</div>
-                    <div class="stat-label">경고</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-info">{{ stats_data.info_count }}</div>
-                    <div class="stat-label">정보</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-success">{{ stats_data.system_uptime }}</div>
-                    <div class="stat-label">시스템 가동시간</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-info">{{ stats_data.database_size }}</div>
-                    <div class="stat-label">데이터베이스 크기</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number stat-info">{{ stats_data.api_requests }}</div>
-                    <div class="stat-label">API 요청 수</div>
-                </div>
-            </div>
-            
-            <!-- 시스템 로그 (더미 데이터) -->
-            <h3><i class="fas fa-list"></i> 최근 시스템 로그</h3>
-            <div class="log-container">
-                <div class="log-item">
-                    <span class="log-level level-info">INFO</span>
-                    <span class="log-message">시스템이 정상적으로 작동 중입니다.</span>
-                    <span class="log-time">2025-07-07 16:30:00</span>
-                </div>
-                <div class="log-item">
-                    <span class="log-level level-info">INFO</span>
-                    <span class="log-message">데이터베이스 백업이 완료되었습니다.</span>
-                    <span class="log-time">2025-07-07 16:00:00</span>
-                </div>
-                <div class="log-item">
-                    <span class="log-level level-warning">WARNING</span>
-                    <span class="log-message">매장 3번의 재고가 부족합니다.</span>
-                    <span class="log-time">2025-07-07 15:45:00</span>
-                </div>
-                <div class="log-item">
-                    <span class="log-level level-info">INFO</span>
-                    <span class="log-message">새로운 주문이 등록되었습니다.</span>
-                    <span class="log-time">2025-07-07 15:30:00</span>
-                </div>
-                <div class="log-item">
-                    <span class="log-level level-error">ERROR</span>
-                    <span class="log-message">매장 1번의 프린터 연결에 실패했습니다.</span>
-                    <span class="log-time">2025-07-07 15:15:00</span>
-                </div>
-            </div>
-            
-            <!-- 액션 버튼 -->
-            <div class="log-container">
-                <h4><i class="fas fa-cogs"></i> 시스템 관리</h4>
-                <div style="margin-bottom: 15px;">
-                    <button class="btn btn-primary" onclick="location.href='{{ url_for('admin_dashboard') }}'">
-                        <i class="fas fa-dashboard"></i> 대시보드로
-                    </button>
-                    <button class="btn btn-success" onclick="location.href='{{ url_for('admin_system_monitor') }}'">
-                        <i class="fas fa-monitor"></i> 모니터링
-                    </button>
-                    <button class="btn btn-warning" onclick="location.href='{{ url_for('admin_backup_management') }}'">
-                        <i class="fas fa-database"></i> 백업 관리
-                    </button>
-                    <button class="btn btn-danger" onclick="location.href='{{ url_for('admin_dashboard') }}'">
-                        <i class="fas fa-file-alt"></i> 대시보드
-                    </button>
-                </div>
-            </div>
+        <a href="{{ url_for('admin_dashboard') }}" class="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
+            <i class="fas fa-arrow-left mr-2"></i>대시보드로
+        </a>
+    </div>
+</div>
+
+<!-- 전체 통계 -->
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <i class="fas fa-chart-bar mr-2"></i>전체 통계
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ stats_data.total_users }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">전체 사용자</div>
+        </div>
+        <div class="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ stats_data.total_orders }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">전체 주문</div>
+        </div>
+        <div class="bg-green-50 dark:bg-green-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ "{:,}".format(stats_data.total_sales) }}원</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">총 매출</div>
+        </div>
+        <div class="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ stats_data.total_branches }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">전체 매장</div>
+        </div>
+        <div class="bg-green-50 dark:bg-green-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ stats_data.active_branches }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">활성 매장</div>
+        </div>
+        <div class="bg-green-50 dark:bg-green-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ stats_data.success_rate }}%</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">시스템 안정성</div>
         </div>
     </div>
-</body>
-</html>
+</div>
+
+<!-- 시스템 상태 -->
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <i class="fas fa-server mr-2"></i>시스템 상태
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-red-50 dark:bg-red-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ stats_data.error_count }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">오류</div>
+        </div>
+        <div class="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ stats_data.warning_count }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">경고</div>
+        </div>
+        <div class="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ stats_data.info_count }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">정보</div>
+        </div>
+        <div class="bg-green-50 dark:bg-green-900 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ stats_data.system_uptime }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">시스템 가동시간</div>
+        </div>
+    </div>
+</div>
 {% endblock %} 

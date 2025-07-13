@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인증 테스트 - your_program</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex items-center justify-center">
+        <div class="max-w-md w-full space-y-8">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">인증 테스트</h2>
+                
+                <div id="auth-status" class="mb-4 p-4 rounded-lg">
+                    <p class="text-gray-600 dark:text-gray-400">인증 상태 확인 중...</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <button onclick="checkAuth()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                        인증 상태 확인
+                    </button>
+                    
+                    <a href="/auth/login" class="block w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 text-center">
+                        로그인 페이지로 이동
+                    </a>
+                    
+                    <a href="/admin/brand-manager-approval" class="block w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 text-center">
+                        브랜드 관리자 승인 페이지
+                    </a>
+                    
+                    <a href="/admin_dashboard" class="block w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 text-center">
+                        관리자 대시보드
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function checkAuth() {
+            fetch('/check-auth', {
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('auth-status');
+                if (data.authenticated) {
+                    statusDiv.className = 'mb-4 p-4 rounded-lg bg-green-100 dark:bg-green-900';
+                    statusDiv.innerHTML = `
+                        <p class="text-green-800 dark:text-green-200 font-semibold">✅ 로그인됨</p>
+                        <p class="text-green-700 dark:text-green-300">사용자: ${data.username}</p>
+                        <p class="text-green-700 dark:text-green-300">역할: ${data.role}</p>
+                    `;
+                } else {
+                    statusDiv.className = 'mb-4 p-4 rounded-lg bg-red-100 dark:bg-red-900';
+                    statusDiv.innerHTML = `
+                        <p class="text-red-800 dark:text-red-200 font-semibold">❌ 로그인되지 않음</p>
+                    `;
+                }
+            })
+            .catch(error => {
+                const statusDiv = document.getElementById('auth-status');
+                statusDiv.className = 'mb-4 p-4 rounded-lg bg-red-100 dark:bg-red-900';
+                statusDiv.innerHTML = `
+                    <p class="text-red-800 dark:text-red-200 font-semibold">❌ 오류 발생</p>
+                    <p class="text-red-700 dark:text-red-300">${error.message}</p>
+                `;
+            });
+        }
+        
+        // 페이지 로드 시 자동으로 인증 상태 확인
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</body>
+</html> 

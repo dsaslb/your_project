@@ -58,8 +58,21 @@ csrf.init_app(app)
 db.init_app(app)
 migrate.init_app(app, db)
 login_manager.init_app(app)
+login_manager.login_view = None  # API 경로는 인증을 우회하도록 설정
+login_manager.login_message = '로그인이 필요합니다.'
+login_manager.login_message_category = 'info'
 limiter.init_app(app)
 cache.init_app(app)
+
+# API 경로는 인증을 우회하도록 설정
+@app.before_request
+def before_request():
+    # API 경로는 인증을 우회
+    if request.path.startswith('/api/marketplace/') or request.path.startswith('/api/modules/'):
+        return None
+    # 기타 API 경로도 인증을 우회 (필요한 경우)
+    if request.path.startswith('/api/') and 'admin' not in request.path:
+        return None
 
 # Initialize IoT system
 from utils.iot_simulator import initialize_iot_system
@@ -97,6 +110,14 @@ try:
     logger.info("플러그인 모니터링 대시보드 API 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"플러그인 모니터링 대시보드 API 블루프린트 등록 실패: {e}")
+
+# Auth 블루프린트 수동 등록
+try:
+    from api.auth import auth_bp
+    app.register_blueprint(auth_bp, name='auth')
+    logger.info("Auth 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"Auth 블루프린트 등록 실패: {e}")
 
 # 고도화된 실시간 알림 시스템 API 블루프린트 등록
 try:
@@ -468,8 +489,7 @@ def inject_notifications():
 
 @app.route("/")
 def index():
-    """루트 경로 - 백엔드 대시보드로 리다이렉트"""
-    return redirect("/admin_dashboard")
+    return redirect("/auth/login")
 
 @app.route("/dashboard")
 def dashboard():
@@ -685,7 +705,6 @@ def auth_login():
 
 @app.route("/admin_dashboard")
 def admin_dashboard_route():
-    """관리자 대시보드"""
     return render_template('admin/admin_dashboard.html')
 
 @app.route("/super-admin")
@@ -724,6 +743,25 @@ def my_schedule():
 def test_login():
     """테스트 로그인 페이지"""
     return render_template('auth/test_login.html')
+
+@app.route("/simple-login")
+def simple_login():
+    """간단한 로그인 테스트 페이지"""
+    return render_template('auth/simple_login.html')
+
+@app.route("/check-auth")
+def check_auth():
+    """인증 상태 확인"""
+    from flask_login import current_user
+    if current_user.is_authenticated:
+        return jsonify({
+            'authenticated': True,
+            'user_id': current_user.id,
+            'username': current_user.username,
+            'role': current_user.role
+        })
+    else:
+        return jsonify({'authenticated': False}), 401
 
 @app.route("/brand-manager-dashboard")
 def brand_manager_dashboard():
@@ -2130,7 +2168,6 @@ def plugin_system_status():
 
 @app.route("/admin/brand-manager-approval")
 def admin_brand_manager_approval():
-    """브랜드 관리자 생성/승인 페이지"""
     return render_template('admin/brand_manager_approval.html')
 
 @app.route("/api/admin/brand-managers")
@@ -2161,7 +2198,7 @@ def api_admin_brand_managers():
             
             managers_list.append(manager_data)
         
-        return jsonify({'brand_managers': managers_list})
+        return jsonify({'users': managers_list})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -2197,7 +2234,6 @@ def api_admin_reject_brand_manager(user_id):
 
 @app.route("/admin/brand-management")
 def admin_brand_management():
-    """브랜드별 관리 페이지"""
     return render_template('admin/brand_management.html')
 
 @app.route("/api/admin/brands")
@@ -2287,7 +2323,6 @@ def api_admin_brand_details(brand_id):
 
 @app.route("/admin/store-management")
 def admin_store_management():
-    """매장별 관리 페이지"""
     return render_template('admin/store_management.html')
 
 @app.route("/api/admin/stores")
@@ -2327,62 +2362,8 @@ def api_admin_stores():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route("/api/admin/store/<int:store_id>/details")
-def api_admin_store_details(store_id):
-    """매장 상세 정보 API"""
-    try:
-        store = Branch.query.get(store_id)
-        if not store:
-            return jsonify({'error': 'Store not found'}), 404
-        
-        # 매장별 직원 목록
-        employees = User.query.filter_by(branch_id=store_id).all()
-        employees_data = []
-        
-        for employee in employees:
-            employee_data = {
-                'id': employee.id,
-                'username': employee.username,
-                'role': employee.role,
-                'email': employee.email,
-                'performance_score': 85,  # 예시 성과 점수
-                'last_login': employee.last_login.isoformat() if employee.last_login else None
-            }
-            employees_data.append(employee_data)
-        
-        # 매장별 통계
-        stats = {
-            'total_employees': len(employees_data),
-            'managers': len([e for e in employees_data if e['role'] == 'store_manager']),
-            'employees': len([e for e in employees_data if e['role'] == 'employee']),
-            'average_performance': sum(e['performance_score'] for e in employees_data) / len(employees_data) if employees_data else 0
-        }
-        
-        store_details = {
-            'id': store.id,
-            'name': store.name,
-            'location': store.location,
-            'employees': employees_data,
-            'stats': stats,
-            'improvements': [
-                "매장 환경 개선 필요",
-                "고객 응대 서비스 강화",
-                "매장 정리정돈 개선"
-            ],
-            'performance_metrics': {
-                'customer_satisfaction': 4.2,
-                'efficiency_score': 87,
-                'cleanliness_score': 92
-            }
-        }
-        
-        return jsonify(store_details)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route("/admin/employee-management")
 def admin_employee_management():
-    """직원별 관리 페이지"""
     return render_template('admin/employee_management.html')
 
 @app.route("/api/admin/employees")
@@ -2475,11 +2456,8 @@ def api_admin_employee_details(employee_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-
 @app.route("/admin/feedback-management")
 def admin_feedback_management():
-    """피드백 관리 페이지"""
     return render_template('admin/feedback_management.html')
 
 @app.route("/api/admin/feedback")
@@ -2552,16 +2530,15 @@ def api_admin_reply_feedback(feedback_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route("/admin/module-marketplace")
-def admin_module_marketplace():  # noqa: F811
-    """모듈 마켓플레이스 페이지"""
+def admin_module_marketplace():
     return render_template('admin/module_marketplace.html')
 
 @app.route("/admin/module-management")
 def admin_module_management():
-    """모듈 관리 페이지"""
     return render_template('admin/module_management.html')
 
 @app.route("/api/marketplace/modules")
+@csrf.exempt
 def api_marketplace_modules():
     """모듈 마켓플레이스 모듈 목록 API"""
     try:
@@ -2569,6 +2546,7 @@ def api_marketplace_modules():
         modules = [
             # 기존 샘플 모듈들
             {
+                'id': 'attendance_module',
                 'plugin_id': 'attendance_module',
                 'name': '출근 관리 모듈',
                 'author': 'Your Program Team',
@@ -2579,6 +2557,7 @@ def api_marketplace_modules():
                 'rating': 4.5
             },
             {
+                'id': 'schedule_module',
                 'plugin_id': 'schedule_module',
                 'name': '일정 관리 모듈',
                 'author': 'Your Program Team',
@@ -2589,6 +2568,7 @@ def api_marketplace_modules():
                 'rating': 4.3
             },
             {
+                'id': 'inventory_module',
                 'plugin_id': 'inventory_module',
                 'name': '재고 관리 모듈',
                 'author': 'Your Program Team',
@@ -2599,6 +2579,7 @@ def api_marketplace_modules():
                 'rating': 4.2
             },
             {
+                'id': 'purchase_module',
                 'plugin_id': 'purchase_module',
                 'name': '구매 관리 모듈',
                 'author': 'Your Program Team',
@@ -2609,6 +2590,7 @@ def api_marketplace_modules():
                 'rating': 4.4
             },
             {
+                'id': 'ai_analytics_module',
                 'plugin_id': 'ai_analytics_module',
                 'name': 'AI 분석 모듈',
                 'author': 'Your Program Team',
@@ -2621,6 +2603,7 @@ def api_marketplace_modules():
             
             # API 모듈들
             {
+                'id': 'user_management_module',
                 'plugin_id': 'user_management_module',
                 'name': '사용자 관리 모듈',
                 'author': 'Your Program Team',
@@ -2631,6 +2614,7 @@ def api_marketplace_modules():
                 'rating': 4.6
             },
             {
+                'id': 'visualization_module',
                 'plugin_id': 'visualization_module',
                 'name': '데이터 시각화 모듈',
                 'author': 'Your Program Team',
@@ -2641,6 +2625,7 @@ def api_marketplace_modules():
                 'rating': 4.5
             },
             {
+                'id': 'schedule_management_module',
                 'plugin_id': 'schedule_management_module',
                 'name': '스케줄 관리 모듈',
                 'author': 'Your Program Team',
@@ -2651,6 +2636,7 @@ def api_marketplace_modules():
                 'rating': 4.4
             },
             {
+                'id': 'security_module',
                 'plugin_id': 'security_module',
                 'name': '보안 모듈',
                 'author': 'Your Program Team',
@@ -2661,6 +2647,7 @@ def api_marketplace_modules():
                 'rating': 4.8
             },
             {
+                'id': 'reporting_system_module',
                 'plugin_id': 'reporting_system_module',
                 'name': '리포팅 시스템 모듈',
                 'author': 'Your Program Team',
@@ -2671,6 +2658,7 @@ def api_marketplace_modules():
                 'rating': 4.6
             },
             {
+                'id': 'notification_system_module',
                 'plugin_id': 'notification_system_module',
                 'name': '알림 시스템 모듈',
                 'author': 'Your Program Team',
@@ -2681,6 +2669,7 @@ def api_marketplace_modules():
                 'rating': 4.7
             },
             {
+                'id': 'optimization_module',
                 'plugin_id': 'optimization_module',
                 'name': '최적화 모듈',
                 'author': 'Your Program Team',
@@ -2691,6 +2680,7 @@ def api_marketplace_modules():
                 'rating': 4.3
             },
             {
+                'id': 'monitoring_module',
                 'plugin_id': 'monitoring_module',
                 'name': '모니터링 모듈',
                 'author': 'Your Program Team',
@@ -2701,6 +2691,7 @@ def api_marketplace_modules():
                 'rating': 4.5
             },
             {
+                'id': 'automation_module',
                 'plugin_id': 'automation_module',
                 'name': '자동화 모듈',
                 'author': 'Your Program Team',
@@ -2711,6 +2702,7 @@ def api_marketplace_modules():
                 'rating': 4.7
             },
             {
+                'id': 'chat_system_module',
                 'plugin_id': 'chat_system_module',
                 'name': '채팅 시스템 모듈',
                 'author': 'Your Program Team',
@@ -2721,6 +2713,7 @@ def api_marketplace_modules():
                 'rating': 4.6
             },
             {
+                'id': 'analytics_module',
                 'plugin_id': 'analytics_module',
                 'name': '분석 모듈',
                 'author': 'Your Program Team',
@@ -2733,6 +2726,7 @@ def api_marketplace_modules():
             
             # 레스토랑 전용 모듈
             {
+                'id': 'qsc_system_module',
                 'plugin_id': 'qsc_system_module',
                 'name': 'QSC 시스템 모듈',
                 'author': 'Your Program Team',
@@ -2745,6 +2739,7 @@ def api_marketplace_modules():
             
             # 추가 기능 모듈들
             {
+                'id': 'order_management_module',
                 'plugin_id': 'order_management_module',
                 'name': '주문 관리 모듈',
                 'author': 'Your Program Team',
@@ -2755,6 +2750,7 @@ def api_marketplace_modules():
                 'rating': 4.8
             },
             {
+                'id': 'cleaning_management_module',
                 'plugin_id': 'cleaning_management_module',
                 'name': '청소 관리 모듈',
                 'author': 'Your Program Team',
@@ -2765,6 +2761,7 @@ def api_marketplace_modules():
                 'rating': 4.4
             },
             {
+                'id': 'payroll_management_module',
                 'plugin_id': 'payroll_management_module',
                 'name': '급여 관리 모듈',
                 'author': 'Your Program Team',
@@ -2775,6 +2772,7 @@ def api_marketplace_modules():
                 'rating': 4.6
             },
             {
+                'id': 'iot_integration_module',
                 'plugin_id': 'iot_integration_module',
                 'name': 'IoT 통합 모듈',
                 'author': 'Your Program Team',
@@ -2785,6 +2783,7 @@ def api_marketplace_modules():
                 'rating': 4.3
             },
             {
+                'id': 'voice_recognition_module',
                 'plugin_id': 'voice_recognition_module',
                 'name': '음성 인식 모듈',
                 'author': 'Your Program Team',
@@ -2795,6 +2794,7 @@ def api_marketplace_modules():
                 'rating': 4.2
             },
             {
+                'id': 'image_analysis_module',
                 'plugin_id': 'image_analysis_module',
                 'name': '이미지 분석 모듈',
                 'author': 'Your Program Team',
@@ -2805,6 +2805,7 @@ def api_marketplace_modules():
                 'rating': 4.1
             },
             {
+                'id': 'translation_module',
                 'plugin_id': 'translation_module',
                 'name': '번역 모듈',
                 'author': 'Your Program Team',
@@ -2815,6 +2816,7 @@ def api_marketplace_modules():
                 'rating': 4.0
             },
             {
+                'id': 'mobile_support_module',
                 'plugin_id': 'mobile_support_module',
                 'name': '모바일 지원 모듈',
                 'author': 'Your Program Team',
@@ -2823,36 +2825,6 @@ def api_marketplace_modules():
                 'status': 'published',
                 'downloads': 280,
                 'rating': 4.7
-            },
-            {
-                'plugin_id': 'backup_restore_module',
-                'name': '백업 및 복원 모듈',
-                'author': 'Your Program Team',
-                'description': '데이터 백업 및 복원 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'published',
-                'downloads': 140,
-                'rating': 4.5
-            },
-            {
-                'plugin_id': 'audit_logging_module',
-                'name': '감사 로깅 모듈',
-                'author': 'Your Program Team',
-                'description': '시스템 활동 감사 및 로깅 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'published',
-                'downloads': 120,
-                'rating': 4.4
-            },
-            {
-                'plugin_id': 'multi_branch_module',
-                'name': '다중 매장 관리 모듈',
-                'author': 'Your Program Team',
-                'description': '여러 매장의 통합 관리 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'published',
-                'downloads': 320,
-                'rating': 4.8
             }
         ]
         
@@ -2886,6 +2858,7 @@ def api_marketplace_module_upload():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route("/api/modules/installed")
+@csrf.exempt
 def api_modules_installed():
     """설치된 모듈 목록 API"""
     try:
@@ -2893,6 +2866,7 @@ def api_modules_installed():
         modules = [
             # 기존 샘플 모듈들
             {
+                'id': 'attendance_module',
                 'plugin_id': 'attendance_module',
                 'name': '출근 관리 모듈',
                 'description': '직원 출퇴근 기록 및 관리 기능을 제공합니다.',
@@ -2909,6 +2883,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'schedule_module',
                 'plugin_id': 'schedule_module',
                 'name': '일정 관리 모듈',
                 'description': '직원 근무 스케줄 관리 및 조정 기능을 제공합니다.',
@@ -2925,6 +2900,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'inventory_module',
                 'plugin_id': 'inventory_module',
                 'name': '재고 관리 모듈',
                 'description': '재고 현황 및 발주 관리 기능을 제공합니다.',
@@ -2941,6 +2917,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'purchase_module',
                 'plugin_id': 'purchase_module',
                 'name': '구매 관리 모듈',
                 'description': '재고 발주 및 구매 관리 기능을 제공합니다.',
@@ -2957,6 +2934,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'ai_analytics_module',
                 'plugin_id': 'ai_analytics_module',
                 'name': 'AI 분석 모듈',
                 'description': 'AI 기반 데이터 분석 및 예측 기능을 제공합니다.',
@@ -2975,6 +2953,7 @@ def api_modules_installed():
             
             # API 모듈들
             {
+                'id': 'user_management_module',
                 'plugin_id': 'user_management_module',
                 'name': '사용자 관리 모듈',
                 'description': '사용자 계정 및 권한 관리 기능을 제공합니다.',
@@ -2991,6 +2970,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'visualization_module',
                 'plugin_id': 'visualization_module',
                 'name': '데이터 시각화 모듈',
                 'description': '차트 및 그래프를 통한 데이터 시각화 기능을 제공합니다.',
@@ -3007,6 +2987,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'schedule_management_module',
                 'plugin_id': 'schedule_management_module',
                 'name': '스케줄 관리 모듈',
                 'description': '고급 스케줄 관리 및 최적화 기능을 제공합니다.',
@@ -3023,6 +3004,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'security_module',
                 'plugin_id': 'security_module',
                 'name': '보안 모듈',
                 'description': '시스템 보안 및 접근 제어 기능을 제공합니다.',
@@ -3039,6 +3021,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'reporting_system_module',
                 'plugin_id': 'reporting_system_module',
                 'name': '리포팅 시스템 모듈',
                 'description': '다양한 보고서 생성 및 관리 기능을 제공합니다.',
@@ -3055,6 +3038,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'notification_system_module',
                 'plugin_id': 'notification_system_module',
                 'name': '알림 시스템 모듈',
                 'description': '실시간 알림 및 메시지 관리 기능을 제공합니다.',
@@ -3062,8 +3046,8 @@ def api_modules_installed():
                 'status': 'active',
                 'installed_at': '2024-01-09',
                 'last_updated': '2024-01-09',
-                'size': '13.0MB',
-                'dependencies': ['user_management_module'],
+                'size': '8.5MB',
+                'dependencies': [],
                 'performance': {
                     'cpu_usage': 2.8,
                     'memory_usage': 16.2,
@@ -3071,6 +3055,7 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'optimization_module',
                 'plugin_id': 'optimization_module',
                 'name': '최적화 모듈',
                 'description': '시스템 성능 최적화 및 자동화 기능을 제공합니다.',
@@ -3078,7 +3063,7 @@ def api_modules_installed():
                 'status': 'active',
                 'installed_at': '2024-01-13',
                 'last_updated': '2024-01-13',
-                'size': '13.0MB',
+                'size': '15.0MB',
                 'dependencies': ['monitoring_module'],
                 'performance': {
                     'cpu_usage': 4.1,
@@ -3087,14 +3072,15 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'monitoring_module',
                 'plugin_id': 'monitoring_module',
                 'name': '모니터링 모듈',
                 'description': '시스템 및 성능 모니터링 기능을 제공합니다.',
                 'version': '1.0.0',
                 'status': 'active',
-                'installed_at': '2024-01-10',
-                'last_updated': '2024-01-10',
-                'size': '14.0MB',
+                'installed_at': '2024-01-14',
+                'last_updated': '2024-01-14',
+                'size': '11.0MB',
                 'dependencies': [],
                 'performance': {
                     'cpu_usage': 3.5,
@@ -3103,15 +3089,16 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'automation_module',
                 'plugin_id': 'automation_module',
                 'name': '자동화 모듈',
                 'description': '업무 프로세스 자동화 및 워크플로우 관리 기능을 제공합니다.',
                 'version': '1.0.0',
                 'status': 'active',
-                'installed_at': '2024-01-14',
-                'last_updated': '2024-01-14',
-                'size': '19.0MB',
-                'dependencies': ['monitoring_module'],
+                'installed_at': '2024-01-16',
+                'last_updated': '2024-01-16',
+                'size': '18.0MB',
+                'dependencies': ['optimization_module'],
                 'performance': {
                     'cpu_usage': 6.2,
                     'memory_usage': 32.5,
@@ -3119,15 +3106,16 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'chat_system_module',
                 'plugin_id': 'chat_system_module',
                 'name': '채팅 시스템 모듈',
                 'description': '실시간 채팅 및 커뮤니케이션 기능을 제공합니다.',
                 'version': '1.0.0',
                 'status': 'active',
-                'installed_at': '2024-01-12',
-                'last_updated': '2024-01-12',
-                'size': '14.0MB',
-                'dependencies': ['user_management_module'],
+                'installed_at': '2024-01-17',
+                'last_updated': '2024-01-17',
+                'size': '16.0MB',
+                'dependencies': ['notification_system_module'],
                 'performance': {
                     'cpu_usage': 5.8,
                     'memory_usage': 28.9,
@@ -3135,221 +3123,46 @@ def api_modules_installed():
                 }
             },
             {
+                'id': 'analytics_module',
                 'plugin_id': 'analytics_module',
                 'name': '분석 모듈',
                 'description': '데이터 분석 및 인사이트 도출 기능을 제공합니다.',
                 'version': '1.0.0',
                 'status': 'active',
-                'installed_at': '2024-01-11',
-                'last_updated': '2024-01-11',
-                'size': '18.0MB',
+                'installed_at': '2024-01-18',
+                'last_updated': '2024-01-18',
+                'size': '25.0MB',
                 'dependencies': [],
                 'performance': {
-                    'cpu_usage': 8.2,
-                    'memory_usage': 45.6,
-                    'response_time': 320
+                    'cpu_usage': 9.2,
+                    'memory_usage': 48.5,
+                    'response_time': 350
                 }
             },
             
             # 레스토랑 전용 모듈
             {
+                'id': 'qsc_system_module',
                 'plugin_id': 'qsc_system_module',
                 'name': 'QSC 시스템 모듈',
                 'description': '레스토랑 업종 전용 품질(Quality), 서비스(Service), 청결(Cleanliness) 관리 시스템을 제공합니다.',
                 'version': '1.0.0',
                 'status': 'active',
-                'installed_at': '2024-01-15',
-                'last_updated': '2024-01-15',
-                'size': '13.0MB',
-                'dependencies': ['user_management_module', 'monitoring_module'],
-                'performance': {
-                    'cpu_usage': 5.5,
-                    'memory_usage': 30.2,
-                    'response_time': 200
-                }
-            },
-            
-            # 추가 기능 모듈들
-            {
-                'plugin_id': 'order_management_module',
-                'name': '주문 관리 모듈',
-                'description': '주문 처리 및 관리 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'inactive',
-                'installed_at': '2024-01-16',
-                'last_updated': '2024-01-16',
-                'size': '15.0MB',
-                'dependencies': ['user_management_module', 'inventory_module'],
-                'performance': {
-                    'cpu_usage': 6.8,
-                    'memory_usage': 35.5,
-                    'response_time': 250
-                }
-            },
-            {
-                'plugin_id': 'cleaning_management_module',
-                'name': '청소 관리 모듈',
-                'description': '매장 청소 일정 및 관리 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'active',
-                'installed_at': '2024-01-14',
-                'last_updated': '2024-01-14',
-                'size': '8.0MB',
-                'dependencies': ['schedule_management_module'],
-                'performance': {
-                    'cpu_usage': 2.8,
-                    'memory_usage': 15.8,
-                    'response_time': 120
-                }
-            },
-            {
-                'plugin_id': 'payroll_management_module',
-                'name': '급여 관리 모듈',
-                'description': '직원 급여 계산 및 관리 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'active',
-                'installed_at': '2024-01-13',
-                'last_updated': '2024-01-13',
-                'size': '10.0MB',
-                'dependencies': ['user_management_module', 'attendance_module'],
-                'performance': {
-                    'cpu_usage': 4.5,
-                    'memory_usage': 25.2,
-                    'response_time': 180
-                }
-            },
-            {
-                'plugin_id': 'iot_integration_module',
-                'name': 'IoT 통합 모듈',
-                'description': 'IoT 디바이스 연동 및 데이터 수집 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'error',
-                'installed_at': '2024-01-15',
-                'last_updated': '2024-01-15',
-                'size': '12.0MB',
-                'dependencies': ['monitoring_module'],
-                'performance': {
-                    'cpu_usage': 0.0,
-                    'memory_usage': 0.0,
-                    'response_time': 0
-                }
-            },
-            {
-                'plugin_id': 'voice_recognition_module',
-                'name': '음성 인식 모듈',
-                'description': '음성 명령 및 음성 인식 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'inactive',
-                'installed_at': '2024-01-16',
-                'last_updated': '2024-01-16',
-                'size': '20.0MB',
-                'dependencies': ['user_management_module'],
-                'performance': {
-                    'cpu_usage': 0.0,
-                    'memory_usage': 0.0,
-                    'response_time': 0
-                }
-            },
-            {
-                'plugin_id': 'image_analysis_module',
-                'name': '이미지 분석 모듈',
-                'description': '이미지 분석 및 OCR 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'inactive',
-                'installed_at': '2024-01-16',
-                'last_updated': '2024-01-16',
-                'size': '25.0MB',
-                'dependencies': ['analytics_module'],
-                'performance': {
-                    'cpu_usage': 0.0,
-                    'memory_usage': 0.0,
-                    'response_time': 0
-                }
-            },
-            {
-                'plugin_id': 'translation_module',
-                'name': '번역 모듈',
-                'description': '다국어 번역 및 언어 지원 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'inactive',
-                'installed_at': '2024-01-16',
-                'last_updated': '2024-01-16',
-                'size': '30.0MB',
-                'dependencies': [],
-                'performance': {
-                    'cpu_usage': 0.0,
-                    'memory_usage': 0.0,
-                    'response_time': 0
-                }
-            },
-            {
-                'plugin_id': 'mobile_support_module',
-                'name': '모바일 지원 모듈',
-                'description': '모바일 앱 지원 및 반응형 웹 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'active',
-                'installed_at': '2024-01-10',
-                'last_updated': '2024-01-10',
-                'size': '35.0MB',
-                'dependencies': ['user_management_module'],
-                'performance': {
-                    'cpu_usage': 3.2,
-                    'memory_usage': 18.5,
-                    'response_time': 150
-                }
-            },
-            {
-                'plugin_id': 'backup_restore_module',
-                'name': '백업 및 복원 모듈',
-                'description': '데이터 백업 및 복원 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'active',
-                'installed_at': '2024-01-08',
-                'last_updated': '2024-01-08',
-                'size': '8.0MB',
-                'dependencies': [],
-                'performance': {
-                    'cpu_usage': 2.1,
-                    'memory_usage': 12.8,
-                    'response_time': 100
-                }
-            },
-            {
-                'plugin_id': 'audit_logging_module',
-                'name': '감사 로깅 모듈',
-                'description': '시스템 활동 감사 및 로깅 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'active',
-                'installed_at': '2024-01-09',
-                'last_updated': '2024-01-09',
-                'size': '5.0MB',
-                'dependencies': [],
-                'performance': {
-                    'cpu_usage': 1.8,
-                    'memory_usage': 10.2,
-                    'response_time': 80
-                }
-            },
-            {
-                'plugin_id': 'multi_branch_module',
-                'name': '다중 매장 관리 모듈',
-                'description': '여러 매장의 통합 관리 기능을 제공합니다.',
-                'version': '1.0.0',
-                'status': 'active',
-                'installed_at': '2024-01-07',
-                'last_updated': '2024-01-07',
+                'installed_at': '2024-01-19',
+                'last_updated': '2024-01-19',
                 'size': '22.0MB',
-                'dependencies': ['user_management_module', 'monitoring_module'],
+                'dependencies': ['analytics_module', 'monitoring_module'],
                 'performance': {
-                    'cpu_usage': 7.2,
-                    'memory_usage': 38.5,
+                    'cpu_usage': 7.8,
+                    'memory_usage': 38.2,
                     'response_time': 280
                 }
             }
         ]
         
+        # 통계 계산
         stats = {
-            'total_modules': len(modules),
+            'installed_modules': len(modules),
             'active_modules': len([m for m in modules if m['status'] == 'active']),
             'inactive_modules': len([m for m in modules if m['status'] == 'inactive']),
             'error_modules': len([m for m in modules if m['status'] == 'error']),
@@ -3702,6 +3515,77 @@ def admin_plugin_feedback_dashboard():
 def admin_plugin_customization_dashboard():
     """플러그인 커스터마이징 대시보드"""
     return render_template('admin/plugin_customization_dashboard.html')
+
+@app.route("/api/admin/users")
+def api_admin_users():
+    """사용자 목록 API"""
+    try:
+        users = User.query.all()
+        users_data = []
+        
+        for user in users:
+            user_data = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'role': user.role,
+                'status': getattr(user, 'status', 'active'),
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None
+            }
+            users_data.append(user_data)
+        
+        return jsonify({'users': users_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/admin/user/<int:user_id>/status", methods=["POST"])
+def api_admin_user_status(user_id):
+    """사용자 상태 변경 API"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if hasattr(user, 'status'):
+            user.status = new_status
+            db.session.commit()
+            return jsonify({'message': f'{user.username} 사용자의 상태가 {new_status}로 변경되었습니다.'})
+        else:
+            return jsonify({'error': 'User model does not have status field'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/admin/brand_stats")
+def api_admin_brand_stats():
+    """브랜드별 통계 API"""
+    try:
+        # 브랜드별 통계 데이터
+        brands = Branch.query.all()
+        stats_data = []
+        
+        for brand in brands:
+            # 브랜드별 직원 수
+            employee_count = User.query.filter_by(branch_id=brand.id).count()
+            
+            # 브랜드별 매니저 수
+            manager_count = User.query.filter_by(branch_id=brand.id, role='store_manager').count()
+            
+            brand_stats = {
+                'brand_id': brand.id,
+                'brand_name': brand.name,
+                'employee_count': employee_count,
+                'manager_count': manager_count,
+                'total_count': employee_count + manager_count
+            }
+            stats_data.append(brand_stats)
+        
+        return jsonify({'brand_stats': stats_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

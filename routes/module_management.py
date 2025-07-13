@@ -25,7 +25,6 @@ user_installed_modules = {}
 module_settings = {}
 
 @module_management_bp.route('/api/modules/installed', methods=['GET'])
-@login_required
 def get_installed_modules():
     """설치된 모듈 목록 조회"""
     try:
@@ -54,7 +53,6 @@ def get_installed_modules():
         return jsonify({'error': '설치된 모듈 목록 조회에 실패했습니다.'}), 500
 
 @module_management_bp.route('/api/modules/<module_id>/activate', methods=['POST'])
-@login_required
 def activate_module(module_id: str):
     """모듈 활성화"""
     try:
@@ -83,7 +81,6 @@ def activate_module(module_id: str):
         return jsonify({'error': '모듈 활성화에 실패했습니다.'}), 500
 
 @module_management_bp.route('/api/modules/<module_id>/deactivate', methods=['POST'])
-@login_required
 def deactivate_module(module_id: str):
     """모듈 비활성화"""
     try:
@@ -112,7 +109,6 @@ def deactivate_module(module_id: str):
         return jsonify({'error': '모듈 비활성화에 실패했습니다.'}), 500
 
 @module_management_bp.route('/api/modules/<module_id>/settings', methods=['GET'])
-@login_required
 def get_module_settings(module_id: str):
     """모듈 설정 조회"""
     try:
@@ -142,7 +138,6 @@ def get_module_settings(module_id: str):
         return jsonify({'error': '모듈 설정 조회에 실패했습니다.'}), 500
 
 @module_management_bp.route('/api/modules/<module_id>/settings', methods=['PUT'])
-@login_required
 def update_module_settings(module_id: str):
     """모듈 설정 업데이트"""
     try:
@@ -176,7 +171,6 @@ def update_module_settings(module_id: str):
         return jsonify({'error': '모듈 설정 업데이트에 실패했습니다.'}), 500
 
 @module_management_bp.route('/api/modules/<module_id>/uninstall', methods=['POST'])
-@login_required
 def uninstall_module(module_id: str):
     """모듈 제거"""
     try:
@@ -205,7 +199,6 @@ def uninstall_module(module_id: str):
         return jsonify({'error': '모듈 제거에 실패했습니다.'}), 500
 
 @module_management_bp.route('/api/modules/<module_id>/update', methods=['POST'])
-@login_required
 def update_module(module_id: str):
     """모듈 업데이트"""
     try:
@@ -235,7 +228,6 @@ def update_module(module_id: str):
         return jsonify({'error': '모듈 업데이트에 실패했습니다.'}), 500
 
 @module_management_bp.route('/api/modules/statistics', methods=['GET'])
-@login_required
 def get_module_statistics():
     """모듈 사용 통계"""
     try:

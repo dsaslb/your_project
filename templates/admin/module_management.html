@@ -257,10 +257,15 @@
 
         // 통계 업데이트
         function updateStatistics(stats) {
-            document.getElementById('installed-modules').textContent = stats.installed + '개';
-            document.getElementById('active-modules').textContent = stats.active + '개';
-            document.getElementById('inactive-modules').textContent = stats.inactive + '개';
-            document.getElementById('error-modules').textContent = stats.error + '개';
+            if (!stats) {
+                console.error('Stats data is undefined');
+                return;
+            }
+            
+            document.getElementById('installed-modules').textContent = (stats.installed_modules || 0) + '개';
+            document.getElementById('active-modules').textContent = (stats.active_modules || 0) + '개';
+            document.getElementById('inactive-modules').textContent = (stats.inactive_modules || 0) + '개';
+            document.getElementById('error-modules').textContent = (stats.error_modules || 0) + '개';
         }
 
         // 모듈 테이블 렌더링
