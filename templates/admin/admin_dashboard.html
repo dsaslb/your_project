@@ -166,13 +166,17 @@
                     <!-- 브랜드별 매장 분포 차트 -->
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">브랜드별 매장 분포</h3>
-                        <canvas id="brandStoresChart" width="400" height="200"></canvas>
+                        <div class="relative h-80">
+                            <canvas id="brandStoresChart"></canvas>
+                        </div>
                     </div>
 
                     <!-- 브랜드별 직원 분포 차트 -->
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">브랜드별 직원 분포</h3>
-                        <canvas id="brandEmployeesChart" width="400" height="200"></canvas>
+                        <div class="relative h-80">
+                            <canvas id="brandEmployeesChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -265,13 +269,35 @@
                 brandStoresChart = new Chart(storesCtx, {
                     type: 'doughnut',
                     data: { labels: ['데이터 없음'], datasets: [{ data: [1], backgroundColor: ['#E5E7EB'] }] },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000'
+                                }
+                            }
+                        }
+                    }
                 });
                 
                 brandEmployeesChart = new Chart(employeesCtx, {
                     type: 'bar',
                     data: { labels: ['데이터 없음'], datasets: [{ label: '직원 수', data: [0], backgroundColor: '#E5E7EB' }] },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        scales: { y: { beginAtZero: true } },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000'
+                                }
+                            }
+                        }
+                    }
                 });
                 return;
             }
@@ -306,8 +332,16 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000'
+                                color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000',
+                                padding: 10,
+                                usePointStyle: true
                             }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 20
                         }
                     }
                 }
@@ -351,6 +385,12 @@
                             labels: {
                                 color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000'
                             }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 20
                         }
                     }
                 }
