@@ -101,7 +101,7 @@ kitchen_history = []
 def log_kitchen_action(action: str, details: Dict[str, Any]):
     """주방 액션 로깅"""
     try:
-        log = ActionLog(
+        log = ActionLog(  # type: ignore
             user_id=current_user.id,
             action=f"kitchen_{action}",
             message=f"주방 {action}: {details.get('equipment_name', 'N/A')}",

@@ -76,7 +76,7 @@ qsc_templates = {
 def log_qsc_action(action: str, details: Dict[str, Any]):
     """QSC 액션 로깅"""
     try:
-        log = ActionLog(
+        log = ActionLog(  # type: ignore
             user_id=current_user.id,
             action=f"qsc_{action}",
             message=f"QSC {action}: {details.get('inspection_id', 'N/A')}",

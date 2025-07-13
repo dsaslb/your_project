@@ -712,7 +712,7 @@ class ActionLog(db.Model):
         db.Index("idx_actionlog_action_date", "action", "created_at"),
     )
 
-    def __init__(self, user_id=None, action=None, message=None, ip_address=None, user_agent=None, **kwargs):
+    def __init__(self, user_id: int | None = None, action: str | None = None, message: str | None = None, ip_address: str | None = None, user_agent: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.user_id = user_id
         self.action = action

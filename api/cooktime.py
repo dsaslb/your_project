@@ -74,7 +74,7 @@ menu_cooktimes = {
 def log_cooktime_action(action: str, details: Dict[str, Any]):
     """조리시간 액션 로깅"""
     try:
-        log = ActionLog(
+        log = ActionLog(  # type: ignore
             user_id=current_user.id,
             action=f"cooktime_{action}",
             message=f"조리시간 {action}: {details.get('menu_name', 'N/A')}",

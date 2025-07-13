@@ -76,7 +76,7 @@ checklist_templates = {
 def log_checklist_action(action: str, details: Dict[str, Any]):
     """체크리스트 액션 로깅"""
     try:
-        log = ActionLog(
+        log = ActionLog(  # type: ignore
             user_id=current_user.id,
             action=f"checklist_{action}",
             message=f"체크리스트 {action}: {details.get('checklist_id', 'N/A')}",
