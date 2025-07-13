@@ -3,6 +3,7 @@
 사용자가 모듈을 검색, 구매, 다운로드할 수 있는 마켓플레이스
 """
 
+# type: ignore
 from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from datetime import datetime
@@ -235,21 +236,21 @@ def get_marketplace_modules():
             search_lower = search.lower()
             modules = [
                 m for m in modules 
-                if search_lower in m['name'].lower() or 
-                   search_lower in m['description'].lower() or
-                   any(search_lower in tag.lower() for tag in m['tags'])
+                if search_lower in str(m['name']).lower() or 
+                   search_lower in str(m['description']).lower() or
+                   any(search_lower in str(tag).lower() for tag in (m.get('tags', []) if isinstance(m.get('tags'), list) else []))  # type: ignore
             ]
         
         # 정렬
         reverse_order = order == 'desc'
         if sort_by == 'downloads':
-            modules.sort(key=lambda x: x['downloads'], reverse=reverse_order)
+            modules.sort(key=lambda x: int(x.get('downloads', 0)), reverse=reverse_order)  # type: ignore
         elif sort_by == 'rating':
-            modules.sort(key=lambda x: x['rating'], reverse=reverse_order)
+            modules.sort(key=lambda x: float(x.get('rating', 0.0)), reverse=reverse_order)  # type: ignore
         elif sort_by == 'name':
-            modules.sort(key=lambda x: x['name'], reverse=reverse_order)
+            modules.sort(key=lambda x: str(x.get('name', '')).lower(), reverse=reverse_order)  # type: ignore
         elif sort_by == 'price':
-            modules.sort(key=lambda x: x['price'], reverse=reverse_order)
+            modules.sort(key=lambda x: float(x.get('price', 0.0)), reverse=reverse_order)  # type: ignore
         
         # 페이지네이션
         page = request.args.get('page', 1, type=int)

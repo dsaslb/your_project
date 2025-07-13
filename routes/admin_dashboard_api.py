@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, render_template
 from flask_login import login_required, current_user
 from models import Brand, Branch, User, Order, Notification, SystemLog
 from extensions import db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import json
 
 admin_dashboard_api = Blueprint('admin_dashboard_api', __name__, url_prefix='/api/admin')
@@ -140,44 +140,79 @@ def create_sample_orders():
     """샘플 주문 데이터 생성"""
     orders_data = [
         {
+            'item': '커피 원두',
+            'quantity': 10,
+            'unit': 'kg',
+            'order_date': date.today() - timedelta(days=5),
+            'ordered_by': 1,
+            'status': 'delivered',
+            'detail': '아라비카 원두 10kg',
             'store_id': 1,
-            'order_number': 'BAEK001',
-            'status': 'completed',
-            'total_amount': 15000,
-            'created_at': datetime.now() - timedelta(days=5)
+            'created_at': datetime.now() - timedelta(days=5),
+            'unit_price': 15000,
+            'total_cost': 150000
         },
         {
+            'item': '우유',
+            'quantity': 20,
+            'unit': 'L',
+            'order_date': date.today() - timedelta(days=3),
+            'ordered_by': 1,
+            'status': 'delivered',
+            'detail': '신선우유 20L',
             'store_id': 1,
-            'order_number': 'BAEK002',
-            'status': 'completed',
-            'total_amount': 12000,
-            'created_at': datetime.now() - timedelta(days=3)
+            'created_at': datetime.now() - timedelta(days=3),
+            'unit_price': 6000,
+            'total_cost': 120000
         },
         {
+            'item': '녹차',
+            'quantity': 5,
+            'unit': 'kg',
+            'order_date': date.today() - timedelta(days=7),
+            'ordered_by': 3,
+            'status': 'delivered',
+            'detail': '고급 녹차 5kg',
             'store_id': 4,
-            'order_number': 'CHOSUN001',
-            'status': 'completed',
-            'total_amount': 18000,
-            'created_at': datetime.now() - timedelta(days=7)
+            'created_at': datetime.now() - timedelta(days=7),
+            'unit_price': 36000,
+            'total_cost': 180000
         },
         {
+            'item': '시럽',
+            'quantity': 15,
+            'unit': 'L',
+            'order_date': date.today() - timedelta(days=2),
+            'ordered_by': 4,
+            'status': 'delivered',
+            'detail': '바닐라 시럽 15L',
             'store_id': 7,
-            'order_number': 'CAFFE001',
-            'status': 'completed',
-            'total_amount': 22000,
-            'created_at': datetime.now() - timedelta(days=2)
+            'created_at': datetime.now() - timedelta(days=2),
+            'unit_price': 14667,
+            'total_cost': 220000
         },
         {
+            'item': '에스프레소 머신 부품',
+            'quantity': 1,
+            'unit': '개',
+            'order_date': date.today() - timedelta(days=1),
+            'ordered_by': 5,
+            'status': 'delivered',
+            'detail': '에스프레소 머신 필터 교체',
             'store_id': 9,
-            'order_number': 'STAR001',
-            'status': 'completed',
-            'total_amount': 25000,
-            'created_at': datetime.now() - timedelta(days=1)
+            'created_at': datetime.now() - timedelta(days=1),
+            'unit_price': 25000,
+            'total_cost': 25000
         }
     ]
     
     for order_data in orders_data:
-        existing_order = Order.query.filter_by(order_number=order_data['order_number']).first()
+        # 중복 체크를 위해 item과 store_id로 확인
+        existing_order = Order.query.filter_by(
+            item=order_data['item'],
+            store_id=order_data['store_id'],
+            order_date=order_data['order_date']
+        ).first()
         if not existing_order:
             order = Order(**order_data)
             db.session.add(order)

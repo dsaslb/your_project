@@ -279,6 +279,7 @@ def send_notification_page():
 def approve_user_with_notification(user_id, action):
     """승인/거절 처리 (알림 포함)"""
     try:
+        message = ""
         user = User.query.get_or_404(user_id)
         reason = request.args.get("reason", "")
 

@@ -408,7 +408,10 @@ export default function MarketplacePage() {
             <p className="text-gray-600 mb-4">
               마켓플레이스에서 원하는 모듈을 설치해보세요
             </p>
-            <Button onClick={() => document.querySelector('[data-value="all"]')?.click()}>
+            <Button onClick={() => {
+              const element = document.querySelector('[data-value="all"]') as HTMLElement;
+              element?.click();
+            }}>
               모듈 둘러보기
             </Button>
           </div>

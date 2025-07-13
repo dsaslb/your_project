@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>브랜드 관리자 승인 - your_program Manager</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/tailwind.css">
     <script src="/static/js/theme.js"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900">
@@ -245,7 +245,12 @@
 
         // 브랜드 관리자 목록 로드
         function loadBrandManagers() {
-            fetch('/api/admin/users?role=brand_manager')
+            const token = localStorage.getItem('token');
+            fetch('/api/admin/users?role=brand_manager', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
                 .then(response => response.json())
                 .then(data => {
                     const tableBody = document.getElementById('managers-table-body');
@@ -316,10 +321,12 @@
         // 브랜드 관리자 승인
         function approveManager(userId) {
             if (confirm('이 사용자를 브랜드 관리자로 승인하시겠습니까?')) {
+                const token = localStorage.getItem('token');
                 fetch(`/api/admin/user/${userId}/status`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         status: 'approved'
@@ -345,10 +352,12 @@
         // 브랜드 관리자 거절
         function rejectManager(userId) {
             if (confirm('이 사용자의 브랜드 관리자 신청을 거절하시겠습니까?')) {
+                const token = localStorage.getItem('token');
                 fetch(`/api/admin/user/${userId}/status`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         status: 'rejected'
