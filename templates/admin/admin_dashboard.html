@@ -211,12 +211,17 @@
             fetch('/api/admin/brand_stats')
                 .then(response => response.json())
                 .then(data => {
-                    updateStatistics(data.stats);
-                    updateBrandCharts(data.stats);
-                    updateBrandDetails(data.stats);
+                    const stats = data.stats || [];
+                    updateStatistics(stats);
+                    updateBrandCharts(stats);
+                    updateBrandDetails(stats);
                 })
                 .catch(error => {
                     console.error('Error loading dashboard data:', error);
+                    // 오류 시 기본값으로 초기화
+                    updateStatistics([]);
+                    updateBrandCharts([]);
+                    updateBrandDetails([]);
                 });
         }
 
@@ -227,12 +232,14 @@
             let totalEmployees = 0;
             let totalOrders = 0;
 
-            stats.forEach(brand => {
-                totalBrands++;
-                totalStores += brand.store_count;
-                totalEmployees += brand.employee_count;
-                totalOrders += brand.order_count || 0;
-            });
+            if (stats && Array.isArray(stats)) {
+                stats.forEach(brand => {
+                    totalBrands++;
+                    totalStores += brand.store_count || 0;
+                    totalEmployees += brand.employee_count || 0;
+                    totalOrders += brand.order_count || 0;
+                });
+            }
 
             document.getElementById('total-brands').textContent = totalBrands + '개';
             document.getElementById('total-stores').textContent = totalStores + '개';
@@ -242,9 +249,31 @@
 
         // 브랜드별 차트 업데이트
         function updateBrandCharts(stats) {
-            const brandNames = stats.map(brand => brand.brand_name);
-            const storeCounts = stats.map(brand => brand.store_count);
-            const employeeCounts = stats.map(brand => brand.employee_count);
+            if (!stats || !Array.isArray(stats) || stats.length === 0) {
+                // 데이터가 없으면 빈 차트 표시
+                const storesCtx = document.getElementById('brandStoresChart').getContext('2d');
+                const employeesCtx = document.getElementById('brandEmployeesChart').getContext('2d');
+                
+                if (brandStoresChart) brandStoresChart.destroy();
+                if (brandEmployeesChart) brandEmployeesChart.destroy();
+                
+                brandStoresChart = new Chart(storesCtx, {
+                    type: 'doughnut',
+                    data: { labels: ['데이터 없음'], datasets: [{ data: [1], backgroundColor: ['#E5E7EB'] }] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+                
+                brandEmployeesChart = new Chart(employeesCtx, {
+                    type: 'bar',
+                    data: { labels: ['데이터 없음'], datasets: [{ label: '직원 수', data: [0], backgroundColor: '#E5E7EB' }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+                return;
+            }
+            
+            const brandNames = stats.map(brand => brand.brand_name || '알 수 없음');
+            const storeCounts = stats.map(brand => brand.store_count || 0);
+            const employeeCounts = stats.map(brand => brand.employee_count || 0);
 
             // 브랜드별 매장 분포 차트
             const storesCtx = document.getElementById('brandStoresChart').getContext('2d');
@@ -328,22 +357,32 @@
             const brandDetails = document.getElementById('brand-details');
             brandDetails.innerHTML = '';
 
+            if (!stats || !Array.isArray(stats) || stats.length === 0) {
+                brandDetails.innerHTML = `
+                    <div class="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-info-circle text-2xl mb-2"></i>
+                        <p>브랜드 데이터가 없습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+
             stats.forEach(brand => {
                 const brandCard = document.createElement('div');
                 brandCard.className = 'bg-gray-50 dark:bg-gray-700 rounded-lg p-4';
                 brandCard.innerHTML = `
                     <div class="flex items-center justify-between mb-3">
-                        <h4 class="font-semibold text-gray-900 dark:text-white">${brand.brand_name}</h4>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">${brand.brand_code}</span>
+                        <h4 class="font-semibold text-gray-900 dark:text-white">${brand.brand_name || '알 수 없음'}</h4>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">${brand.brand_code || 'N/A'}</span>
                     </div>
                     <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                         <div class="flex justify-between">
                             <span>매장:</span>
-                            <span class="font-medium">${brand.store_count}개</span>
+                            <span class="font-medium">${brand.store_count || 0}개</span>
                         </div>
                         <div class="flex justify-between">
                             <span>직원:</span>
-                            <span class="font-medium">${brand.employee_count}명</span>
+                            <span class="font-medium">${brand.employee_count || 0}명</span>
                         </div>
                         <div class="flex justify-between">
                             <span>주문:</span>

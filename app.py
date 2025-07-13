@@ -217,9 +217,14 @@ try:
     logger.info("모듈 관리 API 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"모듈 관리 API 블루프린트 등록 실패: {e}")
-    logger.info("플러그인 설정 관리 API 블루프린트 등록 완료")
+
+# 관리자 대시보드 API 블루프린트 등록
+try:
+    from routes.admin_dashboard_api import admin_dashboard_api
+    app.register_blueprint(admin_dashboard_api, name='admin_dashboard_api')
+    logger.info("관리자 대시보드 API 블루프린트 등록 완료")
 except Exception as e:
-    logger.error(f"플러그인 설정 관리 API 블루프린트 등록 실패: {e}")
+    logger.error(f"관리자 대시보드 API 블루프린트 등록 실패: {e}")
 
 # 플러그인 피드백 API 블루프린트 등록
 try:
