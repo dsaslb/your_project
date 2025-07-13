@@ -712,6 +712,14 @@ class ActionLog(db.Model):
         db.Index("idx_actionlog_action_date", "action", "created_at"),
     )
 
+    def __init__(self, user_id=None, action=None, message=None, ip_address=None, user_agent=None, **kwargs):
+        super().__init__(**kwargs)
+        self.user_id = user_id
+        self.action = action
+        self.message = message
+        self.ip_address = ip_address
+        self.user_agent = user_agent
+
     def __repr__(self):
         return f"<ActionLog {self.user_id} {self.action}>"
 

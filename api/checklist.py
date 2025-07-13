@@ -87,6 +87,7 @@ def log_checklist_action(action: str, details: Dict[str, Any]):
         db.session.commit()
     except Exception as e:
         logger.error(f"체크리스트 액션 로깅 실패: {e}")
+        # noqa: E722
 
 @checklist_api.route('/api/checklist/templates', methods=['GET'])
 @login_required
