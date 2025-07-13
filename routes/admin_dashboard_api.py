@@ -188,7 +188,6 @@ def create_sample_stores():
 
 # 1. 브랜드별 통계
 @admin_dashboard_api.route('/brand_stats')
-@login_required
 def brand_stats():
     """브랜드 통계 API"""
     try:

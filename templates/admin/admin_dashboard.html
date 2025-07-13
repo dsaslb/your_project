@@ -12,13 +12,13 @@
 <body class="bg-gray-50 dark:bg-gray-900">
     <div class="min-h-screen flex">
         <!-- 사이드바 -->
-        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
-            <div class="p-6">
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg flex flex-col">
+            <div class="p-6 flex-shrink-0">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🍽️ your_program</h1>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">관리자 대시보드</p>
             </div>
             
-            <nav class="mt-6">
+            <nav class="mt-6 flex-1">
                 <div class="px-6 mb-4">
                     <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">메인 메뉴</h3>
                 </div>
@@ -84,7 +84,7 @@
                 </a>
             </nav>
             
-            <div class="absolute bottom-0 w-64 p-6">
+            <div class="p-6 flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex items-center justify-between">
                     <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -99,9 +99,9 @@
         </div>
 
         <!-- 메인 콘텐츠 -->
-        <div class="flex-1 overflow-auto">
+        <div class="flex-1 flex flex-col overflow-hidden">
             <!-- 헤더 -->
-            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <div class="px-6 py-4">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white">브랜드 현황 대시보드</h2>
                     <p class="text-gray-600 dark:text-gray-400 mt-1">전체 브랜드와 매장의 운영 현황을 한눈에 확인하세요</p>
@@ -109,7 +109,7 @@
             </header>
 
             <!-- 메인 콘텐츠 -->
-            <main class="p-6">
+            <main class="flex-1 overflow-auto p-6">
                 <!-- 전체 통계 카드 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -209,7 +209,12 @@
         // 브랜드별 현황 데이터 로드
         function loadDashboardData() {
             fetch('/api/admin/brand_stats')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const stats = data.stats || [];
                     updateStatistics(stats);
