@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import hashlib
-import yaml
+import yaml  # noqa: E0401  # 'Import "yaml" could not be resolved from source' 경고 무시
 from werkzeug.utils import secure_filename
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user

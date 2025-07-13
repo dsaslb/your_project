@@ -1,746 +1,525 @@
 """
-모듈 마켓플레이스 시스템
-개발자들이 만든 모듈을 등록하고, 업종별 관리자가 검토하며, 브랜드별로 적용할 수 있는 시스템
+모듈 마켓플레이스 API
+사용자가 모듈을 검색, 구매, 다운로드할 수 있는 마켓플레이스
 """
 
-from flask import Blueprint, request, jsonify, render_template, current_app
+from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
-from models import User, Brand, Branch, SystemLog, Module, ModuleFeedback, ModuleVersion, ModuleUsage
-from extensions import db
-from datetime import datetime, timedelta
-import logging
-import os
+from datetime import datetime
 import json
-import uuid
-from werkzeug.utils import secure_filename
-import zipfile
+import os
 import shutil
+from typing import Dict, List, Any
+import logging
+
+# 데코레이터 import
+from utils.auth_decorators import admin_required, manager_required
 
 logger = logging.getLogger(__name__)
 
-module_marketplace_bp = Blueprint('module_marketplace', __name__, url_prefix='/admin/module-marketplace')
+module_marketplace_bp = Blueprint('module_marketplace', __name__)
 
-# 허용된 파일 확장자
-ALLOWED_EXTENSIONS = {'zip', 'py', 'json'}  # 허용 확장자 예시
-
-# 모듈 카테고리
-MODULE_CATEGORIES = {
-    'attendance': '출퇴근 관리',
-    'schedule': '스케줄 관리', 
-    'inventory': '재고 관리',
-    'purchase': '발주 관리',
-    'ai': 'AI/분석',
-    'communication': '커뮤니케이션',
-    'security': '보안',
-    'automation': '자동화',
-    'reporting': '리포팅',
-    'integration': '통합',
-    'other': '기타'
+# 마켓플레이스 모듈 데이터 (실제로는 데이터베이스에서 관리)
+marketplace_modules = {
+    'qsc_system': {
+        'id': 'qsc_system',
+        'name': 'QSC 점검 시스템',
+        'description': '품질(Quality), 서비스(Service), 청결(Cleanliness) 점검을 체계적으로 관리하는 시스템',
+        'category': 'quality_management',
+        'version': '1.0.0',
+        'author': 'System Admin',
+        'price': 0,  # 무료
+        'rating': 4.8,
+        'downloads': 1250,
+        'tags': ['품질관리', '점검', 'QSC', '표준화'],
+        'features': [
+            '실시간 QSC 점검 기록',
+            '점검 항목 커스터마이징',
+            '점검 결과 통계 및 리포트',
+            '알림 및 경고 시스템',
+            '모바일 지원'
+        ],
+        'requirements': {
+            'python_version': '3.8+',
+            'dependencies': ['flask', 'sqlalchemy'],
+            'permissions': ['qsc_management']
+        },
+        'screenshots': [
+            '/static/marketplace/qsc_system_1.png',
+            '/static/marketplace/qsc_system_2.png'
+        ],
+        'status': 'approved',
+        'created_at': '2024-01-15T10:00:00Z',
+        'updated_at': '2024-01-15T10:00:00Z'
+    },
+    'checklist_system': {
+        'id': 'checklist_system',
+        'name': '업무 체크리스트 시스템',
+        'description': '일일 업무 체크리스트를 관리하고 완료율을 추적하는 시스템',
+        'category': 'task_management',
+        'version': '1.0.0',
+        'author': 'System Admin',
+        'price': 0,
+        'rating': 4.6,
+        'downloads': 980,
+        'tags': ['체크리스트', '업무관리', '할일관리', '진행률'],
+        'features': [
+            '일일/주간/월간 체크리스트',
+            '업무별 체크리스트 템플릿',
+            '완료율 추적 및 통계',
+            '팀별 업무 할당',
+            '알림 및 리마인더'
+        ],
+        'requirements': {
+            'python_version': '3.8+',
+            'dependencies': ['flask', 'sqlalchemy'],
+            'permissions': ['checklist_management']
+        },
+        'screenshots': [
+            '/static/marketplace/checklist_system_1.png',
+            '/static/marketplace/checklist_system_2.png'
+        ],
+        'status': 'approved',
+        'created_at': '2024-01-15T10:00:00Z',
+        'updated_at': '2024-01-15T10:00:00Z'
+    },
+    'cooktime_system': {
+        'id': 'cooktime_system',
+        'name': '조리 예상시간 시스템',
+        'description': '메뉴별 조리 시간을 예측하고 실제 시간과 비교하여 효율성을 분석하는 시스템',
+        'category': 'kitchen_management',
+        'version': '1.0.0',
+        'author': 'System Admin',
+        'price': 0,
+        'rating': 4.7,
+        'downloads': 1100,
+        'tags': ['조리시간', '예측', '효율성', '주방관리'],
+        'features': [
+            '메뉴별 조리시간 예측',
+            '실제 조리시간 기록',
+            '효율성 분석 및 통계',
+            '요리사 경험별 조정',
+            '메뉴 커스터마이징 시간 계산'
+        ],
+        'requirements': {
+            'python_version': '3.8+',
+            'dependencies': ['flask', 'sqlalchemy'],
+            'permissions': ['cooktime_management']
+        },
+        'screenshots': [
+            '/static/marketplace/cooktime_system_1.png',
+            '/static/marketplace/cooktime_system_2.png'
+        ],
+        'status': 'approved',
+        'created_at': '2024-01-15T10:00:00Z',
+        'updated_at': '2024-01-15T10:00:00Z'
+    },
+    'kitchen_monitor': {
+        'id': 'kitchen_monitor',
+        'name': '주방 모니터링 시스템',
+        'description': '주방 설비의 상태를 실시간으로 모니터링하고 유지보수를 관리하는 시스템',
+        'category': 'equipment_management',
+        'version': '1.0.0',
+        'author': 'System Admin',
+        'price': 0,
+        'rating': 4.9,
+        'downloads': 850,
+        'tags': ['주방모니터링', '설비관리', '유지보수', 'IoT'],
+        'features': [
+            '실시간 설비 상태 모니터링',
+            '온도, 효율성 등 지표 추적',
+            '유지보수 일정 관리',
+            '알림 및 경고 시스템',
+            '설비 제어 기능'
+        ],
+        'requirements': {
+            'python_version': '3.8+',
+            'dependencies': ['flask', 'sqlalchemy'],
+            'permissions': ['kitchen_monitor_management']
+        },
+        'screenshots': [
+            '/static/marketplace/kitchen_monitor_1.png',
+            '/static/marketplace/kitchen_monitor_2.png'
+        ],
+        'status': 'approved',
+        'created_at': '2024-01-15T10:00:00Z',
+        'updated_at': '2024-01-15T10:00:00Z'
+    },
+    'ai_diagnosis': {
+        'id': 'ai_diagnosis',
+        'name': 'AI 진단 및 개선안 시스템',
+        'description': 'AI를 활용하여 업무 효율성을 분석하고 개선안을 제시하는 시스템',
+        'category': 'ai_analytics',
+        'version': '1.0.0',
+        'author': 'System Admin',
+        'price': 0,
+        'rating': 4.5,
+        'downloads': 650,
+        'tags': ['AI', '진단', '분석', '개선안', '최적화'],
+        'features': [
+            '업무 효율성 AI 분석',
+            '개선안 자동 생성',
+            '성능 지표 대시보드',
+            '예측 분석',
+            '개선 효과 추적'
+        ],
+        'requirements': {
+            'python_version': '3.8+',
+            'dependencies': ['flask', 'sqlalchemy', 'pandas', 'numpy'],
+            'permissions': ['ai_management']
+        },
+        'screenshots': [
+            '/static/marketplace/ai_diagnosis_1.png',
+            '/static/marketplace/ai_diagnosis_2.png'
+        ],
+        'status': 'approved',
+        'created_at': '2024-01-15T10:00:00Z',
+        'updated_at': '2024-01-15T10:00:00Z'
+    },
+    'plugin_registration': {
+        'id': 'plugin_registration',
+        'name': '플러그인 등록 시스템',
+        'description': '사용자 정의 플러그인을 등록하고 관리할 수 있는 시스템',
+        'category': 'development',
+        'version': '1.0.0',
+        'author': 'System Admin',
+        'price': 0,
+        'rating': 4.4,
+        'downloads': 420,
+        'tags': ['플러그인', '개발', '확장', '커스터마이징'],
+        'features': [
+            '플러그인 등록 및 검증',
+            '플러그인 버전 관리',
+            '보안 검사 및 승인',
+            '플러그인 마켓플레이스 연동',
+            '개발자 도구'
+        ],
+        'requirements': {
+            'python_version': '3.8+',
+            'dependencies': ['flask', 'sqlalchemy', 'gitpython'],
+            'permissions': ['plugin_management']
+        },
+        'screenshots': [
+            '/static/marketplace/plugin_registration_1.png',
+            '/static/marketplace/plugin_registration_2.png'
+        ],
+        'status': 'approved',
+        'created_at': '2024-01-15T10:00:00Z',
+        'updated_at': '2024-01-15T10:00:00Z'
+    }
 }
 
-def allowed_file(filename):
-    """허용된 파일 확장자 확인"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# 사용자별 설치된 모듈 (실제로는 데이터베이스에서 관리)
+user_installed_modules = {}
 
-@module_marketplace_bp.route('/', methods=['GET'])
+@module_marketplace_bp.route('/api/marketplace/modules', methods=['GET'])
 @login_required
-def module_marketplace_page():
-    """모듈 마켓플레이스 페이지"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 403
-    
-    return render_template('admin/module_marketplace.html')
-
-@module_marketplace_bp.route('/api/modules', methods=['GET'])
-@login_required
-def get_modules():
-    """모듈 목록 조회"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
+def get_marketplace_modules():
+    """마켓플레이스 모듈 목록 조회"""
     try:
-        # 필터링 파라미터
+        # 필터링 옵션
         category = request.args.get('category')
-        status = request.args.get('status')
         search = request.args.get('search')
+        sort_by = request.args.get('sort_by', 'downloads')  # downloads, rating, name, price
+        order = request.args.get('order', 'desc')  # asc, desc
         
-        query = Module.query
+        # 기본 모듈 목록
+        modules = list(marketplace_modules.values())
         
+        # 카테고리 필터링
         if category:
-            query = query.filter(Module.category == category)
+            modules = [m for m in modules if m['category'] == category]
         
-        if status:
-            query = query.filter(Module.status == status)
-        
+        # 검색 필터링
         if search:
-            query = query.filter(
-                (Module.name.contains(search)) |
-                (Module.description.contains(search)) |
-                (Module.author.contains(search))
-            )
-        
-        modules = query.order_by(Module.created_at.desc()).all()
-        
-        module_list = []
-        for module in modules:
-            # 사용 통계
-            usage_count = ModuleUsage.query.filter_by(module_id=module.id).count()
-            feedback_count = ModuleFeedback.query.filter_by(module_id=module.id).count()
-            
-            # 평균 평점
-            avg_rating = db.session.query(db.func.avg(ModuleFeedback.rating)).filter_by(module_id=module.id).scalar() or 0
-            
-            module_list.append({
-                'id': module.id,
-                'name': module.name,
-                'description': module.description,
-                'category': module.category,
-                'category_name': MODULE_CATEGORIES.get(module.category, '기타'),
-                'version': module.version,
-                'author': module.author,
-                'status': module.status,
-                'downloads': module.downloads,
-                'usage_count': usage_count,
-                'feedback_count': feedback_count,
-                'avg_rating': round(avg_rating, 1),
-                'created_at': module.created_at.isoformat(),
-                'updated_at': module.updated_at.isoformat(),
-                'tags': module.tags.split(',') if module.tags else [],
-                'compatibility': json.loads(module.compatibility) if module.compatibility else {},
-                'requirements': json.loads(module.requirements) if module.requirements else []
-            })
-        
-        return jsonify({
-            'success': True,
-            'modules': module_list,
-            'total_count': len(module_list),
-            'categories': MODULE_CATEGORIES
-        })
-        
-    except Exception as e:
-        logger.error(f"모듈 목록 조회 오류: {str(e)}")
-        return jsonify({'error': '데이터 조회 중 오류가 발생했습니다.'}), 500  # pyright: ignore
-
-@module_marketplace_bp.route('/api/modules', methods=['POST'])  # pyright: ignore
-@login_required
-def upload_module():
-    """모듈 업로드"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
-    try:
-        # 파일 업로드 처리
-        if 'module_file' not in request.files:
-            return jsonify({'error': '모듈 파일이 필요합니다.'}), 400
-        
-        file = request.files['module_file']
-        if file.filename == '':
-            return jsonify({'error': '파일을 선택해주세요.'}), 400
-        
-        if not allowed_file(file.filename):
-            return jsonify({'error': '허용되지 않는 파일 형식입니다.'}), 400
-        
-        # 모듈 정보
-        name = request.form.get('name')
-        description = request.form.get('description')
-        category = request.form.get('category')
-        version = request.form.get('version', '1.0.0')
-        tags = request.form.get('tags', '')
-        compatibility = request.form.get('compatibility', '{}')
-        requirements = request.form.get('requirements', '[]')
-        
-        if not all([name, description, category]):
-            return jsonify({'error': '필수 정보를 모두 입력해주세요.'}), 400
-        
-        # 파일 저장
-        filename = secure_filename(file.filename or '')
-        module_id = str(uuid.uuid4())
-        upload_dir = os.path.join('uploads', 'modules', module_id)
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        file_path = os.path.join(upload_dir, filename)
-        file.save(file_path)
-        
-        # ZIP 파일인 경우 압축 해제
-        if filename.endswith('.zip'):
-            extract_dir = os.path.join(upload_dir, 'extracted')
-            os.makedirs(extract_dir, exist_ok=True)
-            
-            with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_dir)
-        
-        # 모듈 정보 저장
-        module = Module(
-            module_id=module_id,  # pyright: ignore
-            module_name=name,  # pyright: ignore
-            module_description=description,  # pyright: ignore
-            module_category=category,  # pyright: ignore
-            module_version=version,  # pyright: ignore
-            # author, status, downloads, tags, compatibility 필드는 Module 모델에 정의되어 있지 않으므로 주석 처리 또는 제거합니다.
-            # author=current_user.username,  # pyright: ignore
-            # status='pending',  # 승인 대기  # pyright: ignore
-            # downloads=0,  # pyright: ignore
-            # tags와 compatibility 필드는 Module 모델에 정의되어 있지 않으므로 주석 처리합니다.
-            # tags=tags,  # pyright: ignore
-            # compatibility=compatibility,  # pyright: ignore
-            requirements=requirements,  # pyright: ignore
-            file_path=file_path,  # pyright: ignore
-            created_by=current_user.id  # pyright: ignore
-        )
-        db.session.add(module)
-        
-        # 시스템 로그 기록
-        log = SystemLog(
-            user_id=current_user.id,
-            action='module_upload',
-            detail=f'모듈 업로드: {name} v{version}',
-            ip_address=request.remote_addr
-        ) # pyright: ignore
-        db.session.add(log)
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'{name} 모듈이 성공적으로 업로드되었습니다. 승인 대기 중입니다.',
-            'module_id': module_id
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"모듈 업로드 오류: {str(e)}")
-        return jsonify({'error': '모듈 업로드 중 오류가 발생했습니다.'}), 500
-
-@module_marketplace_bp.route('/api/modules/<module_id>', methods=['GET'])
-@login_required
-def get_module_detail(module_id):
-    """모듈 상세 정보 조회"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
-    try:
-        module = Module.query.get(module_id)
-        if not module:
-            return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
-        # 피드백 목록
-        feedbacks = ModuleFeedback.query.filter_by(module_id=module_id).order_by(ModuleFeedback.created_at.desc()).all()
-        feedback_list = []
-        
-        for feedback in feedbacks:
-            feedback_list.append({
-                'id': feedback.id,
-                'user_name': feedback.user_name,
-                'rating': feedback.rating,
-                'comment': feedback.comment,
-                'created_at': feedback.created_at.isoformat(),
-                'is_helpful': feedback.is_helpful
-            })
-        
-        # 사용 통계
-        usage_count = ModuleUsage.query.filter_by(module_id=module_id).count()
-        brand_usage = db.session.query(
-            Brand.name,
-            db.func.count(ModuleUsage.id).label('usage_count')
-        ).join(ModuleUsage).filter(ModuleUsage.module_id == module_id).group_by(Brand.id).all()
-        
-        # 평균 평점
-        avg_rating = db.session.query(db.func.avg(ModuleFeedback.rating)).filter_by(module_id=module_id).scalar() or 0
-        
-        return jsonify({
-            'success': True,
-            'module': {
-                'id': module.id,
-                'name': module.name,
-                'description': module.description,
-                'category': module.category,
-                'category_name': MODULE_CATEGORIES.get(module.category, '기타'),
-                'version': module.version,
-                'author': module.author,
-                'status': module.status,
-                'downloads': module.downloads,
-                'tags': module.tags.split(',') if module.tags else [],
-                'compatibility': json.loads(module.compatibility) if module.compatibility else {},
-                'requirements': json.loads(module.requirements) if module.requirements else [],
-                'created_at': module.created_at.isoformat(),
-                'updated_at': module.updated_at.isoformat(),
-                'usage_count': usage_count,
-                'avg_rating': round(avg_rating, 1),
-                'feedback_count': len(feedback_list)
-            },
-            'feedbacks': feedback_list,
-            'brand_usage': [
-                {
-                    'brand_name': brand.name,
-                    'usage_count': count
-                } for brand, count in brand_usage
+            search_lower = search.lower()
+            modules = [
+                m for m in modules 
+                if search_lower in m['name'].lower() or 
+                   search_lower in m['description'].lower() or
+                   any(search_lower in tag.lower() for tag in m['tags'])
             ]
+        
+        # 정렬
+        reverse_order = order == 'desc'
+        if sort_by == 'downloads':
+            modules.sort(key=lambda x: x['downloads'], reverse=reverse_order)
+        elif sort_by == 'rating':
+            modules.sort(key=lambda x: x['rating'], reverse=reverse_order)
+        elif sort_by == 'name':
+            modules.sort(key=lambda x: x['name'], reverse=reverse_order)
+        elif sort_by == 'price':
+            modules.sort(key=lambda x: x['price'], reverse=reverse_order)
+        
+        # 페이지네이션
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 12, type=int)
+        
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_modules = modules[start_idx:end_idx]
+        
+        # 카테고리 목록
+        categories = list(set(m['category'] for m in marketplace_modules.values()))
+        
+        return jsonify({
+            'success': True,
+            'modules': paginated_modules,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': len(modules),
+                'pages': (len(modules) + per_page - 1) // per_page
+            },
+            'categories': categories,
+            'total_modules': len(marketplace_modules)
         })
         
     except Exception as e:
-        logger.error(f"모듈 상세 정보 조회 오류: {str(e)}")
-        return jsonify({'error': '데이터 조회 중 오류가 발생했습니다.'}), 500
+        logger.error(f"마켓플레이스 모듈 목록 조회 실패: {e}")
+        return jsonify({'error': '마켓플레이스 모듈 목록 조회에 실패했습니다.'}), 500
 
-@module_marketplace_bp.route('/api/modules/<module_id>/approve', methods=['POST'])
+@module_marketplace_bp.route('/api/marketplace/modules/<module_id>', methods=['GET'])
 @login_required
-def approve_module(module_id):
-    """모듈 승인"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
+def get_module_detail(module_id: str):
+    """모듈 상세 정보 조회"""
     try:
-        module = Module.query.get(module_id)
-        if not module:
+        if module_id not in marketplace_modules:
             return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
         
-        # 승인 처리
-        module.status = 'approved'
-        module.updated_at = datetime.now()
+        module = marketplace_modules[module_id]
         
-        # 시스템 로그 기록
-        log = SystemLog(
-            user_id=current_user.id,
-            action='module_approve',
-            detail=f'모듈 승인: {module.name} v{module.version}',
-            ip_address=request.remote_addr
-        ) # pyright: ignore
-        db.session.add(log)
+        # 사용자의 설치 여부 확인
+        user_modules = user_installed_modules.get(current_user.id, [])
+        is_installed = module_id in user_modules
         
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'{module.name} 모듈이 승인되었습니다.'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"모듈 승인 오류: {str(e)}")
-        return jsonify({'error': '모듈 승인 중 오류가 발생했습니다.'}), 500
-
-@module_marketplace_bp.route('/api/modules/<module_id>/reject', methods=['POST'])
-@login_required
-def reject_module(module_id):
-    """모듈 거절"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
-    try:
-        data = request.get_json()
-        reason = data.get('reason', '')
-        
-        module = Module.query.get(module_id)
-        if not module:
-            return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
-        # 거절 처리
-        module.status = 'rejected'
-        module.updated_at = datetime.now()
-        
-        # 시스템 로그 기록
-        log = SystemLog(
-            user_id=current_user.id,
-            action='module_reject',
-            detail=f'모듈 거절: {module.name} v{module.version} - {reason}',
-            ip_address=request.remote_addr
-        ) # pyright: ignore
-        db.session.add(log)
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'{module.name} 모듈이 거절되었습니다.'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"모듈 거절 오류: {str(e)}")
-        return jsonify({'error': '모듈 거절 중 오류가 발생했습니다.'}), 500
-
-@module_marketplace_bp.route('/api/modules/<module_id>/feedback', methods=['POST'])
-@login_required
-def add_module_feedback(module_id):
-    """모듈 피드백 추가"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
-    try:
-        data = request.get_json()
-        rating = data.get('rating')
-        comment = data.get('comment', '')
-        
-        if not rating or not (1 <= rating <= 5):
-            return jsonify({'error': '평점은 1-5 사이의 값이어야 합니다.'}), 400
-        
-        module = Module.query.get(module_id)
-        if not module:
-            return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
-        # 피드백 저장
-        feedback = ModuleFeedback(
-            module_id=module_id,
-            user_name=current_user.username,
-            rating=rating,
-            comment=comment
-        )
-        
-        db.session.add(feedback)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': '피드백이 성공적으로 등록되었습니다.'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"피드백 추가 오류: {str(e)}")
-        return jsonify({'error': '피드백 등록 중 오류가 발생했습니다.'}), 500
-
-@module_marketplace_bp.route('/api/modules/<module_id>/download', methods=['POST'])
-@login_required
-def download_module(module_id):
-    """모듈 다운로드"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
-    try:
-        module = Module.query.get(module_id)
-        if not module:
-            return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
-        if module.status != 'approved':
-            return jsonify({'error': '승인된 모듈만 다운로드할 수 있습니다.'}), 400
-        
-        # 다운로드 수 증가
-        module.downloads += 1
-        
-        # 사용 기록
-        data = request.get_json(silent=True) or {}
-        usage = ModuleUsage(
-            module_id=module_id,
-            brand_id=data.get('brand_id'),
-            user_id=current_user.id,
-            action='download'
-        )
-        
-        db.session.add(usage)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'{module.name} 모듈이 다운로드되었습니다.',
-            'download_url': f'/admin/module-marketplace/api/modules/{module_id}/file'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"모듈 다운로드 오류: {str(e)}")
-        return jsonify({'error': '모듈 다운로드 중 오류가 발생했습니다.'}), 500
-
-@module_marketplace_bp.route('/api/modules/<module_id>/customize', methods=['POST'])
-@login_required
-def customize_module(module_id):
-    """모듈 커스터마이징"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
-    try:
-        data = request.get_json()
-        brand_id = data.get('brand_id')
-        customizations = data.get('customizations', {})
-        
-        if not brand_id:
-            return jsonify({'error': '브랜드 ID가 필요합니다.'}), 400
-        
-        module = Module.query.get(module_id)
-        if not module:
-            return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
-        # 커스터마이징 정보 저장
-        customization_data = {
-            'brand_id': brand_id,
-            'module_id': module_id,
-            'customizations': customizations,
-            'created_at': datetime.now().isoformat(),
-            'created_by': current_user.username
-        }
-        
-        # 시스템 로그 기록
-        log = SystemLog(
-            user_id=current_user.id,
-            action='module_customize',
-            detail=f'모듈 커스터마이징: {module.name} - 브랜드 {brand_id}',
-            ip_address=request.remote_addr
-        ) # pyright: ignore
-        db.session.add(log)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'{module.name} 모듈이 브랜드에 맞게 커스터마이징되었습니다.',
-            'customization': customization_data
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"모듈 커스터마이징 오류: {str(e)}")
-        return jsonify({'error': '모듈 커스터마이징 중 오류가 발생했습니다.'}), 500
-
-@module_marketplace_bp.route('/api/modules/statistics', methods=['GET'])
-@login_required
-def get_module_statistics():
-    """모듈 통계"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
-    try:
-        # 전체 통계
-        total_modules = Module.query.count()
-        approved_modules = Module.query.filter_by(status='approved').count()
-        pending_modules = Module.query.filter_by(status='pending').count()
-        total_downloads = db.session.query(db.func.sum(Module.downloads)).scalar() or 0
-        
-        # 카테고리별 통계
-        category_stats = db.session.query(
-            Module.category,
-            db.func.count(Module.id).label('count')
-        ).group_by(Module.category).all()
-        
-        # 최근 업로드된 모듈
-        recent_modules = Module.query.order_by(Module.created_at.desc()).limit(5).all()
-        
-        # 인기 모듈 (다운로드 기준)
-        popular_modules = Module.query.filter_by(status='approved').order_by(Module.downloads.desc()).limit(5).all()
-        
-        return jsonify({
-            'success': True,
-            'statistics': {
-                'total_modules': total_modules,
-                'approved_modules': approved_modules,
-                'pending_modules': pending_modules,
-                'total_downloads': total_downloads,
-                'category_stats': [
-                    {
-                        'category': cat,
-                        'category_name': MODULE_CATEGORIES.get(cat, '기타'),
-                        'count': count
-                    } for cat, count in category_stats
-                ],
-                'recent_modules': [
-                    {
-                        'id': module.id,
-                        'name': module.name,
-                        'category': module.category,
-                        'status': module.status,
-                        'created_at': module.created_at.isoformat()
-                    } for module in recent_modules
-                ],
-                'popular_modules': [
-                    {
-                        'id': module.id,
-                        'name': module.name,
-                        'category': module.category,
-                        'downloads': module.downloads
-                    } for module in popular_modules
-                ]
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"모듈 통계 조회 오류: {str(e)}")
-        return jsonify({'error': '통계 조회 중 오류가 발생했습니다.'}), 500
-
-# 모듈 마켓플레이스에 샘플 데이터 추가
-@module_marketplace_bp.route('/api/modules/seed', methods=['POST'])
-@login_required
-def seed_sample_modules():
-    """샘플 모듈 데이터 추가"""
-    if not current_user.is_admin():
-        return jsonify({'error': '권한이 없습니다.'}), 401
-    
-    try:
-        # 기존 샘플 데이터가 있는지 확인
-        existing_modules = Module.query.filter(Module.author == 'your_program 개발팀').count()
-        if existing_modules > 0:
-            return jsonify({'message': '샘플 데이터가 이미 존재합니다.'}), 200
-        
-        # 샘플 모듈 데이터
-        sample_modules = [
+        # 리뷰 정보 (실제로는 데이터베이스에서 조회)
+        reviews = [
             {
-                'id': str(uuid.uuid4()),
-                'name': '출퇴근 관리 모듈',
-                'description': '직원들의 출퇴근 시간을 관리하고 근태를 추적하는 모듈입니다. QR코드 출퇴근, GPS 위치 확인, 근태 통계, 지각/조퇴 알림, 월간 근태 리포트 기능을 제공합니다.',
-                'category': 'attendance',
-                'version': '1.0.0',
-                'author': 'your_program 개발팀',
-                'status': 'approved',
-                'downloads': 45,
-                'tags': '출퇴근,근태관리,시간관리,직원관리',
-                'compatibility': json.dumps({
-                    'min_version': '1.0.0',
-                    'max_version': '2.0.0',
-                    'industries': ['restaurant', 'retail', 'service'],
-                    'brands': ['all']
-                }),
-                'requirements': json.dumps([
-                    'flask>=2.0.0',
-                    'sqlalchemy>=1.4.0',
-                    'python-dateutil>=2.8.0'
-                ]),
-                'file_path': 'sample_modules/attendance_module_v1.0.0.zip',
-                'created_by': current_user.id
+                'id': 1,
+                'user_name': '김철수',
+                'rating': 5,
+                'comment': '정말 유용한 모듈입니다!',
+                'created_at': '2024-01-10T15:30:00Z'
             },
             {
-                'id': str(uuid.uuid4()),
-                'name': '스케줄 관리 모듈',
-                'description': '직원들의 근무 스케줄을 관리하고 자동 배정하는 모듈입니다. 자동 스케줄 생성, 교대근무 관리, 휴가 신청/승인, 인력 최적화, 스케줄 충돌 감지 기능을 제공합니다.',
-                'category': 'schedule',
-                'version': '1.0.0',
-                'author': 'your_program 개발팀',
-                'status': 'approved',
-                'downloads': 32,
-                'tags': '스케줄,근무관리,자동배정,교대근무',
-                'compatibility': json.dumps({
-                    'min_version': '1.0.0',
-                    'max_version': '2.0.0',
-                    'industries': ['restaurant', 'retail', 'service', 'hospital'],
-                    'brands': ['all']
-                }),
-                'requirements': json.dumps([
-                    'flask>=2.0.0',
-                    'sqlalchemy>=1.4.0',
-                    'python-dateutil>=2.8.0'
-                ]),
-                'file_path': 'sample_modules/schedule_module_v1.0.0.zip',
-                'created_by': current_user.id
-            },
-            {
-                'id': str(uuid.uuid4()),
-                'name': '재고 관리 모듈',
-                'description': '매장의 재고를 실시간으로 관리하고 자동 발주를 지원하는 모듈입니다. 실시간 재고 추적, 자동 발주 알림, 바코드 스캔, IoT 센서 연동, 재고 리포트 기능을 제공합니다.',
-                'category': 'inventory',
-                'version': '1.0.0',
-                'author': 'your_program 개발팀',
-                'status': 'approved',
-                'downloads': 28,
-                'tags': '재고,발주,자동화,IoT,바코드',
-                'compatibility': json.dumps({
-                    'min_version': '1.0.0',
-                    'max_version': '2.0.0',
-                    'industries': ['restaurant', 'retail', 'manufacturing'],
-                    'brands': ['all']
-                }),
-                'requirements': json.dumps([
-                    'flask>=2.0.0',
-                    'sqlalchemy>=1.4.0',
-                    'requests>=2.25.0'
-                ]),
-                'file_path': 'sample_modules/inventory_module_v1.0.0.zip',
-                'created_by': current_user.id
-            },
-            {
-                'id': str(uuid.uuid4()),
-                'name': '발주 관리 모듈',
-                'description': '매장의 발주를 관리하고 공급업체와 연동하는 모듈입니다. 자동 발주 생성, 공급업체 관리, 견적 비교, 배송 추적, 결제 관리 기능을 제공합니다.',
-                'category': 'purchase',
-                'version': '1.0.0',
-                'author': 'your_program 개발팀',
-                'status': 'approved',
-                'downloads': 19,
-                'tags': '발주,공급업체,견적,배송,결제',
-                'compatibility': json.dumps({
-                    'min_version': '1.0.0',
-                    'max_version': '2.0.0',
-                    'industries': ['restaurant', 'retail', 'manufacturing'],
-                    'brands': ['all']
-                }),
-                'requirements': json.dumps([
-                    'flask>=2.0.0',
-                    'sqlalchemy>=1.4.0',
-                    'requests>=2.25.0'
-                ]),
-                'file_path': 'sample_modules/purchase_module_v1.0.0.zip',
-                'created_by': current_user.id
-            },
-            {
-                'id': str(uuid.uuid4()),
-                'name': 'AI 분석 모듈',
-                'description': '매장 데이터를 AI로 분석하여 인사이트를 제공하는 모듈입니다. 매출 예측, 고객 행동 분석, 최적화 제안, 이상치 감지, 성능 대시보드 기능을 제공합니다.',
-                'category': 'ai',
-                'version': '1.0.0',
-                'author': 'your_program 개발팀',
-                'status': 'pending',
-                'downloads': 0,
-                'tags': 'AI,분석,예측,인사이트,최적화',
-                'compatibility': json.dumps({
-                    'min_version': '1.0.0',
-                    'max_version': '2.0.0',
-                    'industries': ['restaurant', 'retail', 'service'],
-                    'brands': ['all']
-                }),
-                'requirements': json.dumps([
-                    'flask>=2.0.0',
-                    'pandas>=1.3.0',
-                    'scikit-learn>=1.0.0',
-                    'numpy>=1.21.0'
-                ]),
-                'file_path': 'sample_modules/ai_analysis_module_v1.0.0.zip',
-                'created_by': current_user.id
+                'id': 2,
+                'user_name': '이영희',
+                'rating': 4,
+                'comment': '기능이 잘 구현되어 있어요.',
+                'created_at': '2024-01-08T12:15:00Z'
             }
         ]
         
-        # 모듈 데이터 추가
-        for module_data in sample_modules:
-            module = Module(**module_data)
-            db.session.add(module)
-            
-            # 샘플 피드백 추가 (승인된 모듈에만)
-            if module_data['status'] == 'approved':
-                feedbacks = [
-                    {
-                        'user_name': '김매니저',
-                        'rating': 5,
-                        'comment': '정말 유용한 모듈입니다! 직원 관리가 훨씬 쉬워졌어요.'
-                    },
-                    {
-                        'user_name': '박사장',
-                        'rating': 4,
-                        'comment': '기능이 잘 구현되어 있고 사용하기 편합니다. 다만 몇 가지 개선사항이 있으면 좋겠어요.'
-                    },
-                    {
-                        'user_name': '이팀장',
-                        'rating': 5,
-                        'comment': '완벽합니다! 다른 매장에도 추천하고 싶어요.'
-                    }
-                ]
-                
-                for feedback_data in feedbacks:
-                    feedback = ModuleFeedback(
-                        module_id=module.id,
-                        **feedback_data
-                    )
-                    db.session.add(feedback)
-        
-        # 시스템 로그 기록
-        log = SystemLog(
-            user_id=current_user.id,
-            action='module_seed',
-            detail=f'샘플 모듈 데이터 추가: {len(sample_modules)}개',
-            ip_address=request.remote_addr
-        ) # pyright: ignore
-        db.session.add(log)
-        
-        db.session.commit()
-        
         return jsonify({
             'success': True,
-            'message': f'{len(sample_modules)}개의 샘플 모듈이 성공적으로 추가되었습니다.'
+            'module': module,
+            'is_installed': is_installed,
+            'reviews': reviews,
+            'related_modules': [
+                m for m in marketplace_modules.values()
+                if m['category'] == module['category'] and m['id'] != module_id
+            ][:4]  # 같은 카테고리의 다른 모듈 4개
         })
         
     except Exception as e:
-        db.session.rollback()
-        logger.error(f"샘플 모듈 데이터 추가 오류: {str(e)}")
-        return jsonify({'error': '샘플 데이터 추가 중 오류가 발생했습니다.'}), 500 
+        logger.error(f"모듈 상세 정보 조회 실패: {e}")
+        return jsonify({'error': '모듈 상세 정보 조회에 실패했습니다.'}), 500
+
+@module_marketplace_bp.route('/api/marketplace/modules/<module_id>/install', methods=['POST'])
+@login_required
+def install_module(module_id: str):
+    """모듈 설치"""
+    try:
+        if module_id not in marketplace_modules:
+            return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
+        
+        module = marketplace_modules[module_id]
+        
+        # 이미 설치된 모듈인지 확인
+        user_modules = user_installed_modules.get(current_user.id, [])
+        if module_id in user_modules:
+            return jsonify({'error': '이미 설치된 모듈입니다.'}), 400
+        
+        # 권한 확인
+        required_permissions = module['requirements'].get('permissions', [])
+        for permission in required_permissions:
+            if not current_user.has_permission(permission, 'view'):
+                return jsonify({'error': f'모듈 설치 권한이 없습니다: {permission}'}), 403
+        
+        # 모듈 설치 (실제로는 파일 복사, 데이터베이스 설정 등)
+        if current_user.id not in user_installed_modules:
+            user_installed_modules[current_user.id] = []
+        
+        user_installed_modules[current_user.id].append(module_id)
+        
+        # 다운로드 수 증가
+        marketplace_modules[module_id]['downloads'] += 1
+        
+        # 설치 로그 기록
+        logger.info(f"모듈 설치: {current_user.username} -> {module_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': f"{module['name']}이(가) 성공적으로 설치되었습니다.",
+            'module': module
+        })
+        
+    except Exception as e:
+        logger.error(f"모듈 설치 실패: {e}")
+        return jsonify({'error': '모듈 설치에 실패했습니다.'}), 500
+
+@module_marketplace_bp.route('/api/marketplace/modules/<module_id>/uninstall', methods=['POST'])
+@login_required
+def uninstall_module(module_id: str):
+    """모듈 제거"""
+    try:
+        if module_id not in marketplace_modules:
+            return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
+        
+        module = marketplace_modules[module_id]
+        
+        # 설치된 모듈인지 확인
+        user_modules = user_installed_modules.get(current_user.id, [])
+        if module_id not in user_modules:
+            return jsonify({'error': '설치되지 않은 모듈입니다.'}), 400
+        
+        # 모듈 제거
+        user_installed_modules[current_user.id].remove(module_id)
+        
+        # 제거 로그 기록
+        logger.info(f"모듈 제거: {current_user.username} -> {module_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': f"{module['name']}이(가) 성공적으로 제거되었습니다."
+        })
+        
+    except Exception as e:
+        logger.error(f"모듈 제거 실패: {e}")
+        return jsonify({'error': '모듈 제거에 실패했습니다.'}), 500
+
+@module_marketplace_bp.route('/api/marketplace/modules/<module_id>/review', methods=['POST'])
+@login_required
+def add_module_review(module_id: str):
+    """모듈 리뷰 작성"""
+    try:
+        if module_id not in marketplace_modules:
+            return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다.'}), 400
+        
+        rating = data.get('rating')
+        comment = data.get('comment', '')
+        
+        if not rating or not isinstance(rating, int) or rating < 1 or rating > 5:
+            return jsonify({'error': '유효하지 않은 평점입니다.'}), 400
+        
+        # 리뷰 저장 (실제로는 데이터베이스에 저장)
+        review = {
+            'id': len(marketplace_modules[module_id].get('reviews', [])) + 1,
+            'user_name': current_user.username,
+            'rating': rating,
+            'comment': comment,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        # 모듈의 평균 평점 업데이트
+        if 'reviews' not in marketplace_modules[module_id]:
+            marketplace_modules[module_id]['reviews'] = []
+        
+        marketplace_modules[module_id]['reviews'].append(review)
+        
+        # 평균 평점 계산
+        ratings = [r['rating'] for r in marketplace_modules[module_id]['reviews']]
+        marketplace_modules[module_id]['rating'] = sum(ratings) / len(ratings)
+        
+        return jsonify({
+            'success': True,
+            'message': '리뷰가 성공적으로 등록되었습니다.',
+            'review': review
+        })
+        
+    except Exception as e:
+        logger.error(f"모듈 리뷰 작성 실패: {e}")
+        return jsonify({'error': '모듈 리뷰 작성에 실패했습니다.'}), 500
+
+@module_marketplace_bp.route('/api/marketplace/categories', methods=['GET'])
+@login_required
+def get_marketplace_categories():
+    """마켓플레이스 카테고리 목록"""
+    try:
+        categories = {}
+        
+        for module in marketplace_modules.values():
+            category = module['category']
+            if category not in categories:
+                categories[category] = {
+                    'name': category,
+                    'count': 0,
+                    'modules': []
+                }
+            
+            categories[category]['count'] += 1
+            categories[category]['modules'].append({
+                'id': module['id'],
+                'name': module['name'],
+                'rating': module['rating'],
+                'downloads': module['downloads']
+            })
+        
+        return jsonify({
+            'success': True,
+            'categories': list(categories.values())
+        })
+        
+    except Exception as e:
+        logger.error(f"마켓플레이스 카테고리 조회 실패: {e}")
+        return jsonify({'error': '마켓플레이스 카테고리 조회에 실패했습니다.'}), 500
+
+@module_marketplace_bp.route('/api/marketplace/installed', methods=['GET'])
+@login_required
+def get_installed_modules():
+    """사용자가 설치한 모듈 목록"""
+    try:
+        user_modules = user_installed_modules.get(current_user.id, [])
+        installed_modules = []
+        
+        for module_id in user_modules:
+            if module_id in marketplace_modules:
+                module = marketplace_modules[module_id].copy()
+                module['installed_at'] = datetime.now().isoformat()  # 실제로는 설치 시간 저장
+                installed_modules.append(module)
+        
+        return jsonify({
+            'success': True,
+            'modules': installed_modules,
+            'total_installed': len(installed_modules)
+        })
+        
+    except Exception as e:
+        logger.error(f"설치된 모듈 목록 조회 실패: {e}")
+        return jsonify({'error': '설치된 모듈 목록 조회에 실패했습니다.'}), 500
+
+@module_marketplace_bp.route('/api/marketplace/trending', methods=['GET'])
+@login_required
+def get_trending_modules():
+    """인기 모듈 목록"""
+    try:
+        # 다운로드 수 기준으로 정렬
+        trending_modules = sorted(
+            marketplace_modules.values(),
+            key=lambda x: x['downloads'],
+            reverse=True
+        )[:8]  # 상위 8개
+        
+        return jsonify({
+            'success': True,
+            'modules': trending_modules
+        })
+        
+    except Exception as e:
+        logger.error(f"인기 모듈 목록 조회 실패: {e}")
+        return jsonify({'error': '인기 모듈 목록 조회에 실패했습니다.'}), 500 

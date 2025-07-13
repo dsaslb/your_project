@@ -263,13 +263,22 @@ def update_qsc_scores(inspection_id: str):
                 item_id = f"{category['id']}_{item['id']}"
                 if item_id in scores:
                     score = scores[item_id]
-                    weight = item['weight']
+                    # weight와 score가 숫자인지 확인하여 변환합니다.
+                    try:
+                        weight = float(item['weight'])
+                    except (ValueError, TypeError):
+                        weight = 0  # 잘못된 값이면 0으로 처리
+
+                    try:
+                        score = float(score)
+                    except (ValueError, TypeError):
+                        score = 0  # 잘못된 값이면 0으로 처리
+
                     total_score += score * weight
                     total_weight += weight
-        
+
         if total_weight > 0:
             inspection['overall_score'] = round(total_score / total_weight, 2)
-        
         # 모든 항목이 완료되면 상태를 completed로 변경
         if completed_items >= inspection['total_items']:
             inspection['status'] = 'completed'

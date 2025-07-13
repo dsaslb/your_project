@@ -164,9 +164,9 @@ def get_equipment_detail(equipment_id: str):
             max_temp = equipment.get('max_temperature')
             min_temp = equipment.get('min_temperature')
             
-            if max_temp and temp > max_temp:
+            if max_temp and float(temp) > float(max_temp):
                 warnings.append(f"{equipment['name']} 온도가 높습니다: {temp}°C")
-            elif min_temp and temp < min_temp:
+            elif min_temp and float(temp) < float(min_temp):
                 warnings.append(f"{equipment['name']} 온도가 낮습니다: {temp}°C")
         
         # 유지보수 경고
@@ -220,9 +220,9 @@ def control_equipment(equipment_id: str):
             max_temp = equipment.get('max_temperature')
             min_temp = equipment.get('min_temperature')
             
-            if max_temp and value > max_temp:
+            if max_temp and float(value) > float(max_temp):
                 return jsonify({'error': f'온도가 최대값({max_temp}°C)을 초과합니다.'}), 400
-            elif min_temp and value < min_temp:
+            elif min_temp and float(value) < float(min_temp):
                 return jsonify({'error': f'온도가 최소값({min_temp}°C) 미만입니다.'}), 400
             
             equipment['temperature'] = value
@@ -300,7 +300,7 @@ def get_kitchen_alerts():
                 max_temp = equipment.get('max_temperature')
                 min_temp = equipment.get('min_temperature')
                 
-                if max_temp and temp > max_temp:
+                if max_temp and float(temp) > float(max_temp):
                     alerts.append({
                         'type': 'temperature',
                         'severity': 'high',
@@ -308,7 +308,7 @@ def get_kitchen_alerts():
                         'message': f"{equipment['name']} 온도가 높습니다: {temp}°C",
                         'timestamp': datetime.now().isoformat()
                     })
-                elif min_temp and temp < min_temp:
+                elif min_temp and float(temp) < float(min_temp):
                     alerts.append({
                         'type': 'temperature',
                         'severity': 'high',
@@ -346,7 +346,7 @@ def get_kitchen_alerts():
                     })
             
             # 효율성 알림
-            if 'efficiency' in equipment and equipment['efficiency'] < 0.8:
+            if 'efficiency' in equipment and float(equipment['efficiency']) < 0.8:
                 alerts.append({
                     'type': 'efficiency',
                     'severity': 'medium',

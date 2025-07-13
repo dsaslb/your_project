@@ -202,6 +202,25 @@ try:
 except Exception as e:
     logger.error(f"플러그인 설정 관리 API 블루프린트 등록 실패: {e}")
 
+# 모듈 마켓플레이스 API 블루프린트 등록
+try:
+    from routes.module_marketplace import module_marketplace_bp
+    app.register_blueprint(module_marketplace_bp, name='module_marketplace_api')
+    logger.info("모듈 마켓플레이스 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 마켓플레이스 API 블루프린트 등록 실패: {e}")
+
+# 모듈 관리 API 블루프린트 등록
+try:
+    from routes.module_management import module_management_bp
+    app.register_blueprint(module_management_bp, name='module_management_api')
+    logger.info("모듈 관리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 관리 API 블루프린트 등록 실패: {e}")
+    logger.info("플러그인 설정 관리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"플러그인 설정 관리 API 블루프린트 등록 실패: {e}")
+
 # 플러그인 피드백 API 블루프린트 등록
 try:
     from routes.plugin_feedback import plugin_feedback_bp

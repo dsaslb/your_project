@@ -187,12 +187,22 @@ def create_checklist():
         }
         
         # 템플릿에서 아이템 복사
-        for item in template['items']:
+        # template['items']가 리스트가 아닐 경우를 대비해 예외 처리 추가
+        items = template.get('items', [])
+        if not isinstance(items, list):
+            items = []  # pyright: ignore
+        for item in items:
+            # item이 dict인지 확인 (아닐 경우 무시)
+            if not isinstance(item, dict):
+                continue  # pyright: ignore
+            # checklist_data['items']가 리스트가 아닐 경우를 대비해 예외 처리 추가
+            if not isinstance(checklist_data['items'], list):
+                checklist_data['items'] = []  # pyright: ignore
             checklist_data['items'].append({
-                'id': item['id'],
-                'name': item['name'],
-                'required': item['required'],
-                'weight': item['weight'],
+                'id': item.get('id'),
+                'name': item.get('name'),
+                'required': item.get('required'),
+                'weight': item.get('weight'),  # get()을 사용해 KeyError 방지
                 'completed': False,
                 'completed_at': None,
                 'completed_by': None,

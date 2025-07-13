@@ -150,7 +150,7 @@ def calculate_cooktime():
             return jsonify({'error': '유효하지 않은 메뉴입니다.'}), 400
         
         menu = menu_cooktimes[menu_id]
-        base_time = menu['base_time']
+        base_time = float(menu['base_time'])  # 명시적으로 float로 변환
         
         # 수량에 따른 시간 계산 (수량이 많을수록 효율성 증가)
         if quantity == 1:
@@ -251,7 +251,7 @@ def record_actual_cooktime():
             return jsonify({'error': '유효하지 않은 조리시간입니다.'}), 400
         
         menu = menu_cooktimes[menu_id]
-        base_time = menu['base_time']
+        base_time = float(menu['base_time'])  # 명시적으로 float로 변환
         
         # 시간 차이 계산
         time_difference = actual_time - base_time
