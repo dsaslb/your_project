@@ -65,6 +65,125 @@ def create_sample_brands():
     
     db.session.commit()
 
+# 샘플 사용자 데이터 생성 함수
+def create_sample_users():
+    """샘플 사용자 데이터 생성"""
+    from werkzeug.security import generate_password_hash
+    
+    users_data = [
+        # 백다방 직원들
+        {
+            'username': 'baek_emp1',
+            'email': 'emp1@baekdabang.com',
+            'password_hash': generate_password_hash('password123'),
+            'name': '김직원',
+            'role': 'employee',
+            'status': 'approved',
+            'branch_id': 1,
+            'brand_id': 1
+        },
+        {
+            'username': 'baek_emp2',
+            'email': 'emp2@baekdabang.com',
+            'password_hash': generate_password_hash('password123'),
+            'name': '이직원',
+            'role': 'employee',
+            'status': 'approved',
+            'branch_id': 1,
+            'brand_id': 1
+        },
+        # 초선마리 직원들
+        {
+            'username': 'chosun_emp1',
+            'email': 'emp1@chosunmari.com',
+            'password_hash': generate_password_hash('password123'),
+            'name': '박직원',
+            'role': 'employee',
+            'status': 'approved',
+            'branch_id': 4,
+            'brand_id': 2
+        },
+        # 카페베네 직원들
+        {
+            'username': 'caffe_emp1',
+            'email': 'emp1@caffebene.co.kr',
+            'password_hash': generate_password_hash('password123'),
+            'name': '최직원',
+            'role': 'employee',
+            'status': 'approved',
+            'branch_id': 7,
+            'brand_id': 3
+        },
+        # 스타벅스 직원들
+        {
+            'username': 'starbucks_emp1',
+            'email': 'emp1@starbucks.co.kr',
+            'password_hash': generate_password_hash('password123'),
+            'name': '정직원',
+            'role': 'employee',
+            'status': 'approved',
+            'branch_id': 9,
+            'brand_id': 4
+        }
+    ]
+    
+    for user_data in users_data:
+        existing_user = User.query.filter_by(username=user_data['username']).first()
+        if not existing_user:
+            user = User(**user_data)
+            db.session.add(user)
+    
+    db.session.commit()
+
+# 샘플 주문 데이터 생성 함수
+def create_sample_orders():
+    """샘플 주문 데이터 생성"""
+    orders_data = [
+        {
+            'store_id': 1,
+            'order_number': 'BAEK001',
+            'status': 'completed',
+            'total_amount': 15000,
+            'created_at': datetime.now() - timedelta(days=5)
+        },
+        {
+            'store_id': 1,
+            'order_number': 'BAEK002',
+            'status': 'completed',
+            'total_amount': 12000,
+            'created_at': datetime.now() - timedelta(days=3)
+        },
+        {
+            'store_id': 4,
+            'order_number': 'CHOSUN001',
+            'status': 'completed',
+            'total_amount': 18000,
+            'created_at': datetime.now() - timedelta(days=7)
+        },
+        {
+            'store_id': 7,
+            'order_number': 'CAFFE001',
+            'status': 'completed',
+            'total_amount': 22000,
+            'created_at': datetime.now() - timedelta(days=2)
+        },
+        {
+            'store_id': 9,
+            'order_number': 'STAR001',
+            'status': 'completed',
+            'total_amount': 25000,
+            'created_at': datetime.now() - timedelta(days=1)
+        }
+    ]
+    
+    for order_data in orders_data:
+        existing_order = Order.query.filter_by(order_number=order_data['order_number']).first()
+        if not existing_order:
+            order = Order(**order_data)
+            db.session.add(order)
+    
+    db.session.commit()
+
 # 샘플 매장 데이터 생성 함수
 def create_sample_stores():
     """샘플 매장 데이터 생성"""
@@ -191,66 +310,47 @@ def create_sample_stores():
 def brand_stats():
     """브랜드 통계 API"""
     try:
+        # 샘플 데이터 생성 (데이터베이스에 데이터가 없는 경우)
+        create_sample_brands()
+        create_sample_stores()
+        create_sample_users()
+        create_sample_orders()
+        
         # 전체 브랜드 수
         total_brands = Brand.query.count()
         active_brands = Brand.query.filter_by(status='active').count()
         
-        # 브랜드별 매장 수
-        brand_branch_stats = db.session.query(
-            Brand.name,
-            db.func.count(Branch.id).label('branch_count')
-        ).outerjoin(Branch).group_by(Brand.id, Brand.name).all()
-        
-        # 브랜드별 사용자 수
-        brand_user_stats = db.session.query(
-            Brand.name,
-            db.func.count(User.id).label('user_count')
-        ).outerjoin(Branch).outerjoin(User).group_by(Brand.id, Brand.name).all()
-        
-        # 최근 30일 생성된 브랜드
-        thirty_days_ago = datetime.now() - timedelta(days=30)
-        recent_brands = Brand.query.filter(
-            Brand.created_at >= thirty_days_ago
-        ).count()
-        
-        # 브랜드별 통계 데이터
-        brand_stats = []
+        # 브랜드별 통계 데이터 (프론트엔드에서 기대하는 구조)
+        stats = []
         for brand in Brand.query.all():
-            branch_count = len(brand.stores) if hasattr(brand, 'stores') else 0
-            user_count = User.query.join(Branch).filter(Branch.brand_id == brand.id).count()
+            # 브랜드별 매장 수
+            store_count = Branch.query.filter_by(brand_id=brand.id, status='active').count()
             
-            brand_stats.append({
-                'id': brand.id,
-                'name': brand.name,
-                'status': brand.status,
-                'branch_count': branch_count,
-                'user_count': user_count,
-                'created_at': brand.created_at.isoformat() if brand.created_at else None
+            # 브랜드별 직원 수
+            employee_count = User.query.join(Branch).filter(
+                Branch.brand_id == brand.id,
+                User.status == 'approved'
+            ).count()
+            
+            # 브랜드별 주문 수 (최근 30일)
+            thirty_days_ago = datetime.now() - timedelta(days=30)
+            order_count = Order.query.join(Branch).filter(
+                Branch.brand_id == brand.id,
+                Order.created_at >= thirty_days_ago
+            ).count()
+            
+            stats.append({
+                'brand_name': brand.name,
+                'brand_code': brand.code,
+                'store_count': store_count,
+                'employee_count': employee_count,
+                'order_count': order_count,
+                'status': brand.status
             })
         
         return jsonify({
             'success': True,
-            'data': {
-                'overview': {
-                    'total_brands': total_brands,
-                    'active_brands': active_brands,
-                    'inactive_brands': total_brands - active_brands,
-                    'recent_brands': recent_brands
-                },
-                'brand_stats': brand_stats,
-                'branch_distribution': [
-                    {
-                        'brand_name': stat.name,
-                        'branch_count': stat.branch_count
-                    } for stat in brand_branch_stats
-                ],
-                'user_distribution': [
-                    {
-                        'brand_name': stat.name,
-                        'user_count': stat.user_count
-                    } for stat in brand_user_stats
-                ]
-            }
+            'stats': stats
         })
         
     except Exception as e:
