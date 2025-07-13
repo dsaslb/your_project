@@ -434,13 +434,12 @@ class User(db.Model, UserMixin):
 
         db.session.commit()
 
-        # 위임 알림 발송
-        from utils.notify import send_notification_enhanced
-
-        send_notification_enhanced(
-            user_id=target_user.id,
-            content=f"[권한 위임] {self.username}님이 {expires_in_days}일간 권한을 위임했습니다.",
-        )
+        # 위임 알림 발송 (순환 import 방지를 위해 주석 처리)
+        # from utils.notify import send_notification_enhanced
+        # send_notification_enhanced(
+        #     user_id=target_user.id,
+        #     content=f"[권한 위임] {self.username}님이 {expires_in_days}일간 권한을 위임했습니다.",
+        # )
 
     def revoke_delegated_permissions(self, target_user):
         """위임된 권한 회수"""
@@ -455,13 +454,12 @@ class User(db.Model, UserMixin):
 
         db.session.commit()
 
-        # 회수 알림 발송
-        from utils.notify import send_notification_enhanced
-
-        send_notification_enhanced(
-            user_id=target_user.id,
-            content=f"[권한 회수] {self.username}님이 위임된 권한을 회수했습니다.",
-        )
+        # 회수 알림 발송 (순환 import 방지를 위해 주석 처리)
+        # from utils.notify import send_notification_enhanced
+        # send_notification_enhanced(
+        #     user_id=target_user.id,
+        #     content=f"[권한 회수] {self.username}님이 위임된 권한을 회수했습니다.",
+        # )
 
     def get_delegated_users(self):
         """위임받은 사용자 목록"""
