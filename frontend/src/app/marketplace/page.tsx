@@ -72,7 +72,7 @@ export default function MarketplacePage() {
       if (searchTerm) params.append('search', searchTerm);
       if (selectedCategory) params.append('category', selectedCategory);
 
-      const response = await fetch(`/api/marketplace/modules?${params}`);
+      const response = await fetch(`/api/module-marketplace/modules?${params}`);
       const data: MarketplaceResponse = await response.json();
 
       if (data.success) {
@@ -93,7 +93,7 @@ export default function MarketplacePage() {
   // 인기 모듈 조회
   const fetchTrendingModules = async () => {
     try {
-      const response = await fetch('/api/marketplace/trending');
+      const response = await fetch('/api/module-marketplace/trending');
       const data = await response.json();
 
       if (data.success) {
@@ -107,7 +107,7 @@ export default function MarketplacePage() {
   // 모듈 설치
   const installModule = async (moduleId: string, moduleName: string) => {
     try {
-      const response = await fetch(`/api/marketplace/modules/${moduleId}/install`, {
+      const response = await fetch(`/api/module-marketplace/modules/${moduleId}/install`, {
         method: 'POST',
       });
       const data = await response.json();

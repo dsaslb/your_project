@@ -1,0 +1,115 @@
+{
+  "id": "attendance_management",
+  "name": "출퇴근 관리 시스템",
+  "version": "1.0.0",
+  "description": "직원별 출근/퇴근/지각/초과근무 기록, 통계, 알림 관리 기능을 제공하는 종합 출퇴근 관리 모듈입니다.",
+  "author": "Your Program Team",
+  "category": "employee_management",
+  "price": 0.0,
+  "currency": "KRW",
+  "tags": [
+    "출퇴근",
+    "근태",
+    "지각",
+    "초과근무",
+    "통계",
+    "알림"
+  ],
+  "screenshots": [
+    "/static/images/attendance_dashboard.png",
+    "/static/images/attendance_report.png",
+    "/static/images/attendance_stats.png"
+  ],
+  "demo_url": "/marketplace/demo/attendance_management",
+  "documentation_url": "/docs/attendance_management",
+  "support_url": "/support/attendance_management",
+  "rating": 5.0,
+  "downloads": 0,
+  "reviews": [],
+  "status": "active",
+  "created_at": "2025-01-15T10:00:00.000000",
+  "updated_at": "2025-01-15T10:00:00.000000",
+  "permissions": {
+    "admin": ["view_all", "edit_all", "delete_all", "export_data"],
+    "brand_manager": ["view_brand", "edit_brand", "export_brand"],
+    "store_manager": ["view_store", "edit_store", "export_store"],
+    "supervisor": ["view_team", "edit_team"],
+    "employee": ["view_own", "check_in", "check_out"]
+  },
+  "features": {
+    "check_in_out": true,
+    "late_tracking": true,
+    "overtime_calculation": true,
+    "reporting": true,
+    "notifications": true,
+    "ai_analytics": true
+  },
+  "api_endpoints": [
+    "/api/attendance/check-in",
+    "/api/attendance/check-out",
+    "/api/attendance/report",
+    "/api/attendance/stats",
+    "/api/attendance/export"
+  ],
+  "ui_components": [
+    "AttendanceDashboard",
+    "AttendanceForm",
+    "AttendanceReport",
+    "AttendanceStats"
+  ],
+  "demo_data": {
+    "employees": [
+      {
+        "id": "emp_001",
+        "name": "김철수",
+        "position": "매니저",
+        "store_id": "store_001",
+        "brand_id": "brand_001"
+      },
+      {
+        "id": "emp_002",
+        "name": "이영희",
+        "position": "직원",
+        "store_id": "store_001",
+        "brand_id": "brand_001"
+      }
+    ],
+    "attendance_records": [
+      {
+        "id": "att_001",
+        "employee_id": "emp_001",
+        "date": "2024-01-15",
+        "check_in_time": "08:45:00",
+        "check_out_time": "18:15:00",
+        "work_hours": 9.5,
+        "is_late": false,
+        "overtime_hours": 0.5,
+        "status": "completed"
+      },
+      {
+        "id": "att_002",
+        "employee_id": "emp_002",
+        "date": "2024-01-15",
+        "check_in_time": "09:15:00",
+        "check_out_time": "18:00:00",
+        "work_hours": 8.75,
+        "is_late": true,
+        "overtime_hours": 0,
+        "status": "completed"
+      }
+    ],
+    "statistics": {
+      "total_employees": 2,
+      "present_today": 2,
+      "late_count": 1,
+      "average_work_hours": 9.125,
+      "total_overtime": 0.5
+    }
+  },
+  "module_status": {
+    "status": "active",
+    "health_check": "passing",
+    "performance": "optimal",
+    "last_updated": "2025-01-15T10:00:00.000000"
+  }
+} 

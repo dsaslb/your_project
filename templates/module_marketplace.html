@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 마켓플레이스 - Your Program</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .module-card {
+            transition: all 0.3s ease;
+        }
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .loading {
+            display: none;
+        }
+        .loading.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold text-gray-900">모듈 마켓플레이스</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refreshBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                        <i class="fas fa-sync-alt mr-2"></i>새로고침
+                    </button>
+                    <button id="syncBtn" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                        <i class="fas fa-link mr-2"></i>연동 동기화
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 필터 및 검색 -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">범위 선택</label>
+                    <select id="scopeType" class="w-full border border-gray-300 rounded-md px-3 py-2">
+                        <option value="user">사용자별</option>
+                        <option value="branch">매장별</option>
+                        <option value="brand">브랜드별</option>
+                        <option value="industry">업종별</option>
+                        <option value="system">시스템 전체</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
+                    <select id="categoryFilter" class="w-full border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">전체</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">검색</label>
+                    <input type="text" id="searchInput" placeholder="모듈명 또는 설명 검색..." 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2">
+                </div>
+                <div class="flex items-end">
+                    <button id="searchBtn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                        <i class="fas fa-search mr-2"></i>검색
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <i class="fas fa-download text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">전체 모듈</p>
+                        <p id="totalModules" class="text-2xl font-semibold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <i class="fas fa-check-circle text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">설치된 모듈</p>
+                        <p id="installedModules" class="text-2xl font-semibold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                        <i class="fas fa-play-circle text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">활성화된 모듈</p>
+                        <p id="activatedModules" class="text-2xl font-semibold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                        <i class="fas fa-star text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">평균 평점</p>
+                        <p id="avgRating" class="text-2xl font-semibold text-gray-900">0.0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 모듈 목록 -->
+        <div class="bg-white rounded-lg shadow-sm">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-medium text-gray-900">사용 가능한 모듈</h2>
+                    <div class="flex space-x-2">
+                        <button id="bulkInstallBtn" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                            <i class="fas fa-download mr-2"></i>일괄 설치
+                        </button>
+                        <button id="viewInstalledBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                            <i class="fas fa-list mr-2"></i>설치된 모듈
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 로딩 인디케이터 -->
+            <div id="loadingIndicator" class="loading p-8 text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="mt-2 text-gray-600">모듈 목록을 불러오는 중...</p>
+            </div>
+
+            <!-- 모듈 그리드 -->
+            <div id="modulesGrid" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 모듈 카드들이 여기에 동적으로 추가됩니다 -->
+            </div>
+
+            <!-- 페이지네이션 -->
+            <div id="pagination" class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                <div class="text-sm text-gray-700">
+                    총 <span id="totalCount">0</span>개의 모듈
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50">이전</button>
+                    <span id="currentPage" class="px-3 py-1">1</span>
+                    <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50">다음</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모듈 상세 모달 -->
+    <div id="moduleDetailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h3 id="modalTitle" class="text-lg font-medium text-gray-900">모듈 상세 정보</h3>
+                        <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="modalContent" class="p-6">
+                    <!-- 모듈 상세 내용이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 설정 모달 -->
+    <div id="configModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg max-w-2xl w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h3 id="configModalTitle" class="text-lg font-medium text-gray-900">모듈 설정</h3>
+                        <button id="closeConfigModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="configModalContent" class="p-6">
+                    <!-- 설정 폼이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentModules = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let selectedModules = new Set();
+
+        // API 기본 URL
+        const API_BASE = '/api/module-marketplace';
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModules();
+            setupEventListeners();
+        });
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 검색 및 필터
+            document.getElementById('searchBtn').addEventListener('click', loadModules);
+            document.getElementById('categoryFilter').addEventListener('change', loadModules);
+            document.getElementById('scopeType').addEventListener('change', loadModules);
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') loadModules();
+            });
+
+            // 새로고침 및 동기화
+            document.getElementById('refreshBtn').addEventListener('click', loadModules);
+            document.getElementById('syncBtn').addEventListener('click', syncIntegration);
+
+            // 일괄 설치 및 설치된 모듈 보기
+            document.getElementById('bulkInstallBtn').addEventListener('click', bulkInstall);
+            document.getElementById('viewInstalledBtn').addEventListener('click', viewInstalledModules);
+
+            // 페이지네이션
+            document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+            document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+
+            // 모달 닫기
+            document.getElementById('closeModal').addEventListener('click', closeModuleDetailModal);
+            document.getElementById('closeConfigModal').addEventListener('click', closeConfigModal);
+        }
+
+        // 모듈 목록 로드
+        async function loadModules() {
+            showLoading(true);
+            
+            try {
+                const params = new URLSearchParams();
+                params.append('category', document.getElementById('categoryFilter').value);
+                params.append('search', document.getElementById('searchInput').value);
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/modules?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    currentModules = data.modules;
+                    renderModules();
+                    updateStatistics();
+                    updateCategories(data.categories);
+                } else {
+                    showError('모듈 목록을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('모듈 로드 오류:', error);
+                showError('모듈 목록을 불러오는데 실패했습니다.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 모듈 렌더링
+        function renderModules() {
+            const grid = document.getElementById('modulesGrid');
+            grid.innerHTML = '';
+
+            if (currentModules.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">검색 결과가 없습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            currentModules.forEach(module => {
+                const card = createModuleCard(module);
+                grid.appendChild(card);
+            });
+
+            updatePagination();
+        }
+
+        // 모듈 카드 생성
+        function createModuleCard(module) {
+            const card = document.createElement('div');
+            card.className = 'module-card bg-white rounded-lg shadow-sm border border-gray-200 relative';
+            
+            const status = module.is_installed ? 
+                (module.is_activated ? 'activated' : 'installed') : 'available';
+            
+            card.innerHTML = `
+                <div class="p-6">
+                    <div class="status-badge">
+                        ${getStatusBadge(status)}
+                    </div>
+                    
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">${module.name}</h3>
+                            <p class="text-sm text-gray-600">${module.description}</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="flex items-center text-yellow-500 mb-1">
+                                ${getStarRating(module.rating)}
+                                <span class="ml-1 text-sm text-gray-600">(${module.reviews})</span>
+                            </div>
+                            <p class="text-sm text-gray-500">${module.downloads} 다운로드</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        ${module.tags.map(tag => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tag}</span>`).join('')}
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div class="flex space-x-2">
+                            <button onclick="viewModuleDetail('${module.id}')" 
+                                    class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                <i class="fas fa-info-circle mr-1"></i>상세보기
+                            </button>
+                            ${module.is_installed ? 
+                                `<button onclick="openModuleConfig('${module.id}')" 
+                                         class="text-green-600 hover:text-green-800 text-sm font-medium">
+                                    <i class="fas fa-cog mr-1"></i>설정
+                                </button>` : ''
+                            }
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            ${getActionButtons(module)}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // 상태 배지 생성
+        function getStatusBadge(status) {
+            const badges = {
+                available: '<span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">사용 가능</span>',
+                installed: '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">설치됨</span>',
+                activated: '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">활성화됨</span>'
+            };
+            return badges[status] || badges.available;
+        }
+
+        // 별점 렌더링
+        function getStarRating(rating) {
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+            let stars = '';
+            
+            for (let i = 0; i < fullStars; i++) {
+                stars += '<i class="fas fa-star"></i>';
+            }
+            if (hasHalfStar) {
+                stars += '<i class="fas fa-star-half-alt"></i>';
+            }
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            for (let i = 0; i < emptyStars; i++) {
+                stars += '<i class="far fa-star"></i>';
+            }
+            
+            return stars;
+        }
+
+        // 액션 버튼 생성
+        function getActionButtons(module) {
+            if (module.is_installed) {
+                if (module.is_activated) {
+                    return `
+                        <button onclick="deactivateModule('${module.id}')" 
+                                class="bg-yellow-600 text-white px-3 py-1 rounded-md text-sm hover:bg-yellow-700">
+                            <i class="fas fa-pause mr-1"></i>비활성화
+                        </button>
+                        <button onclick="uninstallModule('${module.id}')" 
+                                class="bg-red-600 text-white px-3 py-1 rounded-md text-sm hover:bg-red-700">
+                            <i class="fas fa-trash mr-1"></i>제거
+                        </button>
+                    `;
+                } else {
+                    return `
+                        <button onclick="activateModule('${module.id}')" 
+                                class="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">
+                            <i class="fas fa-play mr-1"></i>활성화
+                        </button>
+                        <button onclick="uninstallModule('${module.id}')" 
+                                class="bg-red-600 text-white px-3 py-1 rounded-md text-sm hover:bg-red-700">
+                            <i class="fas fa-trash mr-1"></i>제거
+                        </button>
+                    `;
+                }
+            } else {
+                return `
+                    <button onclick="installModule('${module.id}')" 
+                            class="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700">
+                        <i class="fas fa-download mr-1"></i>설치
+                    </button>
+                `;
+            }
+        }
+
+        // 모듈 설치
+        async function installModule(moduleId) {
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/install`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(data.message);
+                    loadModules();
+                } else {
+                    showError(data.error || '모듈 설치에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('모듈 설치 오류:', error);
+                showError('모듈 설치에 실패했습니다.');
+            }
+        }
+
+        // 모듈 활성화
+        async function activateModule(moduleId) {
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/activate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(data.message);
+                    loadModules();
+                } else {
+                    showError(data.error || '모듈 활성화에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('모듈 활성화 오류:', error);
+                showError('모듈 활성화에 실패했습니다.');
+            }
+        }
+
+        // 모듈 비활성화
+        async function deactivateModule(moduleId) {
+            if (!confirm('모듈을 비활성화하시겠습니까?')) return;
+
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/deactivate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(data.message);
+                    loadModules();
+                } else {
+                    showError(data.error || '모듈 비활성화에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('모듈 비활성화 오류:', error);
+                showError('모듈 비활성화에 실패했습니다.');
+            }
+        }
+
+        // 모듈 제거
+        async function uninstallModule(moduleId) {
+            if (!confirm('모듈을 제거하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/uninstall`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(data.message);
+                    loadModules();
+                } else {
+                    showError(data.error || '모듈 제거에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('모듈 제거 오류:', error);
+                showError('모듈 제거에 실패했습니다.');
+            }
+        }
+
+        // 모듈 상세 보기
+        async function viewModuleDetail(moduleId) {
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/modules/${moduleId}?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    showModuleDetailModal(data.module);
+                } else {
+                    showError('모듈 상세 정보를 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('모듈 상세 보기 오류:', error);
+                showError('모듈 상세 정보를 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 모듈 상세 모달 표시
+        function showModuleDetailModal(module) {
+            document.getElementById('modalTitle').textContent = module.name;
+            
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 mb-4">모듈 정보</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-sm font-medium text-gray-700">설명</label>
+                                <p class="text-sm text-gray-600">${module.description}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-gray-700">버전</label>
+                                <p class="text-sm text-gray-600">${module.version}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-gray-700">작성자</label>
+                                <p class="text-sm text-gray-600">${module.author}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-gray-700">카테고리</label>
+                                <p class="text-sm text-gray-600">${module.category}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-gray-700">태그</label>
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    ${module.tags.map(tag => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tag}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 mb-4">기능</h4>
+                        <ul class="space-y-2">
+                            ${module.features.map(feature => `<li class="text-sm text-gray-600"><i class="fas fa-check text-green-500 mr-2"></i>${feature}</li>`).join('')}
+                        </ul>
+                        
+                        <div class="mt-6">
+                            <h4 class="text-lg font-medium text-gray-900 mb-4">통계</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="text-center">
+                                    <p class="text-2xl font-semibold text-blue-600">${module.downloads}</p>
+                                    <p class="text-sm text-gray-600">다운로드</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-2xl font-semibold text-yellow-600">${module.rating}</p>
+                                    <p class="text-sm text-gray-600">평점</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">리뷰</h4>
+                    <div id="reviewsList" class="space-y-4">
+                        <!-- 리뷰가 여기에 동적으로 로드됩니다 -->
+                    </div>
+                </div>
+            `;
+
+            // 리뷰 로드
+            loadModuleReviews(module.id);
+            
+            document.getElementById('moduleDetailModal').classList.remove('hidden');
+        }
+
+        // 모듈 리뷰 로드
+        async function loadModuleReviews(moduleId) {
+            try {
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/reviews`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const reviewsList = document.getElementById('reviewsList');
+                    if (data.reviews.length > 0) {
+                        reviewsList.innerHTML = data.reviews.map(review => `
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <span class="font-medium text-gray-900">${review.user_name}</span>
+                                        <div class="flex items-center ml-2 text-yellow-500">
+                                            ${getStarRating(review.rating)}
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-gray-500">${new Date(review.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <p class="text-sm text-gray-600">${review.comment}</p>
+                            </div>
+                        `).join('');
+                    } else {
+                        reviewsList.innerHTML = '<p class="text-gray-500 text-center">아직 리뷰가 없습니다.</p>';
+                    }
+                }
+            } catch (error) {
+                console.error('리뷰 로드 오류:', error);
+            }
+        }
+
+        // 모듈 설정 열기
+        async function openModuleConfig(moduleId) {
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/config?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    showConfigModal(moduleId, data.config);
+                } else {
+                    showError('모듈 설정을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('모듈 설정 로드 오류:', error);
+                showError('모듈 설정을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 설정 모달 표시
+        function showConfigModal(moduleId, config) {
+            const module = currentModules.find(m => m.id === moduleId);
+            document.getElementById('configModalTitle').textContent = `${module.name} 설정`;
+            
+            const content = document.getElementById('configModalContent');
+            content.innerHTML = `
+                <form id="configForm">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">자동 알림</label>
+                            <input type="checkbox" name="auto_notifications" ${config.auto_notifications ? 'checked' : ''} 
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-600">모듈 관련 알림을 자동으로 받습니다</span>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">데이터 동기화 주기</label>
+                            <select name="sync_interval" class="w-full border border-gray-300 rounded-md px-3 py-2">
+                                <option value="realtime" ${config.sync_interval === 'realtime' ? 'selected' : ''}>실시간</option>
+                                <option value="5min" ${config.sync_interval === '5min' ? 'selected' : ''}>5분</option>
+                                <option value="15min" ${config.sync_interval === '15min' ? 'selected' : ''}>15분</option>
+                                <option value="1hour" ${config.sync_interval === '1hour' ? 'selected' : ''}>1시간</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">AI 분석 활성화</label>
+                            <input type="checkbox" name="ai_analysis" ${config.ai_analysis ? 'checked' : ''} 
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-600">AI 기반 데이터 분석을 활성화합니다</span>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">백업 설정</label>
+                            <input type="checkbox" name="auto_backup" ${config.auto_backup ? 'checked' : ''} 
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-600">모듈 데이터를 자동으로 백업합니다</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" onclick="closeConfigModal()" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            취소
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            저장
+                        </button>
+                    </div>
+                </form>
+            `;
+
+            // 폼 제출 이벤트
+            document.getElementById('configForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveModuleConfig(moduleId);
+            });
+
+            document.getElementById('configModal').classList.remove('hidden');
+        }
+
+        // 모듈 설정 저장
+        async function saveModuleConfig(moduleId) {
+            try {
+                const form = document.getElementById('configForm');
+                const formData = new FormData(form);
+                
+                const config = {
+                    auto_notifications: formData.get('auto_notifications') === 'on',
+                    sync_interval: formData.get('sync_interval'),
+                    ai_analysis: formData.get('ai_analysis') === 'on',
+                    auto_backup: formData.get('auto_backup') === 'on'
+                };
+
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/config`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('설정이 성공적으로 저장되었습니다.');
+                    closeConfigModal();
+                } else {
+                    showError(data.error || '설정 저장에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('설정 저장 오류:', error);
+                showError('설정 저장에 실패했습니다.');
+            }
+        }
+
+        // 설치된 모듈 보기
+        async function viewInstalledModules() {
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/installed?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    currentModules = data.modules;
+                    renderModules();
+                    updateStatistics();
+                } else {
+                    showError('설치된 모듈 목록을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('설치된 모듈 로드 오류:', error);
+                showError('설치된 모듈 목록을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 일괄 설치
+        async function bulkInstall() {
+            if (selectedModules.size === 0) {
+                showError('설치할 모듈을 선택해주세요.');
+                return;
+            }
+
+            if (!confirm(`${selectedModules.size}개의 모듈을 일괄 설치하시겠습니까?`)) return;
+
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/bulk-install`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        module_ids: Array.from(selectedModules)
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(data.message);
+                    selectedModules.clear();
+                    loadModules();
+                } else {
+                    showError(data.error || '일괄 설치에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('일괄 설치 오류:', error);
+                showError('일괄 설치에 실패했습니다.');
+            }
+        }
+
+        // 연동 동기화
+        async function syncIntegration() {
+            try {
+                const params = new URLSearchParams();
+                params.append('scope_type', document.getElementById('scopeType').value);
+
+                const response = await fetch(`${API_BASE}/sync-integration`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(data.message);
+                } else {
+                    showError(data.error || '연동 동기화에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('연동 동기화 오류:', error);
+                showError('연동 동기화에 실패했습니다.');
+            }
+        }
+
+        // 통계 업데이트
+        function updateStatistics() {
+            const totalModules = currentModules.length;
+            const installedModules = currentModules.filter(m => m.is_installed).length;
+            const activatedModules = currentModules.filter(m => m.is_activated).length;
+            const avgRating = currentModules.length > 0 ? 
+                (currentModules.reduce((sum, m) => sum + m.rating, 0) / currentModules.length).toFixed(1) : '0.0';
+
+            document.getElementById('totalModules').textContent = totalModules;
+            document.getElementById('installedModules').textContent = installedModules;
+            document.getElementById('activatedModules').textContent = activatedModules;
+            document.getElementById('avgRating').textContent = avgRating;
+        }
+
+        // 카테고리 업데이트
+        function updateCategories(categories) {
+            const select = document.getElementById('categoryFilter');
+            const currentValue = select.value;
+            
+            select.innerHTML = '<option value="">전체</option>';
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                select.appendChild(option);
+            });
+            
+            select.value = currentValue;
+        }
+
+        // 페이지네이션 업데이트
+        function updatePagination() {
+            const totalCount = currentModules.length;
+            document.getElementById('totalCount').textContent = totalCount;
+        }
+
+        // 페이지 변경
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                document.getElementById('currentPage').textContent = currentPage;
+                // 실제 구현에서는 페이지별 데이터 로드
+            }
+        }
+
+        // 로딩 표시
+        function showLoading(show) {
+            const loading = document.getElementById('loadingIndicator');
+            const grid = document.getElementById('modulesGrid');
+            
+            if (show) {
+                loading.classList.add('active');
+                grid.style.display = 'none';
+            } else {
+                loading.classList.remove('active');
+                grid.style.display = 'grid';
+            }
+        }
+
+        // 모달 닫기
+        function closeModuleDetailModal() {
+            document.getElementById('moduleDetailModal').classList.add('hidden');
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').classList.add('hidden');
+        }
+
+        // 성공 메시지 표시
+        function showSuccess(message) {
+            // 간단한 알림 구현 (실제로는 더 정교한 알림 시스템 사용)
+            alert('성공: ' + message);
+        }
+
+        // 오류 메시지 표시
+        function showError(message) {
+            // 간단한 알림 구현 (실제로는 더 정교한 알림 시스템 사용)
+            alert('오류: ' + message);
+        }
+    </script>
+</body>
+</html> 

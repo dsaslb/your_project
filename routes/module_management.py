@@ -243,8 +243,21 @@ def get_module_statistics():
         for module_id in user_modules:
             if module_id in marketplace_modules:
                 module = marketplace_modules[module_id]
-                total_downloads += float(module.get('downloads', 0))
-                avg_rating += float(module.get('rating', 0))
+                # 안전한 float 변환을 위한 타입 체크
+                downloads = module.get('downloads', 0)
+                rating = module.get('rating', 0)
+                
+                # downloads가 숫자 타입인지 확인
+                if isinstance(downloads, (int, float)):
+                    total_downloads += float(downloads)
+                else:
+                    total_downloads += 0.0  # pyright: ignore
+                
+                # rating이 숫자 타입인지 확인
+                if isinstance(rating, (int, float)):
+                    avg_rating += float(rating)
+                else:
+                    avg_rating += 0.0  # pyright: ignore
                 
                 # 활성화된 모듈 수 계산
                 setting_key = f"{current_user.id}_{module_id}"
@@ -307,6 +320,15 @@ def get_default_settings(module_id: str) -> Dict[str, Any]:
             'security_scan': True,
             'backup_enabled': True,
             'update_check': True
+        },
+        'attendance_management': {
+            'work_start_time': '09:00',
+            'work_end_time': '18:00',
+            'late_threshold_minutes': 10,
+            'overtime_threshold_hours': 8,
+            'auto_notification': True,
+            'notification_interval': 5,
+            'work_types': ['정규', '시급', '파트타임', '인턴']
         }
     }
     

@@ -55,7 +55,7 @@ export default function ModuleManagementPage() {
   const fetchInstalledModules = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/modules/installed');
+      const response = await fetch('/api/module-marketplace/modules/installed');
       const data = await response.json();
 
       if (data.success) {
@@ -74,7 +74,7 @@ export default function ModuleManagementPage() {
   // 모듈 통계 조회
   const fetchModuleStatistics = async () => {
     try {
-      const response = await fetch('/api/modules/statistics');
+      const response = await fetch('/api/module-marketplace/modules/statistics');
       const data = await response.json();
 
       if (data.success) {
@@ -89,7 +89,7 @@ export default function ModuleManagementPage() {
   const toggleModuleStatus = async (moduleId: string, isActive: boolean) => {
     try {
       const endpoint = isActive ? 'deactivate' : 'activate';
-      const response = await fetch(`/api/modules/${moduleId}/${endpoint}`, {
+      const response = await fetch(`/api/module-marketplace/modules/${moduleId}/${endpoint}`, {
         method: 'POST',
       });
       const data = await response.json();
@@ -114,7 +114,7 @@ export default function ModuleManagementPage() {
     }
 
     try {
-      const response = await fetch(`/api/modules/${moduleId}/uninstall`, {
+      const response = await fetch(`/api/module-marketplace/modules/${moduleId}/uninstall`, {
         method: 'POST',
       });
       const data = await response.json();
@@ -135,7 +135,7 @@ export default function ModuleManagementPage() {
   // 모듈 업데이트
   const updateModule = async (moduleId: string, moduleName: string) => {
     try {
-      const response = await fetch(`/api/modules/${moduleId}/update`, {
+      const response = await fetch(`/api/module-marketplace/modules/${moduleId}/update`, {
         method: 'POST',
       });
       const data = await response.json();

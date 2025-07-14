@@ -1,0 +1,213 @@
+{
+  "attendance_management": {
+    "id": "attendance_management",
+    "name": "출퇴근 관리",
+    "version": "1.0.0",
+    "description": "직원 출퇴근 관리, 지각/초과근무 통계, 급여 연동",
+    "author": "Your Program Team",
+    "category": "hr",
+    "tags": [
+      "출퇴근",
+      "인사",
+      "급여",
+      "통계"
+    ],
+    "price": 0.0,
+    "currency": "KRW",
+    "scope": "branch",
+    "dependencies": [],
+    "permissions": [
+      "attendance_management"
+    ],
+    "features": [
+      "직원별 출퇴근 기록",
+      "지각/초과근무 통계",
+      "급여 시스템 연동",
+      "AI 기반 근무 패턴 분석",
+      "실시간 알림"
+    ],
+    "screenshots": [
+      "/static/marketplace/attendance_1.png",
+      "/static/marketplace/attendance_2.png"
+    ],
+    "demo_url": "/demo/attendance",
+    "documentation_url": "/docs/attendance",
+    "support_url": "/support/attendance",
+    "rating": 4.8,
+    "downloads": 1250,
+    "reviews": 89,
+    "status": "active",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-15T10:00:00Z"
+  },
+  "sales_management": {
+    "id": "sales_management",
+    "name": "매출 관리",
+    "version": "1.0.0",
+    "description": "매출 통계, 분석, 예측, 인건비 대비 효율 분석",
+    "author": "Your Program Team",
+    "category": "sales",
+    "tags": [
+      "매출",
+      "분석",
+      "예측",
+      "통계"
+    ],
+    "price": 0.0,
+    "currency": "KRW",
+    "scope": "branch",
+    "dependencies": [
+      "attendance_management"
+    ],
+    "permissions": [
+      "sales_management"
+    ],
+    "features": [
+      "실시간 매출 통계",
+      "인건비 대비 효율 분석",
+      "AI 기반 매출 예측",
+      "직원별 성과 분석",
+      "브랜드별 비교 분석"
+    ],
+    "screenshots": [
+      "/static/marketplace/sales_1.png",
+      "/static/marketplace/sales_2.png"
+    ],
+    "demo_url": "/demo/sales",
+    "documentation_url": "/docs/sales",
+    "support_url": "/support/sales",
+    "rating": 4.9,
+    "downloads": 2100,
+    "reviews": 156,
+    "status": "active",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-15T10:00:00Z"
+  },
+  "payroll_management": {
+    "id": "payroll_management",
+    "name": "급여 관리",
+    "version": "1.0.0",
+    "description": "급여 계산, 세금 처리, 출퇴근 데이터 연동",
+    "author": "Your Program Team",
+    "category": "hr",
+    "tags": [
+      "급여",
+      "세금",
+      "계산",
+      "인사"
+    ],
+    "price": 0.0,
+    "currency": "KRW",
+    "scope": "branch",
+    "dependencies": [
+      "attendance_management"
+    ],
+    "permissions": [
+      "payroll_management"
+    ],
+    "features": [
+      "자동 급여 계산",
+      "세금 및 공제 처리",
+      "출퇴근 데이터 연동",
+      "급여 명세서 생성",
+      "세무 신고 지원"
+    ],
+    "screenshots": [
+      "/static/marketplace/payroll_1.png",
+      "/static/marketplace/payroll_2.png"
+    ],
+    "demo_url": "/demo/payroll",
+    "documentation_url": "/docs/payroll",
+    "support_url": "/support/payroll",
+    "rating": 4.7,
+    "downloads": 980,
+    "reviews": 67,
+    "status": "active",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-15T10:00:00Z"
+  },
+  "inventory_management": {
+    "id": "inventory_management",
+    "name": "재고 관리",
+    "version": "1.0.0",
+    "description": "재고 추적, 자동 발주, 매출 연동 분석",
+    "author": "Your Program Team",
+    "category": "inventory",
+    "tags": [
+      "재고",
+      "발주",
+      "관리",
+      "분석"
+    ],
+    "price": 0.0,
+    "currency": "KRW",
+    "scope": "branch",
+    "dependencies": [
+      "sales_management"
+    ],
+    "permissions": [
+      "inventory_management"
+    ],
+    "features": [
+      "실시간 재고 추적",
+      "자동 발주 시스템",
+      "매출 연동 분석",
+      "재고 비용 최적화",
+      "AI 기반 수요 예측"
+    ],
+    "screenshots": [
+      "/static/marketplace/inventory_1.png",
+      "/static/marketplace/inventory_2.png"
+    ],
+    "demo_url": "/demo/inventory",
+    "documentation_url": "/docs/inventory",
+    "support_url": "/support/inventory",
+    "rating": 4.6,
+    "downloads": 850,
+    "reviews": 45,
+    "status": "active",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-15T10:00:00Z"
+  },
+  "qsc_management": {
+    "id": "qsc_management",
+    "name": "QSC 관리",
+    "version": "1.0.0",
+    "description": "품질(Quality), 서비스(Service), 청결(Cleanliness) 관리",
+    "author": "Your Program Team",
+    "category": "quality",
+    "tags": [
+      "QSC",
+      "품질",
+      "서비스",
+      "청결"
+    ],
+    "price": 0.0,
+    "currency": "KRW",
+    "scope": "branch",
+    "dependencies": [],
+    "permissions": [
+      "qsc_management"
+    ],
+    "features": [
+      "품질 관리 체크리스트",
+      "서비스 평가 시스템",
+      "청결도 모니터링",
+      "AI 기반 품질 분석",
+      "개선 제안 시스템"
+    ],
+    "screenshots": [
+      "/static/marketplace/qsc_1.png",
+      "/static/marketplace/qsc_2.png"
+    ],
+    "demo_url": "/demo/qsc",
+    "documentation_url": "/docs/qsc",
+    "support_url": "/support/qsc",
+    "rating": 4.5,
+    "downloads": 650,
+    "reviews": 38,
+    "status": "active",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-15T10:00:00Z"
+  }
+}

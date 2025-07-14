@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ plugin.name }} - 데모</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- 헤더 -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <a href="/marketplace" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-arrow-left"></i> 마켓플레이스로 돌아가기
+                    </a>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ plugin.name }}</h1>
+                    <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">데모</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="demoToggle" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                        <i class="fas fa-play mr-2"></i>데모 실행
+                    </button>
+                    <button id="resetDemo" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <i class="fas fa-redo mr-2"></i>초기화
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 모듈 정보 -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">모듈 정보</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">{{ plugin.name }}</h3>
+                            <p class="text-gray-600 mt-1">{{ plugin.description }}</p>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-sm text-gray-500">버전: {{ plugin.version }}</span>
+                            <span class="text-sm text-gray-500">제작자: {{ plugin.author }}</span>
+                            <span class="text-sm text-gray-500">카테고리: {{ plugin.category }}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            {% for tag in plugin.tags %}
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">모듈 상태</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">상태:</span>
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                {{ plugin.module_status.status }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">헬스체크:</span>
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                {{ plugin.module_status.health_check }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">성능:</span>
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                {{ plugin.module_status.performance }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 권한 및 기능 정보 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- 권한 정보 -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">권한 정보</h3>
+                <div class="space-y-3">
+                    {% for role, permissions in plugin.permissions.items() %}
+                    <div class="border-b pb-2">
+                        <h4 class="font-medium text-gray-900 capitalize">{{ role.replace('_', ' ') }}</h4>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            {% for permission in permissions %}
+                            <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">{{ permission }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 기능 정보 -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">주요 기능</h3>
+                <div class="space-y-3">
+                    {% for feature, enabled in plugin.features.items() %}
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700 capitalize">{{ feature.replace('_', ' ') }}</span>
+                        <span class="{% if enabled %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %} text-xs font-medium px-2.5 py-0.5 rounded">
+                            {% if enabled %}활성{% else %}비활성{% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 데모 대시보드 -->
+        <div id="demoDashboard" class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-medium text-gray-900">데모 대시보드</h3>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-500">실시간 데이터</span>
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+            
+            <!-- 모듈별 데모 컨텐츠 -->
+            <div id="demoContent">
+                <!-- 출퇴근 관리 데모 -->
+                {% if plugin.id == 'attendance_management' %}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 출근 현황 -->
+                    <div class="lg:col-span-2">
+                        <h4 class="text-md font-medium text-gray-900 mb-4">오늘의 출근 현황</h4>
+                        <div id="attendanceTable" class="bg-gray-50 rounded-lg p-4">
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                                <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 통계 -->
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">통계</h4>
+                        <div id="attendanceStats" class="space-y-3">
+                            <div class="animate-pulse">
+                                <div class="h-8 bg-gray-200 rounded mb-2"></div>
+                                <div class="h-6 bg-gray-200 rounded mb-2"></div>
+                                <div class="h-6 bg-gray-200 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 상호작용 버튼 -->
+                <div class="mt-6 flex space-x-4">
+                    <button id="checkInBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-sign-in-alt mr-2"></i>출근 체크인
+                    </button>
+                    <button id="checkOutBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                        <i class="fas fa-sign-out-alt mr-2"></i>퇴근 체크아웃
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- 레스토랑 분석 데모 -->
+                {% if plugin.id == 'restaurant_analytics' %}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">매출 분석</h4>
+                        <canvas id="salesChart" width="400" height="200"></canvas>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">메뉴 성과</h4>
+                        <div id="menuPerformance" class="space-y-3">
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 재고 관리 데모 -->
+                {% if plugin.id == 'inventory_management' %}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">재고 현황</h4>
+                        <div id="inventoryTable" class="bg-gray-50 rounded-lg p-4">
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                                <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">알림</h4>
+                        <div id="inventoryAlerts" class="space-y-3">
+                            <div class="animate-pulse">
+                                <div class="h-6 bg-gray-200 rounded mb-2"></div>
+                                <div class="h-6 bg-gray-200 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 상호작용 버튼 -->
+                <div class="mt-6">
+                    <button id="addItemBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                        <i class="fas fa-plus mr-2"></i>재고 추가
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- 고객 충성도 데모 -->
+                {% if plugin.id == 'customer_loyalty' %}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">고객 정보</h4>
+                        <div id="customerInfo" class="space-y-3">
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">쿠폰 현황</h4>
+                        <div id="couponInfo" class="space-y-3">
+                            <div class="animate-pulse">
+                                <div class="h-6 bg-gray-200 rounded mb-2"></div>
+                                <div class="h-6 bg-gray-200 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 직원 스케줄링 데모 -->
+                {% if plugin.id == 'employee_scheduling' %}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">오늘의 스케줄</h4>
+                        <div id="scheduleInfo" class="space-y-3">
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">급여 요약</h4>
+                        <div id="payrollInfo" class="space-y-3">
+                            <div class="animate-pulse">
+                                <div class="h-6 bg-gray-200 rounded mb-2"></div>
+                                <div class="h-6 bg-gray-200 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+
+    <!-- 알림 토스트 -->
+    <div id="toast" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 z-50">
+        <div class="flex items-center">
+            <i class="fas fa-check-circle mr-2"></i>
+            <span id="toastMessage">작업이 완료되었습니다.</span>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let demoData = null;
+        let isDemoActive = false;
+
+        // DOM 로드 완료 후 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDemo();
+            setupEventListeners();
+        });
+
+        // 데모 초기화
+        function initializeDemo() {
+            loadDemoData();
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 데모 토글 버튼
+            document.getElementById('demoToggle').addEventListener('click', toggleDemo);
+            
+            // 초기화 버튼
+            document.getElementById('resetDemo').addEventListener('click', resetDemo);
+            
+            // 출퇴근 관리 상호작용
+            const checkInBtn = document.getElementById('checkInBtn');
+            const checkOutBtn = document.getElementById('checkOutBtn');
+            const addItemBtn = document.getElementById('addItemBtn');
+            
+            if (checkInBtn) {
+                checkInBtn.addEventListener('click', () => handleInteraction('check_in'));
+            }
+            if (checkOutBtn) {
+                checkOutBtn.addEventListener('click', () => handleInteraction('check_out'));
+            }
+            if (addItemBtn) {
+                addItemBtn.addEventListener('click', () => handleInteraction('add_item'));
+            }
+        }
+
+        // 데모 데이터 로드
+        async function loadDemoData() {
+            try {
+                const response = await fetch(`/api/marketplace/demo/{{ plugin.id }}/data`);
+                demoData = await response.json();
+                renderDemoContent();
+            } catch (error) {
+                console.error('데모 데이터 로드 실패:', error);
+                showToast('데모 데이터를 불러오는데 실패했습니다.', 'error');
+            }
+        }
+
+        // 데모 컨텐츠 렌더링
+        function renderDemoContent() {
+            if (!demoData) return;
+
+            const pluginId = '{{ plugin.id }}';
+            
+            if (pluginId === 'attendance_management') {
+                renderAttendanceDemo();
+            } else if (pluginId === 'restaurant_analytics') {
+                renderAnalyticsDemo();
+            } else if (pluginId === 'inventory_management') {
+                renderInventoryDemo();
+            } else if (pluginId === 'customer_loyalty') {
+                renderLoyaltyDemo();
+            } else if (pluginId === 'employee_scheduling') {
+                renderSchedulingDemo();
+            }
+        }
+
+        // 출퇴근 관리 데모 렌더링
+        function renderAttendanceDemo() {
+            const tableContainer = document.getElementById('attendanceTable');
+            const statsContainer = document.getElementById('attendanceStats');
+            
+            if (tableContainer && demoData.attendance_records) {
+                tableContainer.innerHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="text-left py-2">직원명</th>
+                                    <th class="text-left py-2">출근시간</th>
+                                    <th class="text-left py-2">퇴근시간</th>
+                                    <th class="text-left py-2">근무시간</th>
+                                    <th class="text-left py-2">상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${demoData.attendance_records.map(record => `
+                                    <tr class="border-b">
+                                        <td class="py-2">${record.employee_name}</td>
+                                        <td class="py-2">${record.check_in_time}</td>
+                                        <td class="py-2">${record.check_out_time || '-'}</td>
+                                        <td class="py-2">${record.work_hours ? record.work_hours + '시간' : '-'}</td>
+                                        <td class="py-2">
+                                            <span class="px-2 py-1 text-xs rounded ${record.is_late ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                                ${record.is_late ? '지각' : '정시'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            if (statsContainer && demoData.statistics) {
+                statsContainer.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-blue-50 p-3 rounded">
+                            <div class="text-2xl font-bold text-blue-600">${demoData.statistics.present_today}</div>
+                            <div class="text-sm text-gray-600">출근자</div>
+                        </div>
+                        <div class="bg-red-50 p-3 rounded">
+                            <div class="text-2xl font-bold text-red-600">${demoData.statistics.late_count}</div>
+                            <div class="text-sm text-gray-600">지각자</div>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded">
+                            <div class="text-2xl font-bold text-green-600">${demoData.statistics.on_time_rate}%</div>
+                            <div class="text-sm text-gray-600">정시출근률</div>
+                        </div>
+                        <div class="bg-yellow-50 p-3 rounded">
+                            <div class="text-2xl font-bold text-yellow-600">${demoData.statistics.total_overtime}</div>
+                            <div class="text-sm text-gray-600">총 초과근무</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // 레스토랑 분석 데모 렌더링
+        function renderAnalyticsDemo() {
+            if (demoData.sales_data) {
+                const ctx = document.getElementById('salesChart');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: demoData.sales_data.map(item => item.date),
+                            datasets: [{
+                                label: '매출',
+                                data: demoData.sales_data.map(item => item.total_sales),
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            
+            const menuContainer = document.getElementById('menuPerformance');
+            if (menuContainer && demoData.menu_performance) {
+                menuContainer.innerHTML = demoData.menu_performance.map(menu => `
+                    <div class="bg-gray-50 p-3 rounded">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">${menu.menu_name}</span>
+                            <span class="text-sm text-gray-600">${menu.sales_count}회</span>
+                        </div>
+                        <div class="text-sm text-gray-600">매출: ${menu.revenue.toLocaleString()}원</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 재고 관리 데모 렌더링
+        function renderInventoryDemo() {
+            const tableContainer = document.getElementById('inventoryTable');
+            const alertsContainer = document.getElementById('inventoryAlerts');
+            
+            if (tableContainer && demoData.inventory_items) {
+                tableContainer.innerHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="text-left py-2">품목</th>
+                                    <th class="text-left py-2">현재재고</th>
+                                    <th class="text-left py-2">최소재고</th>
+                                    <th class="text-left py-2">단가</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${demoData.inventory_items.map(item => `
+                                    <tr class="border-b">
+                                        <td class="py-2">${item.name}</td>
+                                        <td class="py-2">${item.current_stock}</td>
+                                        <td class="py-2">${item.min_stock}</td>
+                                        <td class="py-2">${item.unit_price.toLocaleString()}원</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            if (alertsContainer && demoData.alerts) {
+                alertsContainer.innerHTML = demoData.alerts.map(alert => `
+                    <div class="bg-red-50 border border-red-200 p-3 rounded">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                            <span class="text-sm text-red-800">${alert.message}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 고객 충성도 데모 렌더링
+        function renderLoyaltyDemo() {
+            const customerContainer = document.getElementById('customerInfo');
+            const couponContainer = document.getElementById('couponInfo');
+            
+            if (customerContainer && demoData.customers) {
+                customerContainer.innerHTML = demoData.customers.map(customer => `
+                    <div class="bg-gray-50 p-3 rounded">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">${customer.name}</span>
+                            <span class="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">${customer.vip_level}</span>
+                        </div>
+                        <div class="text-sm text-gray-600">포인트: ${customer.points.toLocaleString()}</div>
+                    </div>
+                `).join('');
+            }
+            
+            if (couponContainer && demoData.coupons) {
+                couponContainer.innerHTML = demoData.coupons.map(coupon => `
+                    <div class="bg-gray-50 p-3 rounded">
+                        <div class="font-medium">${coupon.name}</div>
+                        <div class="text-sm text-gray-600">사용횟수: ${coupon.usage_count}회</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 직원 스케줄링 데모 렌더링
+        function renderSchedulingDemo() {
+            const scheduleContainer = document.getElementById('scheduleInfo');
+            const payrollContainer = document.getElementById('payrollInfo');
+            
+            if (scheduleContainer && demoData.schedules) {
+                scheduleContainer.innerHTML = demoData.schedules.map(schedule => `
+                    <div class="bg-gray-50 p-3 rounded">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">${schedule.employee_name}</span>
+                            <span class="px-2 py-1 text-xs rounded bg-green-100 text-green-800">${schedule.status}</span>
+                        </div>
+                        <div class="text-sm text-gray-600">${schedule.start_time} - ${schedule.end_time}</div>
+                    </div>
+                `).join('');
+            }
+            
+            if (payrollContainer && demoData.payroll_summary) {
+                payrollContainer.innerHTML = `
+                    <div class="bg-gray-50 p-3 rounded">
+                        <div class="text-sm text-gray-600">총 근무시간: ${demoData.payroll_summary.total_hours}시간</div>
+                        <div class="text-sm text-gray-600">총 급여: ${demoData.payroll_summary.total_pay.toLocaleString()}원</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 데모 토글
+        function toggleDemo() {
+            const toggleBtn = document.getElementById('demoToggle');
+            const icon = toggleBtn.querySelector('i');
+            const text = toggleBtn.querySelector('span') || toggleBtn;
+            
+            if (!isDemoActive) {
+                isDemoActive = true;
+                icon.className = 'fas fa-pause mr-2';
+                text.textContent = '데모 일시정지';
+                showToast('데모가 시작되었습니다.', 'success');
+                
+                // 실시간 데이터 업데이트 시작
+                startRealTimeUpdates();
+            } else {
+                isDemoActive = false;
+                icon.className = 'fas fa-play mr-2';
+                text.textContent = '데모 실행';
+                showToast('데모가 일시정지되었습니다.', 'info');
+                
+                // 실시간 업데이트 중지
+                stopRealTimeUpdates();
+            }
+        }
+
+        // 데모 초기화
+        function resetDemo() {
+            isDemoActive = false;
+            const toggleBtn = document.getElementById('demoToggle');
+            const icon = toggleBtn.querySelector('i');
+            const text = toggleBtn.querySelector('span') || toggleBtn;
+            
+            icon.className = 'fas fa-play mr-2';
+            text.textContent = '데모 실행';
+            
+            loadDemoData();
+            showToast('데모가 초기화되었습니다.', 'info');
+        }
+
+        // 실시간 업데이트 시작
+        function startRealTimeUpdates() {
+            // 5초마다 데이터 새로고침
+            window.demoInterval = setInterval(() => {
+                if (isDemoActive) {
+                    loadDemoData();
+                }
+            }, 5000);
+        }
+
+        // 실시간 업데이트 중지
+        function stopRealTimeUpdates() {
+            if (window.demoInterval) {
+                clearInterval(window.demoInterval);
+                window.demoInterval = null;
+            }
+        }
+
+        // 상호작용 처리
+        async function handleInteraction(action) {
+            try {
+                const response = await fetch(`/api/marketplace/demo/{{ plugin.id }}/interact`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: action,
+                        employee_id: 'emp_001',
+                        name: '새 품목'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    loadDemoData(); // 데이터 새로고침
+                } else {
+                    showToast(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('상호작용 실패:', error);
+                showToast('상호작용에 실패했습니다.', 'error');
+            }
+        }
+
+        // 토스트 메시지 표시
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            // 타입에 따른 스타일 변경
+            toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 z-50 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'info' ? 'bg-blue-500 text-white' :
+                'bg-gray-500 text-white'
+            }`;
+            
+            toastMessage.textContent = message;
+            
+            // 토스트 표시
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+            
+            // 토스트 숨김
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 

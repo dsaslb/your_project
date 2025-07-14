@@ -1,0 +1,52 @@
+{
+  "module_name": "attendance_management",
+  "version": "1.0.0",
+  "description": "직원 출퇴근 관리 시스템",
+  "author": "Your Program Team",
+  "category": "employee_management",
+  "permissions": {
+    "admin": ["view_all", "edit_all", "delete_all", "export_data"],
+    "brand_manager": ["view_brand", "edit_brand", "export_brand"],
+    "store_manager": ["view_store", "edit_store", "export_store"],
+    "supervisor": ["view_team", "edit_team"],
+    "employee": ["view_own", "check_in", "check_out"]
+  },
+  "features": {
+    "check_in_out": true,
+    "late_tracking": true,
+    "overtime_calculation": true,
+    "reporting": true,
+    "notifications": true,
+    "ai_analytics": true
+  },
+  "dependencies": {
+    "required": ["user_management", "notification_system"],
+    "optional": ["ai_prediction", "reporting_system"]
+  },
+  "api_endpoints": [
+    "/api/attendance/check-in",
+    "/api/attendance/check-out",
+    "/api/attendance/report",
+    "/api/attendance/stats",
+    "/api/attendance/export"
+  ],
+  "ui_components": [
+    "AttendanceDashboard",
+    "AttendanceForm",
+    "AttendanceReport",
+    "AttendanceStats"
+  ],
+  "settings": {
+    "default_work_hours": 8,
+    "late_threshold_minutes": 15,
+    "overtime_threshold_hours": 8,
+    "notification_enabled": true,
+    "auto_calculate_overtime": true
+  },
+  "module_status": {
+    "status": "active",
+    "health_check": "passing",
+    "performance": "optimal",
+    "last_updated": "2025-01-15T10:00:00.000000"
+  }
+} 

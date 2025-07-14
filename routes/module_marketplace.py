@@ -198,7 +198,6 @@ marketplace_modules = {
         'requirements': {
             'python_version': '3.8+',
             'dependencies': ['flask', 'sqlalchemy', 'gitpython'],
-            'permissions': ['plugin_management']
         },
         'screenshots': [
             '/static/marketplace/plugin_registration_1.png',
@@ -207,6 +206,40 @@ marketplace_modules = {
         'status': 'approved',
         'created_at': '2024-01-15T10:00:00Z',
         'updated_at': '2024-01-15T10:00:00Z'
+    },
+    'attendance_management': {
+        'id': 'attendance_management',
+        'name': '출퇴근 관리 시스템',
+        'description': '직원별 출근/퇴근/지각/초과근무 기록, 통계, 알림을 관리하는 종합적인 시스템',
+        'category': 'hr_management',
+        'version': '1.0.0',
+        'author': 'System Admin',
+        'price': 0,
+        'rating': 4.8,
+        'downloads': 1350,
+        'tags': ['출퇴근', '근태관리', '알림', '통계', '인사관리'],
+        'features': [
+            '출근/퇴근 기록 관리',
+            '지각/조퇴 자동 판단',
+            '초과근무 시간 계산',
+            '실시간 통계 및 분석',
+            '자동 알림 시스템',
+            '계층별 권한 관리',
+            '테스트 데이터 생성'
+        ],
+        'requirements': {
+            'python_version': '3.8+',
+            'dependencies': ['flask', 'sqlalchemy'],
+            'permissions': ['attendance_management']
+        },
+        'screenshots': [
+            '/static/marketplace/attendance_management_1.png',
+            '/static/marketplace/attendance_management_2.png'
+        ],
+        'status': 'approved',
+        'created_at': '2024-01-15T10:00:00Z',
+        'updated_at': '2024-01-15T10:00:00Z',
+        'permissions': ['plugin_management']
     }
 }
 

@@ -504,6 +504,7 @@ CMD ["python", "health_server.py"]
                 mem_limit=mem_limit,
                 cpu_quota=int(float(cpu_limit) * 100000),
                 cpu_period=100000
+            )
 
             # 네트워크 연결 처리 (config.networks가 있을 때만)
             # Docker 컨테이너가 생성된 후에 네트워크에 연결해야 하므로, run() 이후에 처리합니다.
@@ -512,8 +513,6 @@ CMD ["python", "health_server.py"]
                     try:
                         network = self.docker_client.networks.get(network_name)
                         network.connect(container)
-                    except Exception as net_err:
-                        logger.warning(f"네트워크 연결 실패: {network_name} - {net_err}")
                     except Exception as net_err:
                         logger.warning(f"네트워크 연결 실패: {network_name} - {net_err}")
 

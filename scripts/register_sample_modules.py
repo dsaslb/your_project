@@ -43,7 +43,7 @@ def register_sample_modules():
     # 샘플 모듈 정보
     sample_modules = [
         {
-            'module_id': 'attendance_module',
+            'module_id': 'attendance_management',
             'name': '출근 관리 모듈',
             'description': '직원 출근/퇴근 관리, 근무 시간 추적, 출근 통계를 제공하는 모듈입니다.',
             'author': 'Your Program Team',
@@ -198,7 +198,7 @@ def register_sample_modules():
             # 다운로드 수 설정
             if module_id in marketplace.marketplace_data['plugins']:
                 downloads = {
-                    'attendance_module': 120,
+                    'attendance_management': 120,
                     'schedule_module': 95,
                     'inventory_module': 78,
                     'purchase_module': 65,

@@ -213,7 +213,7 @@
       "homepage": "https://your-program-system.com",
       "repository": "https://github.com/your-program/modules",
       "support_email": "support@your-program-system.com",
-      "registered_at": "2025-07-13T16:15:17.187904",
+      "registered_at": "2025-07-14T13:31:07.398620",
       "status": "published",
       "downloads": 95,
       "rating": 4.42,
@@ -221,7 +221,7 @@
       "package_path": "plugins\\marketplace\\published\\schedule_module.zip",
       "file_size": 2129,
       "checksum": "34e50bfd917a600f64a13623de1d52f92db7fb6abf6decf4a40c6cd79ac3d9ea",
-      "approved_at": "2025-07-13T16:15:17.201908"
+      "approved_at": "2025-07-14T13:31:07.420625"
     },
     "inventory_module": {
       "plugin_id": "inventory_module",
@@ -251,7 +251,7 @@
       "homepage": "https://your-program-system.com",
       "repository": "https://github.com/your-program/modules",
       "support_email": "support@your-program-system.com",
-      "registered_at": "2025-07-13T16:15:17.208909",
+      "registered_at": "2025-07-14T13:31:07.426625",
       "status": "published",
       "downloads": 78,
       "rating": 4.42,
@@ -259,7 +259,7 @@
       "package_path": "plugins\\marketplace\\published\\inventory_module.zip",
       "file_size": 2028,
       "checksum": "e973c8cbb55a6b9e9f25c70cf7bce3685d81dfa24307322e4df0f42006ce5692",
-      "approved_at": "2025-07-13T16:15:17.226913"
+      "approved_at": "2025-07-14T13:31:07.443630"
     },
     "purchase_module": {
       "plugin_id": "purchase_module",
@@ -289,7 +289,7 @@
       "homepage": "https://your-program-system.com",
       "repository": "https://github.com/your-program/modules",
       "support_email": "support@your-program-system.com",
-      "registered_at": "2025-07-13T16:15:17.233914",
+      "registered_at": "2025-07-14T13:31:07.450631",
       "status": "published",
       "downloads": 65,
       "rating": 4.42,
@@ -297,7 +297,7 @@
       "package_path": "plugins\\marketplace\\published\\purchase_module.zip",
       "file_size": 1998,
       "checksum": "a4a13b7f60bbf153e5712698e8655342e7d372cbc55ecf215e699f523a8c16d5",
-      "approved_at": "2025-07-13T16:15:17.248919"
+      "approved_at": "2025-07-14T13:31:07.467636"
     },
     "ai_analysis_module": {
       "plugin_id": "ai_analysis_module",
@@ -329,7 +329,7 @@
       "homepage": "https://your-program-system.com",
       "repository": "https://github.com/your-program/modules",
       "support_email": "support@your-program-system.com",
-      "registered_at": "2025-07-13T16:15:17.256919",
+      "registered_at": "2025-07-14T13:31:07.475639",
       "status": "published",
       "downloads": 45,
       "rating": 4.42,
@@ -337,13 +337,13 @@
       "package_path": "plugins\\marketplace\\published\\ai_analysis_module.zip",
       "file_size": 4034,
       "checksum": "2106fdda65fb6a05cd5cfc414560ef3c94d0b8f52cd7bd0586276ba1eb14599b",
-      "approved_at": "2025-07-13T16:15:17.275925"
+      "approved_at": "2025-07-14T13:31:07.492643"
     }
   },
   "categories": [],
   "statistics": {
-    "total_plugins": 8,
+    "total_plugins": 12,
     "total_downloads": 0,
-    "total_ratings": 32
+    "total_ratings": 52
   }
 }

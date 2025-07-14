@@ -23,5 +23,10 @@
     "id": "general",
     "name": "일반",
     "description": "모든 업종 공통"
+  },
+  {
+    "id": "employee_management",
+    "name": "직원 관리",
+    "description": "직원 관련 모듈 (출퇴근, 스케줄, 급여 등)"
   }
 ]

@@ -346,10 +346,20 @@
 
         // 통계 업데이트
         function updateStatistics(stats) {
-            document.getElementById('total-feedback').textContent = stats.total + '개';
-            document.getElementById('pending-feedback').textContent = stats.pending + '개';
-            document.getElementById('answered-feedback').textContent = stats.answered + '개';
-            document.getElementById('avg-satisfaction').textContent = stats.avg_satisfaction.toFixed(1);
+            // stats가 undefined이거나 null인 경우 기본값 사용
+            if (!stats) {
+                stats = {
+                    total: 0,
+                    pending: 0,
+                    answered: 0,
+                    avg_satisfaction: 0.0
+                };
+            }
+            
+            document.getElementById('total-feedback').textContent = (stats.total || 0) + '개';
+            document.getElementById('pending-feedback').textContent = (stats.pending || 0) + '개';
+            document.getElementById('answered-feedback').textContent = (stats.answered || 0) + '개';
+            document.getElementById('avg-satisfaction').textContent = (stats.avg_satisfaction || 0.0).toFixed(1);
         }
 
         // 피드백 데이터 표시

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 상세 정보 - Your Program</title>
+    <!-- Tailwind CSS CDN을 빌드된 CSS로 교체 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind-built.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen">
+        <!-- 네비게이션 -->
+        <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <a href="/admin/module-marketplace" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                            <i class="fas fa-arrow-left mr-2"></i>마켓플레이스로 돌아가기
+                        </a>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">관리자</span>
+                        <a href="/admin_dashboard" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                            <i class="fas fa-home"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div id="loading" class="flex justify-center items-center h-64">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+
+            <div id="content" class="hidden">
+                <!-- 모듈 헤더 -->
+                <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h1 id="module-name" class="text-3xl font-bold text-gray-900 dark:text-white mb-2"></h1>
+                            <p id="module-description" class="text-gray-600 dark:text-gray-400 mb-4"></p>
+                            <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                <span id="module-author"></span>
+                                <span id="module-version"></span>
+                                <span id="module-downloads"></span>
+                                <div class="flex items-center">
+                                    <span id="module-rating"></span>
+                                    <i class="fas fa-star text-yellow-400 ml-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button id="install-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium hidden">
+                                <i class="fas fa-download mr-2"></i>설치
+                            </button>
+                            <button id="uninstall-btn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium hidden">
+                                <i class="fas fa-trash mr-2"></i>제거
+                            </button>
+                            <button id="activate-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium hidden">
+                                <i class="fas fa-play mr-2"></i>활성화
+                            </button>
+                            <button id="deactivate-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg font-medium hidden">
+                                <i class="fas fa-pause mr-2"></i>비활성화
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 모듈 정보 탭 -->
+                <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                    <div class="border-b border-gray-200 dark:border-gray-700">
+                        <nav class="flex space-x-8 px-6">
+                            <button class="tab-btn active py-4 px-1 border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 font-medium" data-tab="overview">
+                                개요
+                            </button>
+                            <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium" data-tab="features">
+                                기능
+                            </button>
+                            <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium" data-tab="settings">
+                                설정
+                            </button>
+                            <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium" data-tab="reviews">
+                                리뷰
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- 탭 콘텐츠 -->
+                    <div class="p-6">
+                        <!-- 개요 탭 -->
+                        <div id="overview-tab" class="tab-content">
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">모듈 정보</h3>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">카테고리:</span>
+                                            <span id="module-category" class="font-medium"></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">상태:</span>
+                                            <span id="module-status" class="font-medium"></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">의존성:</span>
+                                            <span id="module-dependencies" class="font-medium"></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">권한:</span>
+                                            <span id="module-permissions" class="font-medium"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">태그</h3>
+                                    <div id="module-tags" class="flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 기능 탭 -->
+                        <div id="features-tab" class="tab-content hidden">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">주요 기능</h3>
+                            <div id="module-features" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        </div>
+
+                        <!-- 설정 탭 -->
+                        <div id="settings-tab" class="tab-content hidden">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">모듈 설정</h3>
+                            <div id="module-settings" class="space-y-4">
+                                <div class="text-center py-8 text-gray-500">
+                                    설정을 불러오는 중...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 리뷰 탭 -->
+                        <div id="reviews-tab" class="tab-content hidden">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">사용자 리뷰</h3>
+                            <div id="module-reviews" class="space-y-4">
+                                <div class="text-center py-8 text-gray-500">
+                                    리뷰를 불러오는 중...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="error" class="hidden">
+                <div class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                    <div class="flex">
+                        <i class="fas fa-exclamation-triangle text-red-400 mt-1"></i>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800 dark:text-red-200">오류 발생</h3>
+                            <p id="error-message" class="text-sm text-red-700 dark:text-red-300 mt-1"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const moduleId = '{{ module_id }}';
+        let moduleData = null;
+        let isInstalled = false;
+        let isActive = false;
+
+        // 페이지 로드 시 모듈 정보 가져오기
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModuleDetails();
+            setupTabNavigation();
+        });
+
+        // 모듈 상세 정보 로드
+        async function loadModuleDetails() {
+            try {
+                // 마켓플레이스에서 모듈 정보 가져오기
+                const response = await axios.get('/api/marketplace/modules');
+                const modules = response.data.modules || [];
+                const module = modules.find(m => m.id === moduleId || m.plugin_id === moduleId);
+                
+                if (!module) {
+                    throw new Error('모듈을 찾을 수 없습니다.');
+                }
+
+                moduleData = module;
+                displayModuleInfo(module);
+                
+                // 설치 상태 확인
+                await checkInstallStatus();
+                
+                // 설정 및 리뷰 로드
+                loadModuleSettings();
+                loadModuleReviews();
+                
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('모듈 정보 로드 오류:', error);
+                showError('모듈 정보를 불러오는 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 모듈 정보 표시
+        function displayModuleInfo(module) {
+            document.getElementById('module-name').textContent = module.name;
+            document.getElementById('module-description').textContent = module.description;
+            document.getElementById('module-author').textContent = `작성자: ${module.author}`;
+            document.getElementById('module-version').textContent = `버전: ${module.version}`;
+            document.getElementById('module-downloads').textContent = `다운로드: ${module.downloads}`;
+            document.getElementById('module-rating').textContent = module.rating;
+            document.getElementById('module-category').textContent = module.category || '기타';
+            document.getElementById('module-status').textContent = module.status || '알 수 없음';
+            
+            // 태그 표시
+            const tagsContainer = document.getElementById('module-tags');
+            tagsContainer.innerHTML = '';
+            if (module.tags && module.tags.length > 0) {
+                module.tags.forEach(tag => {
+                    const tagElement = document.createElement('span');
+                    tagElement.className = 'bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300';
+                    tagElement.textContent = tag;
+                    tagsContainer.appendChild(tagElement);
+                });
+            }
+            
+            // 기능 표시
+            const featuresContainer = document.getElementById('module-features');
+            featuresContainer.innerHTML = '';
+            if (module.features && module.features.length > 0) {
+                module.features.forEach(feature => {
+                    const featureElement = document.createElement('div');
+                    featureElement.className = 'flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg';
+                    featureElement.innerHTML = `
+                        <i class="fas fa-check text-green-500 mr-3"></i>
+                        <span class="text-gray-700 dark:text-gray-300">${feature}</span>
+                    `;
+                    featuresContainer.appendChild(featureElement);
+                });
+            }
+        }
+
+        // 설치 상태 확인
+        async function checkInstallStatus() {
+            try {
+                const response = await axios.get('/api/modules/installed');
+                const installedModules = response.data.modules || [];
+                const installedModule = installedModules.find(m => m.id === moduleId);
+                
+                isInstalled = !!installedModule;
+                isActive = installedModule?.is_active || false;
+                
+                updateActionButtons();
+                
+            } catch (error) {
+                console.error('설치 상태 확인 오류:', error);
+            }
+        }
+
+        // 액션 버튼 업데이트
+        function updateActionButtons() {
+            const installBtn = document.getElementById('install-btn');
+            const uninstallBtn = document.getElementById('uninstall-btn');
+            const activateBtn = document.getElementById('activate-btn');
+            const deactivateBtn = document.getElementById('deactivate-btn');
+            
+            if (isInstalled) {
+                installBtn.classList.add('hidden');
+                uninstallBtn.classList.remove('hidden');
+                
+                if (isActive) {
+                    activateBtn.classList.add('hidden');
+                    deactivateBtn.classList.remove('hidden');
+                } else {
+                    activateBtn.classList.remove('hidden');
+                    deactivateBtn.classList.add('hidden');
+                }
+            } else {
+                installBtn.classList.remove('hidden');
+                uninstallBtn.classList.add('hidden');
+                activateBtn.classList.add('hidden');
+                deactivateBtn.classList.add('hidden');
+            }
+        }
+
+        // 모듈 설치
+        async function installModule() {
+            try {
+                await axios.post(`/api/marketplace/modules/${moduleId}/install`);
+                await checkInstallStatus();
+                showSuccess('모듈이 성공적으로 설치되었습니다.');
+            } catch (error) {
+                console.error('모듈 설치 오류:', error);
+                showError('모듈 설치에 실패했습니다.');
+            }
+        }
+
+        // 모듈 제거
+        async function uninstallModule() {
+            if (!confirm('정말로 이 모듈을 제거하시겠습니까?')) {
+                return;
+            }
+            
+            try {
+                await axios.post(`/api/modules/${moduleId}/uninstall`);
+                await checkInstallStatus();
+                showSuccess('모듈이 성공적으로 제거되었습니다.');
+            } catch (error) {
+                console.error('모듈 제거 오류:', error);
+                showError('모듈 제거에 실패했습니다.');
+            }
+        }
+
+        // 모듈 활성화
+        async function activateModule() {
+            try {
+                await axios.post(`/api/modules/${moduleId}/activate`);
+                await checkInstallStatus();
+                showSuccess('모듈이 활성화되었습니다.');
+            } catch (error) {
+                console.error('모듈 활성화 오류:', error);
+                showError('모듈 활성화에 실패했습니다.');
+            }
+        }
+
+        // 모듈 비활성화
+        async function deactivateModule() {
+            try {
+                await axios.post(`/api/modules/${moduleId}/deactivate`);
+                await checkInstallStatus();
+                showSuccess('모듈이 비활성화되었습니다.');
+            } catch (error) {
+                console.error('모듈 비활성화 오류:', error);
+                showError('모듈 비활성화에 실패했습니다.');
+            }
+        }
+
+        // 모듈 설정 로드
+        async function loadModuleSettings() {
+            try {
+                const response = await axios.get(`/api/modules/${moduleId}/settings`);
+                const settings = response.data.settings || {};
+                displayModuleSettings(settings);
+            } catch (error) {
+                console.error('모듈 설정 로드 오류:', error);
+            }
+        }
+
+        // 모듈 설정 표시
+        function displayModuleSettings(settings) {
+            const settingsContainer = document.getElementById('module-settings');
+            if (Object.keys(settings).length === 0) {
+                settingsContainer.innerHTML = '<div class="text-center py-8 text-gray-500">설정이 없습니다.</div>';
+                return;
+            }
+            
+            settingsContainer.innerHTML = '';
+            Object.entries(settings).forEach(([key, value]) => {
+                const settingElement = document.createElement('div');
+                settingElement.className = 'flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg';
+                settingElement.innerHTML = `
+                    <span class="text-gray-700 dark:text-gray-300">${key}</span>
+                    <span class="font-medium">${typeof value === 'object' ? JSON.stringify(value) : value}</span>
+                `;
+                settingsContainer.appendChild(settingElement);
+            });
+        }
+
+        // 모듈 리뷰 로드
+        async function loadModuleReviews() {
+            try {
+                const response = await axios.get(`/api/marketplace/modules/${moduleId}/reviews`);
+                const reviews = response.data.reviews || [];
+                displayModuleReviews(reviews);
+            } catch (error) {
+                console.error('모듈 리뷰 로드 오류:', error);
+            }
+        }
+
+        // 모듈 리뷰 표시
+        function displayModuleReviews(reviews) {
+            const reviewsContainer = document.getElementById('module-reviews');
+            if (reviews.length === 0) {
+                reviewsContainer.innerHTML = '<div class="text-center py-8 text-gray-500">리뷰가 없습니다.</div>';
+                return;
+            }
+            
+            reviewsContainer.innerHTML = '';
+            reviews.forEach(review => {
+                const reviewElement = document.createElement('div');
+                reviewElement.className = 'border border-gray-200 dark:border-gray-700 rounded-lg p-4';
+                reviewElement.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center">
+                            <span class="font-medium text-gray-900 dark:text-white">${review.user_name}</span>
+                            <div class="flex items-center ml-2">
+                                ${Array.from({length: 5}, (_, i) => 
+                                    `<i class="fas fa-star ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}"></i>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        <span class="text-sm text-gray-500">${new Date(review.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300">${review.comment}</p>
+                `;
+                reviewsContainer.appendChild(reviewElement);
+            });
+        }
+
+        // 탭 네비게이션 설정
+        function setupTabNavigation() {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.dataset.tab;
+                    
+                    // 모든 탭 비활성화
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                        btn.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                    });
+                    
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    
+                    // 선택된 탭 활성화
+                    button.classList.add('active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                    button.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                    
+                    document.getElementById(`${targetTab}-tab`).classList.remove('hidden');
+                });
+            });
+        }
+
+        // 이벤트 리스너 등록
+        document.getElementById('install-btn').addEventListener('click', installModule);
+        document.getElementById('uninstall-btn').addEventListener('click', uninstallModule);
+        document.getElementById('activate-btn').addEventListener('click', activateModule);
+        document.getElementById('deactivate-btn').addEventListener('click', deactivateModule);
+
+        // 유틸리티 함수
+        function showSuccess(message) {
+            // 간단한 성공 메시지 표시
+            alert(message);
+        }
+
+        function showError(message) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('content').classList.add('hidden');
+            document.getElementById('error').classList.remove('hidden');
+            document.getElementById('error-message').textContent = message;
+        }
+    </script>
+</body>
+</html> 

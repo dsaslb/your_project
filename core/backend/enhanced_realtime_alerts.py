@@ -227,19 +227,14 @@ class EnhancedRealtimeAlertSystem:
                             self.monitoring_active = False
                             logger.error(f"모니터링 시작 실패: {e}")
                         # 예외 발생 시 monitoring_active를 False로 되돌려 서버 안정성을 보장합니다.
-            # except 블록에서 중복된 코드와 잘못된 들여쓰기를 수정했습니다.
-            # pyright: ignore[reportAttributeAccessIssue] - _monitor_loop 메서드는 클래스 내부에 정의되어 있어야 합니다.
-            # 오류 발생 시 monitoring_active를 False로 설정하는 것만 남기고, 나머지 코드는 try 블록에서만 실행합니다.
-            # 이 블록에서는 추가적인 처리가 필요하지 않습니다.
-            # 잘못된 들여쓰기와 중복된 except 블록을 제거했습니다.
-            # 아래 코드는 필요 없는 중복 코드이므로 삭제합니다.
-            # 모니터링 중지 함수의 docstring은 start_monitoring 함수에 있으면 안 되므로, 아래에 위치를 옮깁니다.
-            # (아무 코드도 남기지 않습니다)
-        self.monitoring_active = False
-        if self.monitor_thread:
-            self.monitor_thread.join(timeout=5)
-        
-        logger.info("고도화된 실시간 알림 시스템 중지")
+        except Exception as e:
+            logger.error(f"모니터링 루프 오류: {e}")
+        finally:
+            self.monitoring_active = False
+            if self.monitor_thread:
+                self.monitor_thread.join(timeout=5)
+            
+            logger.info("고도화된 실시간 알림 시스템 중지")
     
     def update_plugin_metrics(self, plugin_id: str, metrics: Dict[str, Any]):
         """플러그인 메트릭 업데이트"""

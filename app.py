@@ -199,6 +199,30 @@ try:
 except Exception as e:
     logger.error(f"플러그인 자동화 및 워크플로우 API 블루프린트 등록 실패: {e}")
 
+# 마켓플레이스 데모 API 블루프린트 등록
+try:
+    from routes.marketplace_demo import marketplace_demo_bp
+    app.register_blueprint(marketplace_demo_bp, name='marketplace_demo')
+    logger.info("마켓플레이스 데모 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"마켓플레이스 데모 API 블루프린트 등록 실패: {e}")
+
+# 출퇴근 관리 API 블루프린트 등록
+try:
+    from api.modules.attendance_management import attendance_management_bp
+    app.register_blueprint(attendance_management_bp, name='attendance_management_api')
+    logger.info("출퇴근 관리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"출퇴근 관리 API 블루프린트 등록 실패: {e}")
+
+# 모듈 관리 API 블루프린트 등록
+try:
+    from routes.module_management import module_management_bp
+    app.register_blueprint(module_management_bp, name='module_management_api')
+    logger.info("모듈 관리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 관리 API 블루프린트 등록 실패: {e}")
+
 # 플러그인 마이크로서비스 API 블루프린트 등록
 try:
     from api.plugin_microservice_api import plugin_microservice_bp
@@ -223,18 +247,10 @@ try:
 except Exception as e:
     logger.error(f"플러그인 설정 관리 API 블루프린트 등록 실패: {e}")
 
-# 모듈 마켓플레이스 API 블루프린트 등록
-try:
-    from routes.module_marketplace import module_marketplace_bp
-    app.register_blueprint(module_marketplace_bp, name='module_marketplace_api')
-    logger.info("모듈 마켓플레이스 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"모듈 마켓플레이스 API 블루프린트 등록 실패: {e}")
-
 # 모듈 관리 API 블루프린트 등록
 try:
     from routes.module_management import module_management_bp
-    app.register_blueprint(module_management_bp, name='module_management_api')
+    app.register_blueprint(module_management_bp, name='module_management_api_v2')
     logger.info("모듈 관리 API 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"모듈 관리 API 블루프린트 등록 실패: {e}")
@@ -269,13 +285,7 @@ try:
 except Exception as e:
     logger.error(f"플러그인 설정 관리 API 블루프린트 등록 실패: {e}")
 
-# 모듈 마켓플레이스 API 블루프린트 등록
-try:
-    from routes.module_marketplace import module_marketplace_bp
-    app.register_blueprint(module_marketplace_bp, name='module_marketplace')
-    logger.info("모듈 마켓플레이스 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"모듈 마켓플레이스 API 블루프린트 등록 실패: {e}")
+
 
 # 모듈 마켓플레이스 API 블루프린트 등록
 try:
@@ -2537,6 +2547,11 @@ def admin_module_marketplace():
 def admin_module_management():
     return render_template('admin/module_management.html')
 
+@app.route("/admin/module-details/<module_id>")
+def admin_module_details(module_id):
+    """모듈 상세 정보 페이지"""
+    return render_template('admin/module_details.html', module_id=module_id)
+
 @app.route("/api/marketplace/modules")
 @csrf.exempt
 def api_marketplace_modules():
@@ -2546,8 +2561,8 @@ def api_marketplace_modules():
         modules = [
             # 기존 샘플 모듈들
             {
-                'id': 'attendance_module',
-                'plugin_id': 'attendance_module',
+                'id': 'attendance_management',
+                'plugin_id': 'attendance_management',
                 'name': '출근 관리 모듈',
                 'author': 'Your Program Team',
                 'description': '직원 출퇴근 기록 및 관리 기능을 제공합니다.',
@@ -2557,8 +2572,8 @@ def api_marketplace_modules():
                 'rating': 4.5
             },
             {
-                'id': 'schedule_module',
-                'plugin_id': 'schedule_module',
+                'id': 'schedule_management',
+                'plugin_id': 'schedule_management',
                 'name': '일정 관리 모듈',
                 'author': 'Your Program Team',
                 'description': '직원 근무 스케줄 관리 및 조정 기능을 제공합니다.',
@@ -2568,8 +2583,8 @@ def api_marketplace_modules():
                 'rating': 4.3
             },
             {
-                'id': 'inventory_module',
-                'plugin_id': 'inventory_module',
+                'id': 'inventory_management',
+                'plugin_id': 'inventory_management',
                 'name': '재고 관리 모듈',
                 'author': 'Your Program Team',
                 'description': '재고 현황 및 발주 관리 기능을 제공합니다.',
@@ -2579,8 +2594,8 @@ def api_marketplace_modules():
                 'rating': 4.2
             },
             {
-                'id': 'purchase_module',
-                'plugin_id': 'purchase_module',
+                'id': 'purchase_management',
+                'plugin_id': 'purchase_management',
                 'name': '구매 관리 모듈',
                 'author': 'Your Program Team',
                 'description': '재고 발주 및 구매 관리 기능을 제공합니다.',
@@ -2866,8 +2881,8 @@ def api_modules_installed():
         modules = [
             # 기존 샘플 모듈들
             {
-                'id': 'attendance_module',
-                'plugin_id': 'attendance_module',
+                'id': 'attendance_management',
+                'plugin_id': 'attendance_management',
                 'name': '출근 관리 모듈',
                 'description': '직원 출퇴근 기록 및 관리 기능을 제공합니다.',
                 'version': '1.0.0',
@@ -2883,8 +2898,8 @@ def api_modules_installed():
                 }
             },
             {
-                'id': 'schedule_module',
-                'plugin_id': 'schedule_module',
+                'id': 'schedule_management',
+                'plugin_id': 'schedule_management',
                 'name': '일정 관리 모듈',
                 'description': '직원 근무 스케줄 관리 및 조정 기능을 제공합니다.',
                 'version': '1.0.0',
@@ -2900,8 +2915,8 @@ def api_modules_installed():
                 }
             },
             {
-                'id': 'inventory_module',
-                'plugin_id': 'inventory_module',
+                'id': 'inventory_management',
+                'plugin_id': 'inventory_management',
                 'name': '재고 관리 모듈',
                 'description': '재고 현황 및 발주 관리 기능을 제공합니다.',
                 'version': '1.0.0',
@@ -2917,8 +2932,8 @@ def api_modules_installed():
                 }
             },
             {
-                'id': 'purchase_module',
-                'plugin_id': 'purchase_module',
+                'id': 'purchase_management',
+                'plugin_id': 'purchase_management',
                 'name': '구매 관리 모듈',
                 'description': '재고 발주 및 구매 관리 기능을 제공합니다.',
                 'version': '1.0.0',
@@ -2926,7 +2941,7 @@ def api_modules_installed():
                 'installed_at': '2024-01-15',
                 'last_updated': '2024-01-15',
                 'size': '2.0MB',
-                'dependencies': ['inventory_module'],
+                'dependencies': ['inventory_management'],
                 'performance': {
                     'cpu_usage': 3.8,
                     'memory_usage': 20.3,
@@ -3227,7 +3242,7 @@ def api_modules_performance():
             'modules': [
                 # 기존 샘플 모듈들
                 {
-                    'plugin_id': 'attendance_module',
+                    'plugin_id': 'attendance_management',
                     'name': '출근 관리 모듈',
                     'cpu_usage': 2.5,
                     'memory_usage': 15.2,
@@ -3236,7 +3251,7 @@ def api_modules_performance():
                     'last_updated': '2024-01-15T10:30:00Z'
                 },
                 {
-                    'plugin_id': 'schedule_module',
+                    'plugin_id': 'schedule_management',
                     'name': '일정 관리 모듈',
                     'cpu_usage': 3.1,
                     'memory_usage': 18.5,
@@ -3245,7 +3260,7 @@ def api_modules_performance():
                     'last_updated': '2024-01-15T10:30:00Z'
                 },
                 {
-                    'plugin_id': 'inventory_module',
+                    'plugin_id': 'inventory_management',
                     'name': '재고 관리 모듈',
                     'cpu_usage': 4.2,
                     'memory_usage': 22.1,
@@ -3254,7 +3269,7 @@ def api_modules_performance():
                     'last_updated': '2024-01-15T10:30:00Z'
                 },
                 {
-                    'plugin_id': 'purchase_module',
+                    'plugin_id': 'purchase_management',
                     'name': '구매 관리 모듈',
                     'cpu_usage': 3.8,
                     'memory_usage': 20.3,
@@ -3586,6 +3601,22 @@ def api_admin_brand_stats():
         return jsonify({'brand_stats': stats_data})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# 모듈 마켓플레이스 API 블루프린트 등록
+try:
+    from api.module_marketplace_api import module_marketplace_api_bp
+    app.register_blueprint(module_marketplace_api_bp, name='module_marketplace_api_v2')
+    logger.info("모듈 마켓플레이스 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 마켓플레이스 API 블루프린트 등록 실패: {e}")
+
+# 모듈 마켓플레이스 라우트 블루프린트 등록
+try:
+    from routes.module_marketplace_routes import module_marketplace_routes_bp
+    app.register_blueprint(module_marketplace_routes_bp)
+    logger.info("모듈 마켓플레이스 라우트 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 마켓플레이스 라우트 블루프린트 등록 실패: {e}")
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

@@ -1,0 +1,99 @@
+{
+  "module_id": "attendance_management",
+  "name": "출퇴근 관리",
+  "version": "1.0.0",
+  "description": "직원별 출근/퇴근/지각/초과근무 기록, 통계, 알림 관리",
+  "author": "Your Program Team",
+  "category": "인사관리",
+  "tags": ["출퇴근", "근태관리", "알림", "통계"],
+  "dependencies": [
+    "user_management",
+    "notification_system"
+  ],
+  "permissions": {
+    "admin": ["read", "write", "delete", "manage"],
+    "brand_manager": ["read", "write", "manage"],
+    "branch_manager": ["read", "write", "manage"],
+    "employee": ["read", "write_own"]
+  },
+  "features": [
+    "출퇴근 기록",
+    "지각/조퇴 관리",
+    "초과근무 계산",
+    "통계 분석",
+    "자동 알림",
+    "설정 관리",
+    "테스트 데이터 생성"
+  ],
+  "api_endpoints": [
+    "/api/attendance/clock-in",
+    "/api/attendance/clock-out",
+    "/api/attendance/records",
+    "/api/attendance/statistics",
+    "/api/attendance/settings",
+    "/api/attendance/notifications",
+    "/api/attendance/test-data"
+  ],
+  "ui_components": [
+    "AttendanceDashboard",
+    "TestDataGenerator"
+  ],
+  "settings": {
+    "work_start_time": "09:00",
+    "work_end_time": "18:00",
+    "late_threshold_minutes": 10,
+    "overtime_threshold_hours": 8,
+    "auto_notification": true,
+    "notification_interval": 5,
+    "work_types": ["정규", "시급", "파트타임", "인턴"]
+  },
+  "integrations": {
+    "notification_system": {
+      "events": ["late", "early_leave", "absent"],
+      "auto_send": true
+    },
+    "ai_prediction": {
+      "features": ["attendance_pattern", "late_prediction"],
+      "enabled": true
+    },
+    "dashboard": {
+      "widgets": ["attendance_summary", "late_statistics"],
+      "auto_refresh": true
+    }
+  },
+  "data_schema": {
+    "attendance_records": {
+      "user_id": "integer",
+      "date": "date",
+      "clock_in": "time",
+      "clock_out": "time",
+      "work_type": "string",
+      "note": "text",
+      "is_late": "boolean",
+      "is_early_leave": "boolean",
+      "overtime_hours": "float"
+    },
+    "attendance_settings": {
+      "brand_id": "integer",
+      "branch_id": "integer",
+      "work_start_time": "time",
+      "work_end_time": "time",
+      "late_threshold_minutes": "integer",
+      "overtime_threshold_hours": "integer",
+      "auto_notification": "boolean",
+      "work_types": "array"
+    }
+  },
+  "hooks": {
+    "on_clock_in": "create_notification",
+    "on_clock_out": "calculate_overtime",
+    "on_late": "send_late_notification",
+    "on_early_leave": "send_early_leave_notification"
+  },
+  "metrics": {
+    "attendance_rate": "출근률",
+    "late_rate": "지각률",
+    "overtime_hours": "초과근무시간",
+    "work_efficiency": "근무효율성"
+  }
+} 

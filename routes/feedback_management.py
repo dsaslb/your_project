@@ -78,6 +78,14 @@ def get_feedbacks():
                 'status': 'answered' if suggestion.answer else 'unanswered'
             })
         
+        # 통계 데이터 계산
+        total_feedback = Suggestion.query.count()
+        pending_feedback = Suggestion.query.filter(Suggestion.answer.is_(None)).count()
+        answered_feedback = Suggestion.query.filter(Suggestion.answer.isnot(None)).count()
+        
+        # 평균 만족도 계산 (만약 만족도 필드가 있다면)
+        avg_satisfaction = 0.0  # 기본값
+        
         return jsonify({
             'success': True,
             'feedbacks': feedback_list,
@@ -88,6 +96,12 @@ def get_feedbacks():
                 'pages': pagination.pages,
                 'has_next': pagination.has_next,
                 'has_prev': pagination.has_prev
+            },
+            'statistics': {
+                'total': total_feedback,
+                'pending': pending_feedback,
+                'answered': answered_feedback,
+                'avg_satisfaction': avg_satisfaction
             }
         })
         

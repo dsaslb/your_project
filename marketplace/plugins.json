@@ -1,5 +1,120 @@
 [
   {
+    "id": "attendance_management",
+    "name": "출퇴근 관리 시스템",
+    "version": "1.0.0",
+    "description": "직원별 출근/퇴근/지각/초과근무 기록, 통계, 알림 관리 기능을 제공하는 종합 출퇴근 관리 모듈입니다.",
+    "author": "Your Program Team",
+    "category": "employee_management",
+    "price": 0.0,
+    "currency": "KRW",
+    "tags": [
+      "출퇴근",
+      "근태",
+      "지각",
+      "초과근무",
+      "통계",
+      "알림"
+    ],
+    "screenshots": [
+      "/static/images/attendance_dashboard.png",
+      "/static/images/attendance_report.png",
+      "/static/images/attendance_stats.png"
+    ],
+    "demo_url": "/marketplace/demo/attendance_management",
+    "documentation_url": "/docs/attendance_management",
+    "support_url": "/support/attendance_management",
+    "rating": 5.0,
+    "downloads": 0,
+    "reviews": [],
+    "status": "active",
+    "created_at": "2025-01-15T10:00:00.000000",
+    "updated_at": "2025-01-15T10:00:00.000000",
+    "permissions": {
+      "admin": ["view_all", "edit_all", "delete_all", "export_data"],
+      "brand_manager": ["view_brand", "edit_brand", "export_brand"],
+      "store_manager": ["view_store", "edit_store", "export_store"],
+      "supervisor": ["view_team", "edit_team"],
+      "employee": ["view_own", "check_in", "check_out"]
+    },
+    "features": {
+      "check_in_out": true,
+      "late_tracking": true,
+      "overtime_calculation": true,
+      "reporting": true,
+      "notifications": true,
+      "ai_analytics": true
+    },
+    "api_endpoints": [
+      "/api/attendance/check-in",
+      "/api/attendance/check-out",
+      "/api/attendance/report",
+      "/api/attendance/stats",
+      "/api/attendance/export"
+    ],
+    "ui_components": [
+      "AttendanceDashboard",
+      "AttendanceForm",
+      "AttendanceReport",
+      "AttendanceStats"
+    ],
+    "demo_data": {
+      "employees": [
+        {
+          "id": "emp_001",
+          "name": "김철수",
+          "position": "매니저",
+          "store_id": "store_001",
+          "brand_id": "brand_001"
+        },
+        {
+          "id": "emp_002",
+          "name": "이영희",
+          "position": "직원",
+          "store_id": "store_001",
+          "brand_id": "brand_001"
+        }
+      ],
+      "attendance_records": [
+        {
+          "id": "att_001",
+          "employee_id": "emp_001",
+          "date": "2024-01-15",
+          "check_in_time": "08:45:00",
+          "check_out_time": "18:15:00",
+          "work_hours": 9.5,
+          "is_late": false,
+          "overtime_hours": 0.5,
+          "status": "completed"
+        },
+        {
+          "id": "att_002",
+          "employee_id": "emp_002",
+          "date": "2024-01-15",
+          "check_in_time": "09:15:00",
+          "check_out_time": "18:00:00",
+          "work_hours": 8.75,
+          "is_late": true,
+          "overtime_hours": 0,
+          "status": "completed"
+        }
+      ],
+      "statistics": {
+        "total_employees": 2,
+        "present_today": 2,
+        "late_count": 1,
+        "average_work_hours": 9.125,
+        "total_overtime": 0.5
+      }
+    },
+    "module_status": {
+      "status": "active",
+      "health_check": "passing",
+      "performance": "optimal",
+      "last_updated": "2025-01-15T10:00:00.000000"
+    }
+  },
+  {
     "id": "restaurant_analytics",
     "name": "레스토랑 분석 도구",
     "version": "1.0.0",
@@ -15,10 +130,13 @@
       "메뉴",
       "레스토랑"
     ],
-    "screenshots": [],
-    "demo_url": "https://demo.restaurant-analytics.com",
-    "documentation_url": "https://docs.restaurant-analytics.com",
-    "support_url": "https://support.restaurant-analytics.com",
+    "screenshots": [
+      "/static/images/restaurant_analytics_dashboard.png",
+      "/static/images/restaurant_analytics_reports.png"
+    ],
+    "demo_url": "/marketplace/demo/restaurant_analytics",
+    "documentation_url": "/docs/restaurant_analytics",
+    "support_url": "/support/restaurant_analytics",
     "rating": 4.5,
     "downloads": 1250,
     "reviews": [
@@ -41,31 +159,61 @@
         "comment": "고객 행동 분석 기능이 도움이 됩니다. 다만 UI가 조금 복잡해요.",
         "created_at": "2025-07-11T20:21:04.450503",
         "helpful_count": 0
-      },
-      {
-        "id": "review_20250711_202111_user1",
-        "plugin_id": "restaurant_analytics",
-        "user_id": "user1",
-        "user_name": "김레스토랑",
-        "rating": 5,
-        "comment": "매출 분석이 정말 유용합니다. 메뉴별 성과를 한눈에 볼 수 있어서 좋아요!",
-        "created_at": "2025-07-11T20:21:11.444416",
-        "helpful_count": 0
-      },
-      {
-        "id": "review_20250711_202111_user2",
-        "plugin_id": "restaurant_analytics",
-        "user_id": "user2",
-        "user_name": "이카페",
-        "rating": 4,
-        "comment": "고객 행동 분석 기능이 도움이 됩니다. 다만 UI가 조금 복잡해요.",
-        "created_at": "2025-07-11T20:21:11.477655",
-        "helpful_count": 0
       }
     ],
     "status": "active",
     "created_at": "2025-07-11T20:21:04.340320",
-    "updated_at": "2025-07-11T20:21:11.351058"
+    "updated_at": "2025-07-11T20:21:11.351058",
+    "permissions": {
+      "admin": ["view_all", "edit_all", "export_data"],
+      "brand_manager": ["view_brand", "edit_brand", "export_brand"],
+      "store_manager": ["view_store", "edit_store", "export_store"],
+      "supervisor": ["view_team"],
+      "employee": ["view_own"]
+    },
+    "features": {
+      "sales_analytics": true,
+      "customer_behavior": true,
+      "menu_performance": true,
+      "reporting": true,
+      "ai_insights": true
+    },
+    "api_endpoints": [
+      "/api/analytics/sales",
+      "/api/analytics/customers",
+      "/api/analytics/menu",
+      "/api/analytics/reports"
+    ],
+    "ui_components": [
+      "AnalyticsDashboard",
+      "SalesChart",
+      "CustomerInsights",
+      "MenuPerformance"
+    ],
+    "demo_data": {
+      "sales_data": [
+        {
+          "date": "2024-01-15",
+          "total_sales": 2500000,
+          "order_count": 150,
+          "average_order": 16667
+        }
+      ],
+      "menu_performance": [
+        {
+          "menu_name": "스테이크",
+          "sales_count": 45,
+          "revenue": 675000,
+          "rating": 4.8
+        }
+      ]
+    },
+    "module_status": {
+      "status": "active",
+      "health_check": "passing",
+      "performance": "optimal",
+      "last_updated": "2025-07-11T20:21:11.351058"
+    }
   },
   {
     "id": "inventory_management",
@@ -82,10 +230,13 @@
       "비용",
       "관리"
     ],
-    "screenshots": [],
-    "demo_url": "https://demo.inventory-pro.com",
-    "documentation_url": "https://docs.inventory-pro.com",
-    "support_url": "https://support.inventory-pro.com",
+    "screenshots": [
+      "/static/images/inventory_dashboard.png",
+      "/static/images/inventory_reports.png"
+    ],
+    "demo_url": "/marketplace/demo/inventory_management",
+    "documentation_url": "/docs/inventory_management",
+    "support_url": "/support/inventory_management",
     "rating": 5.0,
     "downloads": 3200,
     "reviews": [
@@ -98,21 +249,62 @@
         "comment": "자동 발주 알림이 정말 편리합니다. 재고 부족 걱정이 없어졌어요.",
         "created_at": "2025-07-11T20:21:04.474268",
         "helpful_count": 0
-      },
-      {
-        "id": "review_20250711_202111_user3",
-        "plugin_id": "inventory_management",
-        "user_id": "user3",
-        "user_name": "박마트",
-        "rating": 5,
-        "comment": "자동 발주 알림이 정말 편리합니다. 재고 부족 걱정이 없어졌어요.",
-        "created_at": "2025-07-11T20:21:11.505717",
-        "helpful_count": 0
       }
     ],
     "status": "active",
     "created_at": "2025-07-11T20:21:04.340320",
-    "updated_at": "2025-07-11T20:21:11.363416"
+    "updated_at": "2025-07-11T20:21:11.363416",
+    "permissions": {
+      "admin": ["view_all", "edit_all", "delete_all", "export_data"],
+      "brand_manager": ["view_brand", "edit_brand", "export_brand"],
+      "store_manager": ["view_store", "edit_store", "export_store"],
+      "supervisor": ["view_team", "edit_team"],
+      "employee": ["view_own"]
+    },
+    "features": {
+      "real_time_tracking": true,
+      "auto_ordering": true,
+      "cost_analysis": true,
+      "alerts": true,
+      "reporting": true
+    },
+    "api_endpoints": [
+      "/api/inventory/items",
+      "/api/inventory/orders",
+      "/api/inventory/alerts",
+      "/api/inventory/reports"
+    ],
+    "ui_components": [
+      "InventoryDashboard",
+      "ItemManagement",
+      "OrderManagement",
+      "InventoryReports"
+    ],
+    "demo_data": {
+      "inventory_items": [
+        {
+          "id": "item_001",
+          "name": "토마토",
+          "current_stock": 50,
+          "min_stock": 20,
+          "unit_price": 2000
+        }
+      ],
+      "orders": [
+        {
+          "id": "order_001",
+          "item_id": "item_001",
+          "quantity": 100,
+          "status": "pending"
+        }
+      ]
+    },
+    "module_status": {
+      "status": "active",
+      "health_check": "passing",
+      "performance": "optimal",
+      "last_updated": "2025-07-11T20:21:11.363416"
+    }
   },
   {
     "id": "customer_loyalty",
@@ -130,10 +322,13 @@
       "VIP",
       "충성도"
     ],
-    "screenshots": [],
-    "demo_url": "https://demo.loyalty-max.com",
-    "documentation_url": "https://docs.loyalty-max.com",
-    "support_url": "https://support.loyalty-max.com",
+    "screenshots": [
+      "/static/images/loyalty_dashboard.png",
+      "/static/images/loyalty_programs.png"
+    ],
+    "demo_url": "/marketplace/demo/customer_loyalty",
+    "documentation_url": "/docs/customer_loyalty",
+    "support_url": "/support/customer_loyalty",
     "rating": 4.0,
     "downloads": 890,
     "reviews": [
@@ -146,21 +341,61 @@
         "comment": "포인트 적립 시스템이 고객 만족도에 도움이 됩니다.",
         "created_at": "2025-07-11T20:21:04.497983",
         "helpful_count": 0
-      },
-      {
-        "id": "review_20250711_202111_user4",
-        "plugin_id": "customer_loyalty",
-        "user_id": "user4",
-        "user_name": "최소매",
-        "rating": 4,
-        "comment": "포인트 적립 시스템이 고객 만족도에 도움이 됩니다.",
-        "created_at": "2025-07-11T20:21:11.547851",
-        "helpful_count": 0
       }
     ],
     "status": "active",
     "created_at": "2025-07-11T20:21:04.362612",
-    "updated_at": "2025-07-11T20:21:11.376590"
+    "updated_at": "2025-07-11T20:21:11.376590",
+    "permissions": {
+      "admin": ["view_all", "edit_all", "export_data"],
+      "brand_manager": ["view_brand", "edit_brand", "export_brand"],
+      "store_manager": ["view_store", "edit_store", "export_store"],
+      "supervisor": ["view_team"],
+      "employee": ["view_own", "process_points"]
+    },
+    "features": {
+      "point_system": true,
+      "coupons": true,
+      "vip_management": true,
+      "customer_analytics": true,
+      "automated_rewards": true
+    },
+    "api_endpoints": [
+      "/api/loyalty/points",
+      "/api/loyalty/coupons",
+      "/api/loyalty/vip",
+      "/api/loyalty/analytics"
+    ],
+    "ui_components": [
+      "LoyaltyDashboard",
+      "PointManagement",
+      "CouponManagement",
+      "VIPManagement"
+    ],
+    "demo_data": {
+      "customers": [
+        {
+          "id": "cust_001",
+          "name": "김고객",
+          "points": 1500,
+          "vip_level": "silver"
+        }
+      ],
+      "coupons": [
+        {
+          "id": "coupon_001",
+          "name": "10% 할인",
+          "discount": 10,
+          "valid_until": "2024-02-15"
+        }
+      ]
+    },
+    "module_status": {
+      "status": "active",
+      "health_check": "passing",
+      "performance": "optimal",
+      "last_updated": "2025-07-11T20:21:11.376590"
+    }
   },
   {
     "id": "employee_scheduling",
@@ -177,10 +412,13 @@
       "급여",
       "직원"
     ],
-    "screenshots": [],
-    "demo_url": "https://demo.schedule-pro.com",
-    "documentation_url": "https://docs.schedule-pro.com",
-    "support_url": "https://support.schedule-pro.com",
+    "screenshots": [
+      "/static/images/scheduling_dashboard.png",
+      "/static/images/schedule_calendar.png"
+    ],
+    "demo_url": "/marketplace/demo/employee_scheduling",
+    "documentation_url": "/docs/employee_scheduling",
+    "support_url": "/support/employee_scheduling",
     "rating": 5.0,
     "downloads": 2100,
     "reviews": [
@@ -193,125 +431,62 @@
         "comment": "근무표 자동 생성이 정말 편리합니다. 시간이 많이 절약돼요.",
         "created_at": "2025-07-11T20:21:04.518638",
         "helpful_count": 0
-      },
-      {
-        "id": "review_20250711_202111_user5",
-        "plugin_id": "employee_scheduling",
-        "user_id": "user5",
-        "user_name": "정매니저",
-        "rating": 5,
-        "comment": "근무표 자동 생성이 정말 편리합니다. 시간이 많이 절약돼요.",
-        "created_at": "2025-07-11T20:21:11.572272",
-        "helpful_count": 0
       }
     ],
     "status": "active",
-    "created_at": "2025-07-11T20:21:04.374275",
-    "updated_at": "2025-07-11T20:21:11.390181"
-  },
-  {
-    "id": "pos_integration",
-    "name": "POS 시스템 연동",
-    "version": "1.8.0",
-    "description": "다양한 POS 시스템과의 실시간 연동을 통해 주문 데이터를 자동으로 동기화하는 플러그인입니다.",
-    "author": "POSConnect",
-    "category": "restaurant",
-    "price": 75000.0,
-    "currency": "KRW",
-    "tags": [
-      "POS",
-      "연동",
-      "주문",
-      "동기화"
+    "created_at": "2025-07-11T20:21:04.340320",
+    "updated_at": "2025-07-11T20:21:11.376590",
+    "permissions": {
+      "admin": ["view_all", "edit_all", "delete_all", "export_data"],
+      "brand_manager": ["view_brand", "edit_brand", "export_brand"],
+      "store_manager": ["view_store", "edit_store", "export_store"],
+      "supervisor": ["view_team", "edit_team"],
+      "employee": ["view_own", "request_changes"]
+    },
+    "features": {
+      "auto_scheduling": true,
+      "shift_management": true,
+      "payroll_calculation": true,
+      "conflict_resolution": true,
+      "mobile_access": true
+    },
+    "api_endpoints": [
+      "/api/scheduling/schedules",
+      "/api/scheduling/shifts",
+      "/api/scheduling/payroll",
+      "/api/scheduling/requests"
     ],
-    "screenshots": [],
-    "demo_url": "https://demo.pos-connect.com",
-    "documentation_url": "https://docs.pos-connect.com",
-    "support_url": "https://support.pos-connect.com",
-    "rating": 4.4,
-    "downloads": 650,
-    "reviews": [],
-    "status": "active",
-    "created_at": "2025-07-11T20:21:04.379295",
-    "updated_at": "2025-07-11T20:21:11.403079"
-  },
-  {
-    "id": "marketing_automation",
-    "name": "마케팅 자동화",
-    "version": "2.0.0",
-    "description": "이메일 마케팅, SMS 발송, 소셜미디어 연동을 통한 자동화된 마케팅 캠페인 관리 플러그인입니다.",
-    "author": "MarketingAuto",
-    "category": "service",
-    "price": 45000.0,
-    "currency": "KRW",
-    "tags": [
-      "마케팅",
-      "자동화",
-      "이메일",
-      "SMS",
-      "소셜미디어"
+    "ui_components": [
+      "SchedulingDashboard",
+      "ScheduleCalendar",
+      "ShiftManagement",
+      "PayrollCalculator"
     ],
-    "screenshots": [],
-    "demo_url": "https://demo.marketing-auto.com",
-    "documentation_url": "https://docs.marketing-auto.com",
-    "support_url": "https://support.marketing-auto.com",
-    "rating": 4.7,
-    "downloads": 1800,
-    "reviews": [],
-    "status": "active",
-    "created_at": "2025-07-11T20:21:04.399954",
-    "updated_at": "2025-07-11T20:21:11.416185"
-  },
-  {
-    "id": "quality_control",
-    "name": "품질 관리 시스템",
-    "version": "1.2.0",
-    "description": "제품 품질 검사, 불량률 추적, 품질 보고서 생성을 지원하는 품질 관리 플러그인입니다.",
-    "author": "QualityControl",
-    "category": "manufacturing",
-    "price": 60000.0,
-    "currency": "KRW",
-    "tags": [
-      "품질",
-      "검사",
-      "불량",
-      "제조"
-    ],
-    "screenshots": [],
-    "demo_url": "https://demo.quality-control.com",
-    "documentation_url": "https://docs.quality-control.com",
-    "support_url": "https://support.quality-control.com",
-    "rating": 4.3,
-    "downloads": 420,
-    "reviews": [],
-    "status": "active",
-    "created_at": "2025-07-11T20:21:04.413892",
-    "updated_at": "2025-07-11T20:21:11.428454"
-  },
-  {
-    "id": "financial_reporting",
-    "name": "재무 보고서 생성기",
-    "version": "1.6.0",
-    "description": "손익계산서, 재무상태표, 현금흐름표 등 다양한 재무 보고서를 자동으로 생성하는 플러그인입니다.",
-    "author": "FinanceReport",
-    "category": "general",
-    "price": 35000.0,
-    "currency": "KRW",
-    "tags": [
-      "재무",
-      "보고서",
-      "손익",
-      "재무상태"
-    ],
-    "screenshots": [],
-    "demo_url": "https://demo.finance-report.com",
-    "documentation_url": "https://docs.finance-report.com",
-    "support_url": "https://support.finance-report.com",
-    "rating": 4.9,
-    "downloads": 950,
-    "reviews": [],
-    "status": "active",
-    "created_at": "2025-07-11T20:21:04.426699",
-    "updated_at": "2025-07-11T20:21:11.442416"
+    "demo_data": {
+      "schedules": [
+        {
+          "id": "schedule_001",
+          "employee_id": "emp_001",
+          "date": "2024-01-15",
+          "start_time": "09:00",
+          "end_time": "18:00",
+          "shift_type": "day"
+        }
+      ],
+      "shifts": [
+        {
+          "id": "shift_001",
+          "name": "주간",
+          "start_time": "09:00",
+          "end_time": "18:00"
+        }
+      ]
+    },
+    "module_status": {
+      "status": "active",
+      "health_check": "passing",
+      "performance": "optimal",
+      "last_updated": "2025-07-11T20:21:11.376590"
+    }
   }
 ]
