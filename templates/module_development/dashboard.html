@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 개발 모드 - your_program Manager</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/theme.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg flex flex-col">
+            <div class="p-6 flex-shrink-0">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🛠️ 모듈 개발</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">샌드박스 환경</p>
+            </div>
+            
+            <nav class="mt-6 flex-1">
+                <div class="px-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">개발 도구</h3>
+                </div>
+                
+                <a href="/dev-modules/" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    개발 대시보드
+                </a>
+                
+                <a href="/dev-modules/projects" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-project-diagram mr-3"></i>
+                    프로젝트 관리
+                </a>
+                
+                <a href="/dev-modules/projects/new" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-plus-circle mr-3"></i>
+                    새 프로젝트
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">개발 도구</h3>
+                </div>
+                
+                <a href="/dev-modules/designer" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-palette mr-3"></i>
+                    모듈 디자이너
+                </a>
+                
+                <a href="/dev-modules/sandbox" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-flask mr-3"></i>
+                    개발 샌드박스
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">배포</h3>
+                </div>
+                
+                <a href="/module-marketplace" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-store mr-3"></i>
+                    마켓플레이스
+                </a>
+                
+                <a href="/admin_dashboard" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-arrow-left mr-3"></i>
+                    관리자 대시보드
+                </a>
+            </nav>
+            
+            <div class="p-6 flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                    <a href="/auth/logout" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- 헤더 -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">모듈 개발 대시보드</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">샌드박스 환경에서 모듈을 개발하고 테스트하세요</p>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="flex-1 overflow-auto p-6">
+                <!-- 빠른 액션 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow" onclick="location.href='/dev-modules/projects/new'">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                                <i class="fas fa-plus text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">새 프로젝트</p>
+                                <p class="text-lg font-semibold text-gray-900 dark:text-white">생성하기</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow" onclick="location.href='/dev-modules/designer'">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                                <i class="fas fa-palette text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">모듈 디자이너</p>
+                                <p class="text-lg font-semibold text-gray-900 dark:text-white">시각적 편집</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow" onclick="location.href='/dev-modules/sandbox'">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                                <i class="fas fa-flask text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">개발 샌드박스</p>
+                                <p class="text-lg font-semibold text-gray-900 dark:text-white">실험 환경</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow" onclick="location.href='/module-marketplace'">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-orange-100 dark:bg-orange-900">
+                                <i class="fas fa-rocket text-orange-600 dark:text-orange-400"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">배포</p>
+                                <p class="text-lg font-semibold text-gray-900 dark:text-white">마켓플레이스</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 개발 통계 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- 프로젝트 통계 -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">프로젝트 통계</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 dark:text-gray-400">총 프로젝트</span>
+                                <span class="text-2xl font-bold text-blue-600" id="total-projects">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 dark:text-gray-400">개발 중</span>
+                                <span class="text-2xl font-bold text-yellow-600" id="in-development">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 dark:text-gray-400">배포 완료</span>
+                                <span class="text-2xl font-bold text-green-600" id="deployed">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 최근 활동 -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">최근 활동</h3>
+                        <div class="space-y-3" id="recent-activities">
+                            <div class="text-gray-500 dark:text-gray-400 text-sm">활동이 없습니다.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 프로젝트 목록 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">내 프로젝트</h3>
+                        <button onclick="location.href='/dev-modules/projects'" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                            전체 보기 <i class="fas fa-arrow-right ml-1"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div id="projects-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- 프로젝트 카드들이 여기에 동적으로 로드됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // 개발 통계 로드
+        async function loadDevelopmentStats() {
+            try {
+                const response = await fetch('/api/module-development/projects');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const projects = data.data;
+                    const totalProjects = projects.length;
+                    const inDevelopment = projects.filter(p => p.status === 'development').length;
+                    const deployed = projects.filter(p => p.status === 'deployed').length;
+                    
+                    document.getElementById('total-projects').textContent = totalProjects;
+                    document.getElementById('in-development').textContent = inDevelopment;
+                    document.getElementById('deployed').textContent = deployed;
+                    
+                    // 최근 프로젝트 표시
+                    renderRecentProjects(projects.slice(0, 6));
+                }
+            } catch (error) {
+                console.error('개발 통계 로드 실패:', error);
+            }
+        }
+
+        // 최근 프로젝트 렌더링
+        function renderRecentProjects(projects) {
+            const projectsList = document.getElementById('projects-list');
+            
+            if (projects.length === 0) {
+                projectsList.innerHTML = `
+                    <div class="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-folder-open text-4xl mb-4"></i>
+                        <p class="text-lg mb-2">프로젝트가 없습니다</p>
+                        <p class="text-sm mb-4">새 프로젝트를 생성하여 모듈 개발을 시작하세요</p>
+                        <button onclick="location.href='/dev-modules/projects/new'" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>새 프로젝트 생성
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            projectsList.innerHTML = projects.map(project => `
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="location.href='/dev-modules/projects/${project.project_id}'">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-gray-900 dark:text-white">${project.project_name}</h4>
+                        <span class="px-2 py-1 text-xs rounded-full ${
+                            project.status === 'development' ? 'bg-yellow-100 text-yellow-800' :
+                            project.status === 'deployed' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                        }">
+                            ${project.status === 'development' ? '개발 중' :
+                              project.status === 'deployed' ? '배포됨' : '기타'}
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">${project.description || '설명 없음'}</p>
+                    <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>${project.module_id}</span>
+                        <span>v${project.version}</span>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="event.stopPropagation(); location.href='/dev-modules/projects/${project.project_id}/preview'" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                            <i class="fas fa-eye mr-1"></i>미리보기
+                        </button>
+                        <button onclick="event.stopPropagation(); location.href='/dev-modules/projects/${project.project_id}/deploy'" class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">
+                            <i class="fas fa-rocket mr-1"></i>배포
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 최근 활동 로드
+        async function loadRecentActivities() {
+            try {
+                const response = await fetch('/api/module-development/projects');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const projects = data.data;
+                    const recentActivities = projects
+                        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+                        .slice(0, 5);
+                    
+                    const activitiesContainer = document.getElementById('recent-activities');
+                    
+                    if (recentActivities.length === 0) {
+                        activitiesContainer.innerHTML = '<div class="text-gray-500 dark:text-gray-400 text-sm">활동이 없습니다.</div>';
+                        return;
+                    }
+                    
+                    activitiesContainer.innerHTML = recentActivities.map(project => `
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">${project.project_name}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">${new Date(project.updated_at).toLocaleDateString()}</p>
+                            </div>
+                            <span class="text-xs px-2 py-1 rounded-full ${
+                                project.status === 'development' ? 'bg-yellow-100 text-yellow-800' :
+                                project.status === 'deployed' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                            }">
+                                ${project.status === 'development' ? '개발 중' :
+                                  project.status === 'deployed' ? '배포됨' : '기타'}
+                            </span>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('최근 활동 로드 실패:', error);
+            }
+        }
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDevelopmentStats();
+            loadRecentActivities();
+        });
+    </script>
+</body>
+</html> 

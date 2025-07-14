@@ -1,0 +1,1186 @@
+{% extends "base.html" %}
+
+{% block title %}모듈 설정 - {{ module_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.settings-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.settings-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.settings-title {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.settings-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    line-height: 1.6;
+}
+
+.settings-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 30px;
+}
+
+.settings-sidebar {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+    height: fit-content;
+}
+
+.settings-sidebar h3 {
+    color: #374151;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 10px;
+}
+
+.module-info {
+    margin-bottom: 25px;
+}
+
+.module-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.module-info-label {
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.module-info-value {
+    color: #1f2937;
+    font-size: 0.9rem;
+}
+
+.module-status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-activated {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-installed {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-deactivated {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.quick-actions {
+    margin-bottom: 25px;
+}
+
+.quick-action-btn {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    text-align: center;
+    font-size: 0.9rem;
+    display: block;
+}
+
+.quick-action-btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.quick-action-btn-primary:hover {
+    background: #2563eb;
+}
+
+.quick-action-btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.quick-action-btn-success:hover {
+    background: #059669;
+}
+
+.quick-action-btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.quick-action-btn-warning:hover {
+    background: #d97706;
+}
+
+.quick-action-btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.quick-action-btn-danger:hover {
+    background: #dc2626;
+}
+
+.quick-action-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.quick-action-btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.settings-main {
+    background: white;
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.settings-main h3 {
+    color: #374151;
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 10px;
+}
+
+.settings-section {
+    margin-bottom: 30px;
+}
+
+.settings-section h4 {
+    color: #6b7280;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.setting-group {
+    margin-bottom: 20px;
+}
+
+.setting-label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.setting-description {
+    color: #6b7280;
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.setting-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.setting-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.setting-select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+    cursor: pointer;
+}
+
+.setting-checkbox {
+    margin-right: 8px;
+}
+
+.setting-checkbox-label {
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+}
+
+.setting-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    min-height: 100px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.setting-number {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.setting-color {
+    width: 50px;
+    height: 40px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.setting-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.setting-radio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.setting-radio:hover {
+    background: #f9fafb;
+}
+
+.setting-radio input[type="radio"] {
+    margin: 0;
+}
+
+.setting-radio-label {
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+}
+
+.setting-radio-description {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.settings-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.action-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.action-btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.action-btn-primary:hover {
+    background: #2563eb;
+}
+
+.action-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.action-btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.action-btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.action-btn-danger:hover {
+    background: #dc2626;
+}
+
+.setting-validation {
+    color: #dc2626;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.setting-help {
+    color: #6b7280;
+    font-size: 0.8rem;
+    margin-top: 5px;
+    line-height: 1.4;
+}
+
+.settings-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 25px;
+}
+
+.settings-tab {
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.settings-tab.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+}
+
+.settings-tab:hover {
+    color: #374151;
+}
+
+.settings-tab-content {
+    display: none;
+}
+
+.settings-tab-content.active {
+    display: block;
+}
+
+.permissions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.permission-item {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.permission-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.permission-name {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+.permission-checkbox {
+    margin: 0;
+}
+
+.permission-description {
+    color: #6b7280;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.integration-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.integration-status.connected {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.integration-status.disconnected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.integration-status.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.integration-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+
+.integration-icon.connected {
+    background: #10b981;
+}
+
+.integration-icon.disconnected {
+    background: #ef4444;
+}
+
+.integration-icon.pending {
+    background: #f59e0b;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f4f6;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .settings-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .settings-actions {
+        flex-direction: column;
+    }
+    
+    .permissions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <!-- 설정 헤더 -->
+    <div class="settings-header">
+        <h1 class="settings-title">⚙️ {{ module_name }} 설정</h1>
+        <p class="settings-subtitle">
+            모듈의 설정을 관리하고 권한을 조정하세요.<br>
+            변경사항은 즉시 적용됩니다.
+        </p>
+    </div>
+
+    <!-- 설정 콘텐츠 -->
+    <div class="settings-content">
+        <!-- 사이드바 -->
+        <div class="settings-sidebar">
+            <h3>📋 모듈 정보</h3>
+            
+            <div class="module-info">
+                <div class="module-info-item">
+                    <span class="module-info-label">모듈명</span>
+                    <span class="module-info-value">{{ module_name }}</span>
+                </div>
+                <div class="module-info-item">
+                    <span class="module-info-label">버전</span>
+                    <span class="module-info-value">{{ module_version }}</span>
+                </div>
+                <div class="module-info-item">
+                    <span class="module-info-label">상태</span>
+                    <span class="module-status-badge status-{{ module_status }}">
+                        {{ get_status_text(module_status) }}
+                    </span>
+                </div>
+                <div class="module-info-item">
+                    <span class="module-info-label">설치일</span>
+                    <span class="module-info-value">{{ module_installed_at }}</span>
+                </div>
+                <div class="module-info-item">
+                    <span class="module-info-label">활성화일</span>
+                    <span class="module-info-value">{{ module_activated_at or '미활성화' }}</span>
+                </div>
+            </div>
+            
+            <h3>🚀 빠른 작업</h3>
+            
+            <div class="quick-actions">
+                {% if module_status == 'installed' %}
+                    <button class="quick-action-btn quick-action-btn-success" onclick="activateModule()">
+                        활성화
+                    </button>
+                {% elif module_status == 'activated' %}
+                    <button class="quick-action-btn quick-action-btn-warning" onclick="deactivateModule()">
+                        비활성화
+                    </button>
+                {% endif %}
+                
+                <button class="quick-action-btn quick-action-btn-secondary" onclick="runDemo()">
+                    데모 실행
+                </button>
+                
+                <button class="quick-action-btn quick-action-btn-secondary" onclick="viewDocumentation()">
+                    문서 보기
+                </button>
+                
+                <button class="quick-action-btn quick-action-btn-danger" onclick="uninstallModule()">
+                    모듈 제거
+                </button>
+            </div>
+        </div>
+
+        <!-- 메인 설정 영역 -->
+        <div class="settings-main">
+            <!-- 설정 탭 -->
+            <div class="settings-tabs">
+                <button class="settings-tab active" onclick="showTab('general')">일반 설정</button>
+                <button class="settings-tab" onclick="showTab('permissions')">권한 관리</button>
+                <button class="settings-tab" onclick="showTab('integrations')">연동 설정</button>
+                <button class="settings-tab" onclick="showTab('advanced')">고급 설정</button>
+            </div>
+
+            <!-- 일반 설정 탭 -->
+            <div id="general-tab" class="settings-tab-content active">
+                <h3>일반 설정</h3>
+                
+                <form id="generalSettingsForm">
+                    <div class="settings-section">
+                        <h4>기본 설정</h4>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">모듈 활성화</label>
+                            <div class="setting-description">이 모듈을 활성화하여 사용할 수 있게 합니다.</div>
+                            <label class="setting-checkbox-label">
+                                <input type="checkbox" class="setting-checkbox" id="moduleEnabled" 
+                                       {% if module_status == 'activated' %}checked{% endif %}>
+                                모듈 활성화
+                            </label>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">자동 시작</label>
+                            <div class="setting-description">시스템 시작 시 자동으로 모듈을 활성화합니다.</div>
+                            <label class="setting-checkbox-label">
+                                <input type="checkbox" class="setting-checkbox" id="autoStart" 
+                                       {% if settings.get('auto_start', False) %}checked{% endif %}>
+                                자동 시작
+                            </label>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">디버그 모드</label>
+                            <div class="setting-description">디버그 정보를 활성화합니다.</div>
+                            <label class="setting-checkbox-label">
+                                <input type="checkbox" class="setting-checkbox" id="debugMode" 
+                                       {% if settings.get('debug_mode', False) %}checked{% endif %}>
+                                디버그 모드
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h4>알림 설정</h4>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">이메일 알림</label>
+                            <div class="setting-description">중요한 이벤트에 대해 이메일 알림을 받습니다.</div>
+                            <label class="setting-checkbox-label">
+                                <input type="checkbox" class="setting-checkbox" id="emailNotifications" 
+                                       {% if settings.get('email_notifications', True) %}checked{% endif %}>
+                                이메일 알림 활성화
+                            </label>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">푸시 알림</label>
+                            <div class="setting-description">모바일 앱으로 푸시 알림을 받습니다.</div>
+                            <label class="setting-checkbox-label">
+                                <input type="checkbox" class="setting-checkbox" id="pushNotifications" 
+                                       {% if settings.get('push_notifications', True) %}checked{% endif %}>
+                                푸시 알림 활성화
+                            </label>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">알림 빈도</label>
+                            <div class="setting-description">알림을 받을 빈도를 설정합니다.</div>
+                            <select class="setting-select" id="notificationFrequency">
+                                <option value="immediate" {% if settings.get('notification_frequency') == 'immediate' %}selected{% endif %}>즉시</option>
+                                <option value="hourly" {% if settings.get('notification_frequency') == 'hourly' %}selected{% endif %}>시간별</option>
+                                <option value="daily" {% if settings.get('notification_frequency') == 'daily' %}selected{% endif %}>일별</option>
+                                <option value="weekly" {% if settings.get('notification_frequency') == 'weekly' %}selected{% endif %}>주별</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h4>데이터 설정</h4>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">데이터 보존 기간</label>
+                            <div class="setting-description">모듈 데이터를 보존할 기간을 설정합니다.</div>
+                            <input type="number" class="setting-number" id="dataRetentionDays" 
+                                   value="{{ settings.get('data_retention_days', 365) }}" min="1" max="3650">
+                            <div class="setting-help">일 단위 (1-3650일)</div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">자동 백업</label>
+                            <div class="setting-description">정기적으로 데이터를 백업합니다.</div>
+                            <label class="setting-checkbox-label">
+                                <input type="checkbox" class="setting-checkbox" id="autoBackup" 
+                                       {% if settings.get('auto_backup', True) %}checked{% endif %}>
+                                자동 백업 활성화
+                            </label>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label class="setting-label">백업 빈도</label>
+                            <div class="setting-description">백업을 수행할 빈도를 설정합니다.</div>
+                            <select class="setting-select" id="backupFrequency">
+                                <option value="daily" {% if settings.get('backup_frequency') == 'daily' %}selected{% endif %}>일별</option>
+                                <option value="weekly" {% if settings.get('backup_frequency') == 'weekly' %}selected{% endif %}>주별</option>
+                                <option value="monthly" {% if settings.get('backup_frequency') == 'monthly' %}selected{% endif %}>월별</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 권한 관리 탭 -->
+            <div id="permissions-tab" class="settings-tab-content">
+                <h3>권한 관리</h3>
+                
+                <div class="settings-section">
+                    <h4>역할별 권한</h4>
+                    <div class="setting-description">각 역할이 가질 수 있는 권한을 설정합니다.</div>
+                    
+                    <div class="permissions-grid" id="permissionsGrid">
+                        <!-- 권한 항목들이 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 연동 설정 탭 -->
+            <div id="integrations-tab" class="settings-tab-content">
+                <h3>연동 설정</h3>
+                
+                <div class="settings-section">
+                    <h4>중앙 데이터 연동</h4>
+                    
+                    <div class="integration-status connected">
+                        <div class="integration-icon connected"></div>
+                        <div>
+                            <strong>중앙 데이터 레이어</strong>
+                            <div>연동됨 - 실시간 데이터 동기화 중</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">동기화 빈도</label>
+                        <div class="setting-description">중앙 데이터와 동기화할 빈도를 설정합니다.</div>
+                        <select class="setting-select" id="syncFrequency">
+                            <option value="realtime">실시간</option>
+                            <option value="5min">5분마다</option>
+                            <option value="15min">15분마다</option>
+                            <option value="1hour">1시간마다</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>통합 연동 시스템</h4>
+                    
+                    <div class="integration-status connected">
+                        <div class="integration-icon connected"></div>
+                        <div>
+                            <strong>통합 연동 시스템</strong>
+                            <div>연동됨 - 이벤트 기반 처리 중</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">이벤트 처리</label>
+                        <div class="setting-description">이벤트 처리 방식을 설정합니다.</div>
+                        <div class="setting-radio-group">
+                            <label class="setting-radio">
+                                <input type="radio" name="eventProcessing" value="immediate" checked>
+                                <div>
+                                    <div class="setting-radio-label">즉시 처리</div>
+                                    <div class="setting-radio-description">이벤트 발생 시 즉시 처리합니다.</div>
+                                </div>
+                            </label>
+                            <label class="setting-radio">
+                                <input type="radio" name="eventProcessing" value="batch">
+                                <div>
+                                    <div class="setting-radio-label">배치 처리</div>
+                                    <div class="setting-radio-description">일정 시간마다 배치로 처리합니다.</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 고급 설정 탭 -->
+            <div id="advanced-tab" class="settings-tab-content">
+                <h3>고급 설정</h3>
+                
+                <div class="settings-section">
+                    <h4>성능 설정</h4>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">캐시 TTL</label>
+                        <div class="setting-description">캐시 데이터의 유효 시간을 설정합니다.</div>
+                        <input type="number" class="setting-number" id="cacheTTL" 
+                               value="{{ settings.get('cache_ttl', 300) }}" min="60" max="3600">
+                        <div class="setting-help">초 단위 (60-3600초)</div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">최대 동시 처리</label>
+                        <div class="setting-description">동시에 처리할 수 있는 최대 작업 수를 설정합니다.</div>
+                        <input type="number" class="setting-number" id="maxConcurrent" 
+                               value="{{ settings.get('max_concurrent', 10) }}" min="1" max="100">
+                        <div class="setting-help">1-100개</div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>로깅 설정</h4>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">로그 레벨</label>
+                        <div class="setting-description">로그의 상세 수준을 설정합니다.</div>
+                        <select class="setting-select" id="logLevel">
+                            <option value="DEBUG" {% if settings.get('log_level') == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+                            <option value="INFO" {% if settings.get('log_level') == 'INFO' %}selected{% endif %}>INFO</option>
+                            <option value="WARNING" {% if settings.get('log_level') == 'WARNING' %}selected{% endif %}>WARNING</option>
+                            <option value="ERROR" {% if settings.get('log_level') == 'ERROR' %}selected{% endif %}>ERROR</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">로그 보존 기간</label>
+                        <div class="setting-description">로그 파일을 보존할 기간을 설정합니다.</div>
+                        <input type="number" class="setting-number" id="logRetentionDays" 
+                               value="{{ settings.get('log_retention_days', 30) }}" min="1" max="365">
+                        <div class="setting-help">일 단위 (1-365일)</div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>보안 설정</h4>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">API 키</label>
+                        <div class="setting-description">외부 API 연동을 위한 키를 설정합니다.</div>
+                        <input type="password" class="setting-input" id="apiKey" 
+                               value="{{ settings.get('api_key', '') }}" placeholder="API 키를 입력하세요">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">IP 화이트리스트</label>
+                        <div class="setting-description">접근을 허용할 IP 주소를 설정합니다.</div>
+                        <textarea class="setting-textarea" id="ipWhitelist" 
+                                  placeholder="한 줄에 하나씩 IP 주소를 입력하세요">{{ settings.get('ip_whitelist', '') }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 설정 액션 버튼 -->
+            <div class="settings-actions">
+                <button class="action-btn action-btn-primary" onclick="saveSettings()">
+                    설정 저장
+                </button>
+                <button class="action-btn action-btn-secondary" onclick="resetSettings()">
+                    기본값으로 복원
+                </button>
+                <button class="action-btn action-btn-secondary" onclick="exportSettings()">
+                    설정 내보내기
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 로딩 오버레이 -->
+<div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <div class="loading-spinner"></div>
+</div>
+
+<script type="text/javascript">
+    // Jinja2의 tojson 필터를 사용할 때, 자바스크립트 객체로 안전하게 변환하려면 반드시 중괄호({{ }})를 따옴표로 감싸야 합니다.
+    // window 객체에 할당하면 전역 변수 충돌을 방지할 수 있습니다. (초보자에게 추천)
+    window.currentSettings = {{ settings | tojson | safe }}; // noqa
+    window.originalSettings = {{ settings | tojson | safe }}; // noqa
+</script>
+
+    // 페이지 로드 시 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+    loadPermissions();
+    setupEventListeners();
+});
+
+// 탭 전환
+function showTab(tabName) {
+    // 모든 탭 비활성화
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.settings-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // 선택된 탭 활성화
+    document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+}
+
+// 권한 로드
+function loadPermissions() {
+    const permissions = [
+        {
+            name: '모듈 관리',
+            description: '모듈 설치, 활성화, 비활성화, 제거',
+            roles: ['system_admin', 'brand_admin']
+        },
+        {
+            name: '설정 관리',
+            description: '모듈 설정 변경 및 관리',
+            roles: ['system_admin', 'brand_admin', 'branch_admin']
+        },
+        {
+            name: '데이터 조회',
+            description: '모듈 데이터 조회 및 분석',
+            roles: ['system_admin', 'brand_admin', 'branch_admin', 'store_manager']
+        },
+        {
+            name: '데이터 수정',
+            description: '모듈 데이터 생성, 수정, 삭제',
+            roles: ['system_admin', 'brand_admin', 'branch_admin']
+        },
+        {
+            name: '보고서 생성',
+            description: '모듈 관련 보고서 생성 및 내보내기',
+            roles: ['system_admin', 'brand_admin', 'branch_admin']
+        },
+        {
+            name: '사용자 관리',
+            description: '모듈 사용자 권한 관리',
+            roles: ['system_admin', 'brand_admin']
+        }
+    ];
+    
+    const grid = document.getElementById('permissionsGrid');
+    grid.innerHTML = '';
+    
+    permissions.forEach(permission => {
+        const item = document.createElement('div');
+        item.className = 'permission-item';
+        
+        item.innerHTML = `
+            <div class="permission-header">
+                <div class="permission-name">${permission.name}</div>
+                <input type="checkbox" class="permission-checkbox" 
+                       id="perm_${permission.name.replace(/\s+/g, '_')}"
+                       ${permission.roles.includes('{{ current_user.role }}') ? 'checked' : ''}>
+            </div>
+            <div class="permission-description">${permission.description}</div>
+        `;
+        
+        grid.appendChild(item);
+    });
+}
+
+// 설정 저장
+function saveSettings() {
+    showLoading();
+    
+    const settings = collectSettings();
+    
+    fetch(`/api/marketplace/modules/{{ module_id }}/settings`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('설정이 성공적으로 저장되었습니다.');
+            currentSettings = settings;
+        } else {
+            alert('설정 저장 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('설정 저장 오류:', error);
+        alert('설정 저장 중 오류가 발생했습니다.');
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+// 설정 수집
+function collectSettings() {
+    const settings = {};
+    
+    // 일반 설정
+    settings.module_enabled = document.getElementById('moduleEnabled').checked;
+    settings.auto_start = document.getElementById('autoStart').checked;
+    settings.debug_mode = document.getElementById('debugMode').checked;
+    settings.email_notifications = document.getElementById('emailNotifications').checked;
+    settings.push_notifications = document.getElementById('pushNotifications').checked;
+    settings.notification_frequency = document.getElementById('notificationFrequency').value;
+    settings.data_retention_days = parseInt(document.getElementById('dataRetentionDays').value);
+    settings.auto_backup = document.getElementById('autoBackup').checked;
+    settings.backup_frequency = document.getElementById('backupFrequency').value;
+    
+    // 고급 설정
+    settings.cache_ttl = parseInt(document.getElementById('cacheTTL').value);
+    settings.max_concurrent = parseInt(document.getElementById('maxConcurrent').value);
+    settings.log_level = document.getElementById('logLevel').value;
+    settings.log_retention_days = parseInt(document.getElementById('logRetentionDays').value);
+    settings.api_key = document.getElementById('apiKey').value;
+    settings.ip_whitelist = document.getElementById('ipWhitelist').value;
+    
+    return settings;
+}
+
+// 설정 초기화
+function resetSettings() {
+    if (!confirm('모든 설정을 기본값으로 복원하시겠습니까?')) return;
+    
+    // 폼 초기화
+    document.getElementById('generalSettingsForm').reset();
+    
+    // 기본값 설정
+    document.getElementById('dataRetentionDays').value = 365;
+    document.getElementById('cacheTTL').value = 300;
+    document.getElementById('maxConcurrent').value = 10;
+    document.getElementById('logRetentionDays').value = 30;
+    
+    alert('설정이 기본값으로 복원되었습니다.');
+}
+
+// 설정 내보내기
+function exportSettings() {
+    const settings = collectSettings();
+    const dataStr = JSON.stringify(settings, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `{{ module_id }}_settings.json`;
+    link.click();
+}
+
+// 모듈 활성화
+function activateModule() {
+    if (!confirm('이 모듈을 활성화하시겠습니까?')) return;
+    
+    showLoading();
+    
+    fetch(`/api/marketplace/modules/{{ module_id }}/activate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('활성화 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('모듈 활성화 오류:', error);
+        alert('모듈 활성화 중 오류가 발생했습니다.');
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+// 모듈 비활성화
+function deactivateModule() {
+    if (!confirm('이 모듈을 비활성화하시겠습니까?')) return;
+    
+    showLoading();
+    
+    fetch(`/api/marketplace/modules/{{ module_id }}/deactivate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('비활성화 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('모듈 비활성화 오류:', error);
+        alert('모듈 비활성화 중 오류가 발생했습니다.');
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+// 모듈 제거
+function uninstallModule() {
+    if (!confirm('이 모듈을 제거하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+    
+    showLoading();
+    
+    fetch(`/api/marketplace/modules/{{ module_id }}/uninstall`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = '/module-marketplace';
+        } else {
+            alert('제거 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('모듈 제거 오류:', error);
+        alert('모듈 제거 중 오류가 발생했습니다.');
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+// 데모 실행
+function runDemo() {
+    showLoading();
+    
+    fetch(`/api/marketplace/modules/{{ module_id }}/demo`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert('데모 실행 실패: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('데모 실행 오류:', error);
+            alert('데모 실행 중 오류가 발생했습니다.');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+// 문서 보기
+function viewDocumentation() {
+    window.open('/docs/modules/{{ module_id }}', '_blank');
+}
+
+// 이벤트 리스너 설정
+function setupEventListeners() {
+    // 설정 변경 감지
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        element.addEventListener('change', function() {
+            // 설정이 변경되었음을 표시
+            console.log('설정 변경됨:', this.id, this.value);
+        });
+    });
+}
+
+// 로딩 표시/숨김
+function showLoading() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+</script>
+{% endblock %} 

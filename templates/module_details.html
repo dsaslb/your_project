@@ -1,0 +1,680 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module.name }} - 모듈 상세{% endblock %}
+
+{% block extra_css %}
+<style>
+.module-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.module-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.module-title {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.module-meta {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    background: rgba(255,255,255,0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+.module-description {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    line-height: 1.6;
+}
+
+.module-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.content-panel {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.content-panel h3 {
+    color: #374151;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.feature-item {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+}
+
+.feature-item h4 {
+    margin: 0 0 8px 0;
+    color: #1f2937;
+    font-size: 1rem;
+}
+
+.feature-item p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.status-card {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-activated {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.status-deactivated {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.status-error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.status-maintenance {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.status-unknown {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.status-details {
+    display: grid;
+    gap: 10px;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.status-item:last-child {
+    border-bottom: none;
+}
+
+.status-label {
+    font-weight: 500;
+    color: #374151;
+}
+
+.status-value {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.action-btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.action-btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.action-btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.action-btn-success:hover {
+    background: #059669;
+}
+
+.action-btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.action-btn-warning:hover {
+    background: #d97706;
+}
+
+.action-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.action-btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.action-btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.action-btn-danger:hover {
+    background: #dc2626;
+}
+
+.demo-section {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.demo-section h4 {
+    color: #92400e;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.demo-description {
+    color: #92400e;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+}
+
+.permissions-section {
+    margin-top: 20px;
+}
+
+.permission-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.permission-name {
+    font-weight: 500;
+    color: #374151;
+}
+
+.permission-level {
+    font-size: 0.8rem;
+    color: #6b7280;
+    background: #e5e7eb;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.dependencies-section {
+    margin-top: 20px;
+}
+
+.dependency-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.dependency-name {
+    font-weight: 500;
+    color: #374151;
+}
+
+.dependency-status {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.dependency-available {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.dependency-unavailable {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.api-endpoints {
+    margin-top: 20px;
+}
+
+.endpoint-item {
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #374151;
+    border-left: 4px solid #3b82f6;
+}
+
+@media (max-width: 768px) {
+    .module-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .module-meta {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="module-detail-container">
+    <!-- 모듈 헤더 -->
+    <div class="module-header">
+        <h1 class="module-title">{{ module.name }}</h1>
+        <div class="module-meta">
+            <span class="meta-item">버전 {{ module.version }}</span>
+            <span class="meta-item">{{ module.category }}</span>
+            <span class="meta-item">{{ module.author }}</span>
+            <span class="meta-item">평점 {{ module.rating }}/5.0</span>
+            <span class="meta-item">다운로드 {{ module.downloads }}</span>
+        </div>
+        <p class="module-description">{{ module.description }}</p>
+    </div>
+
+    <!-- 모듈 콘텐츠 -->
+    <div class="module-content">
+        <!-- 메인 콘텐츠 -->
+        <div class="main-content">
+            <!-- 기능 소개 -->
+            <div class="content-panel">
+                <h3>🚀 주요 기능</h3>
+                <div class="features-grid">
+                    {% for feature in module.features %}
+                    <div class="feature-item">
+                        <h4>{{ feature }}</h4>
+                        <p>모듈의 핵심 기능을 제공합니다.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- API 엔드포인트 -->
+            {% if module.api_endpoints %}
+            <div class="content-panel">
+                <h3>🔗 API 엔드포인트</h3>
+                <div class="api-endpoints">
+                    {% for endpoint in module.api_endpoints %}
+                    <div class="endpoint-item">{{ endpoint }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 권한 정보 -->
+            {% if module.hierarchy_levels %}
+            <div class="content-panel">
+                <h3>🔐 권한 및 계층</h3>
+                <div class="permissions-section">
+                    {% for level, permission in module.hierarchy_levels.items() %}
+                    <div class="permission-item">
+                        <span class="permission-name">{{ level.replace('_', ' ').title() }}</span>
+                        <span class="permission-level">{{ permission.replace('_', ' ').title() }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 의존성 정보 -->
+            {% if dependencies_status.dependencies %}
+            <div class="content-panel">
+                <h3>📦 의존성</h3>
+                <div class="dependencies-section">
+                    {% for dep in dependencies_status.dependencies %}
+                    <div class="dependency-item">
+                        <span class="dependency-name">{{ dep.module_id.replace('_', ' ').title() }}</span>
+                        <span class="dependency-status 
+                            {% if dep.available %}dependency-available{% else %}dependency-unavailable{% endif %}">
+                            {% if dep.available %}사용 가능{% else %}사용 불가{% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 데모 섹션 -->
+            {% if demo_available %}
+            <div class="demo-section">
+                <h4>🎮 데모 체험</h4>
+                <p class="demo-description">
+                    이 모듈의 기능을 실제로 체험해보세요. 데모 데이터를 사용하여 모든 기능을 안전하게 테스트할 수 있습니다.
+                </p>
+                <a href="{{ url_for('module_marketplace_routes.module_demo', module_id=module.id) }}" 
+                   class="action-btn action-btn-warning">
+                    🎯 데모 실행하기
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 사이드바 -->
+        <div class="sidebar">
+            <!-- 모듈 상태 -->
+            <div class="content-panel">
+                <h3>📊 모듈 상태</h3>
+                <div class="status-card">
+                    <div class="status-header">
+                        <span>현재 상태</span>
+                        <span class="status-badge 
+                            {% if module_status.status == 'activated' %}status-activated
+                            {% elif module_status.status == 'deactivated' %}status-deactivated
+                            {% elif module_status.status == 'error' %}status-error
+                            {% elif module_status.status == 'maintenance' %}status-maintenance
+                            {% else %}status-unknown{% endif %}">
+                            {% if module_status.status == 'activated' %}활성화됨
+                            {% elif module_status.status == 'deactivated' %}비활성화됨
+                            {% elif module_status.status == 'error' %}오류
+                            {% elif module_status.status == 'maintenance' %}유지보수
+                            {% else %}알 수 없음{% endif %}
+                        </span>
+                    </div>
+                    <div class="status-details">
+                        <div class="status-item">
+                            <span class="status-label">건강 상태</span>
+                            <span class="status-value">{{ module_status.health }}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">설치 여부</span>
+                            <span class="status-value">{% if is_installed %}설치됨{% else %}미설치{% endif %}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">활성화 여부</span>
+                            <span class="status-value">{% if is_activated %}활성화됨{% else %}비활성화됨{% endif %}</span>
+                        </div>
+                        {% if module_status.last_updated %}
+                        <div class="status-item">
+                            <span class="status-label">마지막 업데이트</span>
+                            <span class="status-value">{{ module_status.last_updated[:10] }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 액션 버튼 -->
+            <div class="content-panel">
+                <h3>⚙️ 모듈 관리</h3>
+                <div class="action-buttons">
+                    {% if not is_installed %}
+                    <button class="action-btn action-btn-primary" onclick="installModule()">
+                        📦 모듈 설치
+                    </button>
+                    {% else %}
+                        {% if not is_activated %}
+                        <button class="action-btn action-btn-success" onclick="activateModule()">
+                            ✅ 모듈 활성화
+                        </button>
+                        {% else %}
+                        <button class="action-btn action-btn-warning" onclick="deactivateModule()">
+                            ⏸️ 모듈 비활성화
+                        </button>
+                        {% endif %}
+                    <button class="action-btn action-btn-secondary" onclick="configureModule()">
+                        ⚙️ 설정 관리
+                    </button>
+                    <button class="action-btn action-btn-danger" onclick="uninstallModule()">
+                        🗑️ 모듈 제거
+                    </button>
+                    {% endif %}
+                    
+                    {% if demo_available %}
+                    <a href="{{ url_for('module_marketplace_routes.module_demo', module_id=module.id) }}" 
+                       class="action-btn action-btn-warning">
+                        🎮 데모 실행
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 모듈 정보 -->
+            <div class="content-panel">
+                <h3>ℹ️ 모듈 정보</h3>
+                <div class="status-details">
+                    <div class="status-item">
+                        <span class="status-label">모듈 ID</span>
+                        <span class="status-value">{{ module.id }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">카테고리</span>
+                        <span class="status-value">{{ module.category }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">범위</span>
+                        <span class="status-value">{{ module.scope }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">가격</span>
+                        <span class="status-value">
+                            {% if module.price == 0 %}무료{% else %}{{ module.price }} {{ module.currency }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">리뷰 수</span>
+                        <span class="status-value">{{ module.reviews }}개</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 모듈 설치
+function installModule() {
+    if (confirm('이 모듈을 설치하시겠습니까?')) {
+        fetch(`/api/module-marketplace/install/${moduleId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('모듈이 성공적으로 설치되었습니다.');
+                location.reload();
+            } else {
+                alert('모듈 설치에 실패했습니다: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('모듈 설치 중 오류가 발생했습니다.');
+        });
+    }
+}
+
+// 모듈 활성화
+function activateModule() {
+    if (confirm('이 모듈을 활성화하시겠습니까?')) {
+        fetch(`/api/module-marketplace/activate/${moduleId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('모듈이 성공적으로 활성화되었습니다.');
+                location.reload();
+            } else {
+                alert('모듈 활성화에 실패했습니다: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('모듈 활성화 중 오류가 발생했습니다.');
+        });
+    }
+}
+
+// 모듈 비활성화
+function deactivateModule() {
+    if (confirm('이 모듈을 비활성화하시겠습니까?')) {
+        fetch(`/api/module-marketplace/deactivate/${moduleId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('모듈이 성공적으로 비활성화되었습니다.');
+                location.reload();
+            } else {
+                alert('모듈 비활성화에 실패했습니다: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('모듈 비활성화 중 오류가 발생했습니다.');
+        });
+    }
+}
+
+// 모듈 설정
+function configureModule() {
+    // 설정 페이지로 이동
+    window.location.href = `/module-marketplace/configure/${moduleId}`;
+}
+
+// 모듈 제거
+function uninstallModule() {
+    if (confirm('정말로 이 모듈을 제거하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        fetch(`/api/module-marketplace/uninstall/${moduleId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('모듈이 성공적으로 제거되었습니다.');
+                window.location.href = '/module-marketplace';
+            } else {
+                alert('모듈 제거에 실패했습니다: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('모듈 제거 중 오류가 발생했습니다.');
+        });
+    }
+}
+
+// 모듈 ID 설정
+const moduleId = '{{ module.id }}';
+</script>
+{% endblock %} 

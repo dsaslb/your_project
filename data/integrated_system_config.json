@@ -1,0 +1,165 @@
+{
+  "system_config": {
+    "central_data_layer": {
+      "database_path": "data/central_data.db",
+      "auto_backup": true,
+      "backup_interval_hours": 24,
+      "max_connections": 100,
+      "connection_timeout": 30
+    },
+    "integration_system": {
+      "auto_start": true,
+      "event_handlers_enabled": true,
+      "background_workers": 10,
+      "analytics_cache_size": 1000,
+      "real_time_sync": true,
+      "sync_interval_seconds": 30
+    },
+    "modules": {
+      "attendance_management": {
+        "enabled": true,
+        "auto_integration": true,
+        "real_time_updates": true
+      },
+      "sales_management": {
+        "enabled": true,
+        "auto_integration": true,
+        "real_time_updates": true
+      },
+      "payroll_management": {
+        "enabled": true,
+        "auto_integration": true,
+        "real_time_updates": true
+      },
+      "inventory_management": {
+        "enabled": true,
+        "auto_integration": true,
+        "real_time_updates": true
+      },
+      "analytics_module": {
+        "enabled": true,
+        "auto_integration": true,
+        "real_time_updates": true
+      }
+    },
+    "analytics": {
+      "efficiency_thresholds": {
+        "labor_cost_ratio_warning": 30.0,
+        "labor_cost_ratio_critical": 40.0,
+        "attendance_rate_warning": 85.0,
+        "sales_per_hour_warning": 50000
+      },
+      "auto_analysis": true,
+      "analysis_interval_hours": 1,
+      "insight_generation": true,
+      "recommendation_engine": true
+    },
+    "notifications": {
+      "enabled": true,
+      "real_time_alerts": true,
+      "email_notifications": false,
+      "push_notifications": false,
+      "notification_retention_days": 30
+    },
+    "performance": {
+      "monitoring_enabled": true,
+      "performance_thresholds": {
+        "response_time_warning_ms": 1000,
+        "response_time_critical_ms": 3000,
+        "memory_usage_warning_percent": 80,
+        "cpu_usage_warning_percent": 80
+      },
+      "auto_optimization": true
+    },
+    "security": {
+      "data_encryption": true,
+      "access_control": true,
+      "audit_logging": true,
+      "session_timeout_minutes": 60
+    }
+  },
+  "integration_scenarios": {
+    "attendance_to_sales": {
+      "enabled": true,
+      "description": "출퇴근 기록 시 매출 데이터와 연동하여 효율성 분석",
+      "triggers": ["attendance_recorded"],
+      "actions": ["update_efficiency_metrics", "generate_insights", "create_notifications"]
+    },
+    "sales_to_payroll": {
+      "enabled": true,
+      "description": "매출 데이터를 기반으로 급여 계산 및 인건비 비율 분석",
+      "triggers": ["sales_recorded"],
+      "actions": ["update_performance_metrics", "calculate_labor_cost", "generate_reports"]
+    },
+    "payroll_to_analytics": {
+      "enabled": true,
+      "description": "급여 계산 완료 시 자동으로 효율성 분석 및 개선 제안 생성",
+      "triggers": ["payroll_calculated"],
+      "actions": ["analyze_efficiency", "generate_recommendations", "create_alerts"]
+    },
+    "analytics_to_notifications": {
+      "enabled": true,
+      "description": "분석 결과에 따른 자동 알림 및 관리자 리포트 생성",
+      "triggers": ["analytics_generated"],
+      "actions": ["create_management_alerts", "generate_reports", "update_dashboard"]
+    }
+  },
+  "demo_config": {
+    "enabled": true,
+    "sample_data_size": {
+      "employees": 15,
+      "attendance_records": 450,
+      "sales_records": 300,
+      "payroll_records": 60,
+      "inventory_items": 50
+    },
+    "demo_scenarios": [
+      "integrated_workflow_demo",
+      "real_time_monitoring_demo",
+      "efficiency_analysis_demo",
+      "automated_notifications_demo"
+    ],
+    "auto_refresh_interval_seconds": 30
+  },
+  "api_endpoints": {
+    "dashboard": "/api/integrated/dashboard",
+    "data": "/api/integrated/data/{branch_id}",
+    "efficiency": "/api/integrated/efficiency/{branch_id}",
+    "attendance": "/api/integrated/attendance/record",
+    "sales": "/api/integrated/sales/record",
+    "payroll": "/api/integrated/payroll/calculate",
+    "analytics": "/api/integrated/analytics/generate",
+    "notifications": "/api/integrated/notifications",
+    "demo": "/api/integrated/demo/integrated-scenario",
+    "status": "/api/integrated/status",
+    "realtime": "/api/integrated/realtime/stream"
+  },
+  "ui_components": {
+    "integrated_dashboard": {
+      "enabled": true,
+      "refresh_interval_seconds": 30,
+      "charts_enabled": true,
+      "real_time_updates": true
+    },
+    "realtime_monitor": {
+      "enabled": true,
+      "update_interval_seconds": 5,
+      "alert_display": true,
+      "performance_metrics": true
+    },
+    "efficiency_analytics": {
+      "enabled": true,
+      "auto_calculate": true,
+      "trend_analysis": true,
+      "comparison_charts": true
+    },
+    "integration_log": {
+      "enabled": true,
+      "max_entries": 100,
+      "log_levels": ["info", "success", "warning", "error"],
+      "auto_scroll": true
+    }
+  },
+  "last_updated": "2024-01-15T10:00:00Z",
+  "version": "1.0.0"
+} 

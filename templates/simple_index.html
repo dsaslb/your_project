@@ -1,0 +1,55 @@
+{% extends "simple_base.html" %}
+
+{% block title %}홈 - 간단한 모듈 마켓플레이스{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>간단한 모듈 마켓플레이스에 오신 것을 환영합니다!</h2>
+    <p>이 시스템은 혼자 개발하기 위한 간단한 모듈 마켓플레이스입니다.</p>
+    
+    <div style="margin-top: 2rem;">
+        <h3>사용 가능한 계정:</h3>
+        <ul style="margin-left: 2rem; margin-top: 1rem;">
+            <li><strong>관리자:</strong> username: admin, password: password</li>
+            <li><strong>매니저:</strong> username: manager, password: password</li>
+            <li><strong>직원:</strong> username: employee, password: password</li>
+        </ul>
+    </div>
+    
+    <div style="margin-top: 2rem;">
+        <a href="{{ url_for('login') }}" class="btn">로그인하기</a>
+    </div>
+</div>
+
+<div class="grid" style="margin-top: 2rem;">
+    <div class="card">
+        <h3>출퇴근 관리</h3>
+        <p>직원들의 출퇴근 시간을 체계적으로 관리할 수 있습니다.</p>
+        <ul>
+            <li>출근/퇴근 기록</li>
+            <li>근무 시간 통계</li>
+            <li>지각/조퇴 관리</li>
+        </ul>
+    </div>
+    
+    <div class="card">
+        <h3>스케줄 관리</h3>
+        <p>직원들의 근무 스케줄을 효율적으로 관리할 수 있습니다.</p>
+        <ul>
+            <li>월간/주간 스케줄</li>
+            <li>교대 근무 관리</li>
+            <li>휴가 신청/승인</li>
+        </ul>
+    </div>
+    
+    <div class="card">
+        <h3>재고 관리</h3>
+        <p>매장의 재고를 실시간으로 관리할 수 있습니다.</p>
+        <ul>
+            <li>재고 현황 조회</li>
+            <li>입/출고 관리</li>
+            <li>재고 알림</li>
+        </ul>
+    </div>
+</div>
+{% endblock %} 

@@ -1,6 +1,9 @@
 {% extends 'base_modern.html' %}
 {% block title %}최고 관리자 대시보드{% endblock %}
 {% block content %}
+
+<!-- 동적 메뉴 통합 템플릿 포함 -->
+{% include 'dynamic_menu_integration.html' %}
 <!-- 헤더 섹션 -->
 <div class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white rounded-3xl p-8 mb-8 shadow-2xl relative overflow-hidden">
   <!-- 배경 효과 -->
@@ -421,6 +424,24 @@
           <div class="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-500" style="width: 100%"></div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 동적 모듈 메뉴 -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-700 mb-8">
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="text-xl font-bold text-gray-900 dark:text-white">🔧 설치된 모듈 메뉴</h3>
+    <button id="refresh-menus" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+      <i class="fas fa-sync-alt mr-1"></i>새로고침
+    </button>
+  </div>
+  <div class="mb-6">
+    <div id="menu-statistics" class="mb-6">
+      <!-- 메뉴 통계가 여기에 로드됩니다 -->
+    </div>
+    <div id="dynamic-module-menus">
+      <!-- 동적 모듈 메뉴가 여기에 로드됩니다 -->
     </div>
   </div>
 </div>

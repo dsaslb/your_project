@@ -1,0 +1,124 @@
+{% extends "simple_base.html" %}
+
+{% block title %}대시보드 - 간단한 모듈 마켓플레이스{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>대시보드</h2>
+    <p>안녕하세요, {{ user.username }}님! 현재 {{ user.role }} 권한으로 로그인되어 있습니다.</p>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h3>빠른 액션</h3>
+        <div style="margin-top: 1rem;">
+            <a href="{{ url_for('marketplace') }}" class="btn">모듈 마켓플레이스</a>
+            <a href="{{ url_for('menu_management') }}" class="btn" style="margin-left: 0.5rem;">메뉴 관리</a>
+            <a href="{{ url_for('dev_mode') }}" class="btn" style="margin-left: 0.5rem;">개발 모드</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3>시스템 정보</h3>
+        <ul style="margin-top: 1rem;">
+            <li><strong>사용자:</strong> {{ user.username }}</li>
+            <li><strong>권한:</strong> {{ user.role }}</li>
+            <li><strong>접속 시간:</strong> {{ momentjs().format('YYYY-MM-DD HH:mm:ss') }}</li>
+        </ul>
+    </div>
+</div>
+
+<!-- 설치된 모듈 메뉴 -->
+{% if menus %}
+<div class="card" style="margin-top: 2rem;">
+    <h3>설치된 모듈</h3>
+    <div class="menu-grid">
+        {% for menu in menus %}
+        <div class="menu-item">
+            <div class="menu-icon">{{ menu.icon or '📋' }}</div>
+            <div class="menu-content">
+                <h4>{{ menu.name }}</h4>
+                {% if menu.children %}
+                <div class="sub-menu">
+                    {% for submenu in menu.children %}
+                    <a href="{{ submenu.url }}" class="sub-menu-item">{{ submenu.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<style>
+.menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.menu-item {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 1rem;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.menu-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.menu-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.menu-content h4 {
+    margin: 0 0 0.5rem 0;
+    color: #2c3e50;
+}
+
+.sub-menu {
+    margin-top: 0.5rem;
+}
+
+.sub-menu-item {
+    display: block;
+    padding: 0.25rem 0;
+    color: #3498db;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.3s ease;
+}
+
+.sub-menu-item:hover {
+    color: #2980b9;
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .menu-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="card" style="margin-top: 2rem;">
+    <h3>사용 가이드</h3>
+    <div style="margin-top: 1rem;">
+        <h4>1. 모듈 설치하기</h4>
+        <p>모듈 마켓플레이스에서 원하는 모듈을 찾아 "설치" 버튼을 클릭하세요.</p>
+        
+        <h4>2. 모듈 사용하기</h4>
+        <p>설치된 모듈은 대시보드에서 바로 사용할 수 있습니다.</p>
+        
+        <h4>3. 모듈 제거하기</h4>
+        <p>더 이상 필요하지 않은 모듈은 "제거" 버튼으로 삭제할 수 있습니다.</p>
+    </div>
+</div>
+{% endblock %} 

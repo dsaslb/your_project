@@ -1,0 +1,328 @@
+{% extends "simple_base.html" %}
+
+{% block title %}메뉴 관리 - 간단한 모듈 마켓플레이스{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>메뉴 관리</h2>
+    <p>설치된 모듈의 메뉴를 관리하고 통계를 확인할 수 있습니다.</p>
+</div>
+
+<div class="grid">
+    <!-- 메뉴 통계 -->
+    <div class="card">
+        <h3>메뉴 통계</h3>
+        
+        <!-- 인기 메뉴 -->
+        <div class="stats-section">
+            <h4>🔥 인기 메뉴</h4>
+            {% if stats.popular_menus %}
+            <div class="stats-list">
+                {% for menu in stats.popular_menus[:5] %}
+                <div class="stats-item">
+                    <span class="stats-name">{{ menu.name }}</span>
+                    <span class="stats-value">{{ menu.access_count }}회</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: #666;">아직 접근 기록이 없습니다.</p>
+            {% endif %}
+        </div>
+        
+        <!-- 최근 접근 -->
+        <div class="stats-section">
+            <h4>⏰ 최근 접근</h4>
+            {% if stats.recent_menus %}
+            <div class="stats-list">
+                {% for menu in stats.recent_menus[:5] %}
+                <div class="stats-item">
+                    <span class="stats-name">{{ menu.name }}</span>
+                    <span class="stats-value">{{ menu.last_access[:10] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: #666;">아직 접근 기록이 없습니다.</p>
+            {% endif %}
+        </div>
+        
+        <!-- 비활성 메뉴 -->
+        {% if stats.inactive_menus %}
+        <div class="stats-section">
+            <h4>🚫 비활성 메뉴</h4>
+            <div class="stats-list">
+                {% for menu in stats.inactive_menus %}
+                <div class="stats-item">
+                    <span class="stats-name">{{ menu.name }}</span>
+                    <span class="stats-value inactive">비활성</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- 현재 메뉴 -->
+    <div class="card">
+        <h3>현재 메뉴</h3>
+        {% if menus %}
+        <div class="menu-list">
+            {% for menu in menus %}
+            <div class="menu-item">
+                <div class="menu-header">
+                    <div class="menu-icon">{{ menu.icon or '📋' }}</div>
+                    <div class="menu-info">
+                        <h4>{{ menu.name }}</h4>
+                        <span class="menu-url">{{ menu.url }}</span>
+                    </div>
+                    <div class="menu-actions">
+                        <button class="btn btn-small" onclick="recordAccess({{ menu.id }})">접근 기록</button>
+                    </div>
+                </div>
+                {% if menu.children %}
+                <div class="sub-menu-list">
+                    {% for submenu in menu.children %}
+                    <div class="sub-menu-item">
+                        <span class="sub-menu-icon">{{ submenu.icon or '📄' }}</span>
+                        <span class="sub-menu-name">{{ submenu.name }}</span>
+                        <span class="sub-menu-url">{{ submenu.url }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: #666;">설치된 모듈이 없습니다.</p>
+        <a href="{{ url_for('marketplace') }}" class="btn">마켓플레이스로 이동</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 메뉴 관리 도구 -->
+<div class="card" style="margin-top: 2rem;">
+    <h3>메뉴 관리 도구</h3>
+    <div class="tools-grid">
+        <div class="tool-item">
+            <h4>📊 통계 새로고침</h4>
+            <p>메뉴 접근 통계를 새로고침합니다.</p>
+            <button class="btn" onclick="refreshStats()">새로고침</button>
+        </div>
+        
+        <div class="tool-item">
+            <h4>🔄 메뉴 재정렬</h4>
+            <p>메뉴 순서를 재정렬합니다.</p>
+            <button class="btn" onclick="reorderMenus()">재정렬</button>
+        </div>
+        
+        <div class="tool-item">
+            <h4>📋 메뉴 내보내기</h4>
+            <p>현재 메뉴 구조를 JSON으로 내보냅니다.</p>
+            <button class="btn" onclick="exportMenus()">내보내기</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.stats-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.stats-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.stats-list {
+    margin-top: 1rem;
+}
+
+.stats-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.stats-item:last-child {
+    border-bottom: none;
+}
+
+.stats-name {
+    font-weight: 500;
+}
+
+.stats-value {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.stats-value.inactive {
+    color: #e74c3c;
+}
+
+.menu-list {
+    margin-top: 1rem;
+}
+
+.menu-item {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.menu-header {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+}
+
+.menu-icon {
+    font-size: 1.5rem;
+    margin-right: 1rem;
+}
+
+.menu-info {
+    flex: 1;
+}
+
+.menu-info h4 {
+    margin: 0 0 0.25rem 0;
+}
+
+.menu-url {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.menu-actions {
+    margin-left: 1rem;
+}
+
+.btn-small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.sub-menu-list {
+    padding: 1rem;
+    background: white;
+}
+
+.sub-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.sub-menu-item:last-child {
+    border-bottom: none;
+}
+
+.sub-menu-icon {
+    margin-right: 0.5rem;
+}
+
+.sub-menu-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.sub-menu-url {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.tool-item {
+    padding: 1rem;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.tool-item h4 {
+    margin: 0 0 0.5rem 0;
+}
+
+.tool-item p {
+    margin: 0 0 1rem 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .menu-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .menu-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .tools-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function recordAccess(menuId) {
+    // 메뉴 접근 기록 (실제로는 API 호출)
+    alert('메뉴 접근이 기록되었습니다.');
+}
+
+function refreshStats() {
+    fetch('/api/menu/statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('통계 새로고침 실패: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('통계 새로고침 중 오류가 발생했습니다.');
+        });
+}
+
+function reorderMenus() {
+    alert('메뉴 재정렬 기능은 개발 중입니다.');
+}
+
+function exportMenus() {
+    const menuData = {
+        menus: {{ menus | tojson }},
+        stats: {{ stats | tojson }},
+        exported_at: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(menuData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = 'menu_export.json';
+    link.click();
+}
+</script>
+{% endblock %} 

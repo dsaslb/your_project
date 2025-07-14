@@ -3,42 +3,130 @@
     "id": "attendance_management",
     "name": "출퇴근 관리",
     "version": "1.0.0",
-    "description": "직원 출퇴근 관리, 지각/초과근무 통계, 급여 연동",
+    "description": "직원 출퇴근 관리, 지각/초과근무 통계, 급여 연동, 실시간 모니터링",
     "author": "Your Program Team",
     "category": "hr",
     "tags": [
       "출퇴근",
       "인사",
       "급여",
-      "통계"
+      "통계",
+      "모니터링"
     ],
     "price": 0.0,
     "currency": "KRW",
     "scope": "branch",
     "dependencies": [],
     "permissions": [
-      "attendance_management"
+      "attendance_management",
+      "attendance_view",
+      "attendance_edit",
+      "attendance_admin"
     ],
+    "hierarchy_levels": {
+      "system_admin": "full_access",
+      "brand_admin": "full_access", 
+      "branch_admin": "full_access",
+      "manager": "view_edit",
+      "employee": "view_own"
+    },
     "features": [
       "직원별 출퇴근 기록",
       "지각/초과근무 통계",
       "급여 시스템 연동",
       "AI 기반 근무 패턴 분석",
-      "실시간 알림"
+      "실시간 알림",
+      "데모 데이터 제공",
+      "권한별 접근 제어",
+      "모듈 상태 관리"
     ],
+    "api_endpoints": [
+      "/api/attendance/clock-in",
+      "/api/attendance/clock-out", 
+      "/api/attendance/history",
+      "/api/attendance/statistics",
+      "/api/attendance/realtime",
+      "/api/attendance/settings"
+    ],
+    "components": [
+      "AttendanceDashboard",
+      "AttendanceHistory", 
+      "AttendanceStatistics",
+      "RealtimeMonitor",
+      "SettingsPanel"
+    ],
+    "demo_data": {
+      "users": 5,
+      "attendance_records": 120,
+      "statistics": true,
+      "realtime": true,
+      "notifications": true
+    },
     "screenshots": [
       "/static/marketplace/attendance_1.png",
-      "/static/marketplace/attendance_2.png"
+      "/static/marketplace/attendance_2.png",
+      "/static/marketplace/attendance_3.png"
     ],
     "demo_url": "/demo/attendance",
     "documentation_url": "/docs/attendance",
     "support_url": "/support/attendance",
+    "help_url": "/help/attendance",
+    "ai_analysis": {
+      "enabled": true,
+      "features": [
+        "근무 패턴 분석",
+        "지각 예측",
+        "생산성 분석"
+      ]
+    },
+    "notifications": {
+      "enabled": true,
+      "types": [
+        "late_alert",
+        "overtime_alert", 
+        "early_leave_alert",
+        "daily_report"
+      ]
+    },
     "rating": 4.8,
     "downloads": 1250,
     "reviews": 89,
     "status": "active",
+    "module_status": "activated",
+    "last_updated": "2024-01-15T10:00:00Z",
     "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-15T10:00:00Z"
+    "updated_at": "2024-01-15T10:00:00Z",
+    "menu_config": {
+      "main_menu": "출퇴근 관리",
+      "icon": "fas fa-clock",
+      "order": 2,
+      "sub_menus": [
+        {
+          "name": "출퇴근 기록",
+          "url": "/attendance/record",
+          "icon": "fas fa-clock",
+          "order": 1
+        },
+        {
+          "name": "근무 통계",
+          "url": "/attendance/stats",
+          "icon": "fas fa-chart-bar",
+          "order": 2
+        },
+        {
+          "name": "근무 리포트",
+          "url": "/attendance/reports",
+          "icon": "fas fa-file-alt",
+          "order": 3
+        },
+        {
+          "name": "설정",
+          "url": "/attendance/settings",
+          "icon": "fas fa-cog",
+          "order": 4
+        }
+      ]
+    }
   },
   "sales_management": {
     "id": "sales_management",
@@ -209,5 +297,177 @@
     "status": "active",
     "created_at": "2024-01-01T00:00:00Z",
     "updated_at": "2024-01-15T10:00:00Z"
+  },
+  "integrated_module_system": {
+    "id": "integrated_module_system",
+    "name": "통합 연동 모듈 시스템",
+    "version": "1.0.0",
+    "description": "모든 모듈이 중앙 데이터를 공유하고 실시간으로 연동되는 통합 시스템",
+    "author": "Your Program Team",
+    "category": "system_integration",
+    "tags": [
+      "통합연동",
+      "실시간",
+      "중앙데이터",
+      "자동화",
+      "효율성"
+    ],
+    "price": 0.0,
+    "currency": "KRW",
+    "scope": "system",
+    "dependencies": [
+      "attendance_management",
+      "sales_management",
+      "payroll_management",
+      "inventory_management"
+    ],
+    "permissions": [
+      "integrated_system_admin",
+      "integrated_system_view",
+      "integrated_system_configure"
+    ],
+    "hierarchy_levels": {
+      "system_admin": "full_access",
+      "brand_admin": "full_access",
+      "branch_admin": "view_configure",
+      "manager": "view_only",
+      "employee": "view_own"
+    },
+    "features": [
+      "중앙 데이터 레이어",
+      "실시간 모듈 연동",
+      "자동 효율성 분석",
+      "크로스 모듈 인사이트",
+      "예측적 알림 시스템",
+      "통합 대시보드",
+      "자동화된 리포트 생성",
+      "모듈 간 데이터 동기화"
+    ],
+    "api_endpoints": [
+      "/api/integrated/dashboard",
+      "/api/integrated/data/{branch_id}",
+      "/api/integrated/efficiency/{branch_id}",
+      "/api/integrated/attendance/record",
+      "/api/integrated/sales/record",
+      "/api/integrated/payroll/calculate",
+      "/api/integrated/analytics/generate",
+      "/api/integrated/demo/integrated-scenario"
+    ],
+    "components": [
+      "IntegratedDashboard",
+      "RealtimeMonitor",
+      "EfficiencyAnalytics",
+      "IntegrationLog",
+      "CrossModuleInsights",
+      "AutomatedReports"
+    ],
+    "demo_data": {
+      "integrated_modules": 5,
+      "real_time_connections": 15,
+      "automated_analytics": 8,
+      "efficiency_improvements": 12,
+      "cross_module_insights": 20
+    },
+    "screenshots": [
+      "/static/marketplace/integrated_1.png",
+      "/static/marketplace/integrated_2.png",
+      "/static/marketplace/integrated_3.png"
+    ],
+    "demo_url": "/demo/integrated",
+    "documentation_url": "/docs/integrated",
+    "support_url": "/support/integrated",
+    "help_url": "/help/integrated",
+    "ai_analysis": {
+      "enabled": true,
+      "features": [
+        "크로스 모듈 패턴 분석",
+        "효율성 최적화 제안",
+        "예측적 연동 분석",
+        "자동 인사이트 생성",
+        "통합 성과 예측"
+      ]
+    },
+    "notifications": {
+      "enabled": true,
+      "types": [
+        "real_time_alerts",
+        "efficiency_warnings",
+        "improvement_suggestions",
+        "system_status_updates",
+        "cross_module_insights"
+      ]
+    },
+    "integration_scenarios": [
+      {
+        "name": "출퇴근 → 매출 연동",
+        "description": "출퇴근 기록 시 자동으로 매출 데이터와 연동하여 효율성 분석"
+      },
+      {
+        "name": "매출 → 급여 연동",
+        "description": "매출 데이터를 기반으로 급여 계산 및 인건비 비율 분석"
+      },
+      {
+        "name": "급여 → 분석 연동",
+        "description": "급여 계산 완료 시 자동으로 효율성 분석 및 개선 제안 생성"
+      },
+      {
+        "name": "분석 → 알림 연동",
+        "description": "분석 결과에 따른 자동 알림 및 관리자 리포트 생성"
+      }
+    ],
+    "rating": 5.0,
+    "downloads": 2000,
+    "reviews": 150,
+    "status": "active",
+    "module_status": "activated",
+    "last_updated": "2024-01-15T10:00:00Z",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-15T10:00:00Z",
+    "default_settings": {
+      "auto_start": true,
+      "debug_mode": false,
+      "email_notifications": true,
+      "push_notifications": true,
+      "menu_config": {
+        "main_menu": "통합 관리",
+        "icon": "fas fa-network-wired",
+        "order": 1,
+        "sub_menus": [
+          {
+            "name": "통합 대시보드",
+            "url": "/integrated/dashboard",
+            "icon": "fas fa-tachometer-alt",
+            "order": 1
+          },
+          {
+            "name": "실시간 모니터링",
+            "url": "/integrated/monitoring",
+            "icon": "fas fa-eye",
+            "order": 2
+          },
+          {
+            "name": "효율성 분석",
+            "url": "/integrated/analytics",
+            "icon": "fas fa-chart-line",
+            "order": 3
+          },
+          {
+            "name": "통합 리포트",
+            "url": "/integrated/reports",
+            "icon": "fas fa-file-alt",
+            "order": 4
+          }
+        ]
+      },
+      "notification_frequency": "immediate",
+      "data_retention_days": 365,
+      "auto_backup": true,
+      "backup_frequency": "daily",
+      "cache_ttl": 300,
+      "max_concurrent": 10,
+      "log_level": "INFO",
+      "log_retention_days": 30
+    },
+    "demo_available": true
   }
 }

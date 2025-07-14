@@ -78,7 +78,9 @@ export default function ModuleManagementPage() {
       const data = await response.json();
 
       if (data.success) {
-        setStatistics(data.statistics);
+        setStatistics(data.data);
+      } else {
+        console.error('모듈 통계 조회 실패:', data.error);
       }
     } catch (error) {
       console.error('모듈 통계 조회 실패:', error);

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 개발 모드 - 디자이너</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+    <script src="/static/js/theme.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🔧 모듈 개발</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">개발자 도구</p>
+            </div>
+            
+            <nav class="mt-6">
+                <div class="px-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">개발 도구</h3>
+                </div>
+                
+                <a href="/dev-modules/" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-plus mr-3"></i>
+                    새 프로젝트
+                </a>
+                <a href="/dev-modules/designer" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500">
+                    <i class="fas fa-palette mr-3"></i>
+                    디자이너
+                </a>
+                <a href="/dev-modules/editor" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-code mr-3"></i>
+                    코드 에디터
+                </a>
+                <a href="/dev-modules/testing" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-vial mr-3"></i>
+                    테스트
+                </a>
+                <a href="/dev-modules/deploy" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-rocket mr-3"></i>
+                    배포
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">관리</h3>
+                </div>
+                
+                <a href="/admin_dashboard" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-arrow-left mr-3"></i>
+                    관리자 대시보드
+                </a>
+            </nav>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 overflow-auto">
+            <!-- 헤더 -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">UI 디자이너</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">드래그 앤 드롭으로 UI 컴포넌트를 디자인하세요</p>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="p-6">
+                <div class="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
+                    <!-- 컴포넌트 팔레트 -->
+                    <div class="col-span-3 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">컴포넌트</h3>
+                        
+                        <div class="space-y-2">
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">기본 요소</div>
+                            
+                            <div class="component-item" draggable="true" data-type="button">
+                                <i class="fas fa-square mr-2"></i>
+                                <span class="text-sm">버튼</span>
+                            </div>
+                            
+                            <div class="component-item" draggable="true" data-type="input">
+                                <i class="fas fa-edit mr-2"></i>
+                                <span class="text-sm">입력 필드</span>
+                            </div>
+                            
+                            <div class="component-item" draggable="true" data-type="select">
+                                <i class="fas fa-chevron-down mr-2"></i>
+                                <span class="text-sm">선택 박스</span>
+                            </div>
+                            
+                            <div class="component-item" draggable="true" data-type="table">
+                                <i class="fas fa-table mr-2"></i>
+                                <span class="text-sm">테이블</span>
+                            </div>
+                            
+                            <div class="component-item" draggable="true" data-type="card">
+                                <i class="fas fa-credit-card mr-2"></i>
+                                <span class="text-sm">카드</span>
+                            </div>
+                            
+                            <div class="component-item" draggable="true" data-type="modal">
+                                <i class="fas fa-window-maximize mr-2"></i>
+                                <span class="text-sm">모달</span>
+                            </div>
+                            
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 mt-4">레이아웃</div>
+                            
+                            <div class="component-item" draggable="true" data-type="container">
+                                <i class="fas fa-box mr-2"></i>
+                                <span class="text-sm">컨테이너</span>
+                            </div>
+                            
+                            <div class="component-item" draggable="true" data-type="grid">
+                                <i class="fas fa-th mr-2"></i>
+                                <span class="text-sm">그리드</span>
+                            </div>
+                            
+                            <div class="component-item" draggable="true" data-type="sidebar">
+                                <i class="fas fa-columns mr-2"></i>
+                                <span class="text-sm">사이드바</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 디자인 캔버스 -->
+                    <div class="col-span-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+                        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">캔버스</h3>
+                                <div class="flex space-x-2">
+                                    <button id="preview-btn" class="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                                        <i class="fas fa-eye mr-1"></i>미리보기
+                                    </button>
+                                    <button id="export-btn" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700">
+                                        <i class="fas fa-download mr-1"></i>내보내기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="design-canvas" class="p-6 min-h-[500px] bg-gray-50 dark:bg-gray-900">
+                            <div class="text-center text-gray-500 dark:text-gray-400 py-20">
+                                <i class="fas fa-mouse-pointer text-4xl mb-4"></i>
+                                <p>컴포넌트를 여기로 드래그하여 디자인을 시작하세요</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 속성 패널 -->
+                    <div class="col-span-3 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">속성</h3>
+                        
+                        <div id="properties-panel">
+                            <div class="text-center text-gray-500 dark:text-gray-400 py-10">
+                                <i class="fas fa-cog text-2xl mb-2"></i>
+                                <p class="text-sm">컴포넌트를 선택하여 속성을 편집하세요</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <style>
+        .component-item {
+            @apply flex items-center px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-move;
+        }
+        
+        .component-item:hover {
+            @apply bg-blue-50 dark:bg-blue-900;
+        }
+        
+        .design-component {
+            @apply relative border-2 border-dashed border-gray-300 dark:border-gray-600 p-4 m-2 rounded;
+        }
+        
+        .design-component.selected {
+            @apply border-blue-500 bg-blue-50 dark:bg-blue-900;
+        }
+        
+        .component-controls {
+            @apply absolute top-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-sm;
+        }
+    </style>
+
+    <script>
+        let selectedComponent = null;
+        let componentCounter = 0;
+
+        // 드래그 앤 드롭 이벤트
+        document.querySelectorAll('.component-item').forEach(item => {
+            item.addEventListener('dragstart', function(e) {
+                e.dataTransfer.setData('text/plain', this.dataset.type);
+            });
+        });
+
+        const canvas = document.getElementById('design-canvas');
+        
+        canvas.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+        
+        canvas.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const componentType = e.dataTransfer.getData('text/plain');
+            addComponent(componentType, e.offsetX, e.offsetY);
+        });
+
+        // 컴포넌트 추가
+        function addComponent(type, x, y) {
+            const component = document.createElement('div');
+            component.className = 'design-component';
+            component.dataset.type = type;
+            component.dataset.id = `component-${componentCounter++}`;
+            
+            // 컴포넌트 내용 생성
+            let content = '';
+            switch(type) {
+                case 'button':
+                    content = '<button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">버튼</button>';
+                    break;
+                case 'input':
+                    content = '<input type="text" class="px-3 py-2 border border-gray-300 rounded" placeholder="입력하세요">';
+                    break;
+                case 'select':
+                    content = '<select class="px-3 py-2 border border-gray-300 rounded"><option>옵션 선택</option></select>';
+                    break;
+                case 'table':
+                    content = `
+                        <table class="min-w-full border border-gray-300">
+                            <thead><tr><th class="border p-2">헤더</th></tr></thead>
+                            <tbody><tr><td class="border p-2">데이터</td></tr></tbody>
+                        </table>
+                    `;
+                    break;
+                case 'card':
+                    content = `
+                        <div class="border border-gray-300 rounded p-4">
+                            <h3 class="font-medium">카드 제목</h3>
+                            <p class="text-gray-600">카드 내용</p>
+                        </div>
+                    `;
+                    break;
+                case 'modal':
+                    content = `
+                        <div class="border border-gray-300 rounded p-4 bg-white">
+                            <h3 class="font-medium">모달 제목</h3>
+                            <p class="text-gray-600">모달 내용</p>
+                        </div>
+                    `;
+                    break;
+                case 'container':
+                    content = '<div class="border border-gray-300 rounded p-4 min-h-[100px]">컨테이너</div>';
+                    break;
+                case 'grid':
+                    content = '<div class="grid grid-cols-2 gap-4 border border-gray-300 rounded p-4">그리드</div>';
+                    break;
+                case 'sidebar':
+                    content = '<div class="border border-gray-300 rounded p-4 w-48">사이드바</div>';
+                    break;
+            }
+            
+            component.innerHTML = content;
+            
+            // 컴포넌트 컨트롤 추가
+            const controls = document.createElement('div');
+            controls.className = 'component-controls';
+            controls.innerHTML = `
+                <button onclick="selectComponent(this.parentElement.parentElement)" class="p-1 hover:bg-gray-100">
+                    <i class="fas fa-edit text-xs"></i>
+                </button>
+                <button onclick="deleteComponent(this.parentElement.parentElement)" class="p-1 hover:bg-gray-100 text-red-600">
+                    <i class="fas fa-trash text-xs"></i>
+                </button>
+            `;
+            component.appendChild(controls);
+            
+            // 캔버스에 추가
+            canvas.appendChild(component);
+            
+            // 컴포넌트 선택
+            selectComponent(component);
+        }
+
+        // 컴포넌트 선택
+        function selectComponent(component) {
+            // 이전 선택 해제
+            document.querySelectorAll('.design-component').forEach(c => c.classList.remove('selected'));
+            
+            // 새 컴포넌트 선택
+            component.classList.add('selected');
+            selectedComponent = component;
+            
+            // 속성 패널 업데이트
+            updatePropertiesPanel(component);
+        }
+
+        // 컴포넌트 삭제
+        function deleteComponent(component) {
+            component.remove();
+            if (selectedComponent === component) {
+                selectedComponent = null;
+                updatePropertiesPanel(null);
+            }
+        }
+
+        // 속성 패널 업데이트
+        function updatePropertiesPanel(component) {
+            const panel = document.getElementById('properties-panel');
+            
+            if (!component) {
+                panel.innerHTML = `
+                    <div class="text-center text-gray-500 dark:text-gray-400 py-10">
+                        <i class="fas fa-cog text-2xl mb-2"></i>
+                        <p class="text-sm">컴포넌트를 선택하여 속성을 편집하세요</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const type = component.dataset.type;
+            panel.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">컴포넌트 유형</label>
+                        <input type="text" value="${type}" readonly 
+                               class="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ID</label>
+                        <input type="text" value="${component.dataset.id}" readonly 
+                               class="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">클래스</label>
+                        <input type="text" id="component-class" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                               onchange="updateComponentClass(this.value)">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">스타일</label>
+                        <textarea id="component-style" rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                  onchange="updateComponentStyle(this.value)"
+                                  placeholder="CSS 스타일을 입력하세요"></textarea>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 컴포넌트 클래스 업데이트
+        function updateComponentClass(className) {
+            if (selectedComponent) {
+                selectedComponent.className = `design-component ${className}`;
+            }
+        }
+
+        // 컴포넌트 스타일 업데이트
+        function updateComponentStyle(style) {
+            if (selectedComponent) {
+                selectedComponent.style.cssText = style;
+            }
+        }
+
+        // 미리보기 버튼
+        document.getElementById('preview-btn').addEventListener('click', function() {
+            const components = document.querySelectorAll('.design-component');
+            let html = '';
+            
+            components.forEach(component => {
+                const clone = component.cloneNode(true);
+                clone.classList.remove('design-component', 'selected');
+                clone.removeAttribute('data-type');
+                clone.removeAttribute('data-id');
+                
+                // 컨트롤 제거
+                const controls = clone.querySelector('.component-controls');
+                if (controls) controls.remove();
+                
+                html += clone.outerHTML + '\n';
+            });
+            
+            // 새 창에서 미리보기
+            const previewWindow = window.open('', '_blank');
+            previewWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>UI 미리보기</title>
+                    <link rel="stylesheet" href="/static/css/tailwind.css">
+                </head>
+                <body class="p-8">
+                    ${html}
+                </body>
+                </html>
+            `);
+        });
+
+        // 내보내기 버튼
+        document.getElementById('export-btn').addEventListener('click', function() {
+            const components = document.querySelectorAll('.design-component');
+            let html = '';
+            let css = '';
+            
+            components.forEach((component, index) => {
+                const clone = component.cloneNode(true);
+                clone.classList.remove('design-component', 'selected');
+                clone.removeAttribute('data-type');
+                clone.removeAttribute('data-id');
+                
+                // 컨트롤 제거
+                const controls = clone.querySelector('.component-controls');
+                if (controls) controls.remove();
+                
+                html += `<!-- Component ${index + 1} -->\n${clone.outerHTML}\n\n`;
+                
+                // 인라인 스타일이 있다면 CSS로 추출
+                if (component.style.cssText) {
+                    css += `/* Component ${index + 1} */\n.component-${index + 1} {\n${component.style.cssText}\n}\n\n`;
+                }
+            });
+            
+            // 다운로드
+            const blob = new Blob([`<!DOCTYPE html>\n<html>\n<head>\n<title>Exported UI</title>\n<style>\n${css}</style>\n</head>\n<body>\n${html}\n</body>\n</html>`], {type: 'text/html'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ui-design.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>

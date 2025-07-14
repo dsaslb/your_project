@@ -41,6 +41,29 @@ class Brand(db.Model):
     contact_email = db.Column(db.String(120))
     contact_phone = db.Column(db.String(20))
     address = db.Column(db.String(200))
+    store_type = db.Column(db.String(20), default="individual", index=True)  # individual(개인매장), chain(체인점)
+    
+    # 사업자 정보
+    business_number = db.Column(db.String(20), index=True)  # 사업자 번호
+    business_name = db.Column(db.String(200))  # 상호명
+    representative_name = db.Column(db.String(100))  # 대표자명
+    business_type = db.Column(db.String(100))  # 업태
+    business_category = db.Column(db.String(100))  # 종목
+    
+    # 계약 관련 정보
+    contract_start_date = db.Column(db.Date)  # 계약 시작일
+    contract_end_date = db.Column(db.Date)  # 계약 종료일
+    contract_type = db.Column(db.String(50))  # 계약 유형 (franchise, direct, partnership 등)
+    contract_status = db.Column(db.String(20), default="active")  # 계약 상태
+    contract_amount = db.Column(db.Numeric(15, 2))  # 계약 금액
+    contract_currency = db.Column(db.String(10), default="KRW")  # 통화
+    contract_terms = db.Column(db.Text)  # 계약 조건
+    contract_documents = db.Column(db.JSON)  # 계약서 파일 정보
+    
+    # 추가 연락처 정보
+    emergency_contact = db.Column(db.String(20))  # 비상연락처
+    fax_number = db.Column(db.String(20))  # 팩스번호
+    
     status = db.Column(db.String(20), default="active", index=True)  # active, inactive, suspended
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -51,6 +74,18 @@ class Brand(db.Model):
     brand_manager = db.relationship("User", backref="managed_brand", foreign_keys="User.brand_id")
     
     def __init__(self, **kwargs):
+        # CSRF 토큰 제거
+        if 'csrf_token' in kwargs:
+            del kwargs['csrf_token']
+        
+        # industry_name 제거 (Brand 모델에 없는 필드)
+        if 'industry_name' in kwargs:
+            del kwargs['industry_name']
+        
+        # create_frontend_server 제거 (Brand 모델에 없는 필드)
+        if 'create_frontend_server' in kwargs:
+            del kwargs['create_frontend_server']
+        
         super(Brand, self).__init__(**kwargs)
     
     def __repr__(self):

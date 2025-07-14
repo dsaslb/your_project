@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from dataclasses import asdict
+import json
 
 import jwt
 from flask import (Flask, flash, jsonify, redirect,
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Import core modules
 from config import config_by_name
 from extensions import cache, csrf, db, limiter, login_manager, migrate
-from models import (Branch, Notification, Order, Schedule, User)
+from models import (Branch, Notification, Order, Schedule, User, Brand)
 
 # Import Plugin System
 from core.backend.auto_router import setup_auto_router
@@ -45,7 +46,7 @@ CORS(app,
          "http://192.168.45.44:3001",
          "http://localhost:5000",
          "http://127.0.0.1:5000",
-         "http://192.168.45.44:5000"
+         "http://192.168.45.44:5001"
      ],
      supports_credentials=True,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -64,15 +65,38 @@ login_manager.login_message_category = 'info'
 limiter.init_app(app)
 cache.init_app(app)
 
-# API 경로는 인증을 우회하도록 설정
-@app.before_request
-def before_request():
-    # API 경로는 인증을 우회
-    if request.path.startswith('/api/marketplace/') or request.path.startswith('/api/modules/'):
-        return None
-    # 기타 API 경로도 인증을 우회 (필요한 경우)
-    if request.path.startswith('/api/') and 'admin' not in request.path:
-        return None
+# DB 초기화 및 기본 데이터 생성
+with app.app_context():
+    try:
+        # DB 테이블 생성
+        db.create_all()
+        
+        # 기본 관리자 계정 생성 (없는 경우)
+        admin_user = User.query.filter_by(username='admin').first()
+        if not admin_user:
+            admin_user = User(
+                username='admin',
+                email='admin@your_program.com',
+                role='admin',
+                is_active=True
+            )
+            admin_user.set_password('admin123')
+            db.session.add(admin_user)
+            logger.info("기본 관리자 계정 생성 완료: admin/admin123")
+        
+        # 기본 산업 생성 (없는 경우)
+        from models import Industry
+        from core.backend.schema_initializer import initialize_industries
+        
+        # 업종 초기화 함수 호출
+        initialize_industries()
+        
+        db.session.commit()
+        logger.info("DB 초기화 및 기본 데이터 생성 완료")
+        
+    except Exception as e:
+        logger.error(f"DB 초기화 실패: {e}")
+        db.session.rollback()
 
 # Initialize IoT system
 from utils.iot_simulator import initialize_iot_system
@@ -198,6 +222,30 @@ try:
     logger.info("플러그인 자동화 및 워크플로우 API 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"플러그인 자동화 및 워크플로우 API 블루프린트 등록 실패: {e}")
+
+# 계약 생성기 API 블루프린트 등록
+try:
+    from core.backend.contract_generator import contract_generator_bp
+    app.register_blueprint(contract_generator_bp, name='contract_generator_api')
+    logger.info("계약 생성기 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"계약 생성기 API 블루프린트 등록 실패: {e}")
+
+# 출퇴근 관리 데모 API 블루프린트 등록
+try:
+    from api.attendance_demo_api import attendance_demo_bp
+    app.register_blueprint(attendance_demo_bp, name='attendance_demo')
+    logger.info("출퇴근 관리 데모 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"출퇴근 관리 데모 API 블루프린트 등록 실패: {e}")
+
+# 모듈 마켓플레이스 라우트 블루프린트 등록
+try:
+    from routes.module_marketplace_routes import module_marketplace_routes_bp
+    app.register_blueprint(module_marketplace_routes_bp, name='module_marketplace_routes')
+    logger.info("모듈 마켓플레이스 라우트 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 마켓플레이스 라우트 블루프린트 등록 실패: {e}")
 
 # 마켓플레이스 데모 API 블루프린트 등록
 try:
@@ -2244,38 +2292,135 @@ def api_admin_reject_brand_manager(user_id):
 
 @app.route("/admin/brand-management")
 def admin_brand_management():
-    return render_template('admin/brand_management.html')
+    try:
+        # 브랜드 목록 조회
+        brands = Brand.query.all()
+        brand_list = []
+        
+        for brand in brands:
+            # 매장 수 계산
+            store_count = Branch.query.filter_by(brand_id=brand.id).count()
+            
+            brand_list.append({
+                'id': brand.id,
+                'name': brand.name,
+                'code': brand.code,
+                'description': brand.description,
+                'contact_email': brand.contact_email,
+                'contact_phone': brand.contact_phone,
+                'status': brand.status,
+                'store_count': store_count,
+                'created_at': brand.created_at
+            })
+        
+        return render_template('admin/brand_management.html', brands=brand_list)
+        
+    except Exception as e:
+        print(f"브랜드 관리 페이지 로드 오류: {str(e)}")
+        return render_template('admin/brand_management.html', brands=[])
+
+@app.route("/admin/brand/<int:brand_id>/server-setup")
+def admin_brand_server_setup(brand_id):
+    """브랜드별 서버 설정 페이지"""
+    try:
+        brand = Brand.query.get_or_404(brand_id)
+        return render_template('admin/brand_server_setup.html', brand=brand)
+    except Exception as e:
+        print(f"브랜드 서버 설정 페이지 로드 오류: {str(e)}")
+        return "브랜드를 찾을 수 없습니다.", 404
+
+@app.route("/api/admin/brands/<int:brand_id>")
+def api_admin_brand_detail(brand_id):
+    """브랜드 단건 조회 API"""
+    try:
+        brand = Brand.query.get(brand_id)
+        if not brand:
+            return jsonify({'error': '브랜드를 찾을 수 없습니다.'}), 404
+        
+        brand_data = {
+            'id': brand.id,
+            'name': brand.name,
+            'code': brand.code,
+            'description': brand.description,
+            'logo_url': brand.logo_url,
+            'website': brand.website,
+            'contact_email': brand.contact_email,
+            'contact_phone': brand.contact_phone,
+            'address': brand.address,
+            'store_type': brand.store_type,
+            'business_number': brand.business_number,
+            'business_name': brand.business_name,
+            'representative_name': brand.representative_name,
+            'business_type': brand.business_type,
+            'business_category': brand.business_category,
+            'emergency_contact': brand.emergency_contact,
+            'fax_number': brand.fax_number,
+            'contract_start_date': brand.contract_start_date.isoformat() if brand.contract_start_date else None,
+            'contract_end_date': brand.contract_end_date.isoformat() if brand.contract_end_date else None,
+            'contract_type': brand.contract_type,
+            'contract_status': brand.contract_status,
+            'contract_amount': float(brand.contract_amount) if brand.contract_amount else None,
+            'contract_currency': brand.contract_currency,
+            'contract_terms': brand.contract_terms,
+            'status': brand.status,
+            'created_at': brand.created_at.isoformat() if brand.created_at else None
+        }
+        
+        return jsonify({
+            'success': True,
+            'brand': brand_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route("/api/admin/brands")
 def api_admin_brands():
     """브랜드 목록 및 현황 API"""
     try:
-        branches = Branch.query.all()
+        brands = Brand.query.all()
         brands_data = []
         
-        for branch in branches:
+        for brand in brands:
+            # 브랜드별 매장 수
+            store_count = Branch.query.filter_by(brand_id=brand.id).count()
+            
             # 브랜드별 직원 수
-            employee_count = User.query.filter_by(branch_id=branch.id).count()
+            employee_count = User.query.filter_by(brand_id=brand.id).count()
             
-            # 브랜드별 매니저 수
-            manager_count = User.query.filter_by(branch_id=branch.id, role='store_manager').count()
-            
-            # 브랜드별 개선사항 (예시 데이터)
-            improvements = [
-                "직원 교육 프로그램 강화 필요",
-                "고객 서비스 품질 개선",
-                "재고 관리 시스템 최적화"
-            ]
+            # 브랜드별 주문 수 (예시 데이터)
+            order_count = 0  # 실제로는 Order 모델에서 계산
             
             brand_data = {
-                'id': branch.id,
-                'name': branch.name,
-                'location': branch.location,
+                'id': brand.id,
+                'name': brand.name,
+                'code': brand.code,
+                'description': brand.description,
+                'logo_url': brand.logo_url,
+                'website': brand.website,
+                'contact_email': brand.contact_email,
+                'contact_phone': brand.contact_phone,
+                'address': brand.address,
+                'store_type': brand.store_type,
+                'business_number': brand.business_number,
+                'business_name': brand.business_name,
+                'representative_name': brand.representative_name,
+                'business_type': brand.business_type,
+                'business_category': brand.business_category,
+                'emergency_contact': brand.emergency_contact,
+                'fax_number': brand.fax_number,
+                'contract_start_date': brand.contract_start_date.isoformat() if brand.contract_start_date else None,
+                'contract_end_date': brand.contract_end_date.isoformat() if brand.contract_end_date else None,
+                'contract_type': brand.contract_type,
+                'contract_status': brand.contract_status,
+                'contract_amount': float(brand.contract_amount) if brand.contract_amount else None,
+                'contract_currency': brand.contract_currency,
+                'contract_terms': brand.contract_terms,
+                'store_count': store_count,
                 'employee_count': employee_count,
-                'manager_count': manager_count,
-                'improvements': improvements,
-                'status': 'active',
-                'created_at': branch.created_at.isoformat() if branch.created_at else None
+                'order_count': order_count,
+                'status': brand.status,
+                'created_at': brand.created_at.isoformat() if brand.created_at else None
             }
             
             brands_data.append(brand_data)
@@ -2283,6 +2428,256 @@ def api_admin_brands():
         return jsonify({'brands': brands_data})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route("/api/admin/brands/<int:brand_id>", methods=["PUT"])
+def api_admin_update_brand(brand_id):
+    """브랜드 정보 수정 API"""
+    try:
+        brand = Brand.query.get(brand_id)
+        if not brand:
+            return jsonify({'error': '브랜드를 찾을 수 없습니다.'}), 404
+        
+        data = request.get_json()
+        
+        # 업데이트 가능한 필드들
+        updatable_fields = [
+            'name', 'code', 'description', 'logo_url', 'website', 'contact_email', 
+            'contact_phone', 'address', 'store_type', 'business_number', 'business_name',
+            'representative_name', 'business_type', 'business_category', 'emergency_contact',
+            'fax_number', 'contract_type', 'contract_status', 'contract_amount',
+            'contract_currency', 'contract_terms', 'status'
+        ]
+        
+        for field in updatable_fields:
+            if field in data:
+                if field in ['contract_start_date', 'contract_end_date'] and data[field]:
+                    setattr(brand, field, datetime.strptime(data[field], '%Y-%m-%d').date())
+                else:
+                    setattr(brand, field, data[field])
+        
+        brand.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '브랜드 정보가 성공적으로 수정되었습니다.'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/admin/brands/<int:brand_id>", methods=["DELETE"])
+def api_admin_delete_brand(brand_id):
+    """브랜드 삭제 API"""
+    try:
+        brand = Brand.query.get(brand_id)
+        if not brand:
+            return jsonify({'error': '브랜드를 찾을 수 없습니다.'}), 404
+        
+        # 관련 매장이 있는지 확인
+        store_count = Branch.query.filter_by(brand_id=brand_id).count()
+        if store_count > 0:
+            return jsonify({'error': f'이 브랜드에는 {store_count}개의 매장이 있어 삭제할 수 없습니다.'}), 400
+        
+        db.session.delete(brand)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '브랜드가 성공적으로 삭제되었습니다.'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+def generate_brand_code(industry_name, brand_name):
+    """업종별 브랜드 코드 자동 생성"""
+    import random
+    import string
+    import re
+    
+    # 업종별 접두사 매핑
+    industry_prefixes = {
+        '음식점': 'REST',
+        '카페': 'CAFE',
+        '바': 'BAR',
+        '고기집': 'BBQ',
+        '편의점': 'CVS',
+        '미용실': 'SALON',
+        '병원': 'HOSP',
+        '약국': 'PHARM',
+        '옷가게': 'FASH',
+        '기타': 'GEN'
+    }
+    
+    # 업종 접두사 가져오기
+    prefix = industry_prefixes.get(industry_name, 'BRAND')
+    
+    # 브랜드명에서 영문/숫자만 추출하여 3-5자리로 제한
+    clean_name = re.sub(r'[^A-Za-z0-9]', '', brand_name.upper())
+    if len(clean_name) > 5:
+        clean_name = clean_name[:5]
+    elif len(clean_name) < 3:
+        clean_name = clean_name + ''.join(random.choices(string.ascii_uppercase, k=3-len(clean_name)))
+    
+    # 랜덤 숫자 3자리 추가
+    random_num = ''.join(random.choices(string.digits, k=3))
+    
+    # 최종 브랜드 코드 생성
+    brand_code = f"{prefix}_{clean_name}_{random_num}"
+    
+    return brand_code
+
+@app.route("/api/admin/brands", methods=["POST"])
+@csrf.exempt
+def api_admin_create_brand():
+    """신규 브랜드 생성 API"""
+    try:
+        logger.info("=== 브랜드 생성 API 시작 ===")
+        
+        # 요청 데이터 확인
+        if not request.is_json:
+            logger.error("요청이 JSON 형식이 아닙니다")
+            return jsonify({'error': 'JSON 형식의 요청이 필요합니다.'}), 400
+        
+        data = request.get_json()
+        logger.info(f"브랜드 생성 요청 데이터: {data}")
+        
+        if not data:
+            logger.error("요청 데이터가 비어있습니다")
+            return jsonify({'error': '요청 데이터가 비어있습니다.'}), 400
+        
+        # CSRF 토큰 제거
+        if 'csrf_token' in data:
+            del data['csrf_token']
+            logger.info("CSRF 토큰이 요청 데이터에서 제거되었습니다.")
+        
+        # 필수 필드 검증
+        required_fields = ['name']
+        for field in required_fields:
+            if not data.get(field):
+                logger.error(f"필수 필드 누락: {field}")
+                return jsonify({'error': f'{field} 필드는 필수입니다.'}), 400
+        
+        logger.info("필수 필드 검증 완료")
+        
+        # 브랜드 코드 처리
+        brand_code = data.get('code')
+        if not brand_code:
+            # 자동 생성
+            industry_name = data.get('industry_name', '기타')
+            logger.info(f"브랜드 코드 자동 생성 시작: 업종={industry_name}, 브랜드명={data['name']}")
+            brand_code = generate_brand_code(industry_name, data['name'])
+            logger.info(f"브랜드 코드 자동 생성 완료: {brand_code}")
+        
+        # 브랜드명 중복 확인
+        logger.info("브랜드명 중복 확인 시작")
+        existing_brand = Brand.query.filter_by(name=data['name']).first()
+        if existing_brand:
+            logger.error(f"브랜드명 중복: {data['name']}")
+            return jsonify({'error': '이미 존재하는 브랜드명입니다.'}), 400
+        
+        # 브랜드 코드 중복 확인
+        logger.info("브랜드 코드 중복 확인 시작")
+        existing_code = Brand.query.filter_by(code=brand_code).first()
+        if existing_code:
+            logger.error(f"브랜드 코드 중복: {brand_code}")
+            return jsonify({'error': '이미 존재하는 브랜드 코드입니다.'}), 400
+        
+        logger.info("중복 확인 완료")
+        logger.info("새 브랜드 객체 생성 시작")
+        
+        # 새 브랜드 생성
+        new_brand = Brand()
+        new_brand.name = data['name']
+        new_brand.code = brand_code
+        new_brand.description = data.get('description')
+        new_brand.logo_url = data.get('logo_url')
+        new_brand.website = data.get('website')
+        new_brand.contact_email = data.get('contact_email')
+        new_brand.contact_phone = data.get('contact_phone')
+        new_brand.address = data.get('address')
+        new_brand.store_type = data.get('store_type', 'individual')  # 매장 유형 설정
+        
+        logger.info(f"브랜드 객체 생성 완료: {new_brand.name} ({new_brand.code})")
+        
+        # 사업자 정보 설정
+        new_brand.business_number = data.get('business_number')
+        new_brand.business_name = data.get('business_name')
+        new_brand.representative_name = data.get('representative_name')
+        new_brand.business_type = data.get('business_type')
+        new_brand.business_category = data.get('business_category')
+        new_brand.emergency_contact = data.get('emergency_contact')
+        new_brand.fax_number = data.get('fax_number')
+        
+        # 계약 정보 설정
+        if data.get('contract_start_date'):
+            new_brand.contract_start_date = datetime.strptime(data['contract_start_date'], '%Y-%m-%d').date()
+        if data.get('contract_end_date'):
+            new_brand.contract_end_date = datetime.strptime(data['contract_end_date'], '%Y-%m-%d').date()
+        
+        new_brand.contract_type = data.get('contract_type')
+        new_brand.contract_status = data.get('contract_status', 'active')
+        new_brand.contract_amount = data.get('contract_amount')
+        new_brand.contract_currency = data.get('contract_currency', 'KRW')
+        new_brand.contract_terms = data.get('contract_terms')
+        new_brand.contract_documents = data.get('contract_documents', {})
+        
+        new_brand.status = data.get('status', 'active')
+        
+        logger.info("데이터베이스에 브랜드 저장 시작")
+        try:
+            db.session.add(new_brand)
+            db.session.commit()
+            logger.info(f"브랜드 저장 완료: ID {new_brand.id}")
+        except Exception as db_error:
+            logger.error(f"데이터베이스 저장 오류: {str(db_error)}")
+            db.session.rollback()
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(f"데이터베이스 오류 traceback: {tb}")
+            return jsonify({'error': f'데이터베이스 저장 오류: {str(db_error)}', 'traceback': tb}), 500
+        
+        # 프론트엔드 서버 자동 생성 (일시적으로 비활성화)
+        frontend_created = False
+        frontend_port = 3000  # 기본 포트로 설정
+        
+        # 프론트엔드 서버 생성 기능은 나중에 구현
+        logger.info("프론트엔드 서버 자동 생성 기능은 현재 비활성화되어 있습니다.")
+        
+        # 기본 프론트엔드 URL 제공
+        frontend_url = f"http://localhost:{frontend_port}"
+        
+        response_data = {
+            'success': True,
+            'message': '브랜드가 성공적으로 생성되었습니다.',
+            'brand': {
+                'id': new_brand.id,
+                'name': new_brand.name,
+                'code': new_brand.code,
+                'description': new_brand.description,
+                'status': new_brand.status,
+                'created_at': new_brand.created_at.isoformat() if new_brand.created_at else None
+            },
+            'brand_id': new_brand.id,
+            'frontend_created': frontend_created,
+            'frontend_url': frontend_url
+        }
+        
+        logger.info(f"브랜드 생성 완료: {new_brand.name} (ID: {new_brand.id})")
+        logger.info("=== 브랜드 생성 API 완료 ===")
+        
+        return jsonify(response_data), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f"브랜드 생성 오류: {str(e)}")
+        logger.error(f"브랜드 생성 오류 traceback: {tb}")
+        return jsonify({'error': f'브랜드 생성 중 오류: {str(e)}', 'traceback': tb}), 500
 
 @app.route("/api/admin/brand/<int:brand_id>/details")
 def api_admin_brand_details(brand_id):
@@ -3574,20 +3969,135 @@ def api_admin_user_status(user_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# 메뉴 통합 시스템 API
+@app.route("/api/menu/user-menus")
+def api_menu_user_menus():
+    """사용자별 메뉴 조회 API"""
+    try:
+        # 사용자 역할에 따른 메뉴 반환 (임시로 admin으로 설정)
+        user_role = getattr(current_user, 'role', 'admin') if current_user.is_authenticated else 'admin'
+        if user_role == 'admin':
+            menus = [
+                {
+                    'id': 1,
+                    'menu_name': '시스템 관리',
+                    'menu_icon': 'fas fa-cogs',
+                    'menu_url': '/admin/system-monitoring',
+                    'sub_menus': [
+                        {'id': 11, 'menu_name': '시스템 모니터링', 'menu_icon': 'fas fa-chart-line', 'menu_url': '/admin/system-monitoring'},
+                        {'id': 12, 'menu_name': '보안 관리', 'menu_icon': 'fas fa-shield-alt', 'menu_url': '/admin/security-management'}
+                    ]
+                },
+                {
+                    'id': 2,
+                    'menu_name': '모듈 관리',
+                    'menu_icon': 'fas fa-puzzle-piece',
+                    'menu_url': '/admin/module-management',
+                    'sub_menus': [
+                        {'id': 21, 'menu_name': '모듈 마켓플레이스', 'menu_icon': 'fas fa-store', 'menu_url': '/admin/module-marketplace'},
+                        {'id': 22, 'menu_name': '설치된 모듈', 'menu_icon': 'fas fa-list', 'menu_url': '/admin/module-management'}
+                    ]
+                },
+                {
+                    'id': 3,
+                    'menu_name': '개발 모드',
+                    'menu_icon': 'fas fa-code',
+                    'menu_url': '/dev-mode',
+                    'sub_menus': [
+                        {'id': 31, 'menu_name': '프로젝트 관리', 'menu_icon': 'fas fa-project-diagram', 'menu_url': '/dev-mode'},
+                        {'id': 32, 'menu_name': '컴포넌트 라이브러리', 'menu_icon': 'fas fa-puzzle-piece', 'menu_url': '/dev-mode/components'}
+                    ]
+                }
+            ]
+        elif user_role == 'manager':
+            menus = [
+                {
+                    'id': 3,
+                    'menu_name': '팀 관리',
+                    'menu_icon': 'fas fa-users',
+                    'menu_url': '/team',
+                    'sub_menus': [
+                        {'id': 31, 'menu_name': '직원 목록', 'menu_icon': 'fas fa-list', 'menu_url': '/team/employees'},
+                        {'id': 32, 'menu_name': '근무 스케줄', 'menu_icon': 'fas fa-calendar', 'menu_url': '/team/schedule'}
+                    ]
+                },
+                {
+                    'id': 4,
+                    'menu_name': '개발 모드',
+                    'menu_icon': 'fas fa-code',
+                    'menu_url': '/dev-mode',
+                    'sub_menus': [
+                        {'id': 41, 'menu_name': '프로젝트 관리', 'menu_icon': 'fas fa-project-diagram', 'menu_url': '/dev-mode'}
+                    ]
+                }
+            ]
+        else:
+            menus = [
+                {
+                    'id': 4,
+                    'menu_name': '내 정보',
+                    'menu_icon': 'fas fa-user',
+                    'menu_url': '/profile',
+                    'sub_menus': [
+                        {'id': 41, 'menu_name': '개인 정보', 'menu_icon': 'fas fa-id-card', 'menu_url': '/profile/info'},
+                        {'id': 42, 'menu_name': '근무 기록', 'menu_icon': 'fas fa-history', 'menu_url': '/profile/attendance'}
+                    ]
+                }
+            ]
+        
+        return jsonify({'success': True, 'data': menus})
+    except Exception as e:
+        logger.error(f"메뉴 조회 오류: {str(e)}")
+        return jsonify({'success': False, 'error': '메뉴 조회 중 오류가 발생했습니다'}), 500
+
+@app.route("/api/menu/statistics")
+def api_menu_statistics():
+    """메뉴 통계 API"""
+    try:
+        stats = {
+            'total_menus': 4,
+            'module_menu_counts': {'attendance': 2, 'inventory': 2, 'team': 2, 'profile': 2},
+            'popular_menus': [
+                {'name': '출근 관리', 'access_count': 15},
+                {'name': '재고 관리', 'access_count': 12},
+                {'name': '팀 관리', 'access_count': 8}
+            ],
+            'recent_menus': [
+                {'name': '출근 기록', 'last_access': '2024-01-15 10:30:00'},
+                {'name': '재고 현황', 'last_access': '2024-01-15 09:15:00'}
+            ]
+        }
+        return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        logger.error(f"메뉴 통계 오류: {str(e)}")
+        return jsonify({'success': False, 'error': '메뉴 통계 조회 중 오류가 발생했습니다'}), 500
+
+@app.route("/api/menu/menu-access/<int:menu_id>", methods=["POST"])
+def api_menu_access(menu_id):
+    """메뉴 접근 기록 API"""
+    try:
+        # 메뉴 접근 기록 로직 (간단한 구현)
+        username = getattr(current_user, 'username', 'anonymous') if current_user.is_authenticated else 'anonymous'
+        logger.info(f"메뉴 접근: {menu_id} by {username}")
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"메뉴 접근 기록 오류: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route("/api/admin/brand_stats")
 def api_admin_brand_stats():
     """브랜드별 통계 API"""
     try:
         # 브랜드별 통계 데이터
-        brands = Branch.query.all()
+        brands = Brand.query.all()
         stats_data = []
         
         for brand in brands:
             # 브랜드별 직원 수
-            employee_count = User.query.filter_by(branch_id=brand.id).count()
+            employee_count = User.query.filter_by(brand_id=brand.id).count()
             
             # 브랜드별 매니저 수
-            manager_count = User.query.filter_by(branch_id=brand.id, role='store_manager').count()
+            manager_count = User.query.filter_by(brand_id=brand.id, role='store_manager').count()
             
             brand_stats = {
                 'brand_id': brand.id,
@@ -3600,6 +4110,7 @@ def api_admin_brand_stats():
         
         return jsonify({'brand_stats': stats_data})
     except Exception as e:
+        logger.error(f"브랜드 통계 API 오류: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # 모듈 마켓플레이스 API 블루프린트 등록
@@ -3610,6 +4121,29 @@ try:
 except Exception as e:
     logger.error(f"모듈 마켓플레이스 API 블루프린트 등록 실패: {e}")
 
+# 모듈 설치 시스템 초기화
+try:
+    from core.backend.module_installation_system import module_installation_system
+    logger.info("모듈 설치 시스템 초기화 완료")
+except Exception as e:
+    logger.error(f"모듈 설치 시스템 초기화 실패: {e}")
+
+# 메뉴 API 블루프린트 등록
+try:
+    from api.menu_api import menu_api_bp
+    app.register_blueprint(menu_api_bp)
+    logger.info("메뉴 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"메뉴 API 블루프린트 등록 실패: {e}")
+
+# 모듈 개발 모드 API 블루프린트 등록
+try:
+    from api.module_development_api import module_dev_api_bp
+    app.register_blueprint(module_dev_api_bp)
+    logger.info("모듈 개발 모드 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 개발 모드 API 블루프린트 등록 실패: {e}")
+
 # 모듈 마켓플레이스 라우트 블루프린트 등록
 try:
     from routes.module_marketplace_routes import module_marketplace_routes_bp
@@ -3617,6 +4151,355 @@ try:
     logger.info("모듈 마켓플레이스 라우트 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"모듈 마켓플레이스 라우트 블루프린트 등록 실패: {e}")
+
+# 모듈 개발 모드 라우트 블루프린트 등록
+try:
+    from routes.module_development_routes import module_dev_routes_bp
+    app.register_blueprint(module_dev_routes_bp)
+    logger.info("모듈 개발 모드 라우트 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 개발 모드 라우트 블루프린트 등록 실패: {e}")
+
+# 통합 연동 API 블루프린트 등록
+try:
+    from api.integrated_module_api import integrated_api_bp
+    app.register_blueprint(integrated_api_bp)
+    logger.info("통합 연동 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"통합 연동 API 블루프린트 등록 실패: {e}")
+
+# 통합 연동 시스템 시작
+try:
+    from core.backend.integrated_module_system import integrated_system
+    integrated_system.start_integration_system()
+    logger.info("통합 연동 시스템 시작 완료")
+except Exception as e:
+    logger.error(f"통합 연동 시스템 시작 실패: {e}")
+
+@app.route("/api/admin/brand-managers", methods=["POST"])
+def api_admin_create_brand_manager():
+    """브랜드 관리자 생성 API"""
+    try:
+        data = request.get_json()
+        
+        # 필수 필드 검증
+        required_fields = ['username', 'name', 'email', 'password', 'brand_id']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'{field} 필드는 필수입니다.'}), 400
+        
+        # 사용자명 중복 확인
+        existing_user = User.query.filter_by(username=data['username']).first()
+        if existing_user:
+            return jsonify({'error': '이미 존재하는 사용자명입니다.'}), 400
+        
+        # 이메일 중복 확인
+        existing_email = User.query.filter_by(email=data['email']).first()
+        if existing_email:
+            return jsonify({'error': '이미 존재하는 이메일입니다.'}), 400
+        
+        # 브랜드 존재 확인
+        brand = Brand.query.get(data['brand_id'])
+        if not brand:
+            return jsonify({'error': '존재하지 않는 브랜드입니다.'}), 400
+        
+        # 새 브랜드 관리자 생성
+        new_manager = User()
+        new_manager.username = data['username']
+        new_manager.name = data['name']
+        new_manager.email = data['email']
+        new_manager.set_password(data['password'])
+        new_manager.role = 'brand_manager'
+        new_manager.brand_id = data['brand_id']
+        new_manager.status = 'approved'  # 관리자가 생성하는 경우 바로 승인
+        new_manager.phone = data.get('phone')
+        
+        db.session.add(new_manager)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '브랜드 관리자가 성공적으로 생성되었습니다.',
+            'manager_id': new_manager.id
+        }), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"브랜드 관리자 생성 오류: {str(e)}")
+        return jsonify({'error': '브랜드 관리자 생성 중 오류가 발생했습니다.'}), 500
+
+@app.route("/api/address/search")
+def api_address_search():
+    """주소 검색 API (카카오 주소 검색 API 사용)"""
+    try:
+        query = request.args.get('query', '').strip()
+        
+        if not query:
+            return jsonify({'error': '검색어를 입력해주세요.'}), 400
+        
+        # 카카오 주소 검색 API 호출
+        import requests
+        
+        # 카카오 REST API 키 (실제 사용 시 환경변수로 관리)
+        KAKAO_API_KEY = os.environ.get('KAKAO_REST_API_KEY', 'YOUR_KAKAO_REST_API_KEY')
+        
+        headers = {
+            'Authorization': f'KakaoAK {KAKAO_API_KEY}'
+        }
+        
+        params = {
+            'query': query,
+            'size': 10
+        }
+        
+        # 카카오 주소 검색 API 호출
+        response = requests.get(
+            'https://dapi.kakao.com/v2/local/search/address.json',
+            headers=headers,
+            params=params
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            addresses = []
+            
+            for doc in data.get('documents', []):
+                address_info = {
+                    'road_address': doc.get('address_name', ''),
+                    'jibun_address': doc.get('address_name', ''),
+                    'postal_code': doc.get('zip_code', ''),
+                    'x': doc.get('x', ''),
+                    'y': doc.get('y', '')
+                }
+                addresses.append(address_info)
+            
+            return jsonify({
+                'success': True,
+                'addresses': addresses
+            })
+        else:
+            # 카카오 API 호출 실패 시 더미 데이터 반환 (개발용)
+            dummy_addresses = [
+                {
+                    'road_address': f'{query} (더미 데이터)',
+                    'jibun_address': f'{query} 지번주소',
+                    'postal_code': '12345',
+                    'x': '127.0',
+                    'y': '37.0'
+                }
+            ]
+            
+            return jsonify({
+                'success': True,
+                'addresses': dummy_addresses,
+                'note': '카카오 API 키가 설정되지 않아 더미 데이터를 반환합니다.'
+            })
+            
+    except Exception as e:
+        logger.error(f"주소 검색 오류: {str(e)}")
+        return jsonify({'error': '주소 검색 중 오류가 발생했습니다.'}), 500
+
+@app.route("/api/admin/stores", methods=["POST"])
+def api_admin_create_store():
+    """매장 생성 API"""
+    try:
+        data = request.get_json()
+        
+        # 필수 필드 검증
+        required_fields = ['name', 'store_code', 'brand_id']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'{field} 필드는 필수입니다.'}), 400
+        
+        # 브랜드 존재 확인
+        brand = Brand.query.get(data['brand_id'])
+        if not brand:
+            return jsonify({'error': '존재하지 않는 브랜드입니다.'}), 400
+        
+        # 매장 코드 중복 확인
+        existing_store = Branch.query.filter_by(store_code=data['store_code']).first()
+        if existing_store:
+            return jsonify({'error': '이미 존재하는 매장 코드입니다.'}), 400
+        
+        # 체인점인 경우 여러 매장 생성 옵션
+        if brand.store_type == 'chain' and data.get('create_multiple'):
+            # 여러 매장 일괄 생성
+            store_count = data.get('store_count', 1)
+            created_stores = []
+            
+            for i in range(store_count):
+                store_name = f"{data['name']} {i+1:02d}호점"
+                store_code = f"{data['store_code']}{i+1:02d}"
+                
+                new_store = Branch()
+                new_store.name = store_name
+                new_store.store_code = store_code
+                new_store.address = data.get('address', '')
+                new_store.phone = data.get('phone', '')
+                new_store.store_type = data.get('store_type', 'franchise')
+                new_store.capacity = data.get('capacity')
+                new_store.brand_id = data['brand_id']
+                new_store.industry_id = brand.industry_id
+                new_store.status = 'active'
+                
+                db.session.add(new_store)
+                created_stores.append({
+                    'id': new_store.id,
+                    'name': store_name,
+                    'store_code': store_code
+                })
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'{store_count}개의 매장이 성공적으로 생성되었습니다.',
+                'stores': created_stores,
+                'brand_type': 'chain'
+            }), 201
+        
+        else:
+            # 단일 매장 생성 (개인 매장 또는 체인점의 단일 생성)
+            new_store = Branch()
+            new_store.name = data['name']
+            new_store.store_code = data['store_code']
+            new_store.address = data.get('address', '')
+            new_store.phone = data.get('phone', '')
+            new_store.store_type = data.get('store_type', 'franchise')
+            new_store.capacity = data.get('capacity')
+            new_store.brand_id = data['brand_id']
+            new_store.industry_id = brand.industry_id
+            new_store.status = 'active'
+            
+            db.session.add(new_store)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': '매장이 성공적으로 생성되었습니다.',
+                'store_id': new_store.id,
+                'brand_type': brand.store_type
+            }), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"매장 생성 오류: {str(e)}")
+        return jsonify({'error': '매장 생성 중 오류가 발생했습니다.'}), 500
+
+@app.route("/api/admin/brand/<int:brand_id>/change-type", methods=["PUT"])
+def api_admin_change_brand_type(brand_id):
+    """브랜드 유형 변경 API (개인 매장 ↔ 체인점)"""
+    try:
+        data = request.get_json()
+        new_type = data.get('store_type')
+        
+        if not new_type or new_type not in ['individual', 'chain']:
+            return jsonify({'error': '유효하지 않은 매장 유형입니다.'}), 400
+        
+        # 브랜드 존재 확인
+        brand = Brand.query.get(brand_id)
+        if not brand:
+            return jsonify({'error': '존재하지 않는 브랜드입니다.'}), 404
+        
+        # 현재 유형과 같은 경우 변경 불필요
+        if brand.store_type == new_type:
+            return jsonify({'error': '이미 해당 유형입니다.'}), 400
+        
+        # 기존 유형 저장
+        old_type = brand.store_type
+        
+        # 유형 변경
+        brand.store_type = new_type
+        db.session.commit()
+        
+        # 프론트엔드 서버 업데이트 (기존 서버가 있는 경우)
+        try:
+            frontend_dir = f"frontend_brands/{brand.code}"
+            if os.path.exists(frontend_dir):
+                frontend_port = 3000 + brand.id
+                
+                # package.json 업데이트
+                package_json_path = f"{frontend_dir}/package.json"
+                if os.path.exists(package_json_path):
+                    with open(package_json_path, "r", encoding="utf-8") as f:
+                        package_data = json.load(f)
+                    
+                    if new_type == 'individual':
+                        package_data['name'] = f"{brand.code}-individual-frontend"
+                        package_data['description'] = f"{brand.name} 개인 매장 전용 프론트엔드"
+                    else:
+                        package_data['name'] = f"{brand.code}-chain-frontend"
+                        package_data['description'] = f"{brand.name} 체인점 전용 프론트엔드"
+                    
+                    with open(package_json_path, "w", encoding="utf-8") as f:
+                        json.dump(package_data, f, indent=2, ensure_ascii=False)
+                
+                # 페이지 업데이트
+                pages_dir = f"{frontend_dir}/pages"
+                if os.path.exists(pages_dir):
+                    if new_type == 'individual':
+                        # 개인 매장용 페이지로 변경
+                        with open(f"{pages_dir}/index.js", "w", encoding="utf-8") as f:
+                            f.write(f'''import React from 'react';
+
+export default function {brand.name}IndividualDashboard() {{
+  return (
+    <div>
+      <h1>{brand.name} 개인 매장 대시보드</h1>
+      <p>개인 매장 전용 프론트엔드 서버가 생성되었습니다.</p>
+      <div>
+        <h2>개인 매장 특징</h2>
+        <ul>
+          <li>단일 매장 관리</li>
+          <li>간단한 운영 시스템</li>
+          <li>직원 관리 최적화</li>
+        </ul>
+      </div>
+    </div>
+  );
+}}
+''')
+                    else:
+                        # 체인점용 페이지로 변경
+                        with open(f"{pages_dir}/index.js", "w", encoding="utf-8") as f:
+                            f.write(f'''import React from 'react';
+
+export default function {brand.name}ChainDashboard() {{
+  return (
+    <div>
+      <h1>{brand.name} 체인점 대시보드</h1>
+      <p>체인점 전용 프론트엔드 서버가 생성되었습니다.</p>
+      <div>
+        <h2>체인점 특징</h2>
+        <ul>
+          <li>다중 매장 관리</li>
+          <li>중앙 집중식 운영</li>
+          <li>매장별 성과 분석</li>
+          <li>일괄 매장 생성 기능</li>
+        </ul>
+      </div>
+    </div>
+  );
+}}
+''')
+                
+                logger.info(f"브랜드 {brand.name}의 유형이 {old_type}에서 {new_type}로 변경되었습니다. 프론트엔드 서버도 업데이트되었습니다.")
+        
+        except Exception as e:
+            logger.error(f"프론트엔드 서버 업데이트 실패: {e}")
+            # 프론트엔드 업데이트 실패해도 브랜드 유형은 변경됨
+        
+        return jsonify({
+            'success': True,
+            'message': f'브랜드 유형이 {old_type}에서 {new_type}로 성공적으로 변경되었습니다.',
+            'old_type': old_type,
+            'new_type': new_type
+        }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"브랜드 유형 변경 오류: {str(e)}")
+        return jsonify({'error': '브랜드 유형 변경 중 오류가 발생했습니다.'}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

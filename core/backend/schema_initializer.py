@@ -64,6 +64,47 @@ def initialize_default_schemas():
     except Exception as e:
         logger.error(f"스키마 초기화 실패: {e}")
 
+def initialize_industries():
+    """기본 업종 데이터베이스 초기화"""
+    try:
+        from extensions import db
+        from models import Industry
+        
+        # 기본 업종 목록 (name, code, description)
+        default_industries = [
+            ("음식점", "RESTAURANT", "음식점 업종"),
+            ("카페", "CAFE", "카페 업종"),
+            ("바", "BAR", "바 업종"),
+            ("고기집", "BBQ", "고기집 업종"),
+            ("편의점", "CONVENIENCE", "편의점 업종"),
+            ("미용실", "SALON", "미용실 업종"),
+            ("병원", "HOSPITAL", "병원 업종"),
+            ("약국", "PHARMACY", "약국 업종"),
+            ("옷가게", "CLOTHING", "의류 매장 업종"),
+            ("기타", "OTHER", "기타 업종")
+        ]
+        
+        for name, code, description in default_industries:
+            # 이미 존재하는지 확인
+            existing = Industry.query.filter_by(code=code).first()
+            if not existing:
+                industry = Industry(
+                    name=name,
+                    code=code,
+                    description=description,
+                    is_active=True
+                )
+                db.session.add(industry)
+                logger.info(f"업종 생성: {name} ({code})")
+        
+        db.session.commit()
+        logger.info("기본 업종 초기화 완료")
+        
+    except Exception as e:
+        logger.error(f"업종 초기화 실패: {e}")
+        if 'db' in locals():
+            db.session.rollback()
+
 def create_sample_brand_schema():
     """샘플 브랜드 스키마 생성"""
     try:

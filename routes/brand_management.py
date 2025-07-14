@@ -21,7 +21,32 @@ def brand_management_page():
     if not current_user.is_admin():
         return jsonify({'error': '권한이 없습니다.'}), 403
     
-    return render_template('admin/brand_management.html')
+    try:
+        # 브랜드 목록 조회
+        brands = Brand.query.all()
+        brand_list = []
+        
+        for brand in brands:
+            # 매장 수 계산
+            store_count = Branch.query.filter_by(brand_id=brand.id).count()
+            
+            brand_list.append({
+                'id': brand.id,
+                'name': brand.name,
+                'code': brand.code,
+                'description': brand.description,
+                'contact_email': brand.contact_email,
+                'contact_phone': brand.contact_phone,
+                'status': brand.status,
+                'store_count': store_count,
+                'created_at': brand.created_at
+            })
+        
+        return render_template('admin/brand_management.html', brands=brand_list)
+        
+    except Exception as e:
+        logger.error(f"브랜드 관리 페이지 로드 오류: {str(e)}")
+        return render_template('admin/brand_management.html', brands=[])
 
 @brand_management_bp.route('/api/brands', methods=['GET'])
 @login_required

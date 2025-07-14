@@ -1,0 +1,15 @@
+{
+  "name": "CAFFEBENE-frontend",
+  "version": "1.0.0",
+  "description": "카페베네 전용 프론트엔드",
+  "scripts": {
+    "dev": "next dev -p 3003",
+    "build": "next build",
+    "start": "next start -p 3003"
+  },
+  "dependencies": {
+    "next": "^13.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}

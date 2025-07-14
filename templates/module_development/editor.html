@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 개발 에디터 - your_program Manager</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/theme.js"></script>
+    <style>
+        .editor-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            height: calc(100vh - 64px);
+        }
+        
+        .component-palette {
+            background: #f8fafc;
+            border-right: 1px solid #e5e7eb;
+            overflow-y: auto;
+        }
+        
+        .preview-area {
+            background: white;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .properties-panel {
+            background: #f8fafc;
+            border-left: 1px solid #e5e7eb;
+            overflow-y: auto;
+        }
+        
+        .component-item {
+            cursor: grab;
+            transition: all 0.2s;
+        }
+        
+        .component-item:hover {
+            background: #e5e7eb;
+        }
+        
+        .component-item:active {
+            cursor: grabbing;
+        }
+        
+        .drop-zone {
+            min-height: 100px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background: #dbeafe;
+        }
+        
+        .preview-component {
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 4px;
+            background: white;
+            cursor: move;
+        }
+        
+        .preview-component.selected {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        
+        .code-editor {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .tab-button {
+            padding: 8px 16px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .tab-button.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <!-- 헤더 -->
+    <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div class="px-6 py-4 flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">모듈 개발 에디터</h2>
+                <p class="text-gray-600 dark:text-gray-400 mt-1">프로젝트: <span id="project-name">로딩 중...</span></p>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="save-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-save mr-2"></i>저장
+                </button>
+                <button id="preview-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                    <i class="fas fa-eye mr-2"></i>미리보기
+                </button>
+                <button id="deploy-btn" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700">
+                    <i class="fas fa-rocket mr-2"></i>배포
+                </button>
+                <a href="/dev-modules/" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 에디터 레이아웃 -->
+    <div class="editor-layout">
+        <!-- 컴포넌트 팔레트 -->
+        <div class="component-palette p-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">컴포넌트</h3>
+            
+            <div class="space-y-2">
+                <div class="component-item p-3 bg-white rounded-lg shadow-sm" draggable="true" data-component="button">
+                    <div class="flex items-center">
+                        <i class="fas fa-square mr-2 text-blue-600"></i>
+                        <span class="text-sm font-medium">버튼</span>
+                    </div>
+                </div>
+                
+                <div class="component-item p-3 bg-white rounded-lg shadow-sm" draggable="true" data-component="input">
+                    <div class="flex items-center">
+                        <i class="fas fa-keyboard mr-2 text-green-600"></i>
+                        <span class="text-sm font-medium">입력 필드</span>
+                    </div>
+                </div>
+                
+                <div class="component-item p-3 bg-white rounded-lg shadow-sm" draggable="true" data-component="table">
+                    <div class="flex items-center">
+                        <i class="fas fa-table mr-2 text-purple-600"></i>
+                        <span class="text-sm font-medium">테이블</span>
+                    </div>
+                </div>
+                
+                <div class="component-item p-3 bg-white rounded-lg shadow-sm" draggable="true" data-component="chart">
+                    <div class="flex items-center">
+                        <i class="fas fa-chart-bar mr-2 text-orange-600"></i>
+                        <span class="text-sm font-medium">차트</span>
+                    </div>
+                </div>
+                
+                <div class="component-item p-3 bg-white rounded-lg shadow-sm" draggable="true" data-component="card">
+                    <div class="flex items-center">
+                        <i class="fas fa-credit-card mr-2 text-red-600"></i>
+                        <span class="text-sm font-medium">카드</span>
+                    </div>
+                </div>
+                
+                <div class="component-item p-3 bg-white rounded-lg shadow-sm" draggable="true" data-component="form">
+                    <div class="flex items-center">
+                        <i class="fas fa-wpforms mr-2 text-indigo-600"></i>
+                        <span class="text-sm font-medium">폼</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">페이지</h4>
+                <div id="pages-list" class="space-y-1">
+                    <!-- 페이지 목록이 여기에 로드됩니다 -->
+                </div>
+                <button id="add-page-btn" class="w-full mt-2 text-sm text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-plus mr-1"></i>새 페이지
+                </button>
+            </div>
+        </div>
+
+        <!-- 미리보기 영역 -->
+        <div class="preview-area p-6">
+            <div class="mb-4 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <select id="page-selector" class="border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="">페이지 선택</option>
+                    </select>
+                    <button id="add-component-btn" class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm">
+                        <i class="fas fa-plus mr-1"></i>컴포넌트 추가
+                    </button>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="desktop-view" class="p-2 border border-gray-300 rounded hover:bg-gray-50">
+                        <i class="fas fa-desktop"></i>
+                    </button>
+                    <button id="tablet-view" class="p-2 border border-gray-300 rounded hover:bg-gray-50">
+                        <i class="fas fa-tablet-alt"></i>
+                    </button>
+                    <button id="mobile-view" class="p-2 border border-gray-300 rounded hover:bg-gray-50">
+                        <i class="fas fa-mobile-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="preview-container" class="bg-white border border-gray-200 rounded-lg min-h-[600px] p-4">
+                <div id="drop-zone" class="drop-zone">
+                    <div class="text-center text-gray-500">
+                        <i class="fas fa-plus-circle text-2xl mb-2"></i>
+                        <p>컴포넌트를 여기에 드래그하거나 추가 버튼을 클릭하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 속성 패널 -->
+        <div class="properties-panel p-4">
+            <div class="mb-4">
+                <div class="flex border-b border-gray-200">
+                    <button class="tab-button active" data-tab="properties">속성</button>
+                    <button class="tab-button" data-tab="code">코드</button>
+                    <button class="tab-button" data-tab="data">데이터</button>
+                </div>
+            </div>
+            
+            <!-- 속성 탭 -->
+            <div id="properties-tab" class="tab-content active">
+                <div id="component-properties">
+                    <p class="text-gray-500 text-sm">컴포넌트를 선택하면 속성을 편집할 수 있습니다.</p>
+                </div>
+            </div>
+            
+            <!-- 코드 탭 -->
+            <div id="code-tab" class="tab-content">
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">HTML</label>
+                    <textarea id="html-code" class="w-full h-32 code-editor border border-gray-300 rounded p-2" placeholder="HTML 코드를 입력하세요"></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CSS</label>
+                    <textarea id="css-code" class="w-full h-32 code-editor border border-gray-300 rounded p-2" placeholder="CSS 코드를 입력하세요"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">JavaScript</label>
+                    <textarea id="js-code" class="w-full h-32 code-editor border border-gray-300 rounded p-2" placeholder="JavaScript 코드를 입력하세요"></textarea>
+                </div>
+            </div>
+            
+            <!-- 데이터 탭 -->
+            <div id="data-tab" class="tab-content">
+                <div class="mb-4">
+                    <button id="reset-test-data-btn" class="w-full bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm">
+                        <i class="fas fa-refresh mr-1"></i>테스트 데이터 리셋
+                    </button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">테스트 데이터</label>
+                    <textarea id="test-data" class="w-full h-48 code-editor border border-gray-300 rounded p-2" placeholder="JSON 형태의 테스트 데이터를 입력하세요"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 새 페이지 모달 -->
+    <div id="new-page-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <h3 class="text-lg font-semibold mb-4">새 페이지 생성</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">페이지 이름</label>
+                    <input type="text" id="new-page-name" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="페이지 이름을 입력하세요">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">페이지 타입</label>
+                    <select id="new-page-type" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="page">일반 페이지</option>
+                        <option value="dashboard">대시보드</option>
+                        <option value="list">목록 페이지</option>
+                        <option value="detail">상세 페이지</option>
+                        <option value="form">폼 페이지</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button id="cancel-new-page" class="px-4 py-2 text-gray-600 hover:text-gray-800">취소</button>
+                <button id="create-new-page" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">생성</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const projectId = '{{ project_id }}';
+        let currentPage = null;
+        let selectedComponent = null;
+        let components = [];
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProjectDetails();
+            setupEventListeners();
+            setupDragAndDrop();
+        });
+
+        // 프로젝트 상세 정보 로드
+        async function loadProjectDetails() {
+            try {
+                const response = await fetch(`/api/module-development/projects/${projectId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const project = data.data;
+                    document.getElementById('project-name').textContent = project.project.project_name;
+                    
+                    // 페이지 목록 로드
+                    loadPagesList(project.pages);
+                    
+                    // 첫 번째 페이지 선택
+                    if (project.pages.length > 0) {
+                        selectPage(project.pages[0]);
+                    }
+                }
+            } catch (error) {
+                console.error('프로젝트 상세 정보 로드 실패:', error);
+            }
+        }
+
+        // 페이지 목록 로드
+        function loadPagesList(pages) {
+            const pagesList = document.getElementById('pages-list');
+            const pageSelector = document.getElementById('page-selector');
+            
+            pagesList.innerHTML = pages.map(page => `
+                <div class="page-item p-2 bg-white rounded cursor-pointer hover:bg-gray-50" data-page-id="${page.page_id}">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm">${page.page_name}</span>
+                        <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                    </div>
+                </div>
+            `).join('');
+            
+            pageSelector.innerHTML = '<option value="">페이지 선택</option>' + 
+                pages.map(page => `<option value="${page.page_id}">${page.page_name}</option>`).join('');
+        }
+
+        // 페이지 선택
+        function selectPage(page) {
+            currentPage = page;
+            document.getElementById('page-selector').value = page.page_id;
+            
+            // 페이지 내용 로드
+            if (page.content) {
+                loadPageContent(page.content);
+            }
+        }
+
+        // 페이지 내용 로드
+        function loadPageContent(content) {
+            const dropZone = document.getElementById('drop-zone');
+            
+            if (content.components && content.components.length > 0) {
+                dropZone.innerHTML = content.components.map(component => 
+                    createComponentElement(component)
+                ).join('');
+            } else {
+                dropZone.innerHTML = `
+                    <div class="text-center text-gray-500">
+                        <i class="fas fa-plus-circle text-2xl mb-2"></i>
+                        <p>컴포넌트를 여기에 드래그하거나 추가 버튼을 클릭하세요</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 컴포넌트 요소 생성
+        function createComponentElement(component) {
+            return `
+                <div class="preview-component" data-component-id="${component.id}" data-component-type="${component.type}">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium">${component.name}</span>
+                        <div class="flex space-x-1">
+                            <button onclick="editComponent('${component.id}')" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteComponent('${component.id}')" class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="component-preview">
+                        ${getComponentPreview(component)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 컴포넌트 미리보기 생성
+        function getComponentPreview(component) {
+            switch (component.type) {
+                case 'button':
+                    return `<button class="px-4 py-2 bg-blue-600 text-white rounded">${component.properties?.text || '버튼'}</button>`;
+                case 'input':
+                    return `<input type="text" class="border border-gray-300 rounded px-3 py-2" placeholder="${component.properties?.placeholder || '입력하세요'}">`;
+                case 'table':
+                    return `<table class="w-full border border-gray-300"><tr><th class="border p-2">헤더</th></tr><tr><td class="border p-2">데이터</td></tr></table>`;
+                case 'chart':
+                    return `<div class="h-32 bg-gray-100 rounded flex items-center justify-center"><span class="text-gray-500">차트</span></div>`;
+                case 'card':
+                    return `<div class="border border-gray-300 rounded p-4"><h3 class="font-semibold">카드 제목</h3><p class="text-sm text-gray-600">카드 내용</p></div>`;
+                case 'form':
+                    return `<form class="space-y-2"><input type="text" class="border rounded px-2 py-1" placeholder="이름"><button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">제출</button></form>`;
+                default:
+                    return `<div class="p-4 bg-gray-100 rounded">${component.name}</div>`;
+            }
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 탭 전환
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabName = this.dataset.tab;
+                    switchTab(tabName);
+                });
+            });
+
+            // 페이지 선택
+            document.getElementById('page-selector').addEventListener('change', function() {
+                const pageId = this.value;
+                if (pageId) {
+                    // 페이지 변경 로직
+                }
+            });
+
+            // 새 페이지 버튼
+            document.getElementById('add-page-btn').addEventListener('click', function() {
+                document.getElementById('new-page-modal').classList.remove('hidden');
+            });
+
+            // 새 페이지 모달
+            document.getElementById('cancel-new-page').addEventListener('click', function() {
+                document.getElementById('new-page-modal').classList.add('hidden');
+            });
+
+            document.getElementById('create-new-page').addEventListener('click', function() {
+                createNewPage();
+            });
+
+            // 저장 버튼
+            document.getElementById('save-btn').addEventListener('click', function() {
+                saveProject();
+            });
+
+            // 미리보기 버튼
+            document.getElementById('preview-btn').addEventListener('click', function() {
+                window.open(`/dev-modules/projects/${projectId}/preview`, '_blank');
+            });
+
+            // 배포 버튼
+            document.getElementById('deploy-btn').addEventListener('click', function() {
+                window.open(`/dev-modules/projects/${projectId}/deploy`, '_blank');
+            });
+
+            // 테스트 데이터 리셋
+            document.getElementById('reset-test-data-btn').addEventListener('click', function() {
+                resetTestData();
+            });
+        }
+
+        // 드래그 앤 드롭 설정
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            
+            // 드래그 오버
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('drag-over');
+            });
+            
+            // 드래그 리브
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('drag-over');
+            });
+            
+            // 드롭
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('drag-over');
+                
+                const componentType = e.dataTransfer.getData('text/plain');
+                if (componentType) {
+                    addComponent(componentType);
+                }
+            });
+            
+            // 컴포넌트 드래그 시작
+            document.querySelectorAll('.component-item').forEach(item => {
+                item.addEventListener('dragstart', function(e) {
+                    e.dataTransfer.setData('text/plain', this.dataset.component);
+                });
+            });
+        }
+
+        // 컴포넌트 추가
+        function addComponent(type) {
+            const component = {
+                id: 'comp_' + Date.now(),
+                type: type,
+                name: getComponentName(type),
+                properties: getDefaultProperties(type)
+            };
+            
+            components.push(component);
+            
+            const dropZone = document.getElementById('drop-zone');
+            if (dropZone.querySelector('.text-center')) {
+                dropZone.innerHTML = '';
+            }
+            
+            dropZone.insertAdjacentHTML('beforeend', createComponentElement(component));
+        }
+
+        // 컴포넌트 이름 가져오기
+        function getComponentName(type) {
+            const names = {
+                'button': '버튼',
+                'input': '입력 필드',
+                'table': '테이블',
+                'chart': '차트',
+                'card': '카드',
+                'form': '폼'
+            };
+            return names[type] || type;
+        }
+
+        // 기본 속성 가져오기
+        function getDefaultProperties(type) {
+            switch (type) {
+                case 'button':
+                    return { text: '버튼', color: 'blue', size: 'medium' };
+                case 'input':
+                    return { placeholder: '입력하세요', type: 'text', required: false };
+                case 'table':
+                    return { columns: ['컬럼1', '컬럼2'], data: [] };
+                case 'chart':
+                    return { type: 'bar', data: [] };
+                case 'card':
+                    return { title: '카드 제목', content: '카드 내용' };
+                case 'form':
+                    return { fields: [], submitText: '제출' };
+                default:
+                    return {};
+            }
+        }
+
+        // 탭 전환
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // 새 페이지 생성
+        async function createNewPage() {
+            const name = document.getElementById('new-page-name').value;
+            const type = document.getElementById('new-page-type').value;
+            
+            if (!name) {
+                alert('페이지 이름을 입력하세요.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/module-development/projects/${projectId}/pages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ page_name: name, page_type: type })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('new-page-modal').classList.add('hidden');
+                    loadProjectDetails(); // 페이지 목록 새로고침
+                } else {
+                    alert('페이지 생성 실패: ' + data.error);
+                }
+            } catch (error) {
+                console.error('페이지 생성 실패:', error);
+                alert('페이지 생성 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 프로젝트 저장
+        async function saveProject() {
+            try {
+                // 현재 페이지 내용 수집
+                const pageContent = {
+                    components: components,
+                    layout: 'default'
+                };
+                
+                if (currentPage) {
+                    const response = await fetch(`/api/module-development/projects/${projectId}/pages/${currentPage.page_id}/content`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: pageContent })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('프로젝트가 저장되었습니다.');
+                    } else {
+                        alert('저장 실패: ' + data.error);
+                    }
+                }
+            } catch (error) {
+                console.error('프로젝트 저장 실패:', error);
+                alert('저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 테스트 데이터 리셋
+        async function resetTestData() {
+            try {
+                const response = await fetch(`/api/module-development/test-data/${projectId}/reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data_type: 'basic' })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('테스트 데이터가 리셋되었습니다.');
+                } else {
+                    alert('테스트 데이터 리셋 실패: ' + data.error);
+                }
+            } catch (error) {
+                console.error('테스트 데이터 리셋 실패:', error);
+                alert('테스트 데이터 리셋 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 컴포넌트 편집
+        function editComponent(componentId) {
+            const component = components.find(c => c.id === componentId);
+            if (component) {
+                selectedComponent = component;
+                showComponentProperties(component);
+            }
+        }
+
+        // 컴포넌트 삭제
+        function deleteComponent(componentId) {
+            if (confirm('이 컴포넌트를 삭제하시겠습니까?')) {
+                components = components.filter(c => c.id !== componentId);
+                const element = document.querySelector(`[data-component-id="${componentId}"]`);
+                if (element) {
+                    element.remove();
+                }
+            }
+        }
+
+        // 컴포넌트 속성 표시
+        function showComponentProperties(component) {
+            const propertiesContainer = document.getElementById('component-properties');
+            
+            let propertiesHtml = `<h4 class="font-semibold mb-3">${component.name} 속성</h4>`;
+            
+            for (const [key, value] of Object.entries(component.properties || {})) {
+                propertiesHtml += `
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${key}</label>
+                        <input type="text" class="w-full border border-gray-300 rounded px-2 py-1" 
+                               value="${value}" 
+                               onchange="updateComponentProperty('${component.id}', '${key}', this.value)">
+                    </div>
+                `;
+            }
+            
+            propertiesContainer.innerHTML = propertiesHtml;
+        }
+
+        // 컴포넌트 속성 업데이트
+        function updateComponentProperty(componentId, property, value) {
+            const component = components.find(c => c.id === componentId);
+            if (component) {
+                if (!component.properties) component.properties = {};
+                component.properties[property] = value;
+                
+                // 미리보기 업데이트
+                const element = document.querySelector(`[data-component-id="${componentId}"]`);
+                if (element) {
+                    const previewElement = element.querySelector('.component-preview');
+                    previewElement.innerHTML = getComponentPreview(component);
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

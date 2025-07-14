@@ -1,0 +1,110 @@
+{
+  "attendance_management": {
+    "module_id": "attendance_management",
+    "status": "activated",
+    "health": "healthy",
+    "last_check": "2024-01-15T10:00:00Z",
+    "version": "1.0.0",
+    "installed_at": "2024-01-01T00:00:00Z",
+    "activated_at": "2024-01-01T00:00:00Z",
+    "last_updated": "2024-01-15T10:00:00Z",
+    "error_count": 0,
+    "last_error": null,
+    "maintenance_mode": false,
+    "maintenance_message": null,
+    "dependencies_status": [],
+    "performance_metrics": {
+      "response_time": 150,
+      "uptime": 99.8,
+      "error_rate": 0.1
+    },
+    "user_status": {
+      "1_1": {
+        "status": "activated",
+        "last_updated": "2024-01-15T10:00:00Z",
+        "installed_at": "2024-01-01T00:00:00Z",
+        "activated_at": "2024-01-01T00:00:00Z"
+      }
+    }
+  },
+  "sales_management": {
+    "module_id": "sales_management",
+    "status": "available",
+    "health": "unknown",
+    "last_check": "2024-01-15T10:00:00Z",
+    "version": "1.0.0",
+    "installed_at": null,
+    "activated_at": null,
+    "last_updated": "2024-01-15T10:00:00Z",
+    "error_count": 0,
+    "last_error": null,
+    "maintenance_mode": false,
+    "maintenance_message": null,
+    "dependencies_status": [],
+    "performance_metrics": {
+      "response_time": 0,
+      "uptime": 100.0,
+      "error_rate": 0.0
+    }
+  },
+  "payroll_management": {
+    "module_id": "payroll_management",
+    "status": "available",
+    "health": "unknown",
+    "last_check": "2024-01-15T10:00:00Z",
+    "version": "1.0.0",
+    "installed_at": null,
+    "activated_at": null,
+    "last_updated": "2024-01-15T10:00:00Z",
+    "error_count": 0,
+    "last_error": null,
+    "maintenance_mode": false,
+    "maintenance_message": null,
+    "dependencies_status": [],
+    "performance_metrics": {
+      "response_time": 0,
+      "uptime": 100.0,
+      "error_rate": 0.0
+    }
+  },
+  "inventory_management": {
+    "module_id": "inventory_management",
+    "status": "available",
+    "health": "unknown",
+    "last_check": "2024-01-15T10:00:00Z",
+    "version": "1.0.0",
+    "installed_at": null,
+    "activated_at": null,
+    "last_updated": "2024-01-15T10:00:00Z",
+    "error_count": 0,
+    "last_error": null,
+    "maintenance_mode": false,
+    "maintenance_message": null,
+    "dependencies_status": [],
+    "performance_metrics": {
+      "response_time": 0,
+      "uptime": 100.0,
+      "error_rate": 0.0
+    }
+  },
+  "qsc_management": {
+    "module_id": "qsc_management",
+    "status": "available",
+    "health": "unknown",
+    "last_check": "2024-01-15T10:00:00Z",
+    "version": "1.0.0",
+    "installed_at": null,
+    "activated_at": null,
+    "last_updated": "2024-01-15T10:00:00Z",
+    "error_count": 0,
+    "last_error": null,
+    "maintenance_mode": false,
+    "maintenance_message": null,
+    "dependencies_status": [],
+    "performance_metrics": {
+      "response_time": 0,
+      "uptime": 100.0,
+      "error_rate": 0.0
+    }
+  }
+} 

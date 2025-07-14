@@ -1,0 +1,449 @@
+{% extends "simple_base.html" %}
+
+{% block title %}{{ module.name }} 설치 - 간단한 모듈 마켓플레이스{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>{{ module.name }} 모듈 설치</h2>
+    <p>{{ module.description }}</p>
+</div>
+
+<!-- 진행 상태 표시 -->
+<div class="card" style="margin-top: 1rem;">
+    <h3>설치 진행 상황</h3>
+    <div class="progress-container">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-steps">
+            <div class="step" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">설치</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">활성화</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">설정</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">온보딩</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 단계별 컨텐츠 -->
+<div class="step-content" id="stepContent">
+    <!-- 1단계: 설치 -->
+    <div class="step-panel" id="step1Panel">
+        <div class="card">
+            <h3>1단계: 모듈 설치</h3>
+            <p>{{ module.name }} 모듈을 시스템에 설치합니다.</p>
+            <div class="module-info">
+                <h4>모듈 정보</h4>
+                <ul>
+                    <li><strong>버전:</strong> {{ module.version }}</li>
+                    <li><strong>작성자:</strong> {{ module.author }}</li>
+                    <li><strong>카테고리:</strong> {{ module.category }}</li>
+                </ul>
+            </div>
+            <button class="btn btn-success" onclick="startInstallation()">설치 시작</button>
+        </div>
+    </div>
+
+    <!-- 2단계: 설정 -->
+    <div class="step-panel" id="step2Panel" style="display: none;">
+        <div class="card">
+            <h3>2단계: 모듈 설정</h3>
+            <p>{{ module.name }} 모듈의 기본 설정을 구성합니다.</p>
+            
+            <div class="form-group">
+                <label>알림 설정</label>
+                <select id="notificationSetting" class="form-control">
+                    <option value="all">모든 알림 받기</option>
+                    <option value="important">중요 알림만</option>
+                    <option value="none">알림 받지 않기</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>데이터 백업</label>
+                <select id="backupSetting" class="form-control">
+                    <option value="daily">매일</option>
+                    <option value="weekly">매주</option>
+                    <option value="monthly">매월</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>권한 설정</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="permissionView" checked> 조회 권한</label>
+                    <label><input type="checkbox" id="permissionEdit" checked> 편집 권한</label>
+                    <label><input type="checkbox" id="permissionDelete"> 삭제 권한</label>
+                </div>
+            </div>
+            
+            <button class="btn btn-success" onclick="configureModule()">설정 완료</button>
+        </div>
+    </div>
+
+    <!-- 3단계: 온보딩 -->
+    <div class="step-panel" id="step3Panel" style="display: none;">
+        <div class="card">
+            <h3>3단계: 사용법 안내</h3>
+            <p>{{ module.name }} 모듈의 주요 기능을 알아보세요.</p>
+            
+            <div class="onboarding-content">
+                <h4>주요 기능</h4>
+                <ul>
+                    {% for feature in module.features %}
+                    <li>{{ feature }}</li>
+                    {% endfor %}
+                </ul>
+                
+                <h4>빠른 시작 가이드</h4>
+                <div class="quick-guide">
+                    <div class="guide-step">
+                        <div class="guide-number">1</div>
+                        <div class="guide-text">메뉴에서 "{{ module.name }}"을 클릭하세요</div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="guide-number">2</div>
+                        <div class="guide-text">기본 데이터를 입력하세요</div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="guide-number">3</div>
+                        <div class="guide-text">모듈을 사용해보세요!</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-success" onclick="completeOnboarding()">온보딩 완료</button>
+        </div>
+    </div>
+
+    <!-- 4단계: 완료 -->
+    <div class="step-panel" id="step4Panel" style="display: none;">
+        <div class="card">
+            <h3>🎉 설치 완료!</h3>
+            <p>{{ module.name }} 모듈이 성공적으로 설치되었습니다.</p>
+            
+            <div class="completion-info">
+                <h4>다음 단계</h4>
+                <ul>
+                    <li>대시보드에서 "{{ module.name }}" 메뉴를 확인하세요</li>
+                    <li>모듈을 사용해보세요</li>
+                    <li>문제가 있으면 설정에서 도움말을 확인하세요</li>
+                </ul>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-success">대시보드로 이동</a>
+                <a href="{{ url_for('marketplace') }}" class="btn">마켓플레이스로 돌아가기</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.progress-container {
+    margin: 2rem 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #27ae60, #2ecc71);
+    transition: width 0.3s ease;
+}
+
+.progress-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.step.active .step-number {
+    background: #27ae60;
+    color: white;
+}
+
+.step.completed .step-number {
+    background: #2ecc71;
+    color: white;
+}
+
+.step-label {
+    font-size: 0.9rem;
+    color: #666;
+    text-align: center;
+}
+
+.step.active .step-label {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.step.completed .step-label {
+    color: #2ecc71;
+}
+
+.step-panel {
+    margin-top: 2rem;
+}
+
+.module-info {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.module-info ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.onboarding-content {
+    margin: 1rem 0;
+}
+
+.quick-guide {
+    margin: 1rem 0;
+}
+
+.guide-step {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.guide-number {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #27ae60;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 1rem;
+}
+
+.completion-info {
+    background: #d4edda;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+    .progress-steps {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .step {
+        flex-direction: row;
+        gap: 1rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+let currentStep = 1;
+let installationId = null;
+
+function updateProgress(step, progress) {
+    // 진행 바 업데이트
+    document.getElementById('progressFill').style.width = progress + '%';
+    
+    // 단계 표시 업데이트
+    for (let i = 1; i <= 4; i++) {
+        const stepElement = document.getElementById('step' + i);
+        if (i < step) {
+            stepElement.className = 'step completed';
+        } else if (i === step) {
+            stepElement.className = 'step active';
+        } else {
+            stepElement.className = 'step';
+        }
+    }
+}
+
+function showStep(step) {
+    // 모든 단계 숨기기
+    for (let i = 1; i <= 4; i++) {
+        document.getElementById('step' + i + 'Panel').style.display = 'none';
+    }
+    
+    // 현재 단계 보이기
+    document.getElementById('step' + step + 'Panel').style.display = 'block';
+    
+    currentStep = step;
+}
+
+function startInstallation() {
+    fetch(`/api/modules/{{ module.id }}/install`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            installationId = data.installation_id;
+            updateProgress(2, data.progress);
+            showStep(2);
+        } else {
+            alert('설치 실패: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('설치 중 오류가 발생했습니다.');
+    });
+}
+
+function configureModule() {
+    const settings = {
+        notification: document.getElementById('notificationSetting').value,
+        backup: document.getElementById('backupSetting').value,
+        permissions: {
+            view: document.getElementById('permissionView').checked,
+            edit: document.getElementById('permissionEdit').checked,
+            delete: document.getElementById('permissionDelete').checked
+        }
+    };
+    
+    fetch(`/api/modules/{{ module.id }}/configure`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            installation_id: installationId,
+            settings: settings
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateProgress(3, data.progress);
+            showStep(3);
+        } else {
+            alert('설정 실패: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('설정 중 오류가 발생했습니다.');
+    });
+}
+
+function completeOnboarding() {
+    fetch(`/api/modules/{{ module.id }}/onboarding`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            installation_id: installationId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateProgress(4, data.progress);
+            showStep(4);
+        } else {
+            alert('온보딩 실패: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('온보딩 중 오류가 발생했습니다.');
+    });
+}
+
+// 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    updateProgress(1, 25);
+    showStep(1);
+});
+</script>
+{% endblock %} 

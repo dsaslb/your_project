@@ -1,0 +1,826 @@
+{% extends "base.html" %}
+
+{% block title %}통합 연동 모듈 데모{% endblock %}
+
+{% block extra_css %}
+<style>
+.integrated-demo-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.demo-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.demo-title {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.demo-description {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.scenario-flow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.flow-step {
+    background: rgba(255,255,255,0.1);
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.flow-arrow {
+    color: rgba(255,255,255,0.7);
+    font-size: 18px;
+}
+
+.demo-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.demo-panel {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.demo-panel h3 {
+    color: #374151;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.realtime-data {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.data-card {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 4px solid #3b82f6;
+}
+
+.data-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 5px;
+}
+
+.data-label {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.integration-log {
+    max-height: 300px;
+    overflow-y: auto;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.log-entry {
+    margin-bottom: 8px;
+    padding: 5px;
+    border-radius: 4px;
+    border-left: 3px solid #e5e7eb;
+}
+
+.log-entry.info {
+    background: #eff6ff;
+    border-left-color: #3b82f6;
+}
+
+.log-entry.success {
+    background: #f0fdf4;
+    border-left-color: #10b981;
+}
+
+.log-entry.warning {
+    background: #fffbeb;
+    border-left-color: #f59e0b;
+}
+
+.log-entry.error {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+}
+
+.log-timestamp {
+    color: #6b7280;
+    font-size: 0.8rem;
+}
+
+.log-message {
+    color: #374151;
+    margin-left: 10px;
+}
+
+.module-status {
+    display: grid;
+    gap: 10px;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    border-left: 4px solid #e5e7eb;
+}
+
+.status-item.active {
+    border-left-color: #10b981;
+    background: #f0fdf4;
+}
+
+.status-item.inactive {
+    border-left-color: #6b7280;
+    background: #f9fafb;
+}
+
+.status-item.error {
+    border-left-color: #ef4444;
+    background: #fef2f2;
+}
+
+.status-name {
+    font-weight: 600;
+    color: #374151;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-indicator.active {
+    background: #10b981;
+}
+
+.status-indicator.inactive {
+    background: #6b7280;
+}
+
+.status-indicator.error {
+    background: #ef4444;
+}
+
+.status-details {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-text {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.action-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.action-btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.action-btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.action-btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.action-btn-success:hover {
+    background: #059669;
+}
+
+.action-btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.action-btn-warning:hover {
+    background: #d97706;
+}
+
+.action-btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.action-btn-danger:hover {
+    background: #dc2626;
+}
+
+.action-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.action-btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.efficiency-metrics {
+    display: grid;
+    gap: 15px;
+}
+
+.metric-card {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+}
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.metric-title {
+    font-weight: 600;
+    color: #374151;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.metric-description {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.notification-list {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    padding: 12px;
+    border-left: 4px solid #e5e7eb;
+    margin-bottom: 10px;
+    background: #f9fafb;
+    border-radius: 0 8px 8px 0;
+    transition: all 0.2s;
+}
+
+.notification-item:hover {
+    background: #f3f4f6;
+}
+
+.notification-item.high {
+    border-left-color: #ef4444;
+    background: #fef2f2;
+}
+
+.notification-item.warning {
+    border-left-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.notification-item.info {
+    border-left-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.notification-title {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.9rem;
+}
+
+.notification-time {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.notification-message {
+    font-size: 0.85rem;
+    color: #4b5563;
+}
+
+.demo-footer {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    margin-top: 30px;
+}
+
+.demo-footer p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .demo-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .realtime-data {
+        grid-template-columns: 1fr;
+    }
+    
+    .scenario-flow {
+        flex-direction: column;
+    }
+    
+    .flow-arrow {
+        transform: rotate(90deg);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="integrated-demo-container">
+    <!-- 데모 헤더 -->
+    <div class="demo-header">
+        <h1 class="demo-title">🔄 통합 연동 모듈 데모</h1>
+        <p class="demo-description">
+            모든 모듈이 중앙 데이터를 공유하고 실시간으로 연동되는 통합 시스템을 체험해보세요.<br>
+            출퇴근 → 매출 → 급여 → 분석 → 알림이 자동으로 연동됩니다.
+        </p>
+        
+        <div class="scenario-flow">
+            <div class="flow-step">📊 출퇴근 기록</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">💰 매출 데이터</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">💵 급여 계산</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">📈 효율성 분석</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">🔔 관리자 알림</div>
+        </div>
+    </div>
+
+    <!-- 데모 콘텐츠 -->
+    <div class="demo-content">
+        <!-- 실시간 모니터링 패널 -->
+        <div class="demo-panel">
+            <h3>📊 실시간 모니터링</h3>
+            
+            <div class="realtime-data">
+                <div class="data-card">
+                    <div class="data-number" id="currentEmployees">0</div>
+                    <div class="data-label">현재 근무자</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-number" id="todaySales">0</div>
+                    <div class="data-label">오늘 매출</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-number" id="lateCount">0</div>
+                    <div class="data-label">지각자</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-number" id="unreadNotifications">0</div>
+                    <div class="data-label">미읽 알림</div>
+                </div>
+            </div>
+
+            <h4>🔄 통합 연동 로그</h4>
+            <div class="integration-log" id="integrationLog">
+                <div class="log-entry info">
+                    <span class="log-timestamp">시스템 시작</span>
+                    <span class="log-message">통합 연동 모듈 시스템이 시작되었습니다.</span>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="action-btn action-btn-primary" onclick="refreshRealtimeData()">
+                    🔄 새로고침
+                </button>
+                <button class="action-btn action-btn-success" onclick="runIntegratedScenario()">
+                    🎯 통합 시나리오 실행
+                </button>
+            </div>
+        </div>
+
+        <!-- 모듈 상태 및 효율성 패널 -->
+        <div class="demo-panel">
+            <h3>⚙️ 모듈 상태</h3>
+            
+            <div class="module-status">
+                <div class="status-item active">
+                    <div class="status-details">
+                        <div class="status-indicator active"></div>
+                        <span class="status-name">출퇴근 관리</span>
+                    </div>
+                    <span class="status-text">활성화됨</span>
+                </div>
+                <div class="status-item active">
+                    <div class="status-details">
+                        <div class="status-indicator active"></div>
+                        <span class="status-name">매출 관리</span>
+                    </div>
+                    <span class="status-text">활성화됨</span>
+                </div>
+                <div class="status-item active">
+                    <div class="status-details">
+                        <div class="status-indicator active"></div>
+                        <span class="status-name">급여 관리</span>
+                    </div>
+                    <span class="status-text">활성화됨</span>
+                </div>
+                <div class="status-item active">
+                    <div class="status-details">
+                        <div class="status-indicator active"></div>
+                        <span class="status-name">통합 분석</span>
+                    </div>
+                    <span class="status-text">활성화됨</span>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 20px;">📈 효율성 지표</h4>
+            <div class="efficiency-metrics">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">인건비 비율</span>
+                        <span class="metric-value" id="laborCostRatio">0%</span>
+                    </div>
+                    <div class="metric-description">매출 대비 인건비 비율</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">시간당 매출</span>
+                        <span class="metric-value" id="salesPerHour">0원</span>
+                    </div>
+                    <div class="metric-description">근무 시간당 평균 매출</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">출근률</span>
+                        <span class="metric-value" id="attendanceRate">0%</span>
+                    </div>
+                    <div class="metric-description">정시 출근률</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 및 개선 제안 패널 -->
+    <div class="demo-panel">
+        <h3>🔔 실시간 알림</h3>
+        
+        <div class="notification-list" id="notificationList">
+            <div class="notification-item info">
+                <div class="notification-header">
+                    <span class="notification-title">시스템 시작</span>
+                    <span class="notification-time">방금 전</span>
+                </div>
+                <div class="notification-message">통합 연동 모듈 시스템이 정상적으로 시작되었습니다.</div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-btn action-btn-warning" onclick="simulateAttendance()">
+                ⏰ 출근 기록 시뮬레이션
+            </button>
+            <button class="action-btn action-btn-success" onclick="simulateSales()">
+                💰 매출 기록 시뮬레이션
+            </button>
+            <button class="action-btn action-btn-primary" onclick="simulatePayroll()">
+                💵 급여 계산 시뮬레이션
+            </button>
+        </div>
+    </div>
+
+    <!-- 데모 푸터 -->
+    <div class="demo-footer">
+        <p>💡 이는 통합 연동 데모 모드입니다. 실제 시스템에서는 모든 모듈이 중앙 데이터를 공유하여 실시간으로 연동됩니다.</p>
+        <p>모든 데이터는 중앙 데이터 레이어에서 관리되며, 모듈 간 자동 연동이 이루어집니다.</p>
+    </div>
+</div>
+
+<script>
+// 실시간 데이터 새로고침
+function refreshRealtimeData() {
+    fetch('/api/integrated/realtime/stream')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('currentEmployees').textContent = data.data.attendance.current_employees;
+                document.getElementById('todaySales').textContent = data.data.sales.today_sales.toLocaleString() + '원';
+                document.getElementById('lateCount').textContent = data.data.attendance.late_count;
+                document.getElementById('unreadNotifications').textContent = data.data.notifications.unread_count;
+                
+                addLogEntry('info', '실시간 데이터가 업데이트되었습니다.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            addLogEntry('error', '실시간 데이터 업데이트 실패');
+        });
+}
+
+// 통합 시나리오 실행
+function runIntegratedScenario() {
+    addLogEntry('info', '통합 시나리오를 시작합니다...');
+    
+    fetch('/api/integrated/demo/integrated-scenario', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLogEntry('success', '통합 시나리오가 성공적으로 실행되었습니다!');
+            
+            // 시나리오 단계별 로그 추가
+            data.scenario.forEach((step, index) => {
+                setTimeout(() => {
+                    addLogEntry('info', step);
+                }, (index + 1) * 1000);
+            });
+            
+            // 5초 후 실시간 데이터 새로고침
+            setTimeout(() => {
+                refreshRealtimeData();
+                loadNotifications();
+                loadEfficiencyMetrics();
+            }, 5000);
+        } else {
+            addLogEntry('error', '통합 시나리오 실행 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addLogEntry('error', '통합 시나리오 실행 중 오류 발생');
+    });
+}
+
+// 출근 기록 시뮬레이션
+function simulateAttendance() {
+    addLogEntry('info', '출근 기록을 시뮬레이션합니다...');
+    
+    fetch('/api/integrated/attendance/record', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            employee_id: 1,
+            branch_id: 1,
+            action: 'clock_in'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLogEntry('success', '출근이 기록되었습니다.');
+            setTimeout(() => refreshRealtimeData(), 1000);
+        } else {
+            addLogEntry('error', '출근 기록 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addLogEntry('error', '출근 기록 중 오류 발생');
+    });
+}
+
+// 매출 기록 시뮬레이션
+function simulateSales() {
+    addLogEntry('info', '매출 기록을 시뮬레이션합니다...');
+    
+    fetch('/api/integrated/sales/record', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            employee_id: 1,
+            branch_id: 1,
+            amount: 50000,
+            category: '음료'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLogEntry('success', '매출이 기록되었습니다.');
+            setTimeout(() => refreshRealtimeData(), 1000);
+        } else {
+            addLogEntry('error', '매출 기록 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addLogEntry('error', '매출 기록 중 오류 발생');
+    });
+}
+
+// 급여 계산 시뮬레이션
+function simulatePayroll() {
+    addLogEntry('info', '급여 계산을 시뮬레이션합니다...');
+    
+    fetch('/api/integrated/payroll/calculate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            employee_id: 1,
+            branch_id: 1,
+            year: new Date().getFullYear(),
+            month: new Date().getMonth() + 1
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLogEntry('success', '급여가 계산되었습니다.');
+            setTimeout(() => {
+                refreshRealtimeData();
+                loadEfficiencyMetrics();
+            }, 1000);
+        } else {
+            addLogEntry('error', '급여 계산 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addLogEntry('error', '급여 계산 중 오류 발생');
+    });
+}
+
+// 알림 목록 로드
+function loadNotifications() {
+    fetch('/api/integrated/notifications')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const notificationList = document.getElementById('notificationList');
+                notificationList.innerHTML = '';
+                
+                data.data.slice(0, 5).forEach(notification => {
+                    const notificationItem = document.createElement('div');
+                    notificationItem.className = `notification-item ${notification.priority}`;
+                    
+                    const time = new Date(notification.created_at).toLocaleTimeString();
+                    
+                    notificationItem.innerHTML = `
+                        <div class="notification-header">
+                            <span class="notification-title">${notification.title}</span>
+                            <span class="notification-time">${time}</span>
+                        </div>
+                        <div class="notification-message">${notification.message}</div>
+                    `;
+                    
+                    notificationList.appendChild(notificationItem);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+
+// 효율성 지표 로드
+function loadEfficiencyMetrics() {
+    fetch('/api/integrated/efficiency/1')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const efficiency = data.data.efficiency;
+                
+                document.getElementById('laborCostRatio').textContent = 
+                    (efficiency.labor_cost_ratio || 0).toFixed(1) + '%';
+                
+                document.getElementById('salesPerHour').textContent = 
+                    Math.round(efficiency.sales_per_employee || 0).toLocaleString() + '원';
+                
+                const attendance = data.data.attendance;
+                const attendanceRate = attendance.total_records > 0 ? 
+                    ((attendance.total_records - attendance.late_count) / attendance.total_records * 100) : 0;
+                document.getElementById('attendanceRate').textContent = 
+                    attendanceRate.toFixed(1) + '%';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+
+// 로그 엔트리 추가
+function addLogEntry(type, message) {
+    const log = document.getElementById('integrationLog');
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry ${type}`;
+    
+    const timestamp = new Date().toLocaleTimeString();
+    
+    logEntry.innerHTML = `
+        <span class="log-timestamp">${timestamp}</span>
+        <span class="log-message">${message}</span>
+    `;
+    
+    log.appendChild(logEntry);
+    log.scrollTop = log.scrollHeight;
+    
+    // 최대 20개 로그만 유지
+    if (log.children.length > 20) {
+        log.removeChild(log.firstChild);
+    }
+}
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    refreshRealtimeData();
+    loadNotifications();
+    loadEfficiencyMetrics();
+    
+    // 30초마다 자동 새로고침
+    setInterval(refreshRealtimeData, 30000);
+    setInterval(loadNotifications, 30000);
+});
+</script>
+{% endblock %} 

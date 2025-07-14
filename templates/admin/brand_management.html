@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>브랜드별 관리 - your_program Manager</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>브랜드 관리 - your_program Manager</title>
     <link rel="stylesheet" href="/static/css/tailwind.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="/static/js/theme.js"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900">
     <div class="min-h-screen flex">
         <!-- 사이드바 -->
-        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
-            <div class="p-6">
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg flex flex-col">
+            <div class="p-6 flex-shrink-0">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🍽️ your_program</h1>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">관리자 대시보드</p>
             </div>
             
-            <nav class="mt-6">
+            <nav class="mt-6 flex-1">
                 <div class="px-6 mb-4">
                     <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">메인 메뉴</h3>
                 </div>
@@ -61,7 +61,7 @@
                 </a>
                 
                 <div class="px-6 mt-6 mb-4">
-                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">모듈 관리</h3>
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">모듈/플러그인</h3>
                 </div>
                 
                 <a href="/admin/module-marketplace" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -77,14 +77,13 @@
                     <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">시스템 관리</h3>
                 </div>
                 
-
                 <a href="/admin/feedback-management" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <i class="fas fa-comments mr-3"></i>
                     피드백 관리
                 </a>
             </nav>
             
-            <div class="absolute bottom-0 w-64 p-6">
+            <div class="p-6 flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex items-center justify-between">
                     <button id="theme-toggle" class="theme-toggle-btn" title="테마 변경">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -99,488 +98,546 @@
         </div>
 
         <!-- 메인 콘텐츠 -->
-        <div class="flex-1 overflow-auto">
+        <div class="flex-1 flex flex-col overflow-hidden">
             <!-- 헤더 -->
-            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <div class="px-6 py-4">
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">브랜드별 관리</h2>
-                    <p class="text-gray-600 dark:text-gray-400 mt-1">브랜드 현황 및 개선사항을 관리할 수 있습니다</p>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">브랜드 관리</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">브랜드 생성, 수정, 삭제 및 관리</p>
                 </div>
             </header>
 
             <!-- 메인 콘텐츠 -->
-            <main class="p-6">
-                <!-- 환영 메시지 -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                        브랜드별 관리 🏢
-                    </h2>
-                    <p class="text-gray-600 dark:text-gray-400">
-                        백다방, 초선마리, 카페베네, 스타벅스 등의 브랜드를 관리하고 각 브랜드의 매장들을 모니터링할 수 있습니다.
-                    </p>
-                </div>
+            <main class="flex-1 overflow-auto p-6">
+                <div class="container mx-auto px-4 py-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">브랜드 관리</h1>
+                        <button onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            새 브랜드 추가
+                        </button>
+                    </div>
 
-                <!-- 전체 통계 -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
-                                <i class="fas fa-store text-blue-600 dark:text-blue-400"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 브랜드</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-brands">0개</p>
-                            </div>
+                    <!-- 브랜드 목록 -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h2 class="text-xl font-semibold text-gray-800 dark:text-white">브랜드 목록</h2>
                         </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
-                                <i class="fas fa-building text-green-600 dark:text-green-400"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 매장</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-stores">0개</p>
-                            </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">브랜드명</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">브랜드 코드</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">업종</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">생성일</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="brandList" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- 브랜드 목록이 여기에 동적으로 로드됩니다 -->
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
-                                <i class="fas fa-users text-purple-600 dark:text-purple-400"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 직원</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-employees">0명</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-orange-100 dark:bg-orange-900">
-                                <i class="fas fa-shopping-cart text-orange-600 dark:text-orange-400"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">총 주문</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="total-orders">0건</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 브랜드 목록 -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">브랜드 목록</h3>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">브랜드명</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">코드</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">매장 수</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">직원 수</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">주문 수</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">액션</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="brands-table-body">
-                                <!-- 데이터가 여기에 동적으로 로드됩니다 -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 매장 목록 (선택된 브랜드) -->
-                <div id="stores-section" class="bg-white dark:bg-gray-800 rounded-lg shadow mt-6" style="display: none;">
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                        <div class="flex justify-between items-center">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                                <span id="selected-brand-name"></span> 매장 목록
-                            </h3>
-                            <button onclick="openCreateStoreModal()" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700">
-                                <i class="fas fa-plus mr-1"></i>새 매장 추가
-                            </button>
-                        </div>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">매장명</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">매장 코드</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">주소</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">직원 수</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">매장 유형</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">액션</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="stores-table-body">
-                                <!-- 데이터가 여기에 동적으로 로드됩니다 -->
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- 브랜드 생성 모달 -->
-    <div id="create-brand-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div class="mt-3">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">새 브랜드 추가</h3>
-                <form id="create-brand-form">
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜드명</label>
-                        <input type="text" id="brand-name" name="name" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜드 코드</label>
-                        <input type="text" id="brand-code" name="code" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">설명</label>
-                        <textarea id="brand-description" name="description" rows="3"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">웹사이트</label>
-                        <input type="url" id="brand-website" name="website" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">연락처 이메일</label>
-                        <input type="email" id="brand-email" name="contact_email" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">연락처 전화번호</label>
-                        <input type="tel" id="brand-phone" name="contact_phone" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소</label>
-                        <input type="text" id="brand-address" name="address" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" onclick="closeCreateBrandModal()" 
-                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300">
-                            취소
-                        </button>
-                        <button type="submit" 
-                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                            생성
-                        </button>
-                    </div>
-                </form>
+<!-- 브랜드 생성 모달 -->
+<div id="createBrandModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">새 브랜드 추가</h3>
+                <button onclick="closeCreateModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
-        </div>
-    </div>
+            
+            <form id="createBrandForm" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <!-- 업종 선택 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">업종 *</label>
+                    <select id="industrySelect" name="industry_name" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" required>
+                        <option value="">업종을 선택하세요</option>
+                    </select>
+                </div>
 
-    <!-- 매장 생성 모달 -->
-    <div id="create-store-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div class="mt-3">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">새 매장 추가</h3>
-                <form id="create-store-form">
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">매장명</label>
-                        <input type="text" id="store-name" name="name" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                <!-- 브랜드명 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜드명 *</label>
+                    <input type="text" id="brandName" name="name" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" required>
+                </div>
+
+                <!-- 브랜드 코드 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜드 코드</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="brandCode" name="code" class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" placeholder="자동 생성됩니다">
+                        <button type="button" onclick="generateBrandCode()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+                            자동 생성
+                        </button>
                     </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">매장 코드</label>
-                        <input type="text" id="store-code" name="store_code" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <div id="codeSuggestions" class="mt-2 space-y-1 hidden">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">추천 코드:</p>
+                        <div id="suggestionButtons" class="flex flex-wrap gap-2">
+                            <!-- 제안 버튼들이 여기에 생성됩니다 -->
+                        </div>
                     </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소</label>
-                        <input type="text" id="store-address" name="address" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+
+                <!-- 설명 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">설명</label>
+                    <textarea id="brandDescription" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"></textarea>
+                </div>
+
+                <!-- 연락처 정보 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">이메일</label>
+                        <input type="email" id="brandEmail" name="contact_email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
                     </div>
-                    <div class="mb-4">
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">전화번호</label>
-                        <input type="tel" id="store-phone" name="phone" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <input type="tel" id="brandPhone" name="contact_phone" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
                     </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">매장 유형</label>
-                        <select id="store-type" name="store_type" 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                            <option value="franchise">프랜차이즈</option>
-                            <option value="corporate">직영점</option>
-                            <option value="independent">독립점</option>
-                        </select>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">수용 인원</label>
-                        <input type="number" id="store-capacity" name="capacity" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" onclick="closeCreateStoreModal()" 
-                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300">
-                            취소
-                        </button>
-                        <button type="submit" 
-                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                            생성
-                        </button>
-                    </div>
-                </form>
-            </div>
+                </div>
+
+                <!-- 웹사이트 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">웹사이트</label>
+                    <input type="url" id="brandWebsite" name="website" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                </div>
+
+                <!-- 주소 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소</label>
+                    <input type="text" id="brandAddress" name="address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                </div>
+
+                <!-- 프론트엔드 서버 생성 -->
+                <div class="flex items-center">
+                    <input type="checkbox" id="createFrontendServer" name="create_frontend_server" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" checked>
+                    <label for="createFrontendServer" class="ml-2 block text-sm text-gray-900 dark:text-white">
+                        프론트엔드 서버 자동 생성
+                    </label>
+                </div>
+
+                <!-- 버튼 -->
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeCreateModal()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 dark:text-gray-200 rounded-md">
+                        취소
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                        브랜드 생성
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <script>
-        let selectedBrandId = null;
+<!-- 브랜드 수정 모달 -->
+<div id="editBrandModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">브랜드 수정</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="editBrandForm" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" id="editBrandId">
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">브랜드명 *</label>
+                    <input type="text" id="editBrandName" name="name" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" required>
+                </div>
 
-        // 브랜드 목록 로드
-        function loadBrands() {
-            fetch('/api/admin/brands')
-                .then(response => response.json())
-                .then(data => {
-                    const tableBody = document.getElementById('brands-table-body');
-                    tableBody.innerHTML = '';
-                    
-                    let totalBrands = 0;
-                    let totalStores = 0;
-                    let totalEmployees = 0;
-                    let totalOrders = 0;
-                    
-                    data.brands.forEach(brand => {
-                        totalBrands++;
-                        totalStores += brand.store_count;
-                        totalEmployees += brand.employee_count;
-                        totalOrders += brand.order_count || 0;
-                        
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                ${brand.name}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                ${brand.code}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                ${brand.store_count}개
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                ${brand.employee_count}명
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                ${brand.order_count || 0}건
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                    brand.status === 'active' 
-                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
-                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                                }">
-                                    ${brand.status === 'active' ? '활성' : '비활성'}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button onclick="viewStores(${brand.id}, '${brand.name}')" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3">
-                                    매장 보기
-                                </button>
-                                <button onclick="editBrand(${brand.id})" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
-                                    편집
-                                </button>
-                            </td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                    
-                    // 통계 업데이트
-                    document.getElementById('total-brands').textContent = totalBrands + '개';
-                    document.getElementById('total-stores').textContent = totalStores + '개';
-                    document.getElementById('total-employees').textContent = totalEmployees + '명';
-                    document.getElementById('total-orders').textContent = totalOrders + '건';
-                })
-                .catch(error => {
-                    console.error('Error loading brands:', error);
-                });
-        }
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">설명</label>
+                    <textarea id="editBrandDescription" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"></textarea>
+                </div>
 
-        // 매장 목록 로드
-        function loadStores(brandId) {
-            fetch(`/api/admin/stores?brand_id=${brandId}`)
-                .then(response => response.json())
-                .then(data => {
-                    const tableBody = document.getElementById('stores-table-body');
-                    tableBody.innerHTML = '';
-                    
-                    data.stores.forEach(store => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                ${store.name}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                ${store.store_code}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                ${store.address}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                ${store.employee_count}명
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                ${store.store_type === 'franchise' ? '프랜차이즈' : 
-                                  store.store_type === 'corporate' ? '직영점' : '독립점'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                    store.status === 'active' 
-                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
-                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                                }">
-                                    ${store.status === 'active' ? '활성' : '비활성'}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button onclick="editStore(${store.id})" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
-                                    편집
-                                </button>
-                            </td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading stores:', error);
-                });
-        }
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">이메일</label>
+                        <input type="email" id="editBrandEmail" name="contact_email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">전화번호</label>
+                        <input type="tel" id="editBrandPhone" name="contact_phone" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    </div>
+                </div>
 
-        // 매장 보기
-        function viewStores(brandId, brandName) {
-            selectedBrandId = brandId;
-            document.getElementById('selected-brand-name').textContent = brandName;
-            document.getElementById('stores-section').style.display = 'block';
-            loadStores(brandId);
-        }
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">웹사이트</label>
+                    <input type="url" id="editBrandWebsite" name="website" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                </div>
 
-        // 브랜드 생성 모달
-        function openCreateBrandModal() {
-            document.getElementById('create-brand-modal').classList.remove('hidden');
-        }
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소</label>
+                    <input type="text" id="editBrandAddress" name="address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                </div>
 
-        function closeCreateBrandModal() {
-            document.getElementById('create-brand-modal').classList.add('hidden');
-            document.getElementById('create-brand-form').reset();
-        }
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">상태</label>
+                    <select id="editBrandStatus" name="status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="active">활성</option>
+                        <option value="inactive">비활성</option>
+                        <option value="suspended">일시정지</option>
+                    </select>
+                </div>
 
-        // 매장 생성 모달
-        function openCreateStoreModal() {
-            if (!selectedBrandId) {
-                alert('먼저 브랜드를 선택해주세요.');
-                return;
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 dark:text-gray-200 rounded-md">
+                        취소
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                        수정
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let industries = [];
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    loadIndustries();
+    loadBrands();
+});
+
+// 업종 목록 로드
+async function loadIndustries() {
+    try {
+        const response = await fetch('/api/admin/industries');
+        const data = await response.json();
+        
+        if (response.ok) {
+            industries = data.industries;
+            const industrySelect = document.getElementById('industrySelect');
+            
+            // 기존 옵션 제거 (첫 번째 옵션 제외)
+            while (industrySelect.children.length > 1) {
+                industrySelect.removeChild(industrySelect.lastChild);
             }
-            document.getElementById('create-store-modal').classList.remove('hidden');
-        }
-
-        function closeCreateStoreModal() {
-            document.getElementById('create-store-modal').classList.add('hidden');
-            document.getElementById('create-store-form').reset();
-        }
-
-        // 브랜드 생성
-        document.getElementById('create-brand-form').addEventListener('submit', function(e) {
-            e.preventDefault();
             
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
-            
-            fetch('/api/admin/brands', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('브랜드가 성공적으로 생성되었습니다.');
-                    closeCreateBrandModal();
-                    loadBrands();
-                } else {
-                    alert('브랜드 생성 중 오류가 발생했습니다: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error creating brand:', error);
-                alert('브랜드 생성 중 오류가 발생했습니다.');
+            // 업종 옵션 추가
+            industries.forEach(industry => {
+                const option = document.createElement('option');
+                option.value = industry.name;
+                option.textContent = industry.name;
+                industrySelect.appendChild(option);
             });
-        });
-
-        // 매장 생성
-        document.getElementById('create-store-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
-            data.brand_id = selectedBrandId;
-            
-            fetch('/api/admin/stores', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('매장이 성공적으로 생성되었습니다.');
-                    closeCreateStoreModal();
-                    loadStores(selectedBrandId);
-                    loadBrands();
-                } else {
-                    alert('매장 생성 중 오류가 발생했습니다: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error creating store:', error);
-                alert('매장 생성 중 오류가 발생했습니다.');
-            });
-        });
-
-        // 브랜드 편집
-        function editBrand(brandId) {
-            // 브랜드 편집 기능 구현
-            alert('브랜드 편집 기능은 추후 구현 예정입니다.');
+        } else {
+            console.error('업종 목록 로드 실패:', data.error);
         }
+    } catch (error) {
+        console.error('업종 목록 로드 오류:', error);
+    }
+}
 
-        // 매장 편집
-        function editStore(storeId) {
-            // 매장 편집 기능 구현
-            alert('매장 편집 기능은 추후 구현 예정입니다.');
+// 브랜드 목록 로드
+async function loadBrands() {
+    try {
+        const response = await fetch('/api/admin/brands');
+        const data = await response.json();
+        
+        if (response.ok) {
+            displayBrands(data.brands);
+        } else {
+            console.error('브랜드 목록 로드 실패:', data.error);
         }
+    } catch (error) {
+        console.error('브랜드 목록 로드 오류:', error);
+    }
+}
 
-        // 페이지 로드 시 데이터 로드
-        document.addEventListener('DOMContentLoaded', function() {
-            loadBrands();
+// 브랜드 목록 표시
+function displayBrands(brands) {
+    const brandList = document.getElementById('brandList');
+    brandList.innerHTML = '';
+    
+    if (brands.length === 0) {
+        brandList.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                    등록된 브랜드가 없습니다.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    brands.forEach(brand => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900 dark:text-white">${brand.name}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900 dark:text-white font-mono">${brand.code}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900 dark:text-white">-</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    brand.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                    brand.status === 'inactive' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 
+                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                }">
+                    ${brand.status === 'active' ? '활성' : brand.status === 'inactive' ? '비활성' : '일시정지'}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                ${brand.created_at ? new Date(brand.created_at).toLocaleDateString() : '-'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button onclick="editBrand(${brand.id})" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3">수정</button>
+                <button onclick="deleteBrand(${brand.id})" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">삭제</button>
+            </td>
+        `;
+        brandList.appendChild(row);
+    });
+}
+
+// 브랜드 코드 자동 생성
+async function generateBrandCode() {
+    const industryName = document.getElementById('industrySelect').value;
+    const brandName = document.getElementById('brandName').value;
+    
+    if (!industryName || !brandName) {
+        alert('업종과 브랜드명을 먼저 입력해주세요.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/brands/code-suggestions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                industry_name: industryName,
+                brand_name: brandName
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // 자동 생성된 코드를 입력 필드에 설정
+            document.getElementById('brandCode').value = data.auto_generated;
             
-            // 30초마다 데이터 새로고침
-            setInterval(() => {
+            // 제안 코드들 표시
+            displayCodeSuggestions(data.suggestions);
+        } else {
+            console.error('브랜드 코드 생성 실패:', data.error);
+        }
+    } catch (error) {
+        console.error('브랜드 코드 생성 오류:', error);
+    }
+}
+
+// 제안 코드 표시
+function displayCodeSuggestions(suggestions) {
+    const suggestionsDiv = document.getElementById('codeSuggestions');
+    const buttonsDiv = document.getElementById('suggestionButtons');
+    
+    buttonsDiv.innerHTML = '';
+    
+    suggestions.forEach(suggestion => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white rounded text-sm';
+        button.textContent = suggestion;
+        button.onclick = () => {
+            document.getElementById('brandCode').value = suggestion;
+        };
+        buttonsDiv.appendChild(button);
+    });
+    
+    suggestionsDiv.classList.remove('hidden');
+}
+
+// 모달 열기/닫기
+function openCreateModal() {
+    document.getElementById('createBrandModal').classList.remove('hidden');
+    document.getElementById('createBrandForm').reset();
+    document.getElementById('codeSuggestions').classList.add('hidden');
+}
+
+function closeCreateModal() {
+    document.getElementById('createBrandModal').classList.add('hidden');
+}
+
+function openEditModal() {
+    document.getElementById('editBrandModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+    document.getElementById('editBrandModal').classList.add('hidden');
+}
+
+// 브랜드 생성
+document.getElementById('createBrandForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    // 체크박스 값 처리
+    data.create_frontend_server = document.getElementById('createFrontendServer').checked;
+    
+    try {
+        const response = await fetch('/api/admin/brands', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': data.csrf_token
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            console.log('브랜드 생성 성공:', result);
+            alert('브랜드가 성공적으로 생성되었습니다. 서버 설정 페이지로 이동합니다.');
+            closeCreateModal();
+            
+            // 생성된 브랜드의 서버 설정 페이지로 이동
+            if (result.brand && result.brand.id) {
+                console.log('서버 설정 페이지로 이동:', `/admin/brand/${result.brand.id}/server-setup`);
+                window.location.href = `/admin/brand/${result.brand.id}/server-setup`;
+            } else {
+                console.log('브랜드 정보가 없어 브랜드 목록을 새로고침합니다.');
                 loadBrands();
-                if (selectedBrandId) {
-                    loadStores(selectedBrandId);
-                }
-            }, 30000);
+            }
+        } else {
+            let errorMessage = '브랜드 생성 실패: ' + result.error;
+            if (result.traceback) {
+                console.error('브랜드 생성 오류 상세:', result.traceback);
+                errorMessage += '\n\n상세 오류는 브라우저 콘솔을 확인하세요.';
+            }
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('브랜드 생성 오류:', error);
+        alert('브랜드 생성 중 오류가 발생했습니다.');
+    }
+});
+
+// 브랜드 수정
+async function editBrand(brandId) {
+    try {
+        const response = await fetch(`/api/admin/brands/${brandId}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            const brand = data.brand;
+            
+            document.getElementById('editBrandId').value = brand.id;
+            document.getElementById('editBrandName').value = brand.name;
+            document.getElementById('editBrandDescription').value = brand.description || '';
+            document.getElementById('editBrandEmail').value = brand.contact_email || '';
+            document.getElementById('editBrandPhone').value = brand.contact_phone || '';
+            document.getElementById('editBrandWebsite').value = brand.website || '';
+            document.getElementById('editBrandAddress').value = brand.address || '';
+            document.getElementById('editBrandStatus').value = brand.status;
+            
+            openEditModal();
+        } else {
+            alert('브랜드 정보 로드 실패: ' + data.error);
+        }
+    } catch (error) {
+        console.error('브랜드 정보 로드 오류:', error);
+        alert('브랜드 정보 로드 중 오류가 발생했습니다.');
+    }
+}
+
+// 브랜드 수정 폼 제출
+document.getElementById('editBrandForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const brandId = document.getElementById('editBrandId').value;
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        const response = await fetch(`/api/admin/brands/${brandId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': data.csrf_token
+            },
+            body: JSON.stringify(data)
         });
-    </script>
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert('브랜드가 성공적으로 수정되었습니다.');
+            closeEditModal();
+            loadBrands();
+        } else {
+            alert('브랜드 수정 실패: ' + result.error);
+        }
+    } catch (error) {
+        console.error('브랜드 수정 오류:', error);
+        alert('브랜드 수정 중 오류가 발생했습니다.');
+    }
+});
+
+// 브랜드 삭제
+async function deleteBrand(brandId) {
+    if (!confirm('정말로 이 브랜드를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    // CSRF 토큰 가져오기
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    try {
+        const response = await fetch(`/api/admin/brands/${brandId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert('브랜드가 성공적으로 삭제되었습니다.');
+            loadBrands();
+        } else {
+            alert('브랜드 삭제 실패: ' + result.error);
+        }
+    } catch (error) {
+        console.error('브랜드 삭제 오류:', error);
+        alert('브랜드 삭제 중 오류가 발생했습니다.');
+    }
+}
+</script>
 </body>
 </html> 

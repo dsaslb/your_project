@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 개발 모드 - 새 프로젝트 생성</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+    <script src="/static/js/theme.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen flex">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🔧 모듈 개발</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">개발자 도구</p>
+            </div>
+            
+            <nav class="mt-6">
+                <div class="px-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">개발 도구</h3>
+                </div>
+                
+                <a href="/dev-modules/" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500">
+                    <i class="fas fa-plus mr-3"></i>
+                    새 프로젝트
+                </a>
+                <a href="/dev-modules/designer" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-palette mr-3"></i>
+                    디자이너
+                </a>
+                <a href="/dev-modules/editor" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-code mr-3"></i>
+                    코드 에디터
+                </a>
+                <a href="/dev-modules/testing" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-vial mr-3"></i>
+                    테스트
+                </a>
+                <a href="/dev-modules/deploy" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-rocket mr-3"></i>
+                    배포
+                </a>
+                
+                <div class="px-6 mt-6 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">관리</h3>
+                </div>
+                
+                <a href="/admin_dashboard" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-arrow-left mr-3"></i>
+                    관리자 대시보드
+                </a>
+            </nav>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 overflow-auto">
+            <!-- 헤더 -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">새 모듈 프로젝트 생성</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">새로운 모듈을 개발하기 위한 프로젝트를 생성합니다</p>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="p-6">
+                <!-- 프로젝트 생성 폼 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <form id="new-project-form">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 기본 정보 -->
+                            <div class="space-y-4">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">기본 정보</h3>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">프로젝트명</label>
+                                    <input type="text" id="project-name" name="name" required 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                           placeholder="예: attendance_management">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">표시명</label>
+                                    <input type="text" id="project-display-name" name="display_name" required 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                           placeholder="예: 출퇴근 관리">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">버전</label>
+                                    <input type="text" id="project-version" name="version" value="1.0.0" required 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">설명</label>
+                                    <textarea id="project-description" name="description" rows="3"
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                              placeholder="모듈에 대한 설명을 입력하세요"></textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- 개발 설정 -->
+                            <div class="space-y-4">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">개발 설정</h3>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">카테고리</label>
+                                    <select id="project-category" name="category" required 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <option value="">카테고리 선택</option>
+                                        <option value="management">관리</option>
+                                        <option value="analytics">분석</option>
+                                        <option value="communication">커뮤니케이션</option>
+                                        <option value="automation">자동화</option>
+                                        <option value="integration">연동</option>
+                                        <option value="utility">유틸리티</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">템플릿</label>
+                                    <select id="project-template" name="template" required 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <option value="">템플릿 선택</option>
+                                        <option value="basic">기본 템플릿</option>
+                                        <option value="api">API 모듈</option>
+                                        <option value="ui">UI 컴포넌트</option>
+                                        <option value="full">완전한 모듈</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">프레임워크</label>
+                                    <select id="project-framework" name="framework" required 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <option value="flask">Flask</option>
+                                        <option value="fastapi">FastAPI</option>
+                                        <option value="django">Django</option>
+                                        <option value="react">React</option>
+                                        <option value="vue">Vue.js</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">라이선스</label>
+                                    <select id="project-license" name="license" required 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <option value="MIT">MIT License</option>
+                                        <option value="Apache">Apache License 2.0</option>
+                                        <option value="GPL">GPL v3</option>
+                                        <option value="BSD">BSD License</option>
+                                        <option value="Proprietary">Proprietary</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 고급 설정 -->
+                        <div class="mt-6 p-4 border border-gray-200 rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">고급 설정</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="project-api" name="has_api" class="mr-2">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">API 포함</span>
+                                    </label>
+                                </div>
+                                
+                                <div>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="project-ui" name="has_ui" class="mr-2">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">UI 컴포넌트</span>
+                                    </label>
+                                </div>
+                                
+                                <div>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="project-database" name="has_database" class="mr-2">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">데이터베이스</span>
+                                    </label>
+                                </div>
+                                
+                                <div>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="project-tests" name="has_tests" class="mr-2">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">테스트 코드</span>
+                                    </label>
+                                </div>
+                                
+                                <div>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="project-docs" name="has_docs" class="mr-2">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">문서화</span>
+                                    </label>
+                                </div>
+                                
+                                <div>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="project-docker" name="has_docker" class="mr-2">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Docker 지원</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 버튼 -->
+                        <div class="mt-6 flex justify-end space-x-3">
+                            <button type="button" onclick="window.history.back()" 
+                                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300">
+                                취소
+                            </button>
+                            <button type="submit" 
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i>프로젝트 생성
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // 폼 제출 처리
+        document.getElementById('new-project-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            // 체크박스 값 처리
+            data.has_api = document.getElementById('project-api').checked;
+            data.has_ui = document.getElementById('project-ui').checked;
+            data.has_database = document.getElementById('project-database').checked;
+            data.has_tests = document.getElementById('project-tests').checked;
+            data.has_docs = document.getElementById('project-docs').checked;
+            data.has_docker = document.getElementById('project-docker').checked;
+            
+            // API 호출
+            fetch('/api/dev-modules/create-project', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('프로젝트가 성공적으로 생성되었습니다!');
+                    window.location.href = '/dev-modules/editor?project=' + data.project_id;
+                } else {
+                    alert('프로젝트 생성 실패: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error creating project:', error);
+                alert('프로젝트 생성 중 오류가 발생했습니다.');
+            });
+        });
+        
+        // 프로젝트명 입력 시 자동으로 표시명 생성
+        document.getElementById('project-name').addEventListener('input', function(e) {
+            const name = e.target.value;
+            const displayName = name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            document.getElementById('project-display-name').value = displayName;
+        });
+    </script>
+</body>
+</html> 

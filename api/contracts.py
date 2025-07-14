@@ -12,7 +12,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import tempfile
 import uuid
-from core.backend.contract_generator import ContractGenerator
+# ContractGenerator는 별도로 초기화하지 않고 필요시 사용
+# from core.backend.contract_generator import ContractGenerator
 
 contracts_bp = Blueprint('contracts', __name__)
 

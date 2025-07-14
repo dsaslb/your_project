@@ -1,44 +1,22 @@
-{% extends "base.html" %}
-
+{% extends 'simple_base.html' %}
 {% block title %}서버 오류{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 text-center">
-            <div class="error-page">
-                <h1 class="display-1 text-danger">500</h1>
-                <h2 class="mb-4">서버 오류가 발생했습니다</h2>
-                <p class="lead mb-4">죄송합니다. 서버에서 예상치 못한 오류가 발생했습니다.</p>
-                <div class="mb-4">
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary me-2">
-                        <i class="fas fa-home"></i> 대시보드로
-                    </a>
-                    <a href="javascript:location.reload()" class="btn btn-outline-secondary">
-                        <i class="fas fa-redo"></i> 다시 시도
-                    </a>
-                </div>
-                <div class="mt-4">
-                    <small class="text-muted">
-                        문제가 지속되면 관리자에게 문의하세요.
-                    </small>
-                </div>
+<div class="min-h-screen flex items-center justify-center bg-gray-50">
+    <div class="max-w-md w-full space-y-8">
+        <div class="text-center">
+            <div class="text-6xl font-bold text-red-300 mb-4">500</div>
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">서버 오류가 발생했습니다</h2>
+            <p class="text-gray-600 mb-8">일시적인 서버 문제가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
+            <div class="space-y-4">
+                <button onclick="location.reload()" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    페이지 새로고침
+                </button>
+                <a href="/" class="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    홈으로 돌아가기
+                </a>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-.error-page {
-    padding: 2rem;
-    background: #f8f9fa;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.display-1 {
-    font-size: 6rem;
-    font-weight: 300;
-}
-</style>
 {% endblock %} 

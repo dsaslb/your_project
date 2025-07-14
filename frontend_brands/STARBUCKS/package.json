@@ -1,0 +1,15 @@
+{
+  "name": "STARBUCKS-frontend",
+  "version": "1.0.0",
+  "description": "스타벅스 전용 프론트엔드",
+  "scripts": {
+    "dev": "next dev -p 3004",
+    "build": "next build",
+    "start": "next start -p 3004"
+  },
+  "dependencies": {
+    "next": "^13.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}
