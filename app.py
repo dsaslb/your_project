@@ -78,11 +78,17 @@ with app.app_context():
                 username='admin',
                 email='admin@your_program.com',
                 role='admin',
+                status='approved',  # 상태를 approved로 설정
                 is_active=True
             )
             admin_user.set_password('admin123')
             db.session.add(admin_user)
             logger.info("기본 관리자 계정 생성 완료: admin/admin123")
+        else:
+            # 기존 관리자 계정의 상태를 approved로 업데이트
+            if admin_user.status != 'approved':
+                admin_user.status = 'approved'
+                logger.info("기존 관리자 계정 상태를 approved로 업데이트")
         
         # 기본 산업 생성 (없는 경우)
         from models import Industry
@@ -146,16 +152,16 @@ except Exception as e:
 # 고도화된 실시간 알림 시스템 API 블루프린트 등록
 try:
     from api.enhanced_realtime_alerts_api import enhanced_alerts_bp, init_enhanced_alerts_api
-    app.register_blueprint(enhanced_alerts_bp, name='enhanced_realtime_alerts_api')
-    logger.info("고도화된 실시간 알림 시스템 API 블루프린트 등록 완료")
+    # app.register_blueprint(enhanced_alerts_bp, name='enhanced_realtime_alerts_api')
+    # logger.info("고도화된 실시간 알림 시스템 API 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"고도화된 실시간 알림 시스템 API 블루프린트 등록 실패: {e}")
 
 # 플러그인 모니터링과 실시간 알림 통합 시스템 시작
 try:
     from core.backend.plugin_monitoring_integration import plugin_monitoring_integration
-    plugin_monitoring_integration.start_integration()
-    logger.info("플러그인 모니터링과 실시간 알림 통합 시스템 시작")
+    # plugin_monitoring_integration.start_integration()
+    # logger.info("플러그인 모니터링과 실시간 알림 통합 시스템 시작")
 except Exception as e:
     logger.error(f"플러그인 모니터링과 실시간 알림 통합 시스템 시작 실패: {e}")
 
@@ -177,9 +183,10 @@ except Exception as e:
 
 # AI 예측 분석 API 블루프린트 등록
 try:
-    from api.ai_prediction_advanced import ai_prediction_advanced_bp
-    app.register_blueprint(ai_prediction_advanced_bp, name='ai_prediction_advanced_api')
-    logger.info("AI 예측 분석 API 블루프린트 등록 완료")
+    # from api.ai_prediction_advanced import ai_prediction_advanced_bp
+    # app.register_blueprint(ai_prediction_advanced_bp, name='ai_prediction_advanced_api')
+    # logger.info("AI 예측 분석 API 블루프린트 등록 완료")
+    pass
 except Exception as e:
     logger.error(f"AI 예측 분석 API 블루프린트 등록 실패: {e}")
 
@@ -198,6 +205,46 @@ try:
     logger.info("플러그인 성능 최적화 API 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"플러그인 성능 최적화 API 블루프린트 등록 실패: {e}")
+
+# 브랜드 온보딩 API 블루프린트 등록
+try:
+    from api.brand_onboarding_api import brand_onboarding_bp
+    app.register_blueprint(brand_onboarding_bp, name='brand_onboarding_api')
+    logger.info("브랜드 온보딩 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"브랜드 온보딩 API 블루프린트 등록 실패: {e}")
+
+# 브랜드 온보딩 라우트 블루프린트 등록
+try:
+    from routes.brand_onboarding_routes import brand_onboarding_routes_bp
+    app.register_blueprint(brand_onboarding_routes_bp, name='brand_onboarding_routes')
+    logger.info("브랜드 온보딩 라우트 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"브랜드 온보딩 라우트 블루프린트 등록 실패: {e}")
+
+# 카카오 API 관리 블루프린트 등록
+try:
+    from api.kakao_api_management import kakao_api_bp
+    app.register_blueprint(kakao_api_bp, name='kakao_api_management')
+    logger.info("카카오 API 관리 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"카카오 API 관리 블루프린트 등록 실패: {e}")
+
+# 주소 검증 API 블루프린트 등록
+try:
+    from api.address_validation import address_validation_bp
+    app.register_blueprint(address_validation_bp, name='address_validation_api')
+    logger.info("주소 검증 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"주소 검증 API 블루프린트 등록 실패: {e}")
+
+# 모듈 개발 시스템 API 블루프린트 등록
+try:
+    from api.module_development_api import module_development_api
+    app.register_blueprint(module_development_api, url_prefix='/api/module-development', name='module_development_api')
+    logger.info("모듈 개발 시스템 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈 개발 시스템 API 블루프린트 등록 실패: {e}")
 
 # 고도화된 마켓플레이스 API 블루프린트 등록
 try:
@@ -345,7 +392,7 @@ except Exception as e:
 
 try:
     from routes.brand_management import brand_management_bp
-    app.register_blueprint(brand_management_bp, name='brand_management')
+    app.register_blueprint(brand_management_bp, name='brand_management_routes')
     logger.info("브랜드별 관리 라우트 등록 완료")
 except Exception as e:
     logger.error(f"브랜드별 관리 라우트 등록 실패: {e}")
@@ -2363,7 +2410,14 @@ def api_admin_brand_detail(brand_id):
             'contract_currency': brand.contract_currency,
             'contract_terms': brand.contract_terms,
             'status': brand.status,
-            'created_at': brand.created_at.isoformat() if brand.created_at else None
+            'created_at': brand.created_at.isoformat() if brand.created_at else None,
+            # 주소 상세 정보
+            'zipcode': brand.zipcode,
+            'road_address': brand.road_address,
+            'jibun_address': brand.jibun_address,
+            'detail_address': brand.detail_address,
+            'latitude': brand.latitude,
+            'longitude': brand.longitude
         }
         
         return jsonify({
@@ -2420,7 +2474,14 @@ def api_admin_brands():
                 'employee_count': employee_count,
                 'order_count': order_count,
                 'status': brand.status,
-                'created_at': brand.created_at.isoformat() if brand.created_at else None
+                'created_at': brand.created_at.isoformat() if brand.created_at else None,
+                # 주소 상세 정보
+                'zipcode': brand.zipcode,
+                'road_address': brand.road_address,
+                'jibun_address': brand.jibun_address,
+                'detail_address': brand.detail_address,
+                'latitude': brand.latitude,
+                'longitude': brand.longitude
             }
             
             brands_data.append(brand_data)
@@ -2445,7 +2506,8 @@ def api_admin_update_brand(brand_id):
             'contact_phone', 'address', 'store_type', 'business_number', 'business_name',
             'representative_name', 'business_type', 'business_category', 'emergency_contact',
             'fax_number', 'contract_type', 'contract_status', 'contract_amount',
-            'contract_currency', 'contract_terms', 'status'
+            'contract_currency', 'contract_terms', 'status',
+            'zipcode', 'road_address', 'jibun_address', 'detail_address', 'latitude', 'longitude'
         ]
         
         for field in updatable_fields:
@@ -2600,6 +2662,14 @@ def api_admin_create_brand():
         new_brand.contact_phone = data.get('contact_phone')
         new_brand.address = data.get('address')
         new_brand.store_type = data.get('store_type', 'individual')  # 매장 유형 설정
+        
+        # 주소 상세 정보 설정
+        new_brand.zipcode = data.get('zipcode')
+        new_brand.road_address = data.get('road_address')
+        new_brand.jibun_address = data.get('jibun_address')
+        new_brand.detail_address = data.get('detail_address')
+        new_brand.latitude = data.get('latitude')
+        new_brand.longitude = data.get('longitude')
         
         logger.info(f"브랜드 객체 생성 완료: {new_brand.name} ({new_brand.code})")
         
@@ -2864,6 +2934,14 @@ def api_admin_employee_details(employee_id):
 @app.route("/admin/feedback-management")
 def admin_feedback_management():
     return render_template('admin/feedback_management.html')
+
+@app.route("/admin/kakao-api-settings")
+@login_required
+def admin_kakao_api_settings():
+    """카카오 API 설정 페이지"""
+    if not current_user.is_admin():
+        return jsonify({'error': '권한이 없습니다.'}), 403
+    return render_template('admin/kakao_api_settings.html')
 
 @app.route("/api/admin/feedback")
 def api_admin_feedback():
@@ -3235,6 +3313,19 @@ def api_marketplace_modules():
                 'status': 'published',
                 'downloads': 280,
                 'rating': 4.7
+            },
+            
+            # 가계부 모듈
+            {
+                'id': 'ledger',
+                'plugin_id': 'ledger',
+                'name': '가계부 모듈',
+                'author': 'Your Program Team',
+                'description': '정기지출/수입 관리 및 가계부 기능을 제공합니다. 월별 요약, 카테고리별 분석, 다가오는 지출 알림 기능을 포함합니다.',
+                'version': '1.0.0',
+                'status': 'published',
+                'downloads': 180,
+                'rating': 4.6
             }
         ]
         
@@ -3266,6 +3357,68 @@ def api_marketplace_module_upload():
         return jsonify({'success': True, 'message': '모듈이 성공적으로 업로드되었습니다.'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route("/api/marketplace/modules/<module_id>/reviews")
+def api_marketplace_module_reviews(module_id):
+    """모듈 리뷰 목록 API"""
+    try:
+        # 샘플 리뷰 데이터
+        reviews = [
+            {
+                'id': 1,
+                'user_name': '김철수',
+                'rating': 5,
+                'comment': '정말 유용한 모듈입니다. 가계부 관리가 훨씬 쉬워졌어요!',
+                'created_at': '2024-01-15T10:30:00Z',
+                'helpful_count': 12
+            },
+            {
+                'id': 2,
+                'user_name': '이영희',
+                'rating': 4,
+                'comment': '기능이 잘 구현되어 있고 사용하기 편합니다. 다만 UI를 조금 더 개선하면 좋겠어요.',
+                'created_at': '2024-01-14T15:20:00Z',
+                'helpful_count': 8
+            },
+            {
+                'id': 3,
+                'user_name': '박민수',
+                'rating': 5,
+                'comment': '월별 요약 기능이 정말 유용합니다. 지출 패턴을 쉽게 파악할 수 있어요.',
+                'created_at': '2024-01-13T09:15:00Z',
+                'helpful_count': 15
+            }
+        ]
+        
+        return jsonify({'reviews': reviews})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/marketplace/modules/<module_id>/reviews", methods=["POST"])
+def api_marketplace_module_add_review(module_id):
+    """모듈 리뷰 추가 API"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '리뷰 데이터가 필요합니다.'}), 400
+        
+        # 실제로는 데이터베이스에 리뷰 저장
+        new_review = {
+            'id': 4,  # 실제로는 자동 생성
+            'user_name': data.get('user_name', '익명'),
+            'rating': data.get('rating', 5),
+            'comment': data.get('comment', ''),
+            'created_at': datetime.now().isoformat(),
+            'helpful_count': 0
+        }
+        
+        return jsonify({
+            'success': True,
+            'message': '리뷰가 성공적으로 등록되었습니다.',
+            'review': new_review
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route("/api/modules/installed")
 @csrf.exempt
@@ -3567,6 +3720,25 @@ def api_modules_installed():
                     'memory_usage': 38.2,
                     'response_time': 280
                 }
+            },
+            
+            # 가계부 모듈
+            {
+                'id': 'ledger',
+                'plugin_id': 'ledger',
+                'name': '가계부 모듈',
+                'description': '정기지출/수입 관리 및 가계부 기능을 제공합니다. 월별 요약, 카테고리별 분석, 다가오는 지출 알림 기능을 포함합니다.',
+                'version': '1.0.0',
+                'status': 'active',
+                'installed_at': '2024-01-20',
+                'last_updated': '2024-01-20',
+                'size': '8.5MB',
+                'dependencies': ['user_management_module'],
+                'performance': {
+                    'cpu_usage': 3.2,
+                    'memory_usage': 18.5,
+                    'response_time': 140
+                }
             }
         ]
         
@@ -3600,31 +3772,6 @@ def api_modules_uninstall(module_id):
     try:
         # 실제로는 모듈을 제거
         return jsonify({'success': True, 'message': f'모듈 {module_id}이 제거되었습니다.'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route("/api/modules/<module_id>/settings")
-def api_modules_settings(module_id):
-    """모듈 설정 조회 API"""
-    try:
-        # 샘플 설정 데이터
-        settings = {
-            'auto_backup': {'label': '자동 백업', 'type': 'checkbox', 'value': True},
-            'backup_interval': {'label': '백업 주기 (시간)', 'type': 'number', 'value': 24},
-            'notification_enabled': {'label': '알림 활성화', 'type': 'checkbox', 'value': True},
-            'log_level': {'label': '로그 레벨', 'type': 'select', 'value': 'info'}
-        }
-        
-        return jsonify({'success': True, 'settings': settings})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route("/api/modules/<module_id>/settings", methods=["POST"])
-def api_modules_settings_save(module_id):
-    """모듈 설정 저장 API"""
-    try:
-        # 실제로는 설정을 저장
-        return jsonify({'success': True, 'message': '설정이 저장되었습니다.'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -3891,6 +4038,15 @@ def api_modules_performance():
                     'cpu_usage': 7.2,
                     'memory_usage': 38.5,
                     'response_time': 280,
+                    'status': 'active',
+                    'last_updated': '2024-01-15T10:30:00Z'
+                },
+                {
+                    'plugin_id': 'ledger',
+                    'name': '가계부 모듈',
+                    'cpu_usage': 3.2,
+                    'memory_usage': 18.5,
+                    'response_time': 140,
                     'status': 'active',
                     'last_updated': '2024-01-15T10:30:00Z'
                 }
@@ -4500,6 +4656,105 @@ export default function {brand.name}ChainDashboard() {{
         db.session.rollback()
         logger.error(f"브랜드 유형 변경 오류: {str(e)}")
         return jsonify({'error': '브랜드 유형 변경 중 오류가 발생했습니다.'}), 500
+
+# 모듈/플러그인 통합 개발 API 블루프린트 등록
+try:
+    from api.module_plugin_dev_api import module_plugin_dev_bp
+    app.register_blueprint(module_plugin_dev_bp)
+    logger.info("모듈/플러그인 통합 개발 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈/플러그인 통합 개발 API 블루프린트 등록 실패: {e}")
+
+# 모듈/플러그인 개발 페이지 라우트 블루프린트 등록
+try:
+    from routes.module_plugin_dev_routes import module_plugin_dev_routes_bp
+    app.register_blueprint(module_plugin_dev_routes_bp)
+    logger.info("모듈/플러그인 개발 페이지 라우트 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"모듈/플러그인 개발 페이지 라우트 블루프린트 등록 실패: {e}")
+
+# 가계부 모듈 등록
+try:
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'modules', 'ledger'))
+    from main import ledger_bp, init_db
+    init_db(app)
+    app.register_blueprint(ledger_bp)
+    logger.info("가계부 모듈 등록 완료")
+except Exception as e:
+    logger.error(f"가계부 모듈 등록 실패: {e}")
+
+@app.route("/api/module-settings/<module_id>")
+def api_module_settings_public(module_id):
+    """모듈 설정 조회 API (공개)"""
+    try:
+        # 가계부 모듈 전용 설정
+        if module_id == 'ledger':
+            settings = {
+                'auto_backup': {'label': '자동 백업', 'type': 'checkbox', 'value': True},
+                'backup_interval': {'label': '백업 주기 (시간)', 'type': 'number', 'value': 24},
+                'notification_enabled': {'label': '알림 활성화', 'type': 'checkbox', 'value': True},
+                'log_level': {'label': '로그 레벨', 'type': 'select', 'value': 'info', 'options': ['debug', 'info', 'warning', 'error']},
+                'default_currency': {'label': '기본 통화', 'type': 'select', 'value': 'KRW', 'options': ['KRW', 'USD', 'EUR', 'JPY']},
+                'monthly_budget': {'label': '월 예산 설정', 'type': 'number', 'value': 1000000},
+                'category_colors': {'label': '카테고리 색상', 'type': 'object', 'value': {
+                    '식비': '#FF6B6B',
+                    '교통비': '#4ECDC4',
+                    '쇼핑': '#45B7D1',
+                    '문화생활': '#96CEB4',
+                    '의료비': '#FFEAA7',
+                    '기타': '#DDA0DD'
+                }}
+            }
+        else:
+            # 기본 설정 데이터
+            settings = {
+                'auto_backup': {'label': '자동 백업', 'type': 'checkbox', 'value': True},
+                'backup_interval': {'label': '백업 주기 (시간)', 'type': 'number', 'value': 24},
+                'notification_enabled': {'label': '알림 활성화', 'type': 'checkbox', 'value': True},
+                'log_level': {'label': '로그 레벨', 'type': 'select', 'value': 'info', 'options': ['debug', 'info', 'warning', 'error']}
+            }
+        
+        return jsonify({'success': True, 'settings': settings})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route("/api/modules/<module_id>/settings")
+@csrf.exempt
+def api_modules_settings(module_id):
+    """모듈 설정 조회 API"""
+    try:
+        # 가계부 모듈 전용 설정
+        if module_id == 'ledger':
+            settings = {
+                'auto_backup': {'label': '자동 백업', 'type': 'checkbox', 'value': True},
+                'backup_interval': {'label': '백업 주기 (시간)', 'type': 'number', 'value': 24},
+                'notification_enabled': {'label': '알림 활성화', 'type': 'checkbox', 'value': True},
+                'log_level': {'label': '로그 레벨', 'type': 'select', 'value': 'info', 'options': ['debug', 'info', 'warning', 'error']},
+                'default_currency': {'label': '기본 통화', 'type': 'select', 'value': 'KRW', 'options': ['KRW', 'USD', 'EUR', 'JPY']},
+                'monthly_budget': {'label': '월 예산 설정', 'type': 'number', 'value': 1000000},
+                'category_colors': {'label': '카테고리 색상', 'type': 'object', 'value': {
+                    '식비': '#FF6B6B',
+                    '교통비': '#4ECDC4',
+                    '쇼핑': '#45B7D1',
+                    '문화생활': '#96CEB4',
+                    '의료비': '#FFEAA7',
+                    '기타': '#DDA0DD'
+                }}
+            }
+        else:
+            # 기본 설정 데이터
+            settings = {
+                'auto_backup': {'label': '자동 백업', 'type': 'checkbox', 'value': True},
+                'backup_interval': {'label': '백업 주기 (시간)', 'type': 'number', 'value': 24},
+                'notification_enabled': {'label': '알림 활성화', 'type': 'checkbox', 'value': True},
+                'log_level': {'label': '로그 레벨', 'type': 'select', 'value': 'info', 'options': ['debug', 'info', 'warning', 'error']}
+            }
+        
+        return jsonify({'success': True, 'settings': settings})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
