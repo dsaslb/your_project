@@ -4,6 +4,7 @@ from models import Schedule, User, Attendance, db
 from api.gateway import token_required, role_required
 from datetime import datetime, timedelta
 import json
+from utils.role_required import role_required
 
 schedule_management = Blueprint('schedule_management', __name__)
 
@@ -77,7 +78,7 @@ def create_schedule(current_user):
 # 스케줄 목록 조회
 @schedule_management.route('/schedules', methods=['GET'])
 @token_required
-@role_required(['super_admin', 'brand_manager', 'store_manager', 'employee'])
+@role_required('admin', 'super_admin', 'brand_manager', 'store_manager', 'employee')
 def get_schedules(current_user):
     """스케줄 목록 조회"""
     try:
@@ -89,7 +90,18 @@ def get_schedules(current_user):
         schedule_type = request.args.get('type')
         
         query = Schedule.query
-        
+        # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 스케줄만 조회
+        if current_user.role == 'brand_manager':
+            query = query.filter(Schedule.brand_id == current_user.brand_id)
+        # 슈퍼관리자는 전체 조회
+        elif current_user.role == 'super_admin':
+            pass
+        # 일반 직원은 자신의 스케줄만 조회
+        elif current_user.role == 'employee':
+            query = query.filter(Schedule.user_id == current_user.id)
+        # 매장 관리자는 자신의 매장 스케줄만 조회(기존 로직 유지)
+        elif current_user.role == 'store_manager':
+            query = query.join(User, Schedule.user_id == User.id).filter(User.branch_id == current_user.branch_id)
         # 사용자 필터
         if user_id:
             query = query.filter(Schedule.user_id == user_id)

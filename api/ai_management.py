@@ -28,10 +28,15 @@ def get_diagnoses():
         
         query = AIDiagnosis.query
         
-        # 브랜드 매니저인 경우 자신이 관리하는 브랜드의 진단 결과만 조회
+        # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 진단만 조회
         if current_user.role == 'brand_manager':
             query = query.filter_by(brand_id=current_user.brand_id)
-        elif brand_id:
+        elif current_user.role in ['admin', 'super_admin']:
+            pass
+        else:
+            return jsonify({'error': '권한이 없습니다.'}), 403
+        
+        if brand_id:
             query = query.filter_by(brand_id=brand_id)
         
         if store_id:
@@ -184,10 +189,15 @@ def get_improvements():
         
         query = ImprovementRequest.query
         
-        # 브랜드 매니저인 경우 자신이 관리하는 브랜드의 개선 요청만 조회
+        # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 개선 요청만 조회
         if current_user.role == 'brand_manager':
             query = query.filter_by(brand_id=current_user.brand_id)
-        elif brand_id:
+        elif current_user.role in ['admin', 'super_admin']:
+            pass
+        else:
+            return jsonify({'error': '권한이 없습니다.'}), 403
+        
+        if brand_id:
             query = query.filter_by(brand_id=brand_id)
         
         if store_id:
@@ -393,10 +403,15 @@ def get_ai_suggestions():
         
         query = AIImprovementSuggestion.query
         
-        # 브랜드 매니저인 경우 자신이 관리하는 브랜드의 제안만 조회
+        # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 제안만 조회
         if current_user.role == 'brand_manager':
             query = query.filter_by(brand_id=current_user.brand_id)
-        elif brand_id:
+        elif current_user.role in ['admin', 'super_admin']:
+            pass
+        else:
+            return jsonify({'error': '권한이 없습니다.'}), 403
+        
+        if brand_id:
             query = query.filter_by(brand_id=brand_id)
         
         if store_id:

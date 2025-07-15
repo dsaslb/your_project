@@ -1,0 +1,40 @@
+{
+  "name": "ledger",
+  "version": "1.0.0",
+  "description": "정기지출/수입 관리 가계부 모듈",
+  "author": "Your Program",
+  "type": "module",
+  "category": "finance",
+  "tags": ["가계부", "정기지출", "수입관리", "재무관리"],
+  "dependencies": [],
+  "permissions": ["read", "write"],
+  "settings": {
+    "enabled": true,
+    "auto_start": false,
+    "notifications": true,
+    "pwa_support": true
+  },
+  "features": [
+    "정기지출/수입 관리",
+    "월별/주별/일별/연별 주기 설정",
+    "카테고리별 분류",
+    "월별 요약 및 잔액 계산",
+    "다가오는 결제 예정일 알림",
+    "PWA 지원 (모바일 설치 가능)",
+    "차트 및 그래프 시각화"
+  ],
+  "api_endpoints": [
+    "/api/ledger/health",
+    "/api/ledger/items",
+    "/api/ledger/summary/{year}/{month}",
+    "/api/ledger/upcoming",
+    "/api/ledger/categories"
+  ],
+  "pages": [
+    "/ledger/dashboard",
+    "/ledger/add",
+    "/ledger/edit/{item_id}"
+  ],
+  "created_at": "2025-07-15T15:00:00",
+  "updated_at": "2025-07-15T15:00:00"
+} 

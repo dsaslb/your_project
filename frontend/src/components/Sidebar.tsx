@@ -205,6 +205,12 @@ export default function Sidebar() {
             }
           ],
           roles: ['super_admin', 'brand_manager']
+        },
+        {
+          title: '모듈/플러그인 관리',
+          href: '/admin-dashboard/modules',
+          icon: <div className="w-4 h-4 bg-indigo-500 rounded" />,
+          roles: ['super_admin', 'brand_manager']
         }
       );
     }
@@ -323,6 +329,16 @@ export default function Sidebar() {
         roles: ['super_admin', 'brand_manager', 'store_manager', 'employee']
       }
     );
+
+    // 운영 리포트/경고 메뉴 추가 (관리자/운영자 권한)
+    if (hasRole(['super_admin', 'brand_manager', 'store_manager', 'admin'])) {
+      baseItems.push({
+        title: '운영 리포트/경고',
+        href: '/enhanced-alerts',
+        icon: <div className="w-4 h-4 bg-orange-500 rounded" />,
+        roles: ['super_admin', 'brand_manager', 'store_manager', 'admin']
+      });
+    }
 
     return baseItems;
   };

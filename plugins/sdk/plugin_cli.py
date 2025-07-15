@@ -11,8 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 # SDK 모듈 import
-sys.path.append(str(Path(__file__).parent))
-from plugin_template import PluginTemplate, PluginPackager, PluginValidator
+from plugins.sdk.plugin_template import PluginTemplate, PluginPackager, PluginValidator
 
 
 class PluginCLI:
@@ -51,6 +50,7 @@ class PluginCLI:
         validate_parser.add_argument('path', help='플러그인 경로')
         validate_parser.add_argument('--strict', action='store_true', 
                                    help='엄격한 검증 모드')
+        validate_parser.add_argument('--run-tests', action='store_true', help='테스트 코드 자동 실행')
         
         # package 명령
         package_parser = subparsers.add_parser('package', help='플러그인 패키징')
@@ -138,13 +138,13 @@ class PluginCLI:
     def _handle_validate(self, args) -> int:
         """validate 명령 처리"""
         print(f"🔍 플러그인 검증 중: {args.path}")
-        
         validator = PluginValidator(args.path)
-        if validator.validate():
-            print("✅ 검증 통과!")
+        result = validator.validate(run_pytest=args.run_tests)
+        if result:
+            print("✅ 전체 검증 및 테스트 통과!")
             return 0
         else:
-            print("❌ 검증 실패")
+            print("❌ 검증 또는 테스트 실패")
             return 1
     
     def _handle_package(self, args) -> int:
@@ -164,26 +164,32 @@ class PluginCLI:
     def _handle_publish(self, args) -> int:
         """publish 명령 처리"""
         print(f"🚀 플러그인 배포 중: {args.path}")
-        
-        # 먼저 검증
         validator = PluginValidator(args.path)
         if not validator.validate():
             print("❌ 검증 실패로 배포를 중단합니다.")
             return 1
-        
-        # 패키징
         packager = PluginPackager(args.path)
         package_path = packager.package()
-        
         if not package_path:
             print("❌ 패키징 실패")
             return 1
-        
-        # 배포 로직 (실제 구현 필요)
-        print(f"📤 패키지 업로드 중: {package_path}")
-        print("⚠️ 배포 기능은 아직 구현되지 않았습니다.")
-        print("   관리자 대시보드에서 수동으로 업로드해주세요.")
-        
+        # 마켓플레이스 업로드
+        if args.marketplace:
+            print(f"📤 마켓플레이스({args.marketplace})에 업로드 시도...")
+            import requests
+            try:
+                with open(package_path, 'rb') as f:
+                    files = {'file': (os.path.basename(package_path), f, 'application/zip')}
+                    headers = {'Authorization': f'Bearer {args.token}'} if args.token else {}
+                    response = requests.post(args.marketplace, files=files, headers=headers)
+                if response.status_code == 200:
+                    print("✅ 마켓플레이스 업로드 성공!")
+                else:
+                    print(f"❌ 업로드 실패: {response.status_code} {response.text}")
+            except Exception as e:
+                print(f"❌ 업로드 중 오류: {e}")
+        else:
+            print("⚠️ 마켓플레이스 URL이 지정되지 않아 수동 업로드가 필요합니다.")
         return 0
     
     def _handle_test(self, args) -> int:

@@ -1,0 +1,16 @@
+{
+  "name": "재고-관리-대시보드",
+  "version": "1.0.0",
+  "description": "재고 관리 대시보드 모듈",
+  "type": "inventory",
+  "main": "index.js",
+  "scripts": {
+    "dev": "python -m flask run --port 5002",
+    "build": "python build.py",
+    "test": "python test.py"
+  },
+  "dependencies": {
+    "flask": "^2.0.0",
+    "sqlite3": "^3.0.0"
+  }
+}

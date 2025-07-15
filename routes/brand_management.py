@@ -12,7 +12,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-brand_management_bp = Blueprint('brand_management', __name__, url_prefix='/admin/brand-management')
+brand_management_bp = Blueprint('brand_management_routes', __name__, url_prefix='/admin/brand-management')
 
 @brand_management_bp.route('/', methods=['GET'])
 @login_required

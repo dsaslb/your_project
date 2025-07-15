@@ -23,19 +23,16 @@ def get_improvement_requests():
         store_id = request.args.get('store_id')
         
         query = ImprovementRequest.query
-        
-        # 사용자별 필터링
         current_user = getattr(request, 'current_user', None)
-        if current_user and current_user.role in ['admin', 'super_admin']:
-            # 관리자는 모든 요청 조회 가능
-            pass
-        elif current_user and current_user.role == 'brand_manager':
-            # 브랜드 매니저는 자신의 브랜드 요청만 조회
+        # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 요청만 조회
+        if current_user and hasattr(current_user, 'role') and current_user.role == 'brand_manager':
             query = query.filter_by(brand_id=current_user.brand_id)
-        else:
-            # 일반 사용자는 자신이 요청한 것만 조회
-            if current_user:
-                query = query.filter_by(requester_id=current_user.id)
+        # 슈퍼관리자/총관리자는 전체 요청 조회
+        elif current_user and hasattr(current_user, 'role') and current_user.role in ['admin', 'super_admin']:
+            pass
+        # 일반 사용자는 자신이 요청한 것만 조회
+        elif current_user:
+            query = query.filter_by(requester_id=current_user.id)
         
         if status:
             query = query.filter_by(status=status)

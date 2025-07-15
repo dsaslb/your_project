@@ -124,7 +124,7 @@ class AutoRouter:
             # 플러그인 관리 블루프린트
             ('api.plugin_management', 'plugin_management_bp'),
             ('api.plugin_security', 'plugin_security_bp'),
-            ('api.plugin_marketplace_api', 'plugin_marketplace_bp'),
+            # ('api.plugin_marketplace_api', 'plugin_marketplace_bp'),  # [중요] 중복/경로 충돌 방지 위해 제외
             ('api.plugin_system_manager_api', 'plugin_system_manager_bp'),
             ('api.plugin_operations_api', 'plugin_operations_bp'),
             ('api.dynamic_schema', 'dynamic_schema_bp'),

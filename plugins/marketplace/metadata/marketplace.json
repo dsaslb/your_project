@@ -7,23 +7,22 @@
       "author": "Restaurant Team",
       "version": "1.0.0",
       "category": "business",
-      "tags": [
-        "sample",
-        "demo"
-      ],
+      "tags": ["sample", "demo"],
       "license": "MIT",
       "homepage": "https://example.com",
       "repository": "https://github.com/example/plugin",
       "support_email": "support@example.com",
       "registered_at": "2025-07-13T16:08:58.017362",
-      "status": "published",
+      "status": "approved",
+      "uploaded_at": "2025-07-13T16:08:58.017362",
+      "approved_at": "2025-07-13T16:08:58.252416",
+      "rejected_at": null,
       "downloads": 150,
       "rating": 4.5,
       "rating_count": 3,
       "package_path": "plugins\\marketplace\\published\\your_program_management.zip",
       "file_size": 1862,
-      "checksum": "e7867391acdb3769def58e25f2f8ce726a5e30ebb7a65934914693053550351a",
-      "approved_at": "2025-07-13T16:08:58.252416"
+      "checksum": "e7867391acdb3769def58e25f2f8ce726a5e30ebb7a65934914693053550351a"
     },
     "analytics_dashboard": {
       "plugin_id": "analytics_dashboard",
@@ -32,23 +31,22 @@
       "author": "Analytics Team",
       "version": "1.0.0",
       "category": "analytics",
-      "tags": [
-        "sample",
-        "demo"
-      ],
+      "tags": ["sample", "demo"],
       "license": "MIT",
       "homepage": "https://example.com",
       "repository": "https://github.com/example/plugin",
       "support_email": "support@example.com",
       "registered_at": "2025-07-13T16:08:58.065373",
-      "status": "published",
+      "status": "pending",
+      "uploaded_at": "2025-07-13T16:08:58.065373",
+      "approved_at": null,
+      "rejected_at": null,
       "downloads": 89,
       "rating": 4.5,
       "rating_count": 2,
       "package_path": "plugins\\marketplace\\published\\analytics_dashboard.zip",
       "file_size": 1792,
-      "checksum": "bc3ffb1d4e868128411cb3c10d68aa9de1a8e4b19be56f24dffdc0dafd30d55c",
-      "approved_at": "2025-07-13T16:08:58.254416"
+      "checksum": "bc3ffb1d4e868128411cb3c10d68aa9de1a8e4b19be56f24dffdc0dafd30d55c"
     },
     "notification_system": {
       "plugin_id": "notification_system",

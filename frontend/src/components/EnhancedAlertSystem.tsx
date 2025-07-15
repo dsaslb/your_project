@@ -26,6 +26,7 @@ import {
   Users
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { saveAs } from 'file-saver';
 
 interface AlertData {
   id: string;
@@ -96,6 +97,30 @@ const severityIcons = {
   critical: Zap,
   emergency: Zap
 };
+
+// CSV 변환 및 다운로드 함수 (초보자용 설명)
+function exportAlertsToCSV(alerts: AlertData[], filename: string) {
+  // 1. CSV 헤더 정의
+  const headers = [
+    'ID', '플러그인', '메시지', '심각도', '채널', '발생시각', '승인', '해결'
+  ];
+  // 2. 데이터 행 변환
+  const rows = alerts.map(alert => [
+    alert.id,
+    alert.plugin_name || '시스템',
+    alert.message.replace(/\n/g, ' '),
+    alert.severity,
+    alert.channels.join(','),
+    alert.timestamp,
+    alert.acknowledged ? 'O' : '',
+    alert.resolved ? 'O' : ''
+  ]);
+  // 3. CSV 문자열 생성
+  const csv = [headers, ...rows].map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')).join('\n');
+  // 4. Blob으로 변환 후 다운로드
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  saveAs(blob, filename);
+}
 
 export const EnhancedAlertSystem: React.FC = () => {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
@@ -470,11 +495,12 @@ export const EnhancedAlertSystem: React.FC = () => {
         <TabsContent value="alerts" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">활성 알림</h2>
-            <div className="flex space-x-2">
-              <Button variant="outline" onClick={fetchActiveAlerts}>
-                새로고침
-              </Button>
-            </div>
+            <Button variant="outline" onClick={() => exportAlertsToCSV(activeAlerts, 'active_alerts.csv')}>
+              엑셀/CSV 다운로드
+            </Button>
+            <Button variant="outline" onClick={fetchActiveAlerts}>
+              새로고침
+            </Button>
           </div>
 
           <div className="space-y-3">

@@ -458,6 +458,87 @@ def get_automation_stats(current_user):
         current_app.logger.error(f"자동화 통계 조회 오류: {str(e)}")
         return jsonify({'message': '자동화 통계 조회 중 오류가 발생했습니다'}), 500
 
+# === 운영 자동화 정책/규칙 관리 API (초보자용 설명) ===
+@automation.route('/policy', methods=['GET'])
+@token_required
+@role_required(['admin', 'super_admin'])
+def list_policies(current_user):
+    """
+    모든 자동화 정책/규칙 목록 조회
+    """
+    return jsonify({'policies': _automation_rules})
+
+@automation.route('/policy', methods=['POST'])
+@token_required
+@role_required(['admin', 'super_admin'])
+def create_policy(current_user):
+    """
+    새로운 자동화 정책/규칙 생성
+    """
+    data = request.get_json()
+    rule = create_automation_rule(
+        name=data['name'],
+        description=data.get('description', ''),
+        trigger_type=data['trigger_type'],
+        trigger_conditions=data.get('trigger_conditions', []),
+        actions=data['actions'],
+        enabled=data.get('enabled', True),
+        priority=data.get('priority', 'medium')
+    )
+    return jsonify({'policy': rule}), 201
+
+@automation.route('/policy/<int:rule_id>', methods=['PUT'])
+@token_required
+@role_required(['admin', 'super_admin'])
+def update_policy(current_user, rule_id):
+    """
+    자동화 정책/규칙 수정
+    """
+    data = request.get_json()
+    rule = next((r for r in _automation_rules if r['id'] == rule_id), None)
+    if not rule:
+        return jsonify({'message': '정책/규칙을 찾을 수 없습니다.'}), 404
+    for key, value in data.items():
+        if key in ['name', 'description', 'trigger_type', 'trigger_conditions', 'actions', 'enabled', 'priority']:
+            rule[key] = value
+    return jsonify({'policy': rule})
+
+@automation.route('/policy/<int:rule_id>', methods=['DELETE'])
+@token_required
+@role_required(['admin', 'super_admin'])
+def delete_policy(current_user, rule_id):
+    """
+    자동화 정책/규칙 삭제
+    """
+    global _automation_rules
+    _automation_rules = [r for r in _automation_rules if r['id'] != rule_id]
+    return jsonify({'message': '정책/규칙이 삭제되었습니다.'})
+
+# === 예시 정책 추가 (초기화 시) ===
+def initialize_example_policies():
+    if not _automation_rules or not any(r['name'] == '지각 자동 경고' for r in _automation_rules):
+        create_automation_rule(
+            name='지각 자동 경고',
+            description='직원 지각 시 자동 경고 알림',
+            trigger_type='attendance_late',
+            trigger_conditions=[{'type': 'data_based', 'field': 'clock_in', 'operator': 'greater_than', 'value': '09:15'}],
+            actions=[{'type': 'send_notification', 'params': {'title': '지각 경고', 'message': '지각이 감지되었습니다.', 'priority': 'warning'}}],
+            enabled=True,
+            priority='medium'
+        )
+    if not any(r['name'] == '재고 부족 자동 발주' for r in _automation_rules):
+        create_automation_rule(
+            name='재고 부족 자동 발주',
+            description='재고 부족 시 자동 발주 요청',
+            trigger_type='inventory_low',
+            trigger_conditions=[{'type': 'data_based', 'field': 'quantity', 'operator': 'less_than', 'value': 10}],
+            actions=[{'type': 'create_order', 'params': {'customer_name': '자동 발주', 'items': []}}],
+            enabled=True,
+            priority='high'
+        )
+
+initialize_example_policies()
+
 # 기본 자동화 규칙 초기화
 def initialize_default_rules():
     """기본 자동화 규칙 초기화"""

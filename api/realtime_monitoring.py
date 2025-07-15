@@ -10,6 +10,9 @@ import threading
 import time
 from collections import defaultdict
 from api.gateway import token_required, role_required, admin_required, manager_required, employee_required, log_request
+from utils.email_utils import send_email  # 이메일 유틸리티 임포트
+import os
+from sqlalchemy import text  # SQLAlchemy text 임포트
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -73,10 +76,43 @@ def update_realtime_data():
     except Exception as e:
         logger.error(f"Real-time data update error: {str(e)}")
 
+def send_critical_alert_email(alert):
+    """
+    매출 급감 등 critical 알림 발생 시 관리자에게 이메일 자동 발송
+    """
+    from flask import current_app
+    admin_email = (
+        current_app.config.get("ADMIN_EMAIL")
+        or os.getenv("ADMIN_EMAIL")
+        or "admin@example.com"
+    )
+    subject = f"[경고] {alert.get('type', 'Critical Alert')} 발생"
+    body = f"""
+[운영 경고]
+
+유형: {alert.get('type')}
+메시지: {alert.get('message')}
+발생 시각: {alert.get('timestamp')}
+
+상세 정보: {alert}
+"""
+    html_body = f"""
+    <h2>[운영 경고]</h2>
+    <ul>
+        <li><b>유형:</b> {alert.get('type')}</li>
+        <li><b>메시지:</b> {alert.get('message')}</li>
+        <li><b>발생 시각:</b> {alert.get('timestamp')}</li>
+    </ul>
+    <pre>{alert}</pre>
+    """
+    send_email(admin_email, subject, body, html_body)
+
 def check_alerts():
-    """알림 조건 확인"""
+    """
+    알림 조건 확인 (주문 지연, 재고 부족, 지각, 매출 급감 등)
+    critical 알림 발생 시 관리자 이메일 자동 발송
+    """
     alerts = []
-    
     try:
         # 주문 처리 시간 알림
         for order in realtime_data['current_orders']:
@@ -88,12 +124,11 @@ def check_alerts():
                     'order_id': order['id'],
                     'timestamp': datetime.utcnow().isoformat()
                 })
-        
+
         # 재고 부족 알림
         low_stock_items = InventoryItem.query.filter(
             InventoryItem.current_stock <= alert_thresholds['low_stock_threshold']
         ).all()
-        
         for item in low_stock_items:
             alerts.append({
                 'type': 'low_stock',
@@ -102,13 +137,12 @@ def check_alerts():
                 'item_id': item.id,
                 'timestamp': datetime.utcnow().isoformat()
             })
-        
+
         # 지각 알림
         late_attendances = Attendance.query.filter(
             Attendance.clock_in >= datetime.utcnow().date(),
             Attendance.clock_in.time() > datetime.strptime('09:15', '%H:%M').time()
         ).all()
-        
         for attendance in late_attendances:
             late_minutes = (attendance.clock_in.time() - datetime.strptime('09:00', '%H:%M').time()).total_seconds() / 60
             if late_minutes > alert_thresholds['attendance_late_threshold']:
@@ -119,9 +153,37 @@ def check_alerts():
                     'user_id': attendance.user_id,
                     'timestamp': datetime.utcnow().isoformat()
                 })
-        
+
+        # [AI] 매출 급감 경고 로직 추가
+        # 최근 7일 매출 평균 대비 오늘 매출이 30% 이상 급감하면 경고
+        today = datetime.utcnow().date()
+        seven_days_ago = today - timedelta(days=7)
+        # 최근 7일(오늘 제외) 매출 합계
+        sales_last_7 = db.session.query(db.func.sum(Order.total_amount)).filter(
+            Order.created_at >= seven_days_ago,
+            Order.created_at < today
+        ).scalar() or 0
+        days_count = (today - seven_days_ago).days
+        avg_sales_7 = sales_last_7 / days_count if days_count > 0 else 0
+        # 오늘 매출 합계
+        sales_today = db.session.query(db.func.sum(Order.total_amount)).filter(
+            Order.created_at >= today
+        ).scalar() or 0
+        # 급감 비율 계산
+        if avg_sales_7 > 0 and sales_today < avg_sales_7 * 0.7:
+            drop_percent = round((1 - sales_today / avg_sales_7) * 100, 1)
+            alert = {
+                'type': 'sales_drop',
+                'severity': 'critical',
+                'message': f"오늘 매출이 최근 7일 평균 대비 {drop_percent}% 급감했습니다.",
+                'avg_sales_7days': int(avg_sales_7),
+                'sales_today': int(sales_today),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            alerts.append(alert)
+            # === [추가] critical 알림 발생 시 이메일 자동 발송 ===
+            send_critical_alert_email(alert)
         realtime_data['system_alerts'] = alerts
-        
     except Exception as e:
         logger.error(f"Alert check error: {str(e)}")
 
@@ -156,8 +218,8 @@ def realtime_dashboard():
             'performance_metrics': realtime_data['performance_metrics'],
             'current_orders': realtime_data['current_orders'],
             'system_alerts': realtime_data['system_alerts'],
-            'last_update': realtime_data['last_update'].isoformat(),
-            'active_users_count': len(realtime_data['active_users'])
+            'last_update': realtime_data['last_update'].isoformat() if isinstance(realtime_data['last_update'], datetime) else str(realtime_data['last_update']),
+            'active_users_count': len(realtime_data['active_users']) if hasattr(realtime_data['active_users'], '__len__') else 0
         })
     except Exception as e:
         logger.error(f"Real-time dashboard error: {str(e)}")
@@ -326,7 +388,7 @@ def system_health():
         # 데이터베이스 연결 상태
         db_status = 'healthy'
         try:
-            db.session.execute('SELECT 1')
+            db.session.execute(text('SELECT 1'))
         except Exception:
             db_status = 'error'
         
@@ -336,9 +398,9 @@ def system_health():
             'uptime': '24시간+',  # 실제로는 서버 시작 시간 계산
             'memory_usage': '45%',  # 실제로는 시스템 모니터링
             'disk_usage': '32%',
-            'active_connections': len(realtime_data['active_users']),
+            'active_connections': len(realtime_data['active_users']) if hasattr(realtime_data['active_users'], '__len__') else 0,
             'last_backup': '2024-01-15 14:30',  # 실제로는 백업 매니저에서 가져옴
-            'error_count': len([alert for alert in realtime_data['system_alerts'] if alert['severity'] == 'critical'])
+            'error_count': len([alert for alert in realtime_data['system_alerts'] if isinstance(alert, dict) and alert.get('severity') == 'critical'])
         }
         
         # 성능 지표

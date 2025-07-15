@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>브랜드 온보딩 - 초기 설정</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+        .step-indicator.active {
+            background-color: #3B82F6;
+            color: white;
+        }
+        .step-indicator.completed {
+            background-color: #10B981;
+            color: white;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">브랜드 온보딩</h1>
+                        <span class="ml-3 px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                            초기 설정
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-500">브랜드: <span id="brandName" class="font-medium text-gray-900"></span></span>
+                        <button onclick="window.location.href='/admin/dashboard'" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 진행률 표시 -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-medium text-gray-900">설정 진행률</h2>
+                    <span id="progressText" class="text-sm font-medium text-gray-500">0% 완료</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progressBar" class="progress-bar bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 단계 표시 -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-8">
+                        <div class="step-indicator w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-medium text-gray-500" data-step="store">
+                            <i class="fas fa-store"></i>
+                        </div>
+                        <div class="flex-1 h-0.5 bg-gray-300"></div>
+                        <div class="step-indicator w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-medium text-gray-500" data-step="employee">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="flex-1 h-0.5 bg-gray-300"></div>
+                        <div class="step-indicator w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-medium text-gray-500" data-step="menu">
+                            <i class="fas fa-utensils"></i>
+                        </div>
+                        <div class="flex-1 h-0.5 bg-gray-300"></div>
+                        <div class="step-indicator w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-medium text-gray-500" data-step="settings">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-between mt-2">
+                    <span class="text-sm text-gray-500">매장 추가</span>
+                    <span class="text-sm text-gray-500">직원 등록</span>
+                    <span class="text-sm text-gray-500">메뉴 구성</span>
+                    <span class="text-sm text-gray-500">운영 설정</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 단계별 컨텐츠 -->
+            <div id="stepContent" class="fade-in">
+                <!-- 매장 추가 단계 -->
+                <div id="stepStore" class="step-content hidden">
+                    <div class="bg-white rounded-lg shadow-sm border p-6">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-store text-blue-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-gray-900">매장 추가</h3>
+                                <p class="text-gray-600">브랜드의 첫 번째 매장을 등록해주세요.</p>
+                            </div>
+                        </div>
+                        
+                        <form id="storeForm" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">매장명 *</label>
+                                    <input type="text" name="storeName" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">매장 코드</label>
+                                    <input type="text" name="storeCode" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">주소 *</label>
+                                    <input type="text" name="storeAddress" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">연락처</label>
+                                    <input type="tel" name="storePhone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">매장 유형</label>
+                                    <select name="storeType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="franchise">프랜차이즈</option>
+                                        <option value="individual">개인매장</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">영업시간</label>
+                                    <input type="text" name="businessHours" placeholder="09:00-18:00" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">수용 인원</label>
+                                    <input type="number" name="capacity" placeholder="50" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end space-x-4 pt-6 border-t">
+                                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    매장 추가 완료
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 직원 등록 단계 -->
+                <div id="stepEmployee" class="step-content hidden">
+                    <div class="bg-white rounded-lg shadow-sm border p-6">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-users text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-gray-900">직원 등록</h3>
+                                <p class="text-gray-600">매장에서 일할 직원들을 등록해주세요.</p>
+                            </div>
+                        </div>
+                        
+                        <div id="employeeList" class="space-y-4 mb-6">
+                            <!-- 직원 목록이 여기에 동적으로 추가됩니다 -->
+                        </div>
+                        
+                        <button id="addEmployeeBtn" class="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>직원 추가
+                        </button>
+                        
+                        <div class="flex justify-end space-x-4 pt-6 border-t">
+                            <button onclick="previousStep()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                                이전
+                            </button>
+                            <button onclick="completeEmployeeStep()" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                직원 등록 완료
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 메뉴 구성 단계 -->
+                <div id="stepMenu" class="step-content hidden">
+                    <div class="bg-white rounded-lg shadow-sm border p-6">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-utensils text-yellow-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-gray-900">메뉴 구성</h3>
+                                <p class="text-gray-600">브랜드의 기본 메뉴를 구성해주세요.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-lg font-medium text-gray-900">메뉴 카테고리</h4>
+                                <button id="addCategoryBtn" class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
+                                    <i class="fas fa-plus mr-2"></i>카테고리 추가
+                                </button>
+                            </div>
+                            
+                            <div id="menuCategories" class="space-y-4">
+                                <!-- 메뉴 카테고리가 여기에 동적으로 추가됩니다 -->
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-4 pt-6 border-t">
+                            <button onclick="previousStep()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                                이전
+                            </button>
+                            <button onclick="completeMenuStep()" class="px-6 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
+                                메뉴 구성 완료
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 운영 설정 단계 -->
+                <div id="stepSettings" class="step-content hidden">
+                    <div class="bg-white rounded-lg shadow-sm border p-6">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-cog text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-gray-900">운영 설정</h3>
+                                <p class="text-gray-600">브랜드 운영에 필요한 기본 설정을 완료해주세요.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <!-- 영업시간 설정 -->
+                            <div class="border rounded-lg p-4">
+                                <h4 class="text-lg font-medium text-gray-900 mb-4">영업시간 설정</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">평일</label>
+                                        <div class="flex space-x-2">
+                                            <input type="time" name="weekdayOpen" value="09:00" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                                            <span class="flex items-center">~</span>
+                                            <input type="time" name="weekdayClose" value="18:00" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">주말</label>
+                                        <div class="flex space-x-2">
+                                            <input type="time" name="weekendOpen" value="10:00" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                                            <span class="flex items-center">~</span>
+                                            <input type="time" name="weekendClose" value="17:00" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 알림 설정 -->
+                            <div class="border rounded-lg p-4">
+                                <h4 class="text-lg font-medium text-gray-900 mb-4">알림 설정</h4>
+                                <div class="space-y-3">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="emailNotifications" checked class="mr-3">
+                                        <span class="text-sm text-gray-700">이메일 알림</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="smsNotifications" class="mr-3">
+                                        <span class="text-sm text-gray-700">SMS 알림</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="pushNotifications" checked class="mr-3">
+                                        <span class="text-sm text-gray-700">푸시 알림</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- 근무 규칙 -->
+                            <div class="border rounded-lg p-4">
+                                <h4 class="text-lg font-medium text-gray-900 mb-4">근무 규칙</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">근무 시작 시간</label>
+                                        <input type="time" name="workStartTime" value="09:00" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">근무 종료 시간</label>
+                                        <input type="time" name="workEndTime" value="18:00" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">휴식 시간 (분)</label>
+                                        <input type="number" name="breakTime" value="60" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">초과 근무 허용</label>
+                                        <select name="overtimeAllowed" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                            <option value="true">허용</option>
+                                            <option value="false">금지</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-4 pt-6 border-t">
+                            <button onclick="previousStep()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                                이전
+                            </button>
+                            <button onclick="completeSettingsStep()" class="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                                설정 완료
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 샘플 데이터 생성 버튼 -->
+            <div class="mt-8 text-center">
+                <button id="generateSampleDataBtn" class="px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    <i class="fas fa-magic mr-2"></i>예시 데이터 자동 생성
+                </button>
+                <p class="text-sm text-gray-500 mt-2">초보 사용자를 위한 샘플 매장, 직원, 메뉴, 설정을 자동으로 생성합니다.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- 직원 추가 모달 -->
+    <div id="employeeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">직원 추가</h3>
+                </div>
+                <form id="employeeForm" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">사용자명 *</label>
+                        <input type="text" name="username" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">이름 *</label>
+                        <input type="text" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">이메일 *</label>
+                        <input type="email" name="email" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">직책</label>
+                        <select name="role" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="employee">직원</option>
+                            <option value="store_manager">매장 관리자</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
+                        <input type="password" name="password" value="123456" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                </form>
+                <div class="px-6 py-4 border-t flex justify-end space-x-3">
+                    <button onclick="closeEmployeeModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                        취소
+                    </button>
+                    <button onclick="addEmployee()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        추가
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentStep = 'store';
+        let onboardingId = null;
+        let brandId = null;
+        let employees = [];
+        let menuCategories = [];
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // URL에서 브랜드 ID 가져오기
+            const urlParams = new URLSearchParams(window.location.search);
+            brandId = urlParams.get('brand_id');
+            
+            if (!brandId) {
+                alert('브랜드 ID가 필요합니다.');
+                window.location.href = '/admin/dashboard';
+                return;
+            }
+
+            // 온보딩 시작
+            startOnboarding();
+        });
+
+        // 온보딩 시작
+        async function startOnboarding() {
+            try {
+                const response = await fetch(`/api/brand-onboarding/start/${brandId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    onboardingId = data.onboarding_id;
+                    currentStep = data.current_step;
+                    updateProgress(data.progress);
+                    showStep(currentStep);
+                    loadOnboardingStatus();
+                } else {
+                    alert('온보딩 시작에 실패했습니다: ' + data.error);
+                }
+            } catch (error) {
+                console.error('온보딩 시작 오류:', error);
+                alert('온보딩 시작 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 온보딩 상태 로드
+        async function loadOnboardingStatus() {
+            if (!onboardingId) return;
+            
+            try {
+                const response = await fetch(`/api/brand-onboarding/${onboardingId}/status`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateProgress(data.data.progress);
+                    currentStep = data.data.current_step;
+                    showStep(currentStep);
+                    
+                    // 브랜드명 표시
+                    document.getElementById('brandName').textContent = data.data.brand_name;
+                }
+            } catch (error) {
+                console.error('온보딩 상태 로드 오류:', error);
+            }
+        }
+
+        // 진행률 업데이트
+        function updateProgress(percentage) {
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = percentage + '% 완료';
+        }
+
+        // 단계 표시
+        function showStep(step) {
+            // 모든 단계 숨기기
+            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
+            
+            // 현재 단계 표시
+            document.getElementById('step' + step.charAt(0).toUpperCase() + step.slice(1)).classList.remove('hidden');
+            
+            // 단계 인디케이터 업데이트
+            updateStepIndicators(step);
+        }
+
+        // 단계 인디케이터 업데이트
+        function updateStepIndicators(currentStep) {
+            const steps = ['store', 'employee', 'menu', 'settings'];
+            const stepIndex = steps.indexOf(currentStep);
+            
+            steps.forEach((step, index) => {
+                const indicator = document.querySelector(`[data-step="${step}"]`);
+                indicator.classList.remove('active', 'completed');
+                
+                if (index < stepIndex) {
+                    indicator.classList.add('completed');
+                } else if (index === stepIndex) {
+                    indicator.classList.add('active');
+                }
+            });
+        }
+
+        // 다음 단계로 이동
+        function nextStep() {
+            const steps = ['store', 'employee', 'menu', 'settings'];
+            const currentIndex = steps.indexOf(currentStep);
+            
+            if (currentIndex < steps.length - 1) {
+                currentStep = steps[currentIndex + 1];
+                showStep(currentStep);
+            }
+        }
+
+        // 이전 단계로 이동
+        function previousStep() {
+            const steps = ['store', 'employee', 'menu', 'settings'];
+            const currentIndex = steps.indexOf(currentStep);
+            
+            if (currentIndex > 0) {
+                currentStep = steps[currentIndex - 1];
+                showStep(currentStep);
+            }
+        }
+
+        // 매장 추가 완료
+        document.getElementById('storeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const storeData = {
+                store: {
+                    name: formData.get('storeName'),
+                    address: formData.get('storeAddress'),
+                    phone: formData.get('storePhone'),
+                    store_code: formData.get('storeCode'),
+                    store_type: formData.get('storeType'),
+                    business_hours: formData.get('businessHours'),
+                    capacity: parseInt(formData.get('capacity')) || null
+                }
+            };
+            
+            try {
+                const response = await fetch(`/api/brand-onboarding/${onboardingId}/store`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(storeData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateProgress(data.progress);
+                    nextStep();
+                } else {
+                    alert('매장 추가에 실패했습니다: ' + data.error);
+                }
+            } catch (error) {
+                console.error('매장 추가 오류:', error);
+                alert('매장 추가 중 오류가 발생했습니다.');
+            }
+        });
+
+        // 직원 추가 모달 열기
+        document.getElementById('addEmployeeBtn').addEventListener('click', function() {
+            document.getElementById('employeeModal').classList.remove('hidden');
+        });
+
+        // 직원 추가 모달 닫기
+        function closeEmployeeModal() {
+            document.getElementById('employeeModal').classList.add('hidden');
+            document.getElementById('employeeForm').reset();
+        }
+
+        // 직원 추가
+        function addEmployee() {
+            const form = document.getElementById('employeeForm');
+            const formData = new FormData(form);
+            
+            const employee = {
+                username: formData.get('username'),
+                name: formData.get('name'),
+                email: formData.get('email'),
+                role: formData.get('role'),
+                password: formData.get('password')
+            };
+            
+            employees.push(employee);
+            renderEmployeeList();
+            closeEmployeeModal();
+        }
+
+        // 직원 목록 렌더링
+        function renderEmployeeList() {
+            const container = document.getElementById('employeeList');
+            container.innerHTML = '';
+            
+            employees.forEach((employee, index) => {
+                const employeeEl = document.createElement('div');
+                employeeEl.className = 'border rounded-lg p-4 bg-gray-50';
+                employeeEl.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-medium text-gray-900">${employee.name}</h4>
+                            <p class="text-sm text-gray-600">${employee.username} • ${employee.email}</p>
+                            <span class="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full mt-1">
+                                ${employee.role === 'store_manager' ? '매장 관리자' : '직원'}
+                            </span>
+                        </div>
+                        <button onclick="removeEmployee(${index})" class="text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(employeeEl);
+            });
+        }
+
+        // 직원 제거
+        function removeEmployee(index) {
+            employees.splice(index, 1);
+            renderEmployeeList();
+        }
+
+        // 직원 등록 완료
+        async function completeEmployeeStep() {
+            if (employees.length === 0) {
+                alert('최소 1명의 직원을 등록해주세요.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/brand-onboarding/${onboardingId}/employee`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ employees: employees })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateProgress(data.progress);
+                    nextStep();
+                } else {
+                    alert('직원 등록에 실패했습니다: ' + data.error);
+                }
+            } catch (error) {
+                console.error('직원 등록 오류:', error);
+                alert('직원 등록 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 메뉴 구성 완료
+        async function completeMenuStep() {
+            try {
+                const response = await fetch(`/api/brand-onboarding/${onboardingId}/menu`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ menu: { categories: menuCategories } })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateProgress(data.progress);
+                    nextStep();
+                } else {
+                    alert('메뉴 구성에 실패했습니다: ' + data.error);
+                }
+            } catch (error) {
+                console.error('메뉴 구성 오류:', error);
+                alert('메뉴 구성 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 설정 완료
+        async function completeSettingsStep() {
+            const settingsData = {
+                settings: {
+                    business_hours: {
+                        weekday: {
+                            open: document.querySelector('[name="weekdayOpen"]').value,
+                            close: document.querySelector('[name="weekdayClose"]').value
+                        },
+                        weekend: {
+                            open: document.querySelector('[name="weekendOpen"]').value,
+                            close: document.querySelector('[name="weekendClose"]').value
+                        }
+                    },
+                    notifications: {
+                        email_notifications: document.querySelector('[name="emailNotifications"]').checked,
+                        sms_notifications: document.querySelector('[name="smsNotifications"]').checked,
+                        push_notifications: document.querySelector('[name="pushNotifications"]').checked
+                    },
+                    work_rules: {
+                        work_start_time: document.querySelector('[name="workStartTime"]').value,
+                        work_end_time: document.querySelector('[name="workEndTime"]').value,
+                        break_time: parseInt(document.querySelector('[name="breakTime"]').value),
+                        overtime_allowed: document.querySelector('[name="overtimeAllowed"]').value === 'true'
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetch(`/api/brand-onboarding/${onboardingId}/settings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(settingsData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateProgress(data.progress);
+                    alert('브랜드 온보딩이 완료되었습니다!');
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    alert('설정 완료에 실패했습니다: ' + data.error);
+                }
+            } catch (error) {
+                console.error('설정 완료 오류:', error);
+                alert('설정 완료 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 샘플 데이터 생성
+        document.getElementById('generateSampleDataBtn').addEventListener('click', async function() {
+            if (!confirm('샘플 데이터를 생성하시겠습니까? 기존 데이터는 유지됩니다.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/brand-onboarding/${onboardingId}/generate-sample-data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateProgress(data.progress);
+                    alert('샘플 데이터가 성공적으로 생성되었습니다!');
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    alert('샘플 데이터 생성에 실패했습니다: ' + data.error);
+                }
+            } catch (error) {
+                console.error('샘플 데이터 생성 오류:', error);
+                alert('샘플 데이터 생성 중 오류가 발생했습니다.');
+            }
+        });
+    </script>
+</body>
+</html> 

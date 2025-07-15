@@ -1,0 +1,122 @@
+{
+  "overall_stats": {
+    "timestamp": "2025-07-15T14:48:11.123308",
+    "total_tests": 5,
+    "total_success": 50,
+    "total_errors": 10,
+    "overall_success_rate": 83.33333333333334,
+    "average_response_time": 2301.13,
+    "max_response_time": 3189.43,
+    "performance_issues": [
+      {
+        "endpoint": "/health",
+        "issue": "응답 시간이 2초 초과: 2041.49ms"
+      },
+      {
+        "endpoint": "/api/status",
+        "issue": "응답 시간이 2초 초과: 2039.19ms"
+      },
+      {
+        "endpoint": "/api/plugin-system/health",
+        "issue": "응답 시간이 2초 초과: 2044.9ms"
+      },
+      {
+        "endpoint": "/api/performance/health",
+        "issue": "성공률이 낮음: 0.0%"
+      },
+      {
+        "endpoint": "/api/auth/login",
+        "issue": "응답 시간이 2초 초과: 3068.46ms"
+      }
+    ]
+  },
+  "detailed_results": [
+    {
+      "endpoint": "/health",
+      "method": "GET",
+      "iterations": 20,
+      "success_count": 20,
+      "error_count": 0,
+      "success_rate": 100.0,
+      "response_times": {
+        "average_ms": 2041.49,
+        "min_ms": 2027.29,
+        "max_ms": 2063.46,
+        "median_ms": 2041.02
+      },
+      "performance_grade": "C (느림)",
+      "errors": []
+    },
+    {
+      "endpoint": "/api/status",
+      "method": "GET",
+      "iterations": 15,
+      "success_count": 15,
+      "error_count": 0,
+      "success_rate": 100.0,
+      "response_times": {
+        "average_ms": 2039.19,
+        "min_ms": 2019.22,
+        "max_ms": 2056.51,
+        "median_ms": 2040.21
+      },
+      "performance_grade": "C (느림)",
+      "errors": []
+    },
+    {
+      "endpoint": "/api/plugin-system/health",
+      "method": "GET",
+      "iterations": 10,
+      "success_count": 10,
+      "error_count": 0,
+      "success_rate": 100.0,
+      "response_times": {
+        "average_ms": 2044.9,
+        "min_ms": 2030.89,
+        "max_ms": 2057.11,
+        "median_ms": 2047.52
+      },
+      "performance_grade": "C (느림)",
+      "errors": []
+    },
+    {
+      "endpoint": "/api/performance/health",
+      "method": "GET",
+      "iterations": 10,
+      "success_count": 0,
+      "error_count": 10,
+      "success_rate": 0.0,
+      "response_times": {
+        "average_ms": 0,
+        "min_ms": 0,
+        "max_ms": 0,
+        "median_ms": 0
+      },
+      "performance_grade": "A+ (우수)",
+      "errors": [
+        "HTTP 500: {\n  \"health\": {\n    \"issues\": [\n      \"\\ud5ec\\uc2a4 \\uccb4\\ud06c \\uc2e4\\ud328: Error 10061 connecting to localhost:6379. \\ub300\\uc0c1 \\ucef4\\ud4e8\\ud130\\uc5d0\\uc11c \\uc5f0\\uacb0\\uc744 \\uac70\\ubd80\\ud588\\uc73c\\ubbc0\\ub85c \\uc5f0\\uacb0\\ud558\\uc9c0 \\ubabb\\ud588\\uc2b5\\ub2c8\\ub2e4.\"\n    ],\n    \"status\": \"critical\"\n  },\n  \"success\": false\n}\n",
+        "HTTP 500: {\n  \"health\": {\n    \"issues\": [\n      \"\\ud5ec\\uc2a4 \\uccb4\\ud06c \\uc2e4\\ud328: Error 10061 connecting to localhost:6379. \\ub300\\uc0c1 \\ucef4\\ud4e8\\ud130\\uc5d0\\uc11c \\uc5f0\\uacb0\\uc744 \\uac70\\ubd80\\ud588\\uc73c\\ubbc0\\ub85c \\uc5f0\\uacb0\\ud558\\uc9c0 \\ubabb\\ud588\\uc2b5\\ub2c8\\ub2e4.\"\n    ],\n    \"status\": \"critical\"\n  },\n  \"success\": false\n}\n",
+        "HTTP 500: {\n  \"health\": {\n    \"issues\": [\n      \"\\ud5ec\\uc2a4 \\uccb4\\ud06c \\uc2e4\\ud328: Error 10061 connecting to localhost:6379. \\ub300\\uc0c1 \\ucef4\\ud4e8\\ud130\\uc5d0\\uc11c \\uc5f0\\uacb0\\uc744 \\uac70\\ubd80\\ud588\\uc73c\\ubbc0\\ub85c \\uc5f0\\uacb0\\ud558\\uc9c0 \\ubabb\\ud588\\uc2b5\\ub2c8\\ub2e4.\"\n    ],\n    \"status\": \"critical\"\n  },\n  \"success\": false\n}\n",
+        "HTTP 500: {\n  \"health\": {\n    \"issues\": [\n      \"\\ud5ec\\uc2a4 \\uccb4\\ud06c \\uc2e4\\ud328: Error 10061 connecting to localhost:6379. \\ub300\\uc0c1 \\ucef4\\ud4e8\\ud130\\uc5d0\\uc11c \\uc5f0\\uacb0\\uc744 \\uac70\\ubd80\\ud588\\uc73c\\ubbc0\\ub85c \\uc5f0\\uacb0\\ud558\\uc9c0 \\ubabb\\ud588\\uc2b5\\ub2c8\\ub2e4.\"\n    ],\n    \"status\": \"critical\"\n  },\n  \"success\": false\n}\n",
+        "HTTP 500: {\n  \"health\": {\n    \"issues\": [\n      \"\\ud5ec\\uc2a4 \\uccb4\\ud06c \\uc2e4\\ud328: Error 10061 connecting to localhost:6379. \\ub300\\uc0c1 \\ucef4\\ud4e8\\ud130\\uc5d0\\uc11c \\uc5f0\\uacb0\\uc744 \\uac70\\ubd80\\ud588\\uc73c\\ubbc0\\ub85c \\uc5f0\\uacb0\\ud558\\uc9c0 \\ubabb\\ud588\\uc2b5\\ub2c8\\ub2e4.\"\n    ],\n    \"status\": \"critical\"\n  },\n  \"success\": false\n}\n"
+      ]
+    },
+    {
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "iterations": 5,
+      "success_count": 5,
+      "error_count": 0,
+      "success_rate": 100.0,
+      "response_times": {
+        "average_ms": 3068.46,
+        "min_ms": 3009.53,
+        "max_ms": 3189.43,
+        "median_ms": 3041.79
+      },
+      "performance_grade": "C (느림)",
+      "errors": []
+    }
+  ],
+  "summary": "\n=== Your Program 성능 테스트 결과 ===\n테스트 시간: 2025-07-15T14:48:11.123308\n총 테스트 수: 5\n전체 성공률: 83.3%\n평균 응답 시간: 2301.13ms\n최대 응답 시간: 3189.43ms\n\n성능 이슈: 5개\n\n🚨 발견된 성능 이슈:\n  - /health: 응답 시간이 2초 초과: 2041.49ms\n  - /api/status: 응답 시간이 2초 초과: 2039.19ms\n  - /api/plugin-system/health: 응답 시간이 2초 초과: 2044.9ms\n  - /api/performance/health: 성공률이 낮음: 0.0%\n  - /api/auth/login: 응답 시간이 2초 초과: 3068.46ms\n"
+}

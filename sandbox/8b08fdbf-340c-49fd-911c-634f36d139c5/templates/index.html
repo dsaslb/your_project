@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>재고 관리 대시보드</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>재고 관리 대시보드 모듈</h1>
+        <p>이 페이지는 재고 관리 대시보드 모듈의 메인 페이지입니다.</p>
+        <div id="app">
+            <!-- 여기에 컴포넌트들이 렌더링됩니다 -->
+        </div>
+    </div>
+    
+    <script>
+        // API 호출 예시
+        fetch('/api/data')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+            });
+    </script>
+</body>
+</html>

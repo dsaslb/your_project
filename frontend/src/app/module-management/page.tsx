@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Switch as UISwitch } from '@/components/ui/switch';
 import { 
   Settings, 
   Power, 
@@ -50,6 +52,9 @@ export default function ModuleManagementPage() {
   const [statistics, setStatistics] = useState<ModuleStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [brandList, setBrandList] = useState<{ code: string; name: string }[]>([]);
+  const [appliedBrands, setAppliedBrands] = useState<string[]>([]);
+  const [brandLoading, setBrandLoading] = useState(false);
 
   // 설치된 모듈 목록 조회
   const fetchInstalledModules = async () => {
@@ -90,8 +95,7 @@ export default function ModuleManagementPage() {
   // 모듈 활성화/비활성화
   const toggleModuleStatus = async (moduleId: string, isActive: boolean) => {
     try {
-      const endpoint = isActive ? 'deactivate' : 'activate';
-      const response = await fetch(`/api/module-marketplace/modules/${moduleId}/${endpoint}`, {
+      const response = await fetch(`/api/modules/${moduleId}/toggle`, {
         method: 'POST',
       });
       const data = await response.json();
@@ -116,8 +120,8 @@ export default function ModuleManagementPage() {
     }
 
     try {
-      const response = await fetch(`/api/module-marketplace/modules/${moduleId}/uninstall`, {
-        method: 'POST',
+      const response = await fetch(`/api/modules/${moduleId}/uninstall`, {
+        method: 'DELETE',
       });
       const data = await response.json();
 
@@ -154,10 +158,69 @@ export default function ModuleManagementPage() {
     }
   };
 
+  // 브랜드 목록 불러오기
+  const fetchBrandList = async () => {
+    try {
+      const res = await fetch('/api/admin/brands');
+      const data = await res.json();
+      if (data.brands) {
+        setBrandList(data.brands.map((b: any) => ({ code: b.code, name: b.name })));
+      }
+    } catch (e) {
+      setBrandList([]);
+    }
+  };
+
+  // 모듈별 적용 브랜드 불러오기
+  const fetchAppliedBrands = async (moduleId: string) => {
+    setBrandLoading(true);
+    try {
+      const res = await fetch(`/api/modules/${moduleId}/brands`);
+      const data = await res.json();
+      if (data.success) {
+        setAppliedBrands(data.applied_brands || []);
+      } else {
+        setAppliedBrands([]);
+      }
+    } catch (e) {
+      setAppliedBrands([]);
+    } finally {
+      setBrandLoading(false);
+    }
+  };
+
+  // 브랜드별 적용/해제 토글
+  const toggleBrandApply = async (moduleId: string, brandCode: string, apply: boolean) => {
+    try {
+      const res = await fetch(`/api/modules/${moduleId}/brands`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand_code: brandCode, apply }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAppliedBrands(data.applied_brands || []);
+        toast.success(`브랜드 "${brandList.find(b => b.code === brandCode)?.name || brandCode}" ${apply ? '적용' : '해제'} 완료`);
+      } else {
+        toast.error(data.error || '브랜드 적용/해제 실패');
+      }
+    } catch (e) {
+      toast.error('브랜드 적용/해제 실패');
+    }
+  };
+
   useEffect(() => {
     fetchInstalledModules();
     fetchModuleStatistics();
   }, []);
+
+  // 설정 패널 열릴 때 브랜드 정보 fetch
+  useEffect(() => {
+    if (selectedModule) {
+      fetchBrandList();
+      fetchAppliedBrands(selectedModule);
+    }
+  }, [selectedModule]);
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -514,6 +577,38 @@ export default function ModuleManagementPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* 모듈 상세/설정 다이얼로그 */}
+      <Dialog open={!!selectedModule} onOpenChange={() => setSelectedModule(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>모듈 브랜드별 적용</DialogTitle>
+            <DialogDescription>이 모듈을 적용할 브랜드를 선택하세요.</DialogDescription>
+          </DialogHeader>
+          {brandLoading ? (
+            <div className="py-8 text-center text-gray-500">브랜드 목록 불러오는 중...</div>
+          ) : (
+            <div className="space-y-2">
+              {brandList.length === 0 ? (
+                <div className="text-gray-400">등록된 브랜드가 없습니다.</div>
+              ) : (
+                brandList.map((brand) => (
+                  <div key={brand.code} className="flex items-center justify-between border-b py-2">
+                    <span>{brand.name} <span className="text-xs text-gray-400">({brand.code})</span></span>
+                    <UISwitch
+                      checked={appliedBrands.includes(brand.code)}
+                      onCheckedChange={(checked) => toggleBrandApply(selectedModule!, brand.code, checked)}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+          <DialogClose asChild>
+            <Button className="mt-4 w-full">닫기</Button>
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

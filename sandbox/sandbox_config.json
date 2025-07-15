@@ -1,0 +1,382 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "database": {
+      "type": "sqlite",
+      "path": "sandbox/sandbox.db",
+      "backup_enabled": true,
+      "backup_interval": 3600,
+      "max_backups": 10
+    },
+    "storage": {
+      "type": "local",
+      "path": "sandbox/storage",
+      "max_size": "1GB"
+    },
+    "security": {
+      "isolated": true,
+      "network_access": false,
+      "file_access": "restricted",
+      "api_rate_limit": 1000
+    },
+    "development": {
+      "auto_save": true,
+      "auto_save_interval": 30,
+      "live_preview": true,
+      "hot_reload": true,
+      "debug_mode": true
+    },
+    "testing": {
+      "auto_generate_data": true,
+      "data_reset_interval": 3600,
+      "mock_apis": true,
+      "performance_monitoring": true
+    },
+    "deployment": {
+      "auto_package": true,
+      "version_control": true,
+      "rollback_enabled": true,
+      "backup_before_deploy": true
+    }
+  },
+  "environments": {
+    "development": {
+      "name": "개발 환경",
+      "description": "샌드박스 개발 환경",
+      "database": "sandbox/sandbox.db",
+      "storage": "sandbox/storage",
+      "api_base_url": "http://localhost:5000/api/module-development",
+      "features": [
+        "visual_editor",
+        "component_library",
+        "live_preview",
+        "version_control",
+        "test_data_generation"
+      ]
+    },
+    "testing": {
+      "name": "테스트 환경",
+      "description": "통합 테스트 환경",
+      "database": "sandbox/testing.db",
+      "storage": "sandbox/testing_storage",
+      "api_base_url": "http://localhost:5000/api/module-development",
+      "features": [
+        "automated_testing",
+        "performance_testing",
+        "security_testing",
+        "user_acceptance_testing"
+      ]
+    },
+    "staging": {
+      "name": "스테이징 환경",
+      "description": "배포 전 최종 검증 환경",
+      "database": "sandbox/staging.db",
+      "storage": "sandbox/staging_storage",
+      "api_base_url": "http://localhost:5000/api/module-development",
+      "features": [
+        "production_like_environment",
+        "load_testing",
+        "final_validation"
+      ]
+    }
+  },
+  "components": {
+    "library": {
+      "basic": [
+        {
+          "type": "button",
+          "name": "버튼",
+          "icon": "🔘",
+          "category": "basic",
+          "properties": {
+            "text": "버튼",
+            "variant": "primary",
+            "size": "medium",
+            "disabled": false
+          },
+          "styles": {
+            "backgroundColor": "#3498db",
+            "color": "white",
+            "border": "none",
+            "borderRadius": "4px",
+            "padding": "8px 16px",
+            "cursor": "pointer",
+            "fontSize": "14px",
+            "fontWeight": "500"
+          }
+        },
+        {
+          "type": "card",
+          "name": "카드",
+          "icon": "🃏",
+          "category": "basic",
+          "properties": {
+            "title": "카드 제목",
+            "content": "카드 내용",
+            "showHeader": true,
+            "showFooter": false
+          },
+          "styles": {
+            "backgroundColor": "white",
+            "border": "1px solid #ddd",
+            "borderRadius": "8px",
+            "padding": "16px",
+            "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+            "minHeight": "100px"
+          }
+        },
+        {
+          "type": "input",
+          "name": "입력 필드",
+          "icon": "📝",
+          "category": "basic",
+          "properties": {
+            "placeholder": "입력하세요",
+            "type": "text",
+            "label": "라벨",
+            "required": false,
+            "disabled": false
+          },
+          "styles": {
+            "border": "1px solid #ddd",
+            "borderRadius": "4px",
+            "padding": "8px 12px",
+            "width": "100%",
+            "fontSize": "14px",
+            "minHeight": "36px"
+          }
+        },
+        {
+          "type": "table",
+          "name": "테이블",
+          "icon": "📊",
+          "category": "basic",
+          "properties": {
+            "headers": ["컬럼1", "컬럼2", "컬럼3"],
+            "data": [["데이터1", "데이터2", "데이터3"]],
+            "sortable": true,
+            "searchable": true,
+            "pagination": false
+          },
+          "styles": {
+            "width": "100%",
+            "borderCollapse": "collapse",
+            "border": "1px solid #ddd",
+            "fontSize": "14px"
+          }
+        }
+      ],
+      "advanced": [
+        {
+          "type": "chart",
+          "name": "차트",
+          "icon": "📈",
+          "category": "advanced",
+          "properties": {
+            "type": "line",
+            "data": {
+              "labels": ["1월", "2월", "3월", "4월", "5월"],
+              "datasets": [
+                {
+                  "label": "매출",
+                  "data": [10, 20, 15, 25, 30],
+                  "borderColor": "#3498db"
+                }
+              ]
+            },
+            "options": {
+              "responsive": true,
+              "maintainAspectRatio": false
+            }
+          },
+          "styles": {
+            "width": "100%",
+            "height": "300px",
+            "padding": "16px"
+          }
+        },
+        {
+          "type": "calendar",
+          "name": "캘린더",
+          "icon": "📅",
+          "category": "advanced",
+          "properties": {
+            "view": "month",
+            "events": [],
+            "selectable": true,
+            "editable": false
+          },
+          "styles": {
+            "width": "100%",
+            "height": "400px",
+            "border": "1px solid #ddd",
+            "borderRadius": "8px"
+          }
+        },
+        {
+          "type": "modal",
+          "name": "모달",
+          "icon": "🪟",
+          "category": "advanced",
+          "properties": {
+            "title": "모달 제목",
+            "content": "모달 내용",
+            "showCloseButton": true,
+            "backdropClose": true
+          },
+          "styles": {
+            "backgroundColor": "white",
+            "borderRadius": "8px",
+            "padding": "20px",
+            "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
+            "minWidth": "400px"
+          }
+        }
+      ],
+      "layout": [
+        {
+          "type": "container",
+          "name": "컨테이너",
+          "icon": "📦",
+          "category": "layout",
+          "properties": {
+            "direction": "vertical",
+            "spacing": "16px",
+            "padding": "16px"
+          },
+          "styles": {
+            "display": "flex",
+            "flexDirection": "column",
+            "gap": "16px",
+            "padding": "16px",
+            "border": "1px solid #ddd",
+            "borderRadius": "8px",
+            "minHeight": "200px"
+          }
+        },
+        {
+          "type": "grid",
+          "name": "그리드",
+          "icon": "⊞",
+          "category": "layout",
+          "properties": {
+            "columns": 3,
+            "gap": "16px",
+            "responsive": true
+          },
+          "styles": {
+            "display": "grid",
+            "gridTemplateColumns": "repeat(3, 1fr)",
+            "gap": "16px",
+            "padding": "16px",
+            "border": "1px solid #ddd",
+            "borderRadius": "8px"
+          }
+        }
+      ]
+    }
+  },
+  "test_data": {
+    "generators": {
+      "user": {
+        "name": "사용자 데이터",
+        "fields": {
+          "id": "uuid",
+          "name": "full_name",
+          "email": "email",
+          "phone": "phone_number",
+          "created_at": "datetime"
+        },
+        "count": 10
+      },
+      "product": {
+        "name": "상품 데이터",
+        "fields": {
+          "id": "uuid",
+          "name": "product_name",
+          "price": "price",
+          "category": "category",
+          "description": "text"
+        },
+        "count": 20
+      },
+      "order": {
+        "name": "주문 데이터",
+        "fields": {
+          "id": "uuid",
+          "user_id": "reference:user",
+          "product_id": "reference:product",
+          "quantity": "integer:1-10",
+          "total": "price",
+          "status": "choice:pending,completed,cancelled",
+          "created_at": "datetime"
+        },
+        "count": 50
+      }
+    },
+    "templates": {
+      "ecommerce": {
+        "name": "이커머스",
+        "description": "온라인 쇼핑몰용 샘플 데이터",
+        "generators": ["user", "product", "order"]
+      },
+      "dashboard": {
+        "name": "대시보드",
+        "description": "관리자 대시보드용 샘플 데이터",
+        "generators": ["user", "product", "order"]
+      },
+      "form": {
+        "name": "폼",
+        "description": "폼 컴포넌트 테스트용 데이터",
+        "generators": ["user"]
+      }
+    }
+  },
+  "deployment": {
+    "targets": {
+      "marketplace": {
+        "name": "마켓플레이스",
+        "description": "모듈 마켓플레이스에 배포",
+        "url": "http://localhost:5000/api/marketplace",
+        "requires_approval": true,
+        "auto_version": true
+      },
+      "production": {
+        "name": "프로덕션",
+        "description": "실제 운영 환경에 배포",
+        "url": "http://localhost:5000/api/production",
+        "requires_approval": true,
+        "auto_version": true,
+        "backup_required": true
+      },
+      "staging": {
+        "name": "스테이징",
+        "description": "스테이징 환경에 배포",
+        "url": "http://localhost:5000/api/staging",
+        "requires_approval": false,
+        "auto_version": true
+      }
+    },
+    "packaging": {
+      "include_files": [
+        "*.py",
+        "*.js",
+        "*.tsx",
+        "*.json",
+        "*.md",
+        "*.html",
+        "*.css"
+      ],
+      "exclude_files": [
+        "node_modules",
+        "__pycache__",
+        "*.pyc",
+        ".git",
+        ".env",
+        "*.log"
+      ],
+      "compression": "zip",
+      "max_size": "50MB"
+    }
+  }
+} 

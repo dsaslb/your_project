@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가계부 - Your Program</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.31/dist/vue.global.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 헤더 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1><i class="fas fa-wallet"></i> 가계부</h1>
+                </div>
+                <div class="header-right">
+                    <button @click="showAddModal = true" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 추가
+                    </button>
+                    <button @click="refreshData" class="btn btn-secondary">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="main-content">
+            <!-- 월 선택 -->
+            <div class="month-selector">
+                <button @click="previousMonth" class="btn btn-icon">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <h2>{{ currentYear }}년 {{ currentMonth }}월</h2>
+                <button @click="nextMonth" class="btn btn-icon">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- 요약 카드 -->
+            <div class="summary-cards">
+                <div class="summary-card income">
+                    <div class="card-icon">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>수입</h3>
+                        <p class="amount">{{ formatCurrency(summary.total_income) }}</p>
+                    </div>
+                </div>
+                <div class="summary-card expense">
+                    <div class="card-icon">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>지출</h3>
+                        <p class="amount">{{ formatCurrency(summary.total_expense) }}</p>
+                    </div>
+                </div>
+                <div class="summary-card balance" :class="summary.balance >= 0 ? 'positive' : 'negative'">
+                    <div class="card-icon">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>잔액</h3>
+                        <p class="amount">{{ formatCurrency(summary.balance) }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 차트 -->
+            <div class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+
+            <!-- 탭 네비게이션 -->
+            <div class="tab-navigation">
+                <button @click="activeTab = 'items'" 
+                        :class="activeTab === 'items' ? 'active' : ''" 
+                        class="tab-btn">
+                    <i class="fas fa-list"></i> 항목
+                </button>
+                <button @click="activeTab = 'upcoming'" 
+                        :class="activeTab === 'upcoming' ? 'active' : ''" 
+                        class="tab-btn">
+                    <i class="fas fa-calendar"></i> 예정
+                </button>
+                <button @click="activeTab = 'categories'" 
+                        :class="activeTab === 'categories' ? 'active' : ''" 
+                        class="tab-btn">
+                    <i class="fas fa-chart-pie"></i> 카테고리
+                </button>
+            </div>
+
+            <!-- 항목 탭 -->
+            <div v-if="activeTab === 'items'" class="tab-content">
+                <div class="items-container">
+                    <div v-for="item in items" :key="item.id" class="item-card">
+                        <div class="item-header">
+                            <div class="item-info">
+                                <h4>{{ item.name }}</h4>
+                                <span class="category">{{ item.category }}</span>
+                            </div>
+                            <div class="item-amount" :class="item.item_type">
+                                {{ formatCurrency(item.amount) }}
+                            </div>
+                        </div>
+                        <div class="item-details">
+                            <span class="frequency">{{ getFrequencyText(item.frequency) }}</span>
+                            <span class="memo" v-if="item.memo">{{ item.memo }}</span>
+                        </div>
+                        <div class="item-actions">
+                            <button @click="editItem(item)" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button @click="deleteItem(item.id)" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 예정 탭 -->
+            <div v-if="activeTab === 'upcoming'" class="tab-content">
+                <div class="upcoming-container">
+                    <div v-for="payment in upcoming" :key="payment.item.id" class="upcoming-card">
+                        <div class="upcoming-header">
+                            <h4>{{ payment.item.name }}</h4>
+                            <span class="days-until" :class="getDaysUntilClass(payment.days_until)">
+                                {{ payment.days_until }}일 후
+                            </span>
+                        </div>
+                        <div class="upcoming-details">
+                            <span class="amount">{{ formatCurrency(payment.item.amount) }}</span>
+                            <span class="date">{{ formatDate(payment.next_payment_date) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 카테고리 탭 -->
+            <div v-if="activeTab === 'categories'" class="tab-content">
+                <div class="categories-container">
+                    <div class="category-section">
+                        <h3>수입 카테고리</h3>
+                        <div class="category-chart">
+                            <canvas id="incomeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="category-section">
+                        <h3>지출 카테고리</h3>
+                        <div class="category-chart">
+                            <canvas id="expenseChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 항목 추가 모달 -->
+        <div v-if="showAddModal" class="modal-overlay" @click="showAddModal = false">
+            <div class="modal" @click.stop>
+                <div class="modal-header">
+                    <h3>새 항목 추가</h3>
+                    <button @click="showAddModal = false" class="btn btn-icon">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="addItem">
+                        <div class="form-group">
+                            <label>이름</label>
+                            <input v-model="newItem.name" type="text" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>금액</label>
+                            <input v-model="newItem.amount" type="number" step="0.01" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>유형</label>
+                            <select v-model="newItem.item_type" required class="form-input">
+                                <option value="income">수입</option>
+                                <option value="expense">지출</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>카테고리</label>
+                            <select v-model="newItem.category" required class="form-input">
+                                <option v-for="category in getCategories(newItem.item_type)" :key="category" :value="category">
+                                    {{ category }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>주기</label>
+                            <select v-model="newItem.frequency" required class="form-input">
+                                <option value="daily">일별</option>
+                                <option value="weekly">주별</option>
+                                <option value="monthly">월별</option>
+                                <option value="yearly">연별</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>시작일</label>
+                            <input v-model="newItem.start_date" type="date" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>메모</label>
+                            <textarea v-model="newItem.memo" class="form-input" rows="3"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" @click="showAddModal = false" class="btn btn-secondary">취소</button>
+                            <button type="submit" class="btn btn-primary">추가</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html> 

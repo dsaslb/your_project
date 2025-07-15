@@ -15,6 +15,21 @@
     </div>
 </div>
 
+{% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+<!-- 브랜드 선택 드롭다운 (슈퍼/총관리자용) -->
+<div class="mb-6">
+  <form method="get" action="">
+    <label for="brandSelect" class="block text-sm font-medium text-gray-700 mb-1">브랜드 선택</label>
+    <select id="brandSelect" name="brand_id" class="px-4 py-2 border rounded-lg" onchange="this.form.submit()">
+      <option value="">전체 브랜드</option>
+      {% for brand in all_brands %}
+        <option value="{{ brand.id }}" {% if brand.id == selected_brand_id %}selected{% endif %}>{{ brand.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% endif %}
+
 <!-- 브랜드 개요 -->
 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">브랜드 개요</h2>
@@ -56,6 +71,26 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- 운영/보안 이벤트 실시간 알림 배너 -->
+<div class="mb-6">
+  <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+    <strong class="font-bold">실시간 운영/보안 이벤트!</strong>
+    <span class="block sm:inline">최근 장애, 오류, 보안 이벤트가 발생했습니다. 즉시 확인 바랍니다.</span>
+  </div>
+</div>
+<!-- 운영/보안 이벤트 리스트 -->
+<div class="bg-white rounded-lg shadow p-6 mb-8">
+  <h2 class="text-xl font-semibold text-gray-800 mb-4">운영/보안 이벤트 이력</h2>
+  <ul class="divide-y divide-gray-200">
+    {% for event in events %}
+    <li class="py-2 flex items-center justify-between">
+      <span class="text-gray-700">{{ event.timestamp }} - {{ event.message }}</span>
+      <span class="text-xs px-2 py-1 rounded {{ 'bg-red-200 text-red-800' if event.level == 'critical' else 'bg-yellow-100 text-yellow-800' }}">{{ event.level|upper }}</span>
+    </li>
+    {% endfor %}
+  </ul>
 </div>
 
 <!-- 매장별 모니터링 -->

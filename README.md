@@ -1,234 +1,63 @@
-﻿# Your Program - 통합 비즈니스 관리 시스템
+﻿# your_program
 
-## 📋 프로젝트 개요
+**(EN below) — 실전 운영/AI/자동화/글로벌/오픈소스 플랫폼**
 
-Your Program은 레스토랑, 병원, 미용실, 옷가게 등 다양한 업종의 비즈니스를 위한 통합 관리 시스템입니다. 직원 관리, 주문 처리, 재고 관리, 스케줄링, 알림 시스템 등을 포함한 완전한 비즈니스 솔루션을 제공합니다.
+## 주요 특징 (Key Features)
+- 실시간 대시보드, AI 분석/경고, 운영 자동화, 정책/규칙 관리
+- 글로벌 다국어(i18n), 접근성, 클라우드/확장/협업 지원
+- 오픈소스, 테스트/문서화/교육 자동화, 실전 운영/보고/알림
 
-## 🏗️ 시스템 아키텍처
-
-### 계층별 권한 구조
-- **최고관리자 (본사)**: 전체 시스템 관리, 브랜드 관리자 승인
-- **브랜드 관리자**: 해당 브랜드의 매장 관리, 매장 관리자 승인
-- **매장 관리자**: 해당 매장의 직원 관리 및 업무별 세부 권한 관리
-- **직원**: 본인 업무/기능만 접근
-
-### 데이터 중앙화
-- 모든 데이터는 중앙 DB/API를 기준으로 통일
-- 실시간 데이터 동기화로 각 페이지 간 데이터 불일치 문제 해결
-- Zustand 기반 중앙 상태 관리
-
-## 🚀 빠른 시작
-
-### 1. 프로젝트 클론
+## 빠른 시작 (Quick Start)
 ```bash
-git clone <repository-url>
-cd your_program
-```
-
-### 2. 백엔드 설정
-```bash
-# Python 가상환경 생성 및 활성화
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-
-# 의존성 설치
+# 1. 의존성 설치
 pip install -r requirements.txt
-
-# 환경변수 설정
-copy env_example.txt .env
-# .env 파일에서 SECRET_KEY와 DATABASE_URL 설정
-
-# 데이터베이스 마이그레이션
-flask db upgrade
-
-# 관리자 계정 생성
-python create_super_admin.py
-
-# 개발 서버 실행
+# 2. 개발 서버 실행
 python app.py
+# 3. 프론트엔드(Next.js 등) 실행
+cd frontend && npm install && npm run dev
 ```
 
-### 3. 프론트엔드 설정
-```bash
-cd frontend
+## 주요 기능 (Main Features)
+- 실시간 KPI/알림/정책/보고/테스트/문서화/글로벌/확장/접근성
+- 관리자/운영자/직원/개발자별 맞춤 대시보드/가이드/자동화
 
-# 의존성 설치
-npm install
+## 글로벌/다국어/확장 (Global/i18n/Scaling)
+- 한국어/영어 자동 지원, 글로벌 협업/운영/테스트/문서화
+- 클라우드/멀티테넌시/대용량/고가용성 구조 지원
 
-# 개발 서버 실행
-npm run dev
-```
+## 테스트/문서/교육 (Test/Docs/Education)
+- pytest 기반 자동화 테스트, docs/에 초보자용 가이드/정책/온보딩/운영 문서
 
-### 4. 접속 정보
-- **백엔드**: http://localhost:5000
-- **프론트엔드**: http://localhost:3000
-- **관리자 계정**: 생성 시 설정한 계정 정보
+## 오픈소스/기여/협업 (Open Source/Contribution)
+- 누구나 자유롭게 사용/수정/배포/기여 가능
+- [CONTRIBUTING.md](CONTRIBUTING.md) 참고
 
-## 📁 프로젝트 구조
-
-```
-your_program/
-├── app.py                          # Flask 메인 애플리케이션
-├── models.py                       # SQLAlchemy 데이터 모델
-├── requirements.txt                # Python 의존성
-├── config.py                       # 설정 파일
-├── migrations/                     # 데이터베이스 마이그레이션
-├── routes/                         # API 라우트
-├── utils/                          # 유틸리티 함수
-├── templates/                      # HTML 템플릿
-├── static/                         # 정적 파일
-├── frontend/          # Next.js 프론트엔드
-│   ├── src/
-│   │   ├── app/                    # Next.js 13+ App Router
-│   │   ├── components/             # React 컴포넌트
-│   │   ├── hooks/                  # 커스텀 훅
-│   │   ├── store/                  # Zustand 상태 관리
-│   │   └── utils/                  # 유틸리티 함수
-│   ├── package.json
-│   └── next.config.js
-├── plugins/                        # 플러그인 시스템
-├── mobile_app/                     # React Native 모바일 앱
-└── docs/                          # 문서
-```
-
-## 🔐 권한 및 승인 시스템
-
-### 계층별 승인 구조
-1. **최고관리자 → 브랜드 관리자 승인**
-2. **브랜드 관리자 → 매장 관리자 승인**
-3. **매장 관리자 → 직원 승인 및 업무별 세부 권한 체크박스 지정**
-
-### 권한 모듈
-- **대시보드**: 기본 접근 권한
-- **브랜드 관리**: 브랜드 생성, 수정, 삭제, 승인, 모니터링
-- **매장 관리**: 매장 생성, 수정, 삭제, 승인, 모니터링
-- **직원 관리**: 직원 등록, 수정, 삭제, 승인, 역할 할당
-- **스케줄 관리**: 근무표 생성, 수정, 삭제, 승인
-- **주문 관리**: 주문 처리, 수정, 삭제, 승인
-- **재고 관리**: 재고 조정, 입출고 관리
-- **알림 관리**: 알림 발송, 관리
-- **시스템 관리**: 백업, 복원, 설정, 모니터링
-- **AI 관리**: AI 진단, 개선안 관리
-- **보고서**: 보고서 조회, 내보내기
-
-## 📊 주요 기능
-
-### 1. 직원 관리
-- 직원 등록 및 정보 관리
-- 근태 관리 (출퇴근, 지각, 조퇴, 야근)
-- 급여 관리
-- 권한 관리 및 승인
-
-### 2. 스케줄 관리
-- 근무표 생성 및 관리
-- 교대 신청 및 승인
-- 휴가 관리
-- 근무 통계
-
-### 3. 주문 관리
-- 주문 접수 및 처리
-- 메뉴 관리
-- 결제 처리
-- 주문 통계
-
-### 4. 재고 관리
-- 재고 현황 관리
-- 입출고 이력
-- 발주 관리
-- 재고 알림
-
-### 5. 알림 시스템
-- 실시간 알림
-- 이메일 알림
-- SMS 알림
-- 알림 설정
-
-### 6. AI 진단 및 개선
-- 성능 분석
-- 품질 관리
-- 효율성 개선
-- 안전성 모니터링
-
-## 🔧 개발 환경
-
-### 백엔드
-- **Python**: 3.8+
-- **Flask**: 3.0.0
-- **SQLAlchemy**: 2.0.41
-- **PostgreSQL/MySQL**: 데이터베이스
-- **Redis**: 캐싱 및 세션 관리
-
-### 프론트엔드
-- **Next.js**: 15.3.5
-- **React**: 18
-- **TypeScript**: 5
-- **Tailwind CSS**: 3.3.0
-- **Zustand**: 4.4.7 (상태 관리)
-- **Radix UI**: 컴포넌트 라이브러리
-
-### 모바일
-- **React Native**: 크로스 플랫폼 모바일 앱
-
-## 🚀 배포
-
-### 개발 환경
-```bash
-# 백엔드
-python app.py
-
-# 프론트엔드
-npm run dev
-```
-
-### 프로덕션 환경
-```bash
-# Docker 사용
-docker-compose up -d
-
-# 또는 수동 배포
-python app.py --production
-npm run build && npm start
-```
-
-## 📝 API 문서
-
-API 문서는 `/docs` 경로에서 확인할 수 있습니다.
-
-## 🤝 기여하기
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다.
-
-## 📞 지원
-
-- **이메일**: support@your_program.com
-- **문서**: `/docs` 폴더 참조
-- **이슈**: GitHub Issues 사용
-
-## 🔄 업데이트 로그
-
-### v1.0.0 (2024-01-15)
-- 초기 릴리즈
-- 기본 CRUD 기능
-- 권한 관리 시스템
-- 실시간 알림
-
-### v1.1.0 (2024-01-20)
-- AI 진단 기능 추가
-- 모바일 앱 지원
-- 성능 최적화
+## 라이선스 (License)
+- MIT License (자유로운 사용/수정/배포/상업적 이용 가능)
 
 ---
 
-**Your Program** - 비즈니스 성장을 위한 완벽한 솔루션
+# your_program (EN)
+
+**Global, AI, Automation, Open Source Platform**
+
+## Features
+- Real-time dashboard, AI analytics/alerts, automation, policy/rule management
+- Global i18n, accessibility, cloud/scaling/collaboration
+- Open source, test/docs/education automation, real-world ops/report/alerts
+
+## Quick Start
+```bash
+pip install -r requirements.txt
+python app.py
+cd frontend && npm install && npm run dev
+```
+
+## Contribution/License
+- See [CONTRIBUTING.md](CONTRIBUTING.md)
+- MIT License
+
+---
+
+> 문의/Contact: 관리자 또는 GitHub Issues
 

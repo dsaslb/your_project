@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}이력/알림 통합 대시보드{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <div class="bg-white rounded-lg shadow-lg p-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">이력/알림 통합 대시보드</h1>
+    <div class="mb-4 flex flex-wrap gap-4">
+      <input type="text" placeholder="검색(내용, 사용자, 유형 등)" class="px-4 py-2 border rounded-lg w-64">
+      <select class="px-4 py-2 border rounded-lg">
+        <option value="">전체 유형</option>
+        <option value="audit">이력</option>
+        <option value="notification">알림</option>
+      </select>
+      <select class="px-4 py-2 border rounded-lg">
+        <option value="">전체 상태</option>
+        <option value="success">성공</option>
+        <option value="fail">실패</option>
+      </select>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">유형</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내용</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">사용자</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">일시</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% for item in items %}
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              {% if item.type == 'audit' %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">이력</span>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">알림</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.content }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.user_name }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              {% if item.status == 'success' %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">성공</span>
+              {% elif item.status == 'fail' %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">실패</span>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">-</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.timestamp }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %} 

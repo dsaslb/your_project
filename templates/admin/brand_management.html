@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/css/tailwind.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="/static/js/theme.js"></script>
+    <script src="/static/js/address-search.js"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900">
     <div class="min-h-screen flex">
@@ -220,8 +221,63 @@
 
                 <!-- 주소 -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소</label>
-                    <input type="text" id="brandAddress" name="address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소 *</label>
+                    
+                    <!-- 주소 검색 버튼 -->
+                    <div class="flex space-x-2 mb-2">
+                        <button type="button" id="brand-address-search-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center">
+                            <i class="fas fa-search mr-2"></i>
+                            주소 검색
+                        </button>
+                        <button type="button" onclick="clearBrandAddress()" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm">
+                            초기화
+                        </button>
+                    </div>
+                    
+                    <!-- 주소 입력 필드들 -->
+                    <div class="space-y-3">
+                        <!-- 우편번호 -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">우편번호</label>
+                                <input type="text" id="brand-zipcode" name="zipcode" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white text-sm" readonly>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">도로명주소</label>
+                                <input type="text" id="brand-road-address" name="road_address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white text-sm" readonly>
+                            </div>
+                        </div>
+                        
+                        <!-- 지번주소 -->
+                        <div>
+                            <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">지번주소</label>
+                            <input type="text" id="brand-jibun-address" name="jibun_address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white text-sm" readonly>
+                        </div>
+                        
+                        <!-- 상세주소 -->
+                        <div>
+                            <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">상세주소</label>
+                            <input type="text" id="brand-detail-address" name="detail_address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm" placeholder="상세주소를 입력하세요">
+                        </div>
+                        
+                        <!-- 전체주소 (자동 생성) -->
+                        <div>
+                            <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">전체주소</label>
+                            <input type="text" id="brandAddress" name="address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white text-sm" readonly>
+                        </div>
+                        
+                        <!-- 위도/경도 (숨김) -->
+                        <input type="hidden" id="brand-latitude" name="latitude">
+                        <input type="hidden" id="brand-longitude" name="longitude">
+                    </div>
+                    
+                    <!-- 주소 중복 체크 결과 -->
+                    <div id="brand-address-duplicate-check" class="mt-2 hidden">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-exclamation-triangle text-yellow-500"></i>
+                            <span class="text-sm text-yellow-600 dark:text-yellow-400">이미 등록된 주소와 유사합니다.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 프론트엔드 서버 생성 -->
@@ -290,8 +346,63 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소</label>
-                    <input type="text" id="editBrandAddress" name="address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">주소 *</label>
+                    
+                    <!-- 주소 검색 버튼 -->
+                    <div class="flex space-x-2 mb-2">
+                        <button type="button" id="edit-brand-address-search-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center">
+                            <i class="fas fa-search mr-2"></i>
+                            주소 검색
+                        </button>
+                        <button type="button" onclick="clearEditBrandAddress()" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm">
+                            초기화
+                        </button>
+                    </div>
+                    
+                    <!-- 주소 입력 필드들 -->
+                    <div class="space-y-3">
+                        <!-- 우편번호 -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">우편번호</label>
+                                <input type="text" id="edit-brand-zipcode" name="zipcode" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white text-sm" readonly>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">도로명주소</label>
+                                <input type="text" id="edit-brand-road-address" name="road_address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white text-sm" readonly>
+                            </div>
+                        </div>
+                        
+                        <!-- 지번주소 -->
+                        <div>
+                            <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">지번주소</label>
+                            <input type="text" id="edit-brand-jibun-address" name="jibun_address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white text-sm" readonly>
+                        </div>
+                        
+                        <!-- 상세주소 -->
+                        <div>
+                            <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">상세주소</label>
+                            <input type="text" id="edit-brand-detail-address" name="detail_address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm" placeholder="상세주소를 입력하세요">
+                        </div>
+                        
+                        <!-- 전체주소 (자동 생성) -->
+                        <div>
+                            <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">전체주소</label>
+                            <input type="text" id="editBrandAddress" name="address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white text-sm" readonly>
+                        </div>
+                        
+                        <!-- 위도/경도 (숨김) -->
+                        <input type="hidden" id="edit-brand-latitude" name="latitude">
+                        <input type="hidden" id="edit-brand-longitude" name="longitude">
+                    </div>
+                    
+                    <!-- 주소 중복 체크 결과 -->
+                    <div id="edit-brand-address-duplicate-check" class="mt-2 hidden">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-exclamation-triangle text-yellow-500"></i>
+                            <span class="text-sm text-yellow-600 dark:text-yellow-400">이미 등록된 주소와 유사합니다.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div>
@@ -522,13 +633,13 @@ document.getElementById('createBrandForm').addEventListener('submit', async func
         
         if (response.ok) {
             console.log('브랜드 생성 성공:', result);
-            alert('브랜드가 성공적으로 생성되었습니다. 서버 설정 페이지로 이동합니다.');
+            alert('브랜드가 성공적으로 생성되었습니다. 온보딩 페이지로 이동합니다.');
             closeCreateModal();
             
-            // 생성된 브랜드의 서버 설정 페이지로 이동
+            // 생성된 브랜드의 온보딩 페이지로 이동
             if (result.brand && result.brand.id) {
-                console.log('서버 설정 페이지로 이동:', `/admin/brand/${result.brand.id}/server-setup`);
-                window.location.href = `/admin/brand/${result.brand.id}/server-setup`;
+                console.log('온보딩 페이지로 이동:', `/admin/brand-onboarding?brand_id=${result.brand.id}`);
+                window.location.href = `/admin/brand-onboarding?brand_id=${result.brand.id}`;
             } else {
                 console.log('브랜드 정보가 없어 브랜드 목록을 새로고침합니다.');
                 loadBrands();
@@ -636,6 +747,158 @@ async function deleteBrand(brandId) {
     } catch (error) {
         console.error('브랜드 삭제 오류:', error);
         alert('브랜드 삭제 중 오류가 발생했습니다.');
+    }
+}
+
+// 주소 검색 기능 초기화
+let brandAddressSearch, editBrandAddressSearch;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 브랜드 생성용 주소 검색
+    brandAddressSearch = new AddressSearch({
+        apiKey: 'YOUR_KAKAO_API_KEY', // 실제 API 키로 교체 필요
+        searchButtonId: 'brand-address-search-btn',
+        addressInputId: 'brandAddress',
+        detailAddressId: 'brand-detail-address',
+        zipCodeId: 'brand-zipcode',
+        roadAddressId: 'brand-road-address',
+        jibunAddressId: 'brand-jibun-address',
+        latitudeId: 'brand-latitude',
+        longitudeId: 'brand-longitude',
+        onAddressSelected: function(data) {
+            updateBrandFullAddress();
+            checkBrandAddressDuplicate();
+        },
+        onError: function(message) {
+            alert(message);
+        }
+    });
+
+    // 브랜드 수정용 주소 검색
+    editBrandAddressSearch = new AddressSearch({
+        apiKey: 'YOUR_KAKAO_API_KEY', // 실제 API 키로 교체 필요
+        searchButtonId: 'edit-brand-address-search-btn',
+        addressInputId: 'editBrandAddress',
+        detailAddressId: 'edit-brand-detail-address',
+        zipCodeId: 'edit-brand-zipcode',
+        roadAddressId: 'edit-brand-road-address',
+        jibunAddressId: 'edit-brand-jibun-address',
+        latitudeId: 'edit-brand-latitude',
+        longitudeId: 'edit-brand-longitude',
+        onAddressSelected: function(data) {
+            updateEditBrandFullAddress();
+            checkEditBrandAddressDuplicate();
+        },
+        onError: function(message) {
+            alert(message);
+        }
+    });
+
+    // 상세주소 입력 시 전체주소 자동 업데이트
+    document.getElementById('brand-detail-address')?.addEventListener('input', updateBrandFullAddress);
+    document.getElementById('edit-brand-detail-address')?.addEventListener('input', updateEditBrandFullAddress);
+});
+
+// 브랜드 생성용 전체주소 업데이트
+function updateBrandFullAddress() {
+    const roadAddress = document.getElementById('brand-road-address').value;
+    const detailAddress = document.getElementById('brand-detail-address').value;
+    const fullAddress = roadAddress + (detailAddress ? ' ' + detailAddress : '');
+    document.getElementById('brandAddress').value = fullAddress;
+}
+
+// 브랜드 수정용 전체주소 업데이트
+function updateEditBrandFullAddress() {
+    const roadAddress = document.getElementById('edit-brand-road-address').value;
+    const detailAddress = document.getElementById('edit-brand-detail-address').value;
+    const fullAddress = roadAddress + (detailAddress ? ' ' + detailAddress : '');
+    document.getElementById('editBrandAddress').value = fullAddress;
+}
+
+// 브랜드 생성용 주소 초기화
+function clearBrandAddress() {
+    brandAddressSearch.clearAddressFields();
+    document.getElementById('brand-address-duplicate-check').classList.add('hidden');
+}
+
+// 브랜드 수정용 주소 초기화
+function clearEditBrandAddress() {
+    editBrandAddressSearch.clearAddressFields();
+    document.getElementById('edit-brand-address-duplicate-check').classList.add('hidden');
+}
+
+// 브랜드 생성용 주소 중복 체크
+async function checkBrandAddressDuplicate() {
+    const address = document.getElementById('brandAddress').value;
+    if (!address) return;
+
+    try {
+        const result = await brandAddressSearch.checkAddressDuplicate(address);
+        const duplicateCheck = document.getElementById('brand-address-duplicate-check');
+        
+        if (result.duplicate) {
+            duplicateCheck.classList.remove('hidden');
+        } else {
+            duplicateCheck.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('주소 중복 체크 오류:', error);
+    }
+}
+
+// 브랜드 수정용 주소 중복 체크
+async function checkEditBrandAddressDuplicate() {
+    const address = document.getElementById('editBrandAddress').value;
+    const brandId = document.getElementById('editBrandId').value;
+    if (!address) return;
+
+    try {
+        const result = await editBrandAddressSearch.checkAddressDuplicate(address, brandId);
+        const duplicateCheck = document.getElementById('edit-brand-address-duplicate-check');
+        
+        if (result.duplicate) {
+            duplicateCheck.classList.remove('hidden');
+        } else {
+            duplicateCheck.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('주소 중복 체크 오류:', error);
+    }
+}
+
+// 브랜드 수정 시 기존 주소 정보 로드
+async function editBrand(brandId) {
+    try {
+        const response = await fetch(`/api/admin/brands/${brandId}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            const brand = data.brand;
+            
+            document.getElementById('editBrandId').value = brand.id;
+            document.getElementById('editBrandName').value = brand.name;
+            document.getElementById('editBrandDescription').value = brand.description || '';
+            document.getElementById('editBrandEmail').value = brand.contact_email || '';
+            document.getElementById('editBrandPhone').value = brand.contact_phone || '';
+            document.getElementById('editBrandWebsite').value = brand.website || '';
+            document.getElementById('editBrandStatus').value = brand.status;
+            
+            // 주소 정보 로드
+            document.getElementById('edit-brand-zipcode').value = brand.zipcode || '';
+            document.getElementById('edit-brand-road-address').value = brand.road_address || '';
+            document.getElementById('edit-brand-jibun-address').value = brand.jibun_address || '';
+            document.getElementById('edit-brand-detail-address').value = brand.detail_address || '';
+            document.getElementById('editBrandAddress').value = brand.address || '';
+            document.getElementById('edit-brand-latitude').value = brand.latitude || '';
+            document.getElementById('edit-brand-longitude').value = brand.longitude || '';
+            
+            openEditModal();
+        } else {
+            alert('브랜드 정보 로드 실패: ' + data.error);
+        }
+    } catch (error) {
+        console.error('브랜드 정보 로드 오류:', error);
+        alert('브랜드 정보 로드 중 오류가 발생했습니다.');
     }
 }
 </script>

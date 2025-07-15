@@ -210,6 +210,15 @@ def create_brand():
                 logger.error(f"프론트엔드 서버 생성 실패: {e}")
                 frontend_result = {'error': str(e)}
         
+        # 온보딩 시작
+        try:
+            from api.brand_onboarding_api import start_onboarding
+            onboarding_response = start_onboarding(new_brand.id)
+            onboarding_data = onboarding_response.get_json() if hasattr(onboarding_response, 'get_json') else None
+        except Exception as e:
+            logger.error(f"온보딩 시작 실패: {e}")
+            onboarding_data = None
+        
         return jsonify({
             'success': True,
             'message': '브랜드가 성공적으로 생성되었습니다.',
@@ -219,7 +228,8 @@ def create_brand():
                 'code': new_brand.code,
                 'industry_id': new_brand.industry_id
             },
-            'frontend_server': frontend_result
+            'frontend_server': frontend_result,
+            'onboarding': onboarding_data
         })
         
     except Exception as e:

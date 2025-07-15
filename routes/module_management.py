@@ -19,16 +19,46 @@ logger = logging.getLogger(__name__)
 module_management_bp = Blueprint('module_management', __name__)
 
 # 사용자별 설치된 모듈 (실제로는 데이터베이스에서 관리)
-user_installed_modules = {}
+user_installed_modules = {
+    'admin': ['attendance_management', 'inventory_management', 'customer_feedback']
+}
 
 # 모듈 설정 데이터 (실제로는 데이터베이스에서 관리)
-module_settings = {}
+module_settings: Dict[str, Dict[str, Any]] = {
+    'admin_attendance_management': {
+        'is_active': True,
+        'auto_backup': True,
+        'notification_enabled': True,
+        'work_hours': {'start': '09:00', 'end': '18:00'},
+        'break_time': 60
+    },
+    'admin_inventory_management': {
+        'is_active': True,
+        'low_stock_threshold': 10,
+        'auto_reorder': True,
+        'notification_enabled': True
+    },
+    'admin_customer_feedback': {
+        'is_active': False,
+        'auto_response': True,
+        'rating_threshold': 3,
+        'notification_enabled': True
+    }
+}
 
 @module_management_bp.route('/api/modules/installed', methods=['GET'])
 def get_installed_modules():
     """설치된 모듈 목록 조회"""
     try:
-        user_modules = user_installed_modules.get(current_user.id, [])
+        # 로그인 상태 확인
+        if not current_user.is_authenticated:
+            return jsonify({'error': '로그인이 필요합니다.'}), 401
+        
+        user_id = getattr(current_user, 'id', None)
+        if not user_id:
+            return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
+        
+        user_modules = user_installed_modules.get(user_id, [])
         installed_modules = []
         
         # 마켓플레이스에서 모듈 정보 가져오기
@@ -38,8 +68,8 @@ def get_installed_modules():
             if module_id in marketplace_modules:
                 module = marketplace_modules[module_id].copy()
                 module['installed_at'] = datetime.now().isoformat()  # 실제로는 설치 시간 저장
-                module['is_active'] = module_settings.get(f"{current_user.id}_{module_id}", {}).get('is_active', True)
-                module['settings'] = module_settings.get(f"{current_user.id}_{module_id}", {})
+                module['is_active'] = module_settings.get(f"{user_id}_{module_id}", {}).get('is_active', True)
+                module['settings'] = module_settings.get(f"{user_id}_{module_id}", {})
                 installed_modules.append(module)
         
         return jsonify({
@@ -112,13 +142,21 @@ def deactivate_module(module_id: str):
 def get_module_settings(module_id: str):
     """모듈 설정 조회"""
     try:
+        # 로그인 상태 확인
+        if not current_user.is_authenticated:
+            return jsonify({'error': '로그인이 필요합니다.'}), 401
+        
+        user_id = getattr(current_user, 'id', None)
+        if not user_id:
+            return jsonify({'error': '사용자 정보를 찾을 수 없습니다.'}), 400
+        
         # 설치된 모듈인지 확인
-        user_modules = user_installed_modules.get(current_user.id, [])
+        user_modules = user_installed_modules.get(user_id, [])
         if module_id not in user_modules:
             return jsonify({'error': '설치되지 않은 모듈입니다.'}), 400
         
         # 모듈 설정 조회
-        setting_key = f"{current_user.id}_{module_id}"
+        setting_key = f"{user_id}_{module_id}"
         settings = module_settings.get(setting_key, {})
         
         # 마켓플레이스에서 모듈 정보 가져오기

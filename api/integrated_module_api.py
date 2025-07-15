@@ -11,9 +11,12 @@ import json
 from core.backend.integrated_module_system import integrated_system, IntegrationEvent, IntegrationEventData
 from core.backend.central_data_layer import central_data
 from utils.auth_utils import admin_required, permission_required
+from extensions import db
+from models import Brand, BrandPlugin, Module
 
 # Blueprint 생성
 integrated_api_bp = Blueprint('integrated_api', __name__, url_prefix='/api/integrated')
+integrated_module_api = Blueprint('integrated_module_api', __name__)
 
 @integrated_api_bp.route('/dashboard')
 @login_required
@@ -569,3 +572,67 @@ def get_system_status():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500 
+
+@integrated_module_api.route('/api/modules/<module_id>/brands', methods=['GET'])
+@login_required
+def get_module_applied_brands(module_id):
+    """
+    특정 모듈이 적용된 브랜드 목록 조회
+    """
+    try:
+        # 해당 모듈이 적용된 브랜드 목록 조회
+        brand_plugins = BrandPlugin.query.filter_by(code=module_id).all()
+        brands = [Brand.query.get(bp.brand_id) for bp in brand_plugins]
+        brand_list = [
+            {"id": b.id, "name": b.name, "code": b.code}
+            for b in brands if b is not None
+        ]
+        return jsonify({"success": True, "brands": brand_list})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@integrated_module_api.route('/api/modules/<module_id>/brands', methods=['POST'])
+@login_required
+def apply_module_to_brand(module_id):
+    """
+    브랜드에 모듈(플러그인) 적용/해제
+    body: {brand_code, apply}
+    """
+    data = request.get_json()
+    brand_code = data.get('brand_code')
+    apply = data.get('apply', True)
+    if not brand_code:
+        return jsonify({"success": False, "error": "brand_code가 필요합니다."}), 400
+    try:
+        brand = Brand.query.filter_by(code=brand_code).first()
+        if not brand:
+            return jsonify({"success": False, "error": "해당 브랜드를 찾을 수 없습니다."}), 404
+        # 권한 체크(브랜드 관리자 이상만)
+        if not (current_user.is_admin() or current_user.role in ["admin", "brand_admin", "super_admin"] or getattr(current_user, 'brand_id', None) == brand.id):
+            return jsonify({"success": False, "error": "권한이 없습니다."}), 403
+        if apply:
+            # 이미 적용되어 있으면 무시
+            exists = BrandPlugin.query.filter_by(brand_id=brand.id, code=module_id).first()
+            if exists:
+                pass
+            else:
+                # 모듈 정보 확인
+                module = Module.query.filter_by(id=module_id).first()
+                if not module:
+                    return jsonify({"success": False, "error": "해당 모듈을 찾을 수 없습니다."}), 404
+                new_bp = BrandPlugin(brand_id=brand.id, name=module.name, code=module_id, description=module.description, version=module.version, is_active=True)
+                db.session.add(new_bp)
+                db.session.commit()
+        else:
+            # 적용 해제(삭제)
+            bp = BrandPlugin.query.filter_by(brand_id=brand.id, code=module_id).first()
+            if bp:
+                db.session.delete(bp)
+                db.session.commit()
+        # 적용된 브랜드 목록 반환
+        brand_plugins = BrandPlugin.query.filter_by(code=module_id).all()
+        applied_brands = [Brand.query.get(bp.brand_id).code for bp in brand_plugins if Brand.query.get(bp.brand_id)]
+        return jsonify({"success": True, "applied_brands": applied_brands})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}) 

@@ -41,6 +41,14 @@ class Brand(db.Model):
     contact_email = db.Column(db.String(120))
     contact_phone = db.Column(db.String(20))
     address = db.Column(db.String(200))
+    
+    # 주소 상세 정보 (카카오 주소 검색 API 연동)
+    zipcode = db.Column(db.String(10))  # 우편번호
+    road_address = db.Column(db.String(200))  # 도로명주소
+    jibun_address = db.Column(db.String(200))  # 지번주소
+    detail_address = db.Column(db.String(100))  # 상세주소
+    latitude = db.Column(db.Float)  # 위도
+    longitude = db.Column(db.Float)  # 경도
     store_type = db.Column(db.String(20), default="individual", index=True)  # individual(개인매장), chain(체인점)
     
     # 사업자 정보
@@ -99,6 +107,14 @@ class Branch(db.Model):
     name = db.Column(db.String(128))
     address = db.Column(db.String(200))
     phone = db.Column(db.String(20))
+    
+    # 주소 상세 정보 (카카오 주소 검색 API 연동)
+    zipcode = db.Column(db.String(10))  # 우편번호
+    road_address = db.Column(db.String(200))  # 도로명주소
+    jibun_address = db.Column(db.String(200))  # 지번주소
+    detail_address = db.Column(db.String(100))  # 상세주소
+    latitude = db.Column(db.Float)  # 위도
+    longitude = db.Column(db.Float)  # 경도
     processing_time_standard = db.Column(
         db.Integer, default=15
     )  # 기준 주문 처리 시간(분)
@@ -156,7 +172,18 @@ class User(db.Model, UserMixin):
     )
     name = db.Column(db.String(50))
     phone = db.Column(db.String(20))
+    address = db.Column(db.String(200))  # 주소
     last_login = db.Column(db.DateTime, index=True)
+    # [추가] 로그인 시도 횟수 (linter 에러 방지)
+    login_attempts = db.Column(db.Integer, default=0)  # 로그인 실패 횟수
+    
+    # 주소 상세 정보 (카카오 주소 검색 API 연동)
+    zipcode = db.Column(db.String(10))  # 우편번호
+    road_address = db.Column(db.String(200))  # 도로명주소
+    jibun_address = db.Column(db.String(200))  # 지번주소
+    detail_address = db.Column(db.String(100))  # 상세주소
+    latitude = db.Column(db.Float)  # 위도
+    longitude = db.Column(db.Float)  # 경도
 
     # JSON 기반 세밀한 권한 관리
     permissions = db.Column(
@@ -1133,6 +1160,8 @@ class SystemLog(db.Model):
 
     __tablename__ = "system_logs"
     id = db.Column(db.Integer, primary_key=True)
+    # [추가] brand_id: 이 로그가 속한 브랜드(테넌트) 구분
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)  # 브랜드 구분
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     action = db.Column(db.String(100), nullable=False)
     detail = db.Column(db.String(500), nullable=True)
@@ -1141,6 +1170,7 @@ class SystemLog(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.now())
 
     # 관계 설정
+    brand = db.relationship("Brand", backref="system_logs")
     user = db.relationship("User", backref="system_logs")
 
     def __init__(self, user_id=None, action=None, detail=None, ip_address=None, user_agent=None, **kwargs):
@@ -1176,6 +1206,8 @@ class Suggestion(db.Model):
 
 
 class Schedule(db.Model):
+    # [추가] brand_id: 이 스케줄이 속한 브랜드(테넌트) 구분
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)  # 브랜드 구분
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(
         db.Integer, db.ForeignKey("users.id"), nullable=True
@@ -1217,6 +1249,8 @@ class Schedule(db.Model):
 
 
 class CleaningPlan(db.Model):
+    # [추가] brand_id: 이 청소계획이 속한 브랜드(테넌트) 구분
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)  # 브랜드 구분
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date)
     plan = db.Column(db.String(200), nullable=False)
@@ -1622,7 +1656,8 @@ class Team(db.Model):
     """팀 모델"""
 
     __tablename__ = "teams"
-
+    # [추가] brand_id: 이 팀이 속한 브랜드(테넌트) 구분
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)  # 브랜드 구분
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False, comment="팀명")
     description = db.Column(db.String(200), comment="팀 설명")
@@ -1639,6 +1674,7 @@ class Team(db.Model):
     permissions = db.Column(db.JSON, default=dict)
 
     # 관계
+    brand = db.relationship("Brand", backref="teams")
     manager = db.relationship(
         "User", foreign_keys=[manager_id], backref="managed_teams"
     )
@@ -1797,7 +1833,8 @@ class OrderRequest(db.Model):
 class PayTransfer(db.Model):
     """급여 이체 모델"""
     __tablename__ = "pay_transfers"
-    
+    # [추가] brand_id: 이 이체가 속한 브랜드(테넌트) 구분
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)  # 브랜드 구분
     id = db.Column(db.Integer, primary_key=True)
     from_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     to_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
@@ -1808,6 +1845,7 @@ class PayTransfer(db.Model):
     completed_at = db.Column(db.DateTime, index=True)
     
     # 관계 설정
+    brand = db.relationship("Brand", backref="pay_transfers")
     from_user = db.relationship("User", foreign_keys=[from_user_id], backref="sent_transfers")
     to_user = db.relationship("User", foreign_keys=[to_user_id], backref="received_transfers")
     
@@ -2472,7 +2510,8 @@ class OfflineData(db.Model):
 class AIIntegration(db.Model):
     """AI 통합 모델"""
     __tablename__ = 'ai_integrations'
-    
+    # [추가] brand_id: 이 AI 통합이 속한 브랜드(테넌트) 구분
+    brand_id = db.Column(db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True)  # 브랜드 구분
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(50), nullable=False)  # analysis, chatbot, recommendation
@@ -2482,9 +2521,8 @@ class AIIntegration(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    def __repr__(self):
-        return f'<AIIntegration {self.name}>'
+    # 관계 설정
+    brand = db.relationship("Brand", backref="ai_integrations")
 
 class AIAnalysisReport(db.Model):
     """AI 분석 리포트 모델"""
@@ -2894,6 +2932,85 @@ class PluginVersionHistory(db.Model):
     
     # 관계
     plugin = db.relationship('Module', backref='version_history')
+
+
+class BrandOnboarding(db.Model):
+    """브랜드 온보딩 모델"""
+    __tablename__ = "brand_onboarding"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    
+    # 온보딩 단계별 진행 상황
+    step_store = db.Column(db.Boolean, default=False)  # 매장 추가 완료
+    step_employee = db.Column(db.Boolean, default=False)  # 직원 등록 완료
+    step_menu = db.Column(db.Boolean, default=False)  # 메뉴 구성 완료
+    step_settings = db.Column(db.Boolean, default=False)  # 운영 설정 완료
+    step_completed = db.Column(db.Boolean, default=False)  # 전체 완료
+    
+    # 온보딩 데이터
+    onboarding_data = db.Column(db.JSON)  # 단계별 입력 데이터
+    
+    # 메타데이터
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계
+    brand = db.relationship('Brand', backref='onboarding')
+    user = db.relationship('User', backref='brand_onboardings')
+    
+    def __repr__(self):
+        return f"<BrandOnboarding {self.brand_id} {self.step_completed}>"
+    
+    @property
+    def progress_percentage(self):
+        """온보딩 진행률 계산"""
+        steps = [self.step_store, self.step_employee, self.step_menu, self.step_settings]
+        completed = sum(steps)
+        return int((completed / len(steps)) * 100)
+    
+    @property
+    def current_step(self):
+        """현재 진행 중인 단계"""
+        if not self.step_store:
+            return 'store'
+        elif not self.step_employee:
+            return 'employee'
+        elif not self.step_menu:
+            return 'menu'
+        elif not self.step_settings:
+            return 'settings'
+        else:
+            return 'completed'
+
+class OnboardingTemplate(db.Model):
+    """온보딩 템플릿 모델"""
+    __tablename__ = "onboarding_templates"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    industry_id = db.Column(db.Integer, db.ForeignKey('industries.id'), nullable=True)
+    description = db.Column(db.Text)
+    
+    # 템플릿 데이터
+    store_template = db.Column(db.JSON)  # 매장 템플릿
+    employee_template = db.Column(db.JSON)  # 직원 템플릿
+    menu_template = db.Column(db.JSON)  # 메뉴 템플릿
+    settings_template = db.Column(db.JSON)  # 설정 템플릿
+    
+    # 메타데이터
+    is_default = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    industry = db.relationship('Industry', backref='onboarding_templates')
+    
+    def __repr__(self):
+        return f"<OnboardingTemplate {self.name}>"
 
 
 

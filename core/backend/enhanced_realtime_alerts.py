@@ -335,292 +335,262 @@ class EnhancedRealtimeAlertSystem:
             
             return alert
 
-        def _send_alert(self, alert: Alert):
-            """알림 발송"""
-            if not alert:
-                return
-            
-            # 알림 저장
-            self.alerts[alert.id] = alert
-            self.alert_history.append(alert)
-            
-            # 데이터베이스에 저장
-            self._save_alert_to_db(alert)
-            
-            # 콜백 호출
-            for callback in self.alert_callbacks:
-                try:
-                    callback(alert)
-                except Exception as e:
-                    logger.error(f"알림 콜백 실행 실패: {e}")
-            
-            # 실시간 알림 전송
-            self._send_realtime_notifications(alert)
-            
-            logger.info(f"알림 발송: {alert.title} ({alert.severity.value})")
+    def _send_alert(self, alert: Alert):
+        """알림 발송"""
+        if not alert:
+            return
         
-        def _save_alert_to_db(self, alert: Alert):
-            """알림을 데이터베이스에 저장"""
+        # 알림 저장
+        self.alerts[alert.id] = alert
+        self.alert_history.append(alert)
+        
+        # 데이터베이스에 저장
+        self._save_alert_to_db(alert)
+        
+        # 콜백 호출
+        for callback in self.alert_callbacks:
             try:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                
-                cursor.execute('''
-                    INSERT OR REPLACE INTO alerts 
-                    (id, type, severity, title, message, plugin_id, plugin_name, 
-                     current_value, threshold_value, timestamp, resolved, resolved_at, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    alert.id, alert.type.value, alert.severity.value, alert.title, alert.message,
-                    alert.plugin_id, alert.plugin_name, alert.current_value, alert.threshold_value,
-                    alert.timestamp.isoformat(), alert.resolved,
-                    alert.resolved_at.isoformat() if alert.resolved_at else None,
-                    json.dumps(alert.metadata)
-                ))
-                
-                conn.commit()
-                conn.close()
-                
+                callback(alert)
             except Exception as e:
-                logger.error(f"알림 데이터베이스 저장 실패: {e}")
+                logger.error(f"알림 콜백 실행 실패: {e}")
         
-        def _send_realtime_notifications(self, alert: Alert):
-            """실시간 알림 전송"""
-            # 웹 토스트 알림
-            for connection_id, handler in self.web_connections.items():
-                try:
-                    handler({
-                        'type': 'alert',
-                        'data': alert.to_dict(),
-                        'timestamp': datetime.utcnow().isoformat()
-                    })
-                except Exception as e:
-                    logger.error(f"웹 알림 전송 실패: {e}")
+        # 실시간 알림 전송
+        self._send_realtime_notifications(alert)
+        
+        logger.info(f"알림 발송: {alert.title} ({alert.severity.value})")
+    
+    def _save_alert_to_db(self, alert: Alert):
+        """알림을 데이터베이스에 저장"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
             
-            # 모바일 푸시 알림
-            for device_id, handler in self.mobile_connections.items():
-                try:
-                    handler({
-                        'type': 'push_notification',
-                        'title': alert.title,
-                        'body': alert.message,
-                        'data': alert.to_dict()
-                    })
-                except Exception as e:
-                    logger.error(f"모바일 알림 전송 실패: {e}")
-        
-        def register_web_connection(self, connection_id: str, handler: Callable):
-            """웹 연결 등록"""
-            self.web_connections[connection_id] = handler
-            logger.info(f"웹 연결 등록: {connection_id}")
-        
-        def unregister_web_connection(self, connection_id: str):
-            """웹 연결 해제"""
-            self.web_connections.pop(connection_id, None)
-            logger.info(f"웹 연결 해제: {connection_id}")
-        
-        def register_mobile_connection(self, device_id: str, handler: Callable):
-            """모바일 연결 등록"""
-            self.mobile_connections[device_id] = handler
-            logger.info(f"모바일 연결 등록: {device_id}")
-        
-        def unregister_mobile_connection(self, device_id: str):
-            """모바일 연결 해제"""
-            self.mobile_connections.pop(device_id, None)
-            logger.info(f"모바일 연결 해제: {device_id}")
-        
-        def add_alert_callback(self, callback: Callable[[Alert], None]):
-            """알림 콜백 추가"""
-            self.alert_callbacks.append(callback)
-        
-        def remove_alert_callback(self, callback: Callable[[Alert], None]):
-            """알림 콜백 제거"""
-            if callback in self.alert_callbacks:
-                self.alert_callbacks.remove(callback)
-        
-        def get_active_alerts(self, severity: Optional[AlertSeverity] = None) -> List[Alert]:
-            """활성 알림 조회"""
-            alerts = [alert for alert in self.alerts.values() if not alert.resolved]
+            cursor.execute('''
+                INSERT OR REPLACE INTO alerts 
+                (id, type, severity, title, message, plugin_id, plugin_name, 
+                 current_value, threshold_value, timestamp, resolved, resolved_at, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                alert.id, alert.type.value, alert.severity.value, alert.title, alert.message,
+                alert.plugin_id, alert.plugin_name, alert.current_value, alert.threshold_value,
+                alert.timestamp.isoformat(), alert.resolved,
+                alert.resolved_at.isoformat() if alert.resolved_at else None,
+                json.dumps(alert.metadata)
+            ))
             
-            if severity:
-                alerts = [alert for alert in alerts if alert.severity == severity]
+            conn.commit()
+            conn.close()
             
-            return sorted(alerts, key=lambda x: x.timestamp, reverse=True)
-        
-        def resolve_alert(self, alert_id: str):
-            """알림 해결"""
-            if alert_id in self.alerts:
-                alert = self.alerts[alert_id]
-                alert.resolved = True
-                alert.resolved_at = datetime.utcnow()
-                
-                # 데이터베이스 업데이트
-                self._update_alert_in_db(alert)
-                
-                logger.info(f"알림 해결: {alert_id}")
-        
-        def _update_alert_in_db(self, alert: Alert):
-            """데이터베이스에서 알림 업데이트"""
+        except Exception as e:
+            logger.error(f"알림 데이터베이스 저장 실패: {e}")
+    
+    def _send_realtime_notifications(self, alert: Alert):
+        """실시간 알림 전송"""
+        # 웹 토스트 알림
+        for connection_id, handler in self.web_connections.items():
             try:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                
-                cursor.execute('''
-                    UPDATE alerts 
-                    SET resolved = ?, resolved_at = ?
-                    WHERE id = ?
-                ''', (alert.resolved, alert.resolved_at.isoformat(), alert.id))
-                
-                conn.commit()
-                conn.close()
-                
+                handler({
+                    'type': 'alert',
+                    'data': alert.to_dict(),
+                    'timestamp': datetime.utcnow().isoformat()
+                })
             except Exception as e:
-                logger.error(f"알림 데이터베이스 업데이트 실패: {e}")
+                logger.error(f"웹 알림 전송 실패: {e}")
         
-        def _monitor_loop(self):
-            """모니터링 루프"""
-            while self.monitoring_active:
-                try:
-                    # 시스템 리소스 모니터링
-                    self._monitor_system_resources()
-                    
-                    # 비활성 플러그인 체크
-                    self._check_inactive_plugins()
-                    
-                    # 오래된 알림 정리
-                    self._cleanup_old_alerts()
-                    
-                    time.sleep(30)  # 30초마다 체크
-                    
-                except Exception as e:
-                    logger.error(f"모니터링 루프 오류: {e}")
-                    time.sleep(60)
-        
-        def _monitor_system_resources(self):
-            """시스템 리소스 모니터링"""
+        # 모바일 푸시 알림
+        for device_id, handler in self.mobile_connections.items():
             try:
-                # CPU 사용률
-                cpu_percent = psutil.cpu_percent(interval=1)
-                if cpu_percent > self.thresholds.system_cpu_threshold:
-                    # cpu_percent가 float이 아닐 수 있으므로, float으로 변환하여 비교합니다.
-                    try:
-                        # cpu_percent가 리스트 등 잘못된 타입일 경우 예외 처리
-                        if isinstance(cpu_percent, (list, dict)):
-                            cpu_percent_value = 0.0  # pyright: ignore
-                        else:
-                            cpu_percent_value = float(cpu_percent)
-                    except Exception:
-                        cpu_percent_value = 0.0  # pyright: ignore
-                        AlertType.SYSTEM_CPU_HIGH,
-                        AlertSeverity.WARNING if cpu_percent_value < 95 else AlertSeverity.CRITICAL,
-                        "시스템 CPU 사용률 높음",
-                        f"시스템 CPU 사용률이 {cpu_percent_value:.1f}%로 임계값({self.thresholds.system_cpu_threshold}%)을 초과했습니다.",
-                        alert = self._create_alert(
-                            AlertType.SYSTEM_CPU_HIGH,
-                            AlertSeverity.WARNING if cpu_percent_value < 95 else AlertSeverity.CRITICAL,
-                            "시스템 CPU 사용률 높음",
-                            f"시스템 CPU 사용률이 {cpu_percent_value:.1f}%로 임계값({self.thresholds.system_cpu_threshold}%)을 초과했습니다.",
-                            current_value=cpu_percent_value,
-                            threshold_value=self.thresholds.system_cpu_threshold
-                        )
-                        if alert:
-                            self._send_alert(alert)
-                # 메모리 사용률
-                memory_percent = psutil.virtual_memory().percent
-                if memory_percent > self.thresholds.system_memory_threshold:
-                    alert = self._create_alert(
-                        AlertType.SYSTEM_MEMORY_HIGH,
-                        AlertSeverity.WARNING if memory_percent < 98 else AlertSeverity.CRITICAL,
-                        "시스템 메모리 사용률 높음",
-                        f"시스템 메모리 사용률이 {memory_percent:.1f}%로 임계값({self.thresholds.system_memory_threshold}%)을 초과했습니다.",
-                        current_value=memory_percent,
-                        threshold_value=self.thresholds.system_memory_threshold
-                    )
-                    if alert:
-                        self._send_alert(alert)
-                
-                # 디스크 사용률
-                disk_percent = psutil.disk_usage('/').percent
-                if disk_percent > self.thresholds.system_disk_threshold:
-                    alert = self._create_alert(
-                        AlertType.SYSTEM_DISK_FULL,
-                        AlertSeverity.WARNING if disk_percent < 95 else AlertSeverity.CRITICAL,
-                        "디스크 공간 부족",
-                        f"디스크 사용률이 {disk_percent:.1f}%로 임계값({self.thresholds.system_disk_threshold}%)을 초과했습니다.",
-                        current_value=disk_percent,
-                        threshold_value=self.thresholds.system_disk_threshold
-                    )
-                    if alert:
-                        self._send_alert(alert)
-                        
+                handler({
+                    'type': 'push_notification',
+                    'title': alert.title,
+                    'body': alert.message,
+                    'data': alert.to_dict()
+                })
             except Exception as e:
-                logger.error(f"시스템 리소스 모니터링 실패: {e}")
-        
-        def _check_inactive_plugins(self):
-            """비활성 플러그인 체크"""
-            current_time = datetime.utcnow()
-            
-            for plugin_id, metrics in self.plugin_metrics.items():
-                last_activity = datetime.fromisoformat(metrics.get('timestamp', '1970-01-01T00:00:00'))
-                
-                # 5분 이상 비활성인 경우
-                if (current_time - last_activity).total_seconds() > 300:
-                    alert = self._create_alert(
-                        AlertType.PLUGIN_OFFLINE,
-                        AlertSeverity.ERROR,
-                        "플러그인 오프라인",
-                        f"플러그인 {plugin_id}이(가) 오프라인 상태입니다.",
-                        plugin_id=plugin_id
-                    )
-                    if alert:
-                        self._send_alert(alert)
-        
-        def _cleanup_old_alerts(self):
-            """오래된 알림 정리"""
-            current_time = datetime.utcnow()
-            cutoff_time = current_time - timedelta(days=7)  # 7일 전
-            
-            # 해결된 오래된 알림 제거
-            alerts_to_remove = []
-            for alert_id, alert in self.alerts.items():
-                if alert.resolved and alert.resolved_at and alert.resolved_at < cutoff_time:
-                    alerts_to_remove.append(alert_id)
-            
-            for alert_id in alerts_to_remove:
-                del self.alerts[alert_id]
-            
-            # 중복 알림 방지 캐시 정리
-            current_time = datetime.utcnow()
-            recent_alerts_to_remove = []
-            for alert_id, timestamp in self.recent_alerts.items():
-                if (current_time - timestamp).total_seconds() > 300:  # 5분
-                    recent_alerts_to_remove.append(alert_id)
-            
-            for alert_id in recent_alerts_to_remove:
-                del self.recent_alerts[alert_id]
-        
-        def get_alert_statistics(self) -> Dict[str, Any]:
-            """알림 통계 조회"""
-            total_alerts = len(self.alerts)
-            active_alerts = len([a for a in self.alerts.values() if not a.resolved])
-            resolved_alerts = total_alerts - active_alerts
-            
-            severity_counts = defaultdict(int)
-            type_counts = defaultdict(int)
-            
-            for alert in self.alerts.values():
-                severity_counts[alert.severity.value] += 1
-                type_counts[alert.type.value] += 1
-            
-            return {
-                'total_alerts': total_alerts,
-                'active_alerts': active_alerts,
-                'resolved_alerts': resolved_alerts,
-                'severity_distribution': dict(severity_counts),
-                'type_distribution': dict(type_counts),
-                'last_24h_alerts': len([a for a in self.alerts.values() 
-                                      if (datetime.utcnow() - a.timestamp).total_seconds() < 86400])
-            }
+                logger.error(f"모바일 알림 전송 실패: {e}")
+    
+    def register_web_connection(self, connection_id: str, handler: Callable):
+        """웹 연결 등록"""
+        self.web_connections[connection_id] = handler
+        logger.info(f"웹 연결 등록: {connection_id}")
+    
+    def unregister_web_connection(self, connection_id: str):
+        """웹 연결 해제"""
+        self.web_connections.pop(connection_id, None)
+        logger.info(f"웹 연결 해제: {connection_id}")
+    
+    def register_mobile_connection(self, device_id: str, handler: Callable):
+        """모바일 연결 등록"""
+        self.mobile_connections[device_id] = handler
+        logger.info(f"모바일 연결 등록: {device_id}")
+    
+    def unregister_mobile_connection(self, device_id: str):
+        """모바일 연결 해제"""
+        self.mobile_connections.pop(device_id, None)
+        logger.info(f"모바일 연결 해제: {device_id}")
+    
+    def add_alert_callback(self, callback: Callable[[Alert], None]):
+        """알림 콜백 추가"""
+        self.alert_callbacks.append(callback)
+    
+    def remove_alert_callback(self, callback: Callable[[Alert], None]):
+        """알림 콜백 제거"""
+        if callback in self.alert_callbacks:
+            self.alert_callbacks.remove(callback)
+    
+    def get_active_alerts(self, severity: Optional[AlertSeverity] = None) -> List[Alert]:
+        """활성 알림 조회"""
+        alerts = [alert for alert in self.alerts.values() if not alert.resolved]
+        if severity:
+            alerts = [alert for alert in alerts if alert.severity == severity]
+        # timestamp가 None일 경우 datetime.min으로 대체
+        return sorted(alerts, key=lambda x: x.timestamp if x.timestamp is not None else datetime.min, reverse=True)
 
-        # 전역 인스턴스
-        enhanced_alert_system = EnhancedRealtimeAlertSystem() 
+    def resolve_alert(self, alert_id: str):
+        """알림 해결"""
+        if alert_id in self.alerts:
+            alert = self.alerts[alert_id]
+            alert.resolved = True
+            alert.resolved_at = datetime.utcnow()
+            # 데이터베이스 업데이트
+            self._update_alert_in_db(alert)
+            logger.info(f"알림 해결: {alert_id}")
+
+    def _update_alert_in_db(self, alert: Alert):
+        """데이터베이스에서 알림 업데이트"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE alerts 
+                SET resolved = ?, resolved_at = ?
+                WHERE id = ?
+            ''', (alert.resolved, alert.resolved_at.isoformat(), alert.id))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.error(f"알림 데이터베이스 업데이트 실패: {e}")
+
+    def _monitor_loop(self):
+        """모니터링 루프"""
+        while self.monitoring_active:
+            try:
+                # 시스템 리소스 모니터링
+                self._monitor_system_resources()
+                # 비활성 플러그인 체크
+                self._check_inactive_plugins()
+                # 오래된 알림 정리
+                self._cleanup_old_alerts()
+                time.sleep(30)  # 30초마다 체크
+            except Exception as e:
+                logger.error(f"모니터링 루프 오류: {e}")
+                time.sleep(60)
+
+    def _monitor_system_resources(self):
+        """시스템 리소스 모니터링"""
+        try:
+            # CPU 사용률
+            cpu_percent = psutil.cpu_percent(interval=1)
+            if cpu_percent > self.thresholds.system_cpu_threshold:
+                try:
+                    if isinstance(cpu_percent, (list, dict)):
+                        cpu_percent_value = 0.0
+                    else:
+                        cpu_percent_value = float(cpu_percent)
+                except Exception:
+                    cpu_percent_value = 0.0
+                alert = self._create_alert(
+                    AlertType.SYSTEM_CPU_HIGH,
+                    AlertSeverity.WARNING if cpu_percent_value < 95 else AlertSeverity.CRITICAL,
+                    "시스템 CPU 사용률 높음",
+                    f"시스템 CPU 사용률이 {cpu_percent_value:.1f}%로 임계값({self.thresholds.system_cpu_threshold}%)을 초과했습니다.",
+                    current_value=cpu_percent_value,
+                    threshold_value=self.thresholds.system_cpu_threshold
+                )
+                if alert:
+                    self._send_alert(alert)
+            # 메모리 사용률
+            memory_percent = psutil.virtual_memory().percent
+            if memory_percent > self.thresholds.system_memory_threshold:
+                alert = self._create_alert(
+                    AlertType.SYSTEM_MEMORY_HIGH,
+                    AlertSeverity.WARNING if memory_percent < 98 else AlertSeverity.CRITICAL,
+                    "시스템 메모리 사용률 높음",
+                    f"시스템 메모리 사용률이 {memory_percent:.1f}%로 임계값({self.thresholds.system_memory_threshold}%)을 초과했습니다.",
+                    current_value=memory_percent,
+                    threshold_value=self.thresholds.system_memory_threshold
+                )
+                if alert:
+                    self._send_alert(alert)
+            # 디스크 사용률
+            disk_percent = psutil.disk_usage('/').percent
+            if disk_percent > self.thresholds.system_disk_threshold:
+                alert = self._create_alert(
+                    AlertType.SYSTEM_DISK_FULL,
+                    AlertSeverity.WARNING if disk_percent < 95 else AlertSeverity.CRITICAL,
+                    "디스크 공간 부족",
+                    f"디스크 사용률이 {disk_percent:.1f}%로 임계값({self.thresholds.system_disk_threshold}%)을 초과했습니다.",
+                    current_value=disk_percent,
+                    threshold_value=self.thresholds.system_disk_threshold
+                )
+                if alert:
+                    self._send_alert(alert)
+        except Exception as e:
+            logger.error(f"시스템 리소스 모니터링 실패: {e}")
+
+    def _check_inactive_plugins(self):
+        """비활성 플러그인 체크"""
+        current_time = datetime.utcnow()
+        for plugin_id, metrics in self.plugin_metrics.items():
+            last_activity = datetime.fromisoformat(metrics.get('timestamp', '1970-01-01T00:00:00'))
+            if (current_time - last_activity).total_seconds() > 300:
+                alert = self._create_alert(
+                    AlertType.PLUGIN_OFFLINE,
+                    AlertSeverity.ERROR,
+                    "플러그인 오프라인",
+                    f"플러그인 {plugin_id}이(가) 오프라인 상태입니다.",
+                    plugin_id=plugin_id
+                )
+                if alert:
+                    self._send_alert(alert)
+
+    def _cleanup_old_alerts(self):
+        """오래된 알림 정리"""
+        current_time = datetime.utcnow()
+        cutoff_time = current_time - timedelta(days=7)  # 7일 전
+        alerts_to_remove = []
+        for alert_id, alert in self.alerts.items():
+            if alert.resolved and alert.resolved_at and alert.resolved_at < cutoff_time:
+                alerts_to_remove.append(alert_id)
+        for alert_id in alerts_to_remove:
+            del self.alerts[alert_id]
+        current_time = datetime.utcnow()
+        recent_alerts_to_remove = []
+        for alert_id, timestamp in self.recent_alerts.items():
+            if (current_time - timestamp).total_seconds() > 300:  # 5분
+                recent_alerts_to_remove.append(alert_id)
+        for alert_id in recent_alerts_to_remove:
+            del self.recent_alerts[alert_id]
+
+    def get_alert_statistics(self) -> Dict[str, Any]:
+        """알림 통계 조회"""
+        total_alerts = len(self.alerts)
+        active_alerts = len([a for a in self.alerts.values() if not a.resolved])
+        resolved_alerts = total_alerts - active_alerts
+        severity_counts = defaultdict(int)
+        type_counts = defaultdict(int)
+        for alert in self.alerts.values():
+            severity_counts[alert.severity.value] += 1
+            type_counts[alert.type.value] += 1
+        return {
+            'total_alerts': total_alerts,
+            'active_alerts': active_alerts,
+            'resolved_alerts': resolved_alerts,
+            'severity_distribution': dict(severity_counts),
+            'type_distribution': dict(type_counts),
+            'last_24h_alerts': len([a for a in self.alerts.values() 
+                                  if (datetime.utcnow() - a.timestamp).total_seconds() < 86400])
+        }
+
+# 전역 인스턴스
+enhanced_alert_system = EnhancedRealtimeAlertSystem() 

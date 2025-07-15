@@ -13,6 +13,7 @@ from datetime import datetime
 import hashlib
 import requests
 import yaml
+import subprocess
 
 class PluginTemplate:
     """플러그인 템플릿 생성기"""
@@ -503,26 +504,41 @@ class PluginValidator:
         self.errors = []
         self.warnings = []
     
-    def validate(self) -> bool:
-        """플러그인 검증"""
+    def validate(self, run_pytest: bool = False) -> bool:
+        """플러그인 검증 및 테스트 자동화"""
         try:
-            # 기본 구조 검증
             self._validate_structure()
-            
-            # 매니페스트 검증
             self._validate_manifest()
-            
-            # 코드 검증
             self._validate_code()
-            
-            # 보안 검증
             self._validate_security()
-            
-            # 결과 출력
+            test_result = None
+            if run_pytest:
+                test_path = self.plugin_path / 'tests'
+                if test_path.exists():
+                    print("🧪 pytest로 테스트 자동 실행 중...")
+                    try:
+                        completed = subprocess.run(['pytest', str(test_path), '--maxfail=1', '--disable-warnings', '-q', '--tb=short', '--json-report'], capture_output=True, text=True)
+                        print(completed.stdout)
+                        if completed.returncode != 0:
+                            self.errors.append("pytest 테스트 실패")
+                            test_result = False
+                        else:
+                            test_result = True
+                        # pytest 결과 파일 저장
+                        report_path = test_path / '.report.json'
+                        if report_path.exists():
+                            with open(report_path, 'r', encoding='utf-8') as f:
+                                import json
+                                result_json = json.load(f)
+                            with open(self.plugin_path / 'test_result.json', 'w', encoding='utf-8') as f:
+                                json.dump(result_json, f, indent=2, ensure_ascii=False)
+                    except Exception as e:
+                        self.errors.append(f"pytest 실행 오류: {e}")
+                        test_result = False
+                else:
+                    self.warnings.append("tests/ 디렉토리가 없습니다.")
             self._print_results()
-            
-            return len(self.errors) == 0
-            
+            return len(self.errors) == 0 and (test_result is not False)
         except Exception as e:
             print(f"❌ 검증 실패: {e}")
             return False

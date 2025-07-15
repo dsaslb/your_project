@@ -26,6 +26,7 @@ class ModuleDevelopmentSystem:
         
         self.init_sandbox_database()
         self.init_component_library()
+        self.create_sample_projects()
     
     def init_sandbox_database(self):
         """샌드박스 데이터베이스 초기화"""
@@ -828,6 +829,48 @@ if __name__ == '__main__':
             'status_counts': status_counts,
             'recent_deployments': recent_deployments
         }
+
+    def create_sample_projects(self):
+        """샘플 프로젝트 생성"""
+        sample_projects = [
+            {
+                'name': '출퇴근 관리 시스템',
+                'description': '직원들의 출퇴근 시간을 관리하는 모듈',
+                'module_type': 'attendance',
+                'status': 'development',
+                'created_by': 'default_user'
+            },
+            {
+                'name': '재고 관리 대시보드',
+                'description': '실시간 재고 현황을 모니터링하는 대시보드',
+                'module_type': 'inventory',
+                'status': 'deployed',
+                'created_by': 'default_user'
+            },
+            {
+                'name': '고객 피드백 시스템',
+                'description': '고객 의견을 수집하고 분석하는 시스템',
+                'module_type': 'feedback',
+                'status': 'development',
+                'created_by': 'default_user'
+            }
+        ]
+        
+        for project_data in sample_projects:
+            try:
+                # 프로젝트가 이미 존재하는지 확인
+                existing_projects = self.get_projects('default_user')
+                project_exists = any(p['name'] == project_data['name'] for p in existing_projects)
+                
+                if not project_exists:
+                    self.create_project(
+                        project_data['name'],
+                        project_data['description'],
+                        project_data['module_type'],
+                        project_data['created_by']
+                    )
+            except Exception as e:
+                print(f"샘플 프로젝트 생성 실패: {e}")
 
 # 전역 인스턴스
 module_development_system = ModuleDevelopmentSystem()

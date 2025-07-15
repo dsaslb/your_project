@@ -1,0 +1,617 @@
+{% extends "admin/base.html" %}
+
+{% block title %}주소 검색 시스템 설정{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-cogs"></i>
+                        주소 검색 시스템 설정
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form id="address-settings-form">
+                        <!-- API 설정 -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fab fa-kickstarter-k"></i>
+                                            카카오 API 설정
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label for="kakao-api-key">카카오 API 키</label>
+                                            <div class="input-group">
+                                                <input type="password" id="kakao-api-key" class="form-control" 
+                                                       value="{{ config.get('kakao_api_key', '') }}" 
+                                                       placeholder="카카오 API 키를 입력하세요">
+                                                <div class="input-group-append">
+                                                    <button type="button" class="btn btn-outline-secondary" 
+                                                            onclick="togglePasswordVisibility('kakao-api-key')">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                <a href="https://developers.kakao.com/" target="_blank">
+                                                    카카오 개발자 센터에서 API 키를 발급받으세요
+                                                </a>
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="kakao-api-test">API 키 테스트</label>
+                                            <button type="button" class="btn btn-outline-primary" onclick="testKakaoAPI()">
+                                                <i class="fas fa-vial"></i> API 연결 테스트
+                                            </button>
+                                            <div id="api-test-result" class="mt-2"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-sliders-h"></i>
+                                            검색 설정
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label for="default-similarity-threshold">기본 유사도 임계값</label>
+                                            <input type="range" id="default-similarity-threshold" class="form-control-range" 
+                                                   min="0.5" max="1.0" step="0.1" 
+                                                   value="{{ config.get('default_similarity_threshold', 0.8) }}">
+                                            <small class="form-text text-muted">
+                                                <span id="threshold-display">{{ config.get('default_similarity_threshold', 0.8) * 100 }}%</span> 이상 유사한 주소를 중복으로 간주
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="max-suggestions">최대 제안 수</label>
+                                            <input type="number" id="max-suggestions" class="form-control" 
+                                                   min="1" max="20" 
+                                                   value="{{ config.get('max_suggestions', 5) }}">
+                                            <small class="form-text text-muted">
+                                                주소 자동완성에서 표시할 최대 제안 개수
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="debounce-delay">검색 지연시간 (ms)</label>
+                                            <input type="number" id="debounce-delay" class="form-control" 
+                                                   min="100" max="1000" step="100" 
+                                                   value="{{ config.get('debounce_delay', 300) }}">
+                                            <small class="form-text text-muted">
+                                                사용자 입력 후 검색을 시작하기까지의 지연시간
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 캐시 설정 -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-database"></i>
+                                            캐시 설정
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="enable-cache" 
+                                                       {% if config.get('enable_cache', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="enable-cache">
+                                                    캐시 활성화
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                성능 향상을 위해 검색 결과를 캐시합니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="cache-ttl">캐시 유효시간 (초)</label>
+                                            <input type="number" id="cache-ttl" class="form-control" 
+                                                   min="60" max="3600" 
+                                                   value="{{ config.get('cache_ttl', 300) }}">
+                                            <small class="form-text text-muted">
+                                                캐시된 데이터의 유효시간 (기본: 5분)
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="geocode-cache-ttl">좌표 캐시 유효시간 (초)</label>
+                                            <input type="number" id="geocode-cache-ttl" class="form-control" 
+                                                   min="3600" max="86400" 
+                                                   value="{{ config.get('geocode_cache_ttl', 3600) }}">
+                                            <small class="form-text text-muted">
+                                                좌표 변환 결과의 캐시 유효시간 (기본: 1시간)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-shield-alt"></i>
+                                            보안 설정
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="enable-validation" 
+                                                       {% if config.get('enable_validation', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="enable-validation">
+                                                    실시간 주소 검증
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                주소 입력 시 실시간으로 유효성을 검증합니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="enable-duplicate-check" 
+                                                       {% if config.get('enable_duplicate_check', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="enable-duplicate-check">
+                                                    중복 주소 검사
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                주소 저장 시 중복 여부를 검사합니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="enable-coordinates" 
+                                                       {% if config.get('enable_coordinates', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="enable-coordinates">
+                                                    자동 좌표 변환
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                주소 선택 시 자동으로 위도/경도를 조회합니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="max-requests-per-minute">분당 최대 요청 수</label>
+                                            <input type="number" id="max-requests-per-minute" class="form-control" 
+                                                   min="10" max="1000" 
+                                                   value="{{ config.get('max_requests_per_minute', 100) }}">
+                                            <small class="form-text text-muted">
+                                                API 요청 제한 (Rate Limiting)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- UI 설정 -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-palette"></i>
+                                            UI 설정
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="enable-autocomplete" 
+                                                       {% if config.get('enable_autocomplete', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="enable-autocomplete">
+                                                    자동완성 활성화
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                주소 입력 시 자동완성 제안을 표시합니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="show-loading-indicator" 
+                                                       {% if config.get('show_loading_indicator', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="show-loading-indicator">
+                                                    로딩 표시기
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                검색 중 로딩 표시기를 표시합니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="show-success-messages" 
+                                                       {% if config.get('show_success_messages', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="show-success-messages">
+                                                    성공 메시지 표시
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                주소 선택 시 성공 메시지를 표시합니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="toast-duration">메시지 표시 시간 (초)</label>
+                                            <input type="number" id="toast-duration" class="form-control" 
+                                                   min="1" max="10" 
+                                                   value="{{ config.get('toast_duration', 3) }}">
+                                            <small class="form-text text-muted">
+                                                Toast 메시지의 표시 시간
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-bell"></i>
+                                            알림 설정
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="notify-api-errors" 
+                                                       {% if config.get('notify_api_errors', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="notify-api-errors">
+                                                    API 오류 알림
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                API 오류 발생 시 관리자에게 알림을 보냅니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="notify-high-usage" 
+                                                       {% if config.get('notify_high_usage', True) %}checked{% endif %}>
+                                                <label class="custom-control-label" for="notify-high-usage">
+                                                    높은 사용량 알림
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                API 사용량이 높을 때 알림을 보냅니다
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="high-usage-threshold">높은 사용량 임계값</label>
+                                            <input type="number" id="high-usage-threshold" class="form-control" 
+                                                   min="50" max="1000" 
+                                                   value="{{ config.get('high_usage_threshold', 200) }}">
+                                            <small class="form-text text-muted">
+                                                시간당 요청 수 기준
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="notification-email">알림 이메일</label>
+                                            <input type="email" id="notification-email" class="form-control" 
+                                                   value="{{ config.get('notification_email', '') }}" 
+                                                   placeholder="admin@example.com">
+                                            <small class="form-text text-muted">
+                                                알림을 받을 이메일 주소
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 저장 버튼 -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-save"></i> 설정 저장
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-lg ml-2" onclick="resetToDefaults()">
+                                            <i class="fas fa-undo"></i> 기본값으로 복원
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info btn-lg ml-2" onclick="exportSettings()">
+                                            <i class="fas fa-download"></i> 설정 내보내기
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    // 유사도 임계값 슬라이더 이벤트
+    document.getElementById('default-similarity-threshold').addEventListener('input', function() {
+        const value = this.value;
+        const percentage = Math.round(value * 100);
+        document.getElementById('threshold-display').textContent = percentage + '%';
+    });
+    
+    // 폼 제출 이벤트
+    document.getElementById('address-settings-form').addEventListener('submit', saveSettings);
+});
+
+// 설정 저장
+async function saveSettings(event) {
+    event.preventDefault();
+    
+    const formData = {
+        kakao_api_key: document.getElementById('kakao-api-key').value,
+        default_similarity_threshold: parseFloat(document.getElementById('default-similarity-threshold').value),
+        max_suggestions: parseInt(document.getElementById('max-suggestions').value),
+        debounce_delay: parseInt(document.getElementById('debounce-delay').value),
+        enable_cache: document.getElementById('enable-cache').checked,
+        cache_ttl: parseInt(document.getElementById('cache-ttl').value),
+        geocode_cache_ttl: parseInt(document.getElementById('geocode-cache-ttl').value),
+        enable_validation: document.getElementById('enable-validation').checked,
+        enable_duplicate_check: document.getElementById('enable-duplicate-check').checked,
+        enable_coordinates: document.getElementById('enable-coordinates').checked,
+        max_requests_per_minute: parseInt(document.getElementById('max-requests-per-minute').value),
+        enable_autocomplete: document.getElementById('enable-autocomplete').checked,
+        show_loading_indicator: document.getElementById('show-loading-indicator').checked,
+        show_success_messages: document.getElementById('show-success-messages').checked,
+        toast_duration: parseInt(document.getElementById('toast-duration').value),
+        notify_api_errors: document.getElementById('notify-api-errors').checked,
+        notify_high_usage: document.getElementById('notify-high-usage').checked,
+        high_usage_threshold: parseInt(document.getElementById('high-usage-threshold').value),
+        notification_email: document.getElementById('notification-email').value
+    };
+    
+    try {
+        const response = await fetch('/api/admin/save-address-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess('설정이 성공적으로 저장되었습니다.');
+        } else {
+            showError('설정 저장 중 오류가 발생했습니다: ' + data.error);
+        }
+    } catch (error) {
+        showError('설정 저장 중 오류가 발생했습니다: ' + error.message);
+    }
+}
+
+// 카카오 API 테스트
+async function testKakaoAPI() {
+    const apiKey = document.getElementById('kakao-api-key').value;
+    const resultDiv = document.getElementById('api-test-result');
+    
+    if (!apiKey) {
+        resultDiv.innerHTML = '<div class="alert alert-warning">API 키를 입력하세요.</div>';
+        return;
+    }
+    
+    resultDiv.innerHTML = '<div class="alert alert-info">API 연결을 테스트하는 중...</div>';
+    
+    try {
+        const response = await fetch('/api/admin/test-kakao-api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ api_key: apiKey })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = '<div class="alert alert-success">API 연결이 정상입니다!</div>';
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger">API 연결 실패: ${data.error}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">API 테스트 중 오류가 발생했습니다: ${error.message}</div>`;
+    }
+}
+
+// 기본값으로 복원
+function resetToDefaults() {
+    if (!confirm('모든 설정을 기본값으로 복원하시겠습니까?')) {
+        return;
+    }
+    
+    // 기본값 설정
+    document.getElementById('default-similarity-threshold').value = 0.8;
+    document.getElementById('threshold-display').textContent = '80%';
+    document.getElementById('max-suggestions').value = 5;
+    document.getElementById('debounce-delay').value = 300;
+    document.getElementById('enable-cache').checked = true;
+    document.getElementById('cache-ttl').value = 300;
+    document.getElementById('geocode-cache-ttl').value = 3600;
+    document.getElementById('enable-validation').checked = true;
+    document.getElementById('enable-duplicate-check').checked = true;
+    document.getElementById('enable-coordinates').checked = true;
+    document.getElementById('max-requests-per-minute').value = 100;
+    document.getElementById('enable-autocomplete').checked = true;
+    document.getElementById('show-loading-indicator').checked = true;
+    document.getElementById('show-success-messages').checked = true;
+    document.getElementById('toast-duration').value = 3;
+    document.getElementById('notify-api-errors').checked = true;
+    document.getElementById('notify-high-usage').checked = true;
+    document.getElementById('high-usage-threshold').value = 200;
+    document.getElementById('notification-email').value = '';
+    
+    showInfo('설정이 기본값으로 복원되었습니다. 저장 버튼을 클릭하여 적용하세요.');
+}
+
+// 설정 내보내기
+function exportSettings() {
+    const settings = {
+        kakao_api_key: document.getElementById('kakao-api-key').value,
+        default_similarity_threshold: parseFloat(document.getElementById('default-similarity-threshold').value),
+        max_suggestions: parseInt(document.getElementById('max-suggestions').value),
+        debounce_delay: parseInt(document.getElementById('debounce-delay').value),
+        enable_cache: document.getElementById('enable-cache').checked,
+        cache_ttl: parseInt(document.getElementById('cache-ttl').value),
+        geocode_cache_ttl: parseInt(document.getElementById('geocode-cache-ttl').value),
+        enable_validation: document.getElementById('enable-validation').checked,
+        enable_duplicate_check: document.getElementById('enable-duplicate-check').checked,
+        enable_coordinates: document.getElementById('enable-coordinates').checked,
+        max_requests_per_minute: parseInt(document.getElementById('max-requests-per-minute').value),
+        enable_autocomplete: document.getElementById('enable-autocomplete').checked,
+        show_loading_indicator: document.getElementById('show-loading-indicator').checked,
+        show_success_messages: document.getElementById('show-success-messages').checked,
+        toast_duration: parseInt(document.getElementById('toast-duration').value),
+        notify_api_errors: document.getElementById('notify-api-errors').checked,
+        notify_high_usage: document.getElementById('notify-high-usage').checked,
+        high_usage_threshold: parseInt(document.getElementById('high-usage-threshold').value),
+        notification_email: document.getElementById('notification-email').value
+    };
+    
+    const dataStr = JSON.stringify(settings, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = 'address_settings.json';
+    link.click();
+    
+    showSuccess('설정이 JSON 파일로 내보내졌습니다.');
+}
+
+// 비밀번호 표시/숨김 토글
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    const button = input.nextElementSibling.querySelector('button');
+    const icon = button.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// 유틸리티 함수들
+function showSuccess(message) {
+    showToast(message, 'success');
+}
+
+function showError(message) {
+    showToast(message, 'error');
+}
+
+function showInfo(message) {
+    showToast(message, 'info');
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+        z-index: 10000;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+        ${type === 'success' ? 'background: #28a745;' : 
+          type === 'error' ? 'background: #dc3545;' : 
+          'background: #17a2b8;'}
+    `;
+    toast.textContent = message;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+
+function getCSRFToken() {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    return token ? token.getAttribute('content') : '';
+}
+</script>
+
+<style>
+.custom-switch .custom-control-label::before {
+    width: 2rem;
+    height: 1rem;
+}
+
+.custom-switch .custom-control-label::after {
+    width: calc(1rem - 4px);
+    height: calc(1rem - 4px);
+}
+
+.form-control-range {
+    height: 6px;
+}
+
+.card {
+    margin-bottom: 1rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+}
+</style>
+{% endblock %} 

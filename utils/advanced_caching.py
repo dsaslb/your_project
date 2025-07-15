@@ -78,13 +78,17 @@ class AdvancedCache:
                     port=redis_config.get('port', 6379),
                     db=redis_config.get('db', 0),
                     password=redis_config.get('password'),
-                    decode_responses=False
+                    decode_responses=False,
+                    socket_connect_timeout=2,  # 연결 타임아웃 2초
+                    socket_timeout=2,  # 소켓 타임아웃 2초
+                    retry_on_timeout=True
                 )
                 # 연결 테스트
                 self.l2_cache.ping()
                 logger.info("L2 캐시 (Redis) 초기화 완료")
             except Exception as e:
                 logger.warning(f"Redis 연결 실패: {e}")
+                logger.info("Redis 없이 파일 캐시만 사용합니다.")
                 self.l2_cache = None
         
         # L3 캐시 (파일)
@@ -144,6 +148,8 @@ class AdvancedCache:
                         self.stats['misses']['l2'] += 1
                 except Exception as e:
                     logger.warning(f"L2 캐시 조회 오류: {e}")
+                    # Redis 연결 실패 시 L2 캐시 비활성화
+                    self.l2_cache = None
             
             # L3 캐시 조회
             if CacheLevel.L3_FILE in levels and self.l3_cache:

@@ -1,0 +1,16 @@
+{
+  "name": "고객-피드백-시스템",
+  "version": "1.0.0",
+  "description": "고객 피드백 시스템 모듈",
+  "type": "feedback",
+  "main": "index.js",
+  "scripts": {
+    "dev": "python -m flask run --port 5002",
+    "build": "python build.py",
+    "test": "python test.py"
+  },
+  "dependencies": {
+    "flask": "^2.0.0",
+    "sqlite3": "^3.0.0"
+  }
+}

@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 module_marketplace_bp = Blueprint('module_marketplace', __name__)
 
+# app.py에서 아래와 같이 등록해야 /api/module-marketplace/* 경로가 활성화됩니다.
+# from routes.module_marketplace import module_marketplace_bp
+# app.register_blueprint(module_marketplace_bp)
+
 # 마켓플레이스 모듈 데이터 (실제로는 데이터베이스에서 관리)
 marketplace_modules = {
     'qsc_system': {
@@ -246,7 +250,7 @@ marketplace_modules = {
 # 사용자별 설치된 모듈 (실제로는 데이터베이스에서 관리)
 user_installed_modules = {}
 
-@module_marketplace_bp.route('/api/marketplace/modules', methods=['GET'])
+@module_marketplace_bp.route('/modules', methods=['GET'])
 def get_marketplace_modules():
     """마켓플레이스 모듈 목록 조회"""
     try:
@@ -312,7 +316,7 @@ def get_marketplace_modules():
         logger.error(f"마켓플레이스 모듈 목록 조회 실패: {e}")
         return jsonify({'error': '마켓플레이스 모듈 목록 조회에 실패했습니다.'}), 500
 
-@module_marketplace_bp.route('/api/marketplace/modules/<module_id>', methods=['GET'])
+@module_marketplace_bp.route('/modules/<module_id>', methods=['GET'])
 def get_module_detail(module_id: str):
     """모듈 상세 정보 조회"""
     try:
@@ -358,7 +362,7 @@ def get_module_detail(module_id: str):
         logger.error(f"모듈 상세 정보 조회 실패: {e}")
         return jsonify({'error': '모듈 상세 정보 조회에 실패했습니다.'}), 500
 
-@module_marketplace_bp.route('/api/marketplace/modules/<module_id>/install', methods=['POST'])
+@module_marketplace_bp.route('/modules/<module_id>/install', methods=['POST'])
 def install_module(module_id: str):
     """모듈 설치"""
     try:
@@ -400,7 +404,7 @@ def install_module(module_id: str):
         logger.error(f"모듈 설치 실패: {e}")
         return jsonify({'error': '모듈 설치에 실패했습니다.'}), 500
 
-@module_marketplace_bp.route('/api/marketplace/modules/<module_id>/uninstall', methods=['POST'])
+@module_marketplace_bp.route('/modules/<module_id>/uninstall', methods=['POST'])
 def uninstall_module(module_id: str):
     """모듈 제거"""
     try:
@@ -429,7 +433,7 @@ def uninstall_module(module_id: str):
         logger.error(f"모듈 제거 실패: {e}")
         return jsonify({'error': '모듈 제거에 실패했습니다.'}), 500
 
-@module_marketplace_bp.route('/api/marketplace/modules/<module_id>/review', methods=['POST'])
+@module_marketplace_bp.route('/modules/<module_id>/review', methods=['POST'])
 def add_module_review(module_id: str):
     """모듈 리뷰 작성"""
     try:
@@ -475,7 +479,7 @@ def add_module_review(module_id: str):
         logger.error(f"모듈 리뷰 작성 실패: {e}")
         return jsonify({'error': '모듈 리뷰 작성에 실패했습니다.'}), 500
 
-@module_marketplace_bp.route('/api/marketplace/categories', methods=['GET'])
+@module_marketplace_bp.route('/categories', methods=['GET'])
 def get_marketplace_categories():
     """마켓플레이스 카테고리 목록"""
     try:
@@ -507,7 +511,7 @@ def get_marketplace_categories():
         logger.error(f"마켓플레이스 카테고리 조회 실패: {e}")
         return jsonify({'error': '마켓플레이스 카테고리 조회에 실패했습니다.'}), 500
 
-@module_marketplace_bp.route('/api/marketplace/installed', methods=['GET'])
+@module_marketplace_bp.route('/installed', methods=['GET'])
 def get_installed_modules():
     """사용자가 설치한 모듈 목록"""
     try:
@@ -530,7 +534,7 @@ def get_installed_modules():
         logger.error(f"설치된 모듈 목록 조회 실패: {e}")
         return jsonify({'error': '설치된 모듈 목록 조회에 실패했습니다.'}), 500
 
-@module_marketplace_bp.route('/api/marketplace/trending', methods=['GET'])
+@module_marketplace_bp.route('/trending', methods=['GET'])
 def get_trending_modules():
     """인기 모듈 목록"""
     try:

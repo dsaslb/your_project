@@ -1,0 +1,16 @@
+{
+  "name": "출퇴근-관리-시스템",
+  "version": "1.0.0",
+  "description": "출퇴근 관리 시스템 모듈",
+  "type": "attendance",
+  "main": "index.js",
+  "scripts": {
+    "dev": "python -m flask run --port 5002",
+    "build": "python build.py",
+    "test": "python test.py"
+  },
+  "dependencies": {
+    "flask": "^2.0.0",
+    "sqlite3": "^3.0.0"
+  }
+}

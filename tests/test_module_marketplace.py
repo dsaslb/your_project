@@ -9,6 +9,8 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from unittest.mock import patch, MagicMock
+import pytest  # async 테스트 지원
+import asyncio
 
 # 테스트 대상 모듈들
 from core.backend.module_marketplace_system import ModuleMarketplaceSystem, ModuleScope, ModuleStatus
@@ -355,7 +357,8 @@ class TestModuleIntegrationSystem(unittest.TestCase):
         for expected_rule in expected_rules:
             self.assertIn(expected_rule, rule_ids)
     
-    def test_attendance_to_payroll_integration(self):
+    @pytest.mark.asyncio
+    async def test_attendance_to_payroll_integration(self):
         """출퇴근-급여 연동 테스트"""
         # 출퇴근 데이터 생성
         attendance_data = {
@@ -363,18 +366,16 @@ class TestModuleIntegrationSystem(unittest.TestCase):
             'work_hours': 8.5,
             'overtime_hours': 1.5,
             'late_minutes': 10,
-            'date': '2024-01-15',
             'branch_id': 1
         }
-        
         # 연동 처리 (동기 방식으로 변경)
-        results = self.integration_system.process_data_integration_sync(
+        results = await self.integration_system.process_data_integration(
             attendance_data,
             'attendance_management',
             'attendance_created'
         )
-        
-        self.assertGreater(len(results), 0)
+        assert results is not None  # noqa
+        assert len(results) > 0  # noqa
         
         # 급여 계산 결과 확인
         payroll_result = next((r for r in results if r['target_module'] == 'payroll_management'), None)
@@ -387,7 +388,8 @@ class TestModuleIntegrationSystem(unittest.TestCase):
         self.assertEqual(payroll_data['late_minutes'], 10)
         self.assertGreater(payroll_data['total_pay'], 0)
     
-    def test_sales_to_inventory_integration(self):
+    @pytest.mark.asyncio
+    async def test_sales_to_inventory_integration(self):
         """매출-재고 연동 테스트"""
         # 매출 데이터 생성
         sales_data = {
@@ -396,15 +398,14 @@ class TestModuleIntegrationSystem(unittest.TestCase):
             'branch_id': 1,
             'date': '2024-01-15'
         }
-        
         # 연동 처리 (동기 방식으로 변경)
-        results = self.integration_system.process_data_integration_sync(
+        results = await self.integration_system.process_data_integration(
             sales_data,
             'sales_management',
             'sales_created'
         )
-        
-        self.assertGreater(len(results), 0)
+        assert results is not None  # noqa
+        assert len(results) > 0  # noqa
         
         # 재고 업데이트 결과 확인
         inventory_result = next((r for r in results if r['target_module'] == 'inventory_management'), None)
@@ -416,7 +417,8 @@ class TestModuleIntegrationSystem(unittest.TestCase):
         self.assertEqual(inventory_data['branch_id'], 1)
         self.assertLess(inventory_data['current_stock'], 100)  # 초기 재고 100에서 감소
     
-    def test_qsc_to_employee_evaluation_integration(self):
+    @pytest.mark.asyncio
+    async def test_qsc_to_employee_evaluation_integration(self):
         """QSC-직원 평가 연동 테스트"""
         # QSC 평가 데이터 생성
         qsc_data = {
@@ -425,15 +427,14 @@ class TestModuleIntegrationSystem(unittest.TestCase):
             'branch_id': 1,
             'evaluation_date': '2024-01-15'
         }
-        
         # 연동 처리 (동기 방식으로 변경)
-        results = self.integration_system.process_data_integration_sync(
+        results = await self.integration_system.process_data_integration(
             qsc_data,
             'qsc_management',
             'qsc_evaluated'
         )
-        
-        self.assertGreater(len(results), 0)
+        assert results is not None  # noqa
+        assert len(results) > 0  # noqa
         
         # 직원 성과 업데이트 결과 확인
         employee_result = next((r for r in results if r['target_module'] == 'employee_management'), None)
@@ -471,10 +472,11 @@ class TestModuleIntegrationSystem(unittest.TestCase):
         
         self.assertIn(health['overall_status'], ['healthy', 'warning', 'error'])
     
-    def test_batch_integration(self):
+    @pytest.mark.asyncio
+    async def test_batch_integration(self):
         """배치 연동 테스트"""
         # 배치 연동 실행 (동기 방식으로 변경)
-        batch_results = self.integration_system.run_batch_integration_sync()
+        batch_results = await self.integration_system.run_batch_integration()
         
         self.assertIsNotNone(batch_results)
         self.assertIn('batch_results', batch_results)

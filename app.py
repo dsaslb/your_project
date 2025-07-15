@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from dataclasses import asdict
 import json
+import shutil
 
 import jwt
 from flask import (Flask, flash, jsonify, redirect,
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Import core modules
 from config import config_by_name
 from extensions import cache, csrf, db, limiter, login_manager, migrate
-from models import (Branch, Notification, Order, Schedule, User, Brand)
+from models import (Branch, Notification, Order, Schedule, User, Brand, BrandPlugin, Module)
 
 # Import Plugin System
 from core.backend.auto_router import setup_auto_router
@@ -3762,7 +3763,18 @@ def api_modules_toggle(module_id):
     """모듈 활성화/비활성화 API"""
     try:
         # 실제로는 모듈 상태를 변경
-        return jsonify({'success': True, 'message': f'모듈 {module_id} 상태가 변경되었습니다.'})
+        # 예시: modules/{module_id}/config/module.json 파일의 enabled 필드 토글
+        import os, json
+        config_path = os.path.join("modules", module_id, "config", "module.json")
+        if not os.path.exists(config_path):
+            return jsonify({'success': False, 'error': f'설정 파일을 찾을 수 없습니다: {config_path}'}), 404
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        enabled = config.get("enabled", True)
+        config["enabled"] = not enabled
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        return jsonify({'success': True, 'message': f'모듈 {module_id}가 {"활성화" if config["enabled"] else "비활성화"}되었습니다.', 'enabled': config["enabled"]})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -3770,8 +3782,12 @@ def api_modules_toggle(module_id):
 def api_modules_uninstall(module_id):
     """모듈 제거 API"""
     try:
-        # 실제로는 모듈을 제거
-        return jsonify({'success': True, 'message': f'모듈 {module_id}이 제거되었습니다.'})
+        import os, shutil
+        module_dir = os.path.join("modules", module_id)
+        if not os.path.exists(module_dir):
+            return jsonify({'success': False, 'error': f'모듈 디렉토리를 찾을 수 없습니다: {module_dir}'}), 404
+        shutil.rmtree(module_dir)
+        return jsonify({'success': True, 'message': f'모듈 {module_id}이(가) 완전히 제거되었습니다.'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -4755,6 +4771,104 @@ def api_modules_settings(module_id):
         return jsonify({'success': True, 'settings': settings})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route("/api/modules/<module_id>/brands", methods=["GET"])
+@login_required
+def api_module_applied_brands(module_id):
+    """
+    해당 모듈이 적용된 브랜드 목록 조회 API (DB 기반)
+    """
+    try:
+        brand_plugins = BrandPlugin.query.filter_by(code=module_id).all()
+        brands = [Brand.query.get(bp.brand_id) for bp in brand_plugins]
+        applied_brands = [b.code for b in brands if b is not None]
+        return jsonify({'success': True, 'applied_brands': applied_brands})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route("/api/modules/<module_id>/brands", methods=["POST"])
+@login_required
+def api_module_apply_brand(module_id):
+    """
+    브랜드별 모듈 적용/해제 API (DB 기반)
+    body: {brand_code, apply: true/false}
+    """
+    data = request.get_json()
+    brand_code = data.get("brand_code")
+    apply = data.get("apply", True)
+    if not brand_code:
+        return jsonify({'success': False, 'error': 'brand_code가 필요합니다.'}), 400
+    try:
+        brand = Brand.query.filter_by(code=brand_code).first()
+        if not brand:
+            return jsonify({'success': False, 'error': '해당 브랜드를 찾을 수 없습니다.'}), 404
+        # 권한 체크(브랜드 관리자 이상만)
+        if not (current_user.is_admin() or current_user.role in ["admin", "brand_admin", "super_admin"] or getattr(current_user, 'brand_id', None) == brand.id):
+            return jsonify({'success': False, 'error': '권한이 없습니다.'}), 403
+        if apply:
+            exists = BrandPlugin.query.filter_by(brand_id=brand.id, code=module_id).first()
+            if not exists:
+                module = Module.query.filter_by(id=module_id).first()
+                if not module:
+                    return jsonify({'success': False, 'error': '해당 모듈을 찾을 수 없습니다.'}), 404
+                new_bp = BrandPlugin(brand_id=brand.id, name=module.name, code=module_id, description=module.description, version=module.version, is_active=True)
+                db.session.add(new_bp)
+                db.session.commit()
+        else:
+            bp = BrandPlugin.query.filter_by(brand_id=brand.id, code=module_id).first()
+            if bp:
+                db.session.delete(bp)
+                db.session.commit()
+        # 적용된 브랜드 목록 반환
+        brand_plugins = BrandPlugin.query.filter_by(code=module_id).all()
+        applied_brands = [Brand.query.get(bp.brand_id).code for bp in brand_plugins if Brand.query.get(bp.brand_id)]
+        return jsonify({'success': True, 'applied_brands': applied_brands})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# 서버 시작 시 운영 자동화 스케줄러(승인 대기 알림) 자동 실행
+import threading
+import subprocess
+
+def start_auto_admin_alerts():
+    def run_script():
+        subprocess.Popen(['python', 'scripts/auto_admin_alerts.py'])
+    t = threading.Thread(target=run_script, daemon=True)
+    t.start()
+
+start_auto_admin_alerts()
+
+from routes.module_marketplace import module_marketplace_bp
+app.register_blueprint(module_marketplace_bp, url_prefix='/api/module-marketplace')
+
+# [디버그] 실제 등록된 모든 라우트 목록을 출력 (404 원인 분석용)
+def print_all_routes(app):
+    print("\n[Flask 라우트 목록]")
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(sorted(rule.methods))
+        print(f"{rule.rule:50s}  [{methods}]  -> {rule.endpoint}")
+    print("[끝]\n")
+
+print_all_routes(app)
+
+from api.review_external import review_external_bp  # 신규 리뷰 연동/감성분석 API
+app.register_blueprint(review_external_bp)
+
+from api.policy_manager import policy_manager_bp  # 정책/규칙 관리 API
+app.register_blueprint(policy_manager_bp)
+
+from api.ai_automation import ai_automation_bp  # AI 자동화 기반 운영 고도화 API
+app.register_blueprint(ai_automation_bp)
+
+from api.integration_external import integration_external_bp  # 외부 시스템 연동/감성분석 API
+app.register_blueprint(integration_external_bp)
+
+from api.franchise import franchise_bp  # 프랜차이즈(본사-지점) 지원 API
+app.register_blueprint(franchise_bp)
+
+from api.reward_system import reward_system_bp  # 복지/참여/보상 시스템 API
+app.register_blueprint(reward_system_bp)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

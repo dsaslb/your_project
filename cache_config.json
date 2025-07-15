@@ -1,0 +1,10 @@
+{
+  "cache_type": "simple",
+  "cache_default_timeout": 300,
+  "cache_threshold": 1000,
+  "cache_key_prefix": "your_program_",
+  "cache_options": {
+    "maxsize": 1000,
+    "ttl": 300
+  }
+}

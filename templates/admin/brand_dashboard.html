@@ -7,6 +7,21 @@
     <div class="bg-white rounded-lg shadow-lg p-6">
         <h1 class="text-3xl font-bold text-gray-800 mb-6">브랜드 관리자 대시보드</h1>
         
+        {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+        <!-- 브랜드 선택 드롭다운 (슈퍼/총관리자용) -->
+        <div class="mb-6">
+          <form method="get" action="">
+            <label for="brandSelect" class="block text-sm font-medium text-gray-700 mb-1">브랜드 선택</label>
+            <select id="brandSelect" name="brand_id" class="px-4 py-2 border rounded-lg" onchange="this.form.submit()">
+              <option value="">전체 브랜드</option>
+              {% for brand in all_brands %}
+                <option value="{{ brand.id }}" {% if brand.id == selected_brand_id %}selected{% endif %}>{{ brand.name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+        {% endif %}
+        
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- 통계 카드 -->
             <div class="bg-blue-50 p-6 rounded-lg">
@@ -29,6 +44,61 @@
                 <p class="text-3xl font-bold text-purple-600">{{ stats.active_orders if stats else 0 }}</p>
             </div>
         </div>
+        
+        <!-- KPI 카드 추가 (승인률, 처리속도, 피드백 수 등) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold text-blue-800 mb-2">승인률</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ stats.approval_rate if stats else 0 }}%</p>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold text-green-800 mb-2">평균 처리속도</h3>
+            <p class="text-3xl font-bold text-green-600">{{ stats.avg_process_time if stats else 0 }}초</p>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold text-purple-800 mb-2">피드백 수</h3>
+            <p class="text-3xl font-bold text-purple-600">{{ stats.feedback_count if stats else 0 }}</p>
+          </div>
+        </div>
+        <!-- 실시간 차트/그래프 영역 (예시) -->
+        <div class="mt-8">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">실시간 승인/피드백 추이</h2>
+          <canvas id="approvalFeedbackChart" height="120"></canvas>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+        // 예시: 실시간 승인/피드백 추이 차트
+        const ctx = document.getElementById('approvalFeedbackChart').getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: {{ stats.chart_labels|tojson }},
+            datasets: [
+              {
+                label: '승인 건수',
+                data: {{ stats.approval_counts|tojson }},
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+              },
+              {
+                label: '피드백 건수',
+                data: {{ stats.feedback_counts|tojson }},
+                borderColor: 'rgb(139, 92, 246)',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                fill: true,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'top' },
+              title: { display: true, text: '승인/피드백 실시간 추이' }
+            }
+          }
+        });
+        </script>
         
         <!-- 매장 목록 -->
         <div class="mt-8">

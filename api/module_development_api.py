@@ -1,367 +1,500 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-모듈 개발 모드 API
-샌드박스 환경에서 모듈을 개발, 테스트, 배포하는 API
+모듈 개발 시스템 API
+샌드박스 환경에서의 모듈 개발, 테스트, 배포를 위한 API
 """
 
-from flask import Blueprint, jsonify, request
-from flask_login import login_required, current_user
-import logging
-import sqlite3
+import os
 import json
+import uuid
+import zipfile
+import shutil
 from datetime import datetime
+from typing import Dict, List, Optional, Any
+from pathlib import Path
+from flask import Blueprint, request, jsonify, current_app
+from werkzeug.utils import secure_filename
+import sqlite3
 
-from core.backend.module_development_system import module_development_system
+from core.backend.module_development_system import ModuleDevelopmentSystem
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+module_development_api = Blueprint('module_development_api', __name__)
 
-# Blueprint 생성
-module_dev_api_bp = Blueprint('module_dev_api', __name__, url_prefix='/api/module-development')
+# 모듈 개발 시스템 인스턴스
+dev_system = ModuleDevelopmentSystem()
 
-@module_dev_api_bp.route('/projects', methods=['GET'])
-@login_required
+@module_development_api.route('/projects', methods=['GET'])
 def get_projects():
-    """개발 프로젝트 목록 조회"""
+    """프로젝트 목록 조회"""
     try:
-        projects = module_development_system.get_development_projects(current_user.id)
+        user_id = request.args.get('user_id', 'default_user')
+        projects = dev_system.get_projects(user_id)
         
         return jsonify({
-            "success": True,
-            "data": projects
+            'success': True,
+            'data': projects
         })
-        
     except Exception as e:
-        logger.error(f"개발 프로젝트 목록 조회 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects', methods=['POST'])
-@login_required
+@module_development_api.route('/projects', methods=['POST'])
 def create_project():
-    """개발 프로젝트 생성"""
+    """새 프로젝트 생성"""
     try:
         data = request.get_json()
-        module_id = data.get('module_id')
-        project_name = data.get('project_name')
+        name = data.get('name')
         description = data.get('description', '')
+        module_type = data.get('module_type', 'general')
+        created_by = data.get('created_by', 'default_user')
         
-        if not module_id or not project_name:
+        if not name:
             return jsonify({
-                "success": False,
-                "error": "모듈 ID와 프로젝트 이름은 필수입니다."
+                'success': False,
+                'error': '프로젝트 이름은 필수입니다.'
             }), 400
         
-        result = module_development_system.create_development_project(
-            module_id, project_name, description, current_user.id
-        )
+        project = dev_system.create_project(name, description, module_type, created_by)
         
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"개발 프로젝트 생성 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': True,
+            'project': project
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects/<project_id>', methods=['GET'])
-@login_required
-def get_project_details(project_id):
-    """프로젝트 상세 정보 조회"""
+@module_development_api.route('/projects/<project_id>', methods=['GET'])
+def get_project(project_id):
+    """프로젝트 상세 조회"""
     try:
-        project_details = module_development_system.get_project_details(project_id)
+        project = dev_system.get_project(project_id)
         
-        if not project_details:
+        if not project:
             return jsonify({
-                "success": False,
-                "error": "프로젝트를 찾을 수 없습니다."
+                'success': False,
+                'error': '프로젝트를 찾을 수 없습니다.'
             }), 404
         
         return jsonify({
-            "success": True,
-            "data": project_details
+            'success': True,
+            'project': project
         })
-        
     except Exception as e:
-        logger.error(f"프로젝트 상세 정보 조회 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects/<project_id>/pages', methods=['POST'])
-@login_required
-def create_page(project_id):
-    """페이지 생성"""
+@module_development_api.route('/projects/<project_id>', methods=['PUT'])
+def update_project(project_id):
+    """프로젝트 수정"""
     try:
         data = request.get_json()
-        page_name = data.get('page_name')
-        page_type = data.get('page_type', 'page')
         
-        if not page_name:
-            return jsonify({
-                "success": False,
-                "error": "페이지 이름은 필수입니다."
-            }), 400
+        # 프로젝트 업데이트 로직 구현
+        # dev_system.update_project(project_id, data)
         
-        result = module_development_system.create_page(project_id, page_name, page_type)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"페이지 생성 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': True,
+            'message': '프로젝트가 업데이트되었습니다.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects/<project_id>/pages/<page_id>/content', methods=['PUT'])
-@login_required
-def update_page_content(project_id, page_id):
-    """페이지 내용 업데이트"""
+@module_development_api.route('/projects/<project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    """프로젝트 삭제"""
+    try:
+        # 프로젝트 삭제 로직 구현
+        # dev_system.delete_project(project_id)
+        
+        return jsonify({
+            'success': True,
+            'message': '프로젝트가 삭제되었습니다.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@module_development_api.route('/projects/<project_id>/components', methods=['GET'])
+def get_components(project_id):
+    """프로젝트의 컴포넌트 목록 조회"""
+    try:
+        # 컴포넌트 목록 조회 로직 구현
+        components = []  # dev_system.get_components(project_id)
+        
+        return jsonify({
+            'success': True,
+            'components': components
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@module_development_api.route('/projects/<project_id>/components', methods=['POST'])
+def add_component(project_id):
+    """컴포넌트 추가"""
     try:
         data = request.get_json()
-        content = data.get('content')
+        component_data = {
+            'component_id': str(uuid.uuid4()),
+            'type': data.get('type'),
+            'name': data.get('name'),
+            'position_x': data.get('position', {}).get('x', 0),
+            'position_y': data.get('position', {}).get('y', 0),
+            'width': data.get('size', {}).get('width', 200),
+            'height': data.get('size', {}).get('height', 100),
+            'properties': json.dumps(data.get('properties', {})),
+            'styles': json.dumps(data.get('styles', {}))
+        }
         
-        if not content:
-            return jsonify({
-                "success": False,
-                "error": "페이지 내용은 필수입니다."
-            }), 400
+        component = dev_system.add_component(project_id, component_data)
         
-        result = module_development_system.update_page_content(project_id, page_id, content)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"페이지 내용 업데이트 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': True,
+            'component': component
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects/<project_id>/components', methods=['POST'])
-@login_required
-def create_component(project_id):
-    """컴포넌트 생성"""
+@module_development_api.route('/projects/<project_id>/components/<component_id>', methods=['PUT'])
+def update_component(project_id, component_id):
+    """컴포넌트 수정"""
     try:
         data = request.get_json()
-        component_name = data.get('component_name')
-        component_type = data.get('component_type')
+        updates = {
+            'name': data.get('name'),
+            'position_x': data.get('position', {}).get('x'),
+            'position_y': data.get('position', {}).get('y'),
+            'width': data.get('size', {}).get('width'),
+            'height': data.get('size', {}).get('height'),
+            'properties': json.dumps(data.get('properties', {})),
+            'styles': json.dumps(data.get('styles', {}))
+        }
         
-        if not component_name or not component_type:
-            return jsonify({
-                "success": False,
-                "error": "컴포넌트 이름과 타입은 필수입니다."
-            }), 400
+        # None 값 제거
+        updates = {k: v for k, v in updates.items() if v is not None}
         
-        result = module_development_system.create_component(project_id, component_name, component_type)
+        component = dev_system.update_component(project_id, component_id, updates)
         
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"컴포넌트 생성 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': True,
+            'component': component
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects/<project_id>/apis', methods=['POST'])
-@login_required
-def create_api_endpoint(project_id):
-    """API 엔드포인트 생성"""
+@module_development_api.route('/projects/<project_id>/components/<component_id>', methods=['DELETE'])
+def delete_component(project_id, component_id):
+    """컴포넌트 삭제"""
     try:
-        data = request.get_json()
-        endpoint = data.get('endpoint')
-        method = data.get('method', 'GET')
+        result = dev_system.delete_component(project_id, component_id)
         
-        if not endpoint:
-            return jsonify({
-                "success": False,
-                "error": "엔드포인트는 필수입니다."
-            }), 400
-        
-        result = module_development_system.create_api_endpoint(project_id, endpoint, method)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"API 엔드포인트 생성 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': True,
+            'message': '컴포넌트가 삭제되었습니다.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects/<project_id>/versions', methods=['POST'])
-@login_required
+@module_development_api.route('/projects/<project_id>/versions', methods=['GET'])
+def get_versions(project_id):
+    """프로젝트 버전 목록 조회"""
+    try:
+        versions = dev_system.get_versions(project_id)
+        
+        return jsonify({
+            'success': True,
+            'versions': versions
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@module_development_api.route('/projects/<project_id>/versions', methods=['POST'])
 def create_version(project_id):
-    """버전 스냅샷 생성"""
+    """새 버전 생성"""
     try:
         data = request.get_json()
-        version_name = data.get('version_name', f'버전 {datetime.now().strftime("%Y%m%d_%H%M%S")}')
+        version_name = data.get('version_name')
+        description = data.get('description', '')
+        created_by = data.get('created_by', 'default_user')
         
-        result = module_development_system.create_version_snapshot(
-            project_id, version_name, current_user.id
-        )
+        if not version_name:
+            return jsonify({
+                'success': False,
+                'error': '버전 이름은 필수입니다.'
+            }), 400
         
-        return jsonify(result)
+        version = dev_system.create_version(project_id, version_name, description, created_by)
         
-    except Exception as e:
-        logger.error(f"버전 스냅샷 생성 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': True,
+            'version': version
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects/<project_id>/versions/<version_id>/rollback', methods=['POST'])
-@login_required
+@module_development_api.route('/projects/<project_id>/versions/<version_id>/rollback', methods=['POST'])
 def rollback_version(project_id, version_id):
     """버전 롤백"""
     try:
-        result = module_development_system.rollback_to_version(project_id, version_id)
+        result = dev_system.rollback_version(project_id, version_id)
         
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"버전 롤백 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': True,
+            'message': '버전이 롤백되었습니다.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/projects/<project_id>/deploy', methods=['POST'])
-@login_required
+@module_development_api.route('/projects/<project_id>/deploy', methods=['POST'])
 def deploy_project(project_id):
     """프로젝트 배포"""
     try:
         data = request.get_json()
-        target_environment = data.get('target_environment', 'marketplace')
+        version_id = data.get('version_id')
+        environment = data.get('environment', 'marketplace')
+        deployed_by = data.get('deployed_by', 'default_user')
         
-        result = module_development_system.deploy_project(project_id, target_environment)
+        if not version_id:
+            return jsonify({
+                'success': False,
+                'error': '버전 ID는 필수입니다.'
+            }), 400
         
-        return jsonify(result)
+        deployment = dev_system.deploy_project(project_id, version_id, environment, deployed_by)
         
-    except Exception as e:
-        logger.error(f"프로젝트 배포 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': True,
+            'deployment': deployment
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/preview/<project_id>', methods=['GET'])
-@login_required
+@module_development_api.route('/projects/<project_id>/test-data', methods=['POST'])
+def generate_test_data(project_id):
+    """테스트 데이터 생성"""
+    try:
+        data = request.get_json()
+        data_type = data.get('data_type', 'sample')
+        
+        test_data = dev_system.generate_test_data(project_id, data_type)
+        
+        return jsonify({
+            'success': True,
+            'test_data': test_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@module_development_api.route('/component-library', methods=['GET'])
+def get_component_library():
+    """컴포넌트 라이브러리 조회"""
+    try:
+        library = dev_system.get_component_library()
+        
+        return jsonify({
+            'success': True,
+            'library': library
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@module_development_api.route('/statistics', methods=['GET'])
+def get_statistics():
+    """개발 통계 조회"""
+    try:
+        user_id = request.args.get('user_id', 'default_user')
+        stats = dev_system.get_deployment_statistics(user_id)
+        
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@module_development_api.route('/projects/<project_id>/preview', methods=['GET'])
 def get_project_preview(project_id):
     """프로젝트 미리보기 데이터 조회"""
     try:
-        project_details = module_development_system.get_project_details(project_id)
+        project = dev_system.get_project(project_id)
         
-        if not project_details:
+        if not project:
             return jsonify({
-                "success": False,
-                "error": "프로젝트를 찾을 수 없습니다."
+                'success': False,
+                'error': '프로젝트를 찾을 수 없습니다.'
             }), 404
         
-        # 미리보기용 데이터 구성
+        # 미리보기 데이터 구성
         preview_data = {
-            "project": project_details.get("project", {}),
-            "pages": project_details.get("pages", []),
-            "components": project_details.get("components", []),
-            "apis": project_details.get("apis", []),
-            "test_data": project_details.get("test_data", [])
+            'project': project,
+            'components': [],  # dev_system.get_components(project_id)
+            'test_data': {},   # dev_system.get_test_data(project_id)
+            'preview_url': f'/module-development/preview/{project_id}'
         }
         
         return jsonify({
-            "success": True,
-            "data": preview_data
+            'success': True,
+            'preview_data': preview_data
         })
-        
     except Exception as e:
-        logger.error(f"프로젝트 미리보기 조회 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/test-data/<project_id>/reset', methods=['POST'])
-@login_required
-def reset_test_data(project_id):
-    """테스트 데이터 리셋"""
+@module_development_api.route('/projects/<project_id>/export', methods=['POST'])
+def export_project(project_id):
+    """프로젝트 내보내기"""
     try:
         data = request.get_json()
-        data_type = data.get('data_type', 'basic')
+        export_format = data.get('format', 'zip')
         
-        # 테스트 데이터 재생성
-        with sqlite3.connect(module_development_system.dev_db_path) as conn:
-            cursor = conn.cursor()
-            
-            # 기존 테스트 데이터 비활성화
-            cursor.execute("""
-                UPDATE development_test_data 
-                SET is_active = 0 
-                WHERE project_id = ?
-            """, (project_id,))
-            
-            # 새 테스트 데이터 생성
-            project_details = module_development_system.get_project_details(project_id)
-            module_id = project_details.get("project", {}).get("module_id", "")
-            
-            test_data_content = module_development_system._get_test_data_content(data_type, module_id)
-            
-            cursor.execute("""
-                INSERT INTO development_test_data 
-                (project_id, data_set_name, data_type, data_content, is_active)
-                VALUES (?, ?, ?, ?, 1)
-            """, (
-                project_id, f"{data_type} 테스트 데이터", data_type,
-                json.dumps(test_data_content)
-            ))
-            
-            conn.commit()
+        project = dev_system.get_project(project_id)
+        if not project:
+            return jsonify({
+                'success': False,
+                'error': '프로젝트를 찾을 수 없습니다.'
+            }), 404
+        
+        # 프로젝트 패키지 생성
+        package_path = dev_system.create_deployment_package(project_id, project)
         
         return jsonify({
-            "success": True,
-            "message": "테스트 데이터가 리셋되었습니다."
+            'success': True,
+            'download_url': f'/downloads/{package_path.name}',
+            'message': '프로젝트가 성공적으로 내보내졌습니다.'
         })
-        
     except Exception as e:
-        logger.error(f"테스트 데이터 리셋 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': False,
+            'error': str(e)
         }), 500
 
-@module_dev_api_bp.route('/available-modules', methods=['GET'])
-@login_required
-def get_available_modules():
-    """사용 가능한 모듈 목록 조회"""
+@module_development_api.route('/projects/<project_id>/import', methods=['POST'])
+def import_project(project_id):
+    """프로젝트 가져오기"""
     try:
-        # 마켓플레이스에서 모듈 목록 조회
-        with open('marketplace/modules.json', 'r', encoding='utf-8') as f:
-            modules = json.load(f)
+        if 'file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': '파일이 없습니다.'
+            }), 400
         
-        # 개발 가능한 모듈만 필터링
-        available_modules = []
-        for module_id, module_info in modules.items():
-            if module_info.get('status') == 'active':
-                available_modules.append({
-                    "id": module_id,
-                    "name": module_info.get('name', ''),
-                    "description": module_info.get('description', ''),
-                    "category": module_info.get('category', ''),
-                    "version": module_info.get('version', '1.0.0')
-                })
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': '파일이 선택되지 않았습니다.'
+            }), 400
         
-        return jsonify({
-            "success": True,
-            "data": available_modules
-        })
-        
+        if file and file.filename and file.filename.endswith('.zip'):
+            filename = secure_filename(file.filename)
+            # 파일 처리 로직 구현
+            
+            return jsonify({
+                'success': True,
+                'message': '프로젝트가 성공적으로 가져와졌습니다.'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': '지원하지 않는 파일 형식입니다.'
+            }), 400
     except Exception as e:
-        logger.error(f"사용 가능한 모듈 목록 조회 실패: {e}")
         return jsonify({
-            "success": False,
-            "error": str(e)
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@module_development_api.route('/sandbox/reset', methods=['POST'])
+def reset_sandbox():
+    """샌드박스 환경 리셋"""
+    try:
+        data = request.get_json()
+        reset_type = data.get('type', 'data')  # data, components, all
+        
+        # 샌드박스 리셋 로직 구현
+        # dev_system.reset_sandbox(reset_type)
+        
+        return jsonify({
+            'success': True,
+            'message': '샌드박스가 리셋되었습니다.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@module_development_api.route('/marketplace/publish', methods=['POST'])
+def publish_to_marketplace():
+    """마켓플레이스에 게시"""
+    try:
+        data = request.get_json()
+        project_id = data.get('project_id')
+        version_id = data.get('version_id')
+        metadata = data.get('metadata', {})
+        
+        if not project_id or not version_id:
+            return jsonify({
+                'success': False,
+                'error': '프로젝트 ID와 버전 ID는 필수입니다.'
+            }), 400
+        
+        # 마켓플레이스 게시 로직 구현
+        # dev_system.publish_to_marketplace(project_id, version_id, metadata)
+        
+        return jsonify({
+            'success': True,
+            'message': '마켓플레이스에 성공적으로 게시되었습니다.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500 

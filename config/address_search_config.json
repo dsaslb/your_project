@@ -1,0 +1,24 @@
+{
+  "kakao_api": {
+    "enabled": true,
+    "api_key": "YOUR_KAKAO_API_KEY",
+    "geocoding_url": "https://dapi.kakao.com/v2/local/search/address.json",
+    "timeout": 5
+  },
+  "address_validation": {
+    "duplicate_threshold": 0.8,
+    "suggestion_threshold": 0.3,
+    "max_suggestions": 10
+  },
+  "ui_settings": {
+    "auto_focus_detail": true,
+    "show_coordinates": false,
+    "enable_geocoding": true
+  },
+  "features": {
+    "address_duplicate_check": true,
+    "address_validation": true,
+    "geocoding": true,
+    "address_suggestions": true
+  }
+} 

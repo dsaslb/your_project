@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈/플러그인 개발 대시보드 - Your Program</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.31/dist/vue.global.min.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .code-editor {
+            font-family: 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="gradient-bg text-white shadow-lg">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-code text-2xl"></i>
+                        <h1 class="text-2xl font-bold">모듈/플러그인 개발 대시보드</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm">{{ user.username }}</span>
+                        <button @click="logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="container mx-auto px-6 py-8">
+            <!-- 탭 네비게이션 -->
+            <div class="mb-8">
+                <nav class="flex space-x-1 bg-white rounded-lg shadow p-1">
+                    <button 
+                        @click="activeTab = 'dashboard'"
+                        :class="activeTab === 'dashboard' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-800'"
+                        class="px-4 py-2 rounded-md transition-colors">
+                        <i class="fas fa-tachometer-alt mr-2"></i>대시보드
+                    </button>
+                    <button 
+                        @click="activeTab = 'create'"
+                        :class="activeTab === 'create' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-800'"
+                        class="px-4 py-2 rounded-md transition-colors">
+                        <i class="fas fa-plus mr-2"></i>새 프로젝트
+                    </button>
+                    <button 
+                        @click="activeTab = 'projects'"
+                        :class="activeTab === 'projects' ? 'bg-blue-500 text-white' : 'text-gray-500' : 'text-gray-600 hover:text-gray-800'"
+                        class="px-4 py-2 rounded-md transition-colors">
+                        <i class="fas fa-folder mr-2"></i>프로젝트 목록
+                    </button>
+                    <button 
+                        @click="activeTab = 'marketplace'"
+                        :class="activeTab === 'marketplace' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-800'"
+                        class="px-4 py-2 rounded-md transition-colors">
+                        <i class="fas fa-store mr-2"></i>마켓플레이스
+                    </button>
+                    <button 
+                        @click="activeTab = 'templates'"
+                        :class="activeTab === 'templates' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-800'"
+                        class="px-4 py-2 rounded-md transition-colors">
+                        <i class="fas fa-layer-group mr-2"></i>템플릿
+                    </button>
+                </nav>
+            </div>
+
+            <!-- 대시보드 탭 -->
+            <div v-if="activeTab === 'dashboard'" class="space-y-6">
+                <!-- 통계 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6 card-hover">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <i class="fas fa-cube text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">총 모듈</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.modules }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 card-hover">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-puzzle-piece text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">총 플러그인</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.plugins }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 card-hover">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <i class="fas fa-download text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">마켓플레이스</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.marketplace }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 card-hover">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <i class="fas fa-code text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">활성 프로젝트</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.active }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 최근 프로젝트 -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">최근 프로젝트</h3>
+                    </div>
+                    <div class="p-6">
+                        <div v-if="recentProjects.length === 0" class="text-center py-8 text-gray-500">
+                            <i class="fas fa-folder-open text-4xl mb-4"></i>
+                            <p>아직 프로젝트가 없습니다.</p>
+                            <button @click="activeTab = 'create'" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors">
+                                첫 프로젝트 만들기
+                            </button>
+                        </div>
+                        <div v-else class="space-y-4">
+                            <div v-for="project in recentProjects" :key="project.path" 
+                                 class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div class="flex items-center space-x-4">
+                                    <div :class="project.type === 'plugin' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'" 
+                                         class="p-2 rounded-full">
+                                        <i :class="project.type === 'plugin' ? 'fas fa-puzzle-piece' : 'fas fa-cube'"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900">{{ project.name }}</h4>
+                                        <p class="text-sm text-gray-600">{{ project.description }}</p>
+                                        <p class="text-xs text-gray-500">{{ project.type }} • v{{ project.version }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button @click="editProject(project)" class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button @click="deployProject(project)" class="text-green-600 hover:text-green-800">
+                                        <i class="fas fa-upload"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 새 프로젝트 탭 -->
+            <div v-if="activeTab === 'create'" class="space-y-6">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">새 프로젝트 생성</h3>
+                    </div>
+                    <div class="p-6">
+                        <form @submit.prevent="createProject" class="space-y-6">
+                            <!-- 프로젝트 타입 선택 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">프로젝트 타입</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div @click="newProject.type = 'module'" 
+                                         :class="newProject.type === 'module' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'"
+                                         class="border-2 rounded-lg p-4 cursor-pointer transition-colors">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="bg-blue-100 text-blue-600 p-2 rounded-full">
+                                                <i class="fas fa-cube"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-medium text-gray-900">모듈</h4>
+                                                <p class="text-sm text-gray-600">독립적인 기능 모듈</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div @click="newProject.type = 'plugin'" 
+                                         :class="newProject.type === 'plugin' ? 'border-green-500 bg-green-50' : 'border-gray-300'"
+                                         class="border-2 rounded-lg p-4 cursor-pointer transition-colors">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="bg-green-100 text-green-600 p-2 rounded-full">
+                                                <i class="fas fa-puzzle-piece"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-medium text-gray-900">플러그인</h4>
+                                                <p class="text-sm text-gray-600">플랫폼 확장 기능</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 프로젝트 정보 -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">프로젝트 이름</label>
+                                    <input v-model="newProject.name" type="text" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="예: my_awesome_module">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">버전</label>
+                                    <input v-model="newProject.version" type="text" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="1.0.0">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">설명</label>
+                                <textarea v-model="newProject.description" rows="3"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          placeholder="프로젝트에 대한 간단한 설명을 입력하세요"></textarea>
+                            </div>
+
+                            <!-- 템플릿 선택 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">템플릿 선택</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div v-for="template in templates" :key="template.name"
+                                         @click="newProject.template = template.name"
+                                         :class="newProject.template === template.name ? 'border-blue-500 bg-blue-50' : 'border-gray-300'"
+                                         class="border-2 rounded-lg p-4 cursor-pointer transition-colors">
+                                        <h4 class="font-medium text-gray-900">{{ template.name }}</h4>
+                                        <p class="text-sm text-gray-600 mt-1">{{ template.description }}</p>
+                                        <div class="mt-2">
+                                            <span v-for="feature in template.features" :key="feature"
+                                                  class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded mr-1 mb-1">
+                                                {{ feature }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 생성 버튼 -->
+                            <div class="flex justify-end space-x-4">
+                                <button type="button" @click="activeTab = 'dashboard'"
+                                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                                    취소
+                                </button>
+                                <button type="submit" :disabled="creating"
+                                        class="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 transition-colors">
+                                    <i v-if="creating" class="fas fa-spinner fa-spin mr-2"></i>
+                                    <i v-else class="fas fa-plus mr-2"></i>
+                                    {{ creating ? '생성 중...' : '프로젝트 생성' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 프로젝트 목록 탭 -->
+            <div v-if="activeTab === 'projects'" class="space-y-6">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-medium text-gray-900">프로젝트 목록</h3>
+                            <div class="flex space-x-2">
+                                <select v-model="projectFilter" class="px-3 py-1 border border-gray-300 rounded-md text-sm">
+                                    <option value="">모든 타입</option>
+                                    <option value="module">모듈</option>
+                                    <option value="plugin">플러그인</option>
+                                </select>
+                                <button @click="loadProjects" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-refresh"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div v-if="loading" class="text-center py-8">
+                            <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+                            <p class="mt-2 text-gray-500">프로젝트 목록을 불러오는 중...</p>
+                        </div>
+                        <div v-else-if="filteredProjects.length === 0" class="text-center py-8 text-gray-500">
+                            <i class="fas fa-folder-open text-4xl mb-4"></i>
+                            <p>프로젝트가 없습니다.</p>
+                        </div>
+                        <div v-else class="space-y-4">
+                            <div v-for="project in filteredProjects" :key="project.path" 
+                                 class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-4">
+                                        <div :class="project.type === 'plugin' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'" 
+                                             class="p-3 rounded-full">
+                                            <i :class="project.type === 'plugin' ? 'fas fa-puzzle-piece' : 'fas fa-cube'"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-medium text-gray-900">{{ project.name }}</h4>
+                                            <p class="text-sm text-gray-600">{{ project.description }}</p>
+                                            <div class="flex items-center space-x-4 mt-1">
+                                                <span class="text-xs text-gray-500">{{ project.type }} • v{{ project.version }}</span>
+                                                <span :class="project.enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                                      class="text-xs px-2 py-1 rounded-full">
+                                                    {{ project.enabled ? '활성' : '비활성' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button @click="editProject(project)" class="text-blue-600 hover:text-blue-800 p-2">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button @click="convertProject(project)" class="text-yellow-600 hover:text-yellow-800 p-2">
+                                            <i class="fas fa-exchange-alt"></i>
+                                        </button>
+                                        <button @click="deployProject(project)" class="text-green-600 hover:text-green-800 p-2">
+                                            <i class="fas fa-upload"></i>
+                                        </button>
+                                        <button @click="deleteProject(project)" class="text-red-600 hover:text-red-800 p-2">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 마켓플레이스 탭 -->
+            <div v-if="activeTab === 'marketplace'" class="space-y-6">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">마켓플레이스</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-store text-4xl mb-4"></i>
+                            <p>마켓플레이스 기능은 준비 중입니다.</p>
+                            <p class="text-sm mt-2">곧 다양한 모듈과 플러그인을 다운로드할 수 있습니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 템플릿 탭 -->
+            <div v-if="activeTab === 'templates'" class="space-y-6">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">사용 가능한 템플릿</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div v-for="template in templates" :key="template.name"
+                                 class="border border-gray-200 rounded-lg p-6 card-hover">
+                                <div class="flex items-center space-x-3 mb-4">
+                                    <div class="bg-blue-100 text-blue-600 p-2 rounded-full">
+                                        <i class="fas fa-layer-group"></i>
+                                    </div>
+                                    <h4 class="font-medium text-gray-900">{{ template.name }}</h4>
+                                </div>
+                                <p class="text-gray-600 mb-4">{{ template.description }}</p>
+                                <div class="mb-4">
+                                    <span v-for="feature in template.features" :key="feature"
+                                          class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded mr-1 mb-1">
+                                        {{ feature }}
+                                    </span>
+                                </div>
+                                <button @click="useTemplate(template)" 
+                                        class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition-colors">
+                                    이 템플릿 사용하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 모달 -->
+    <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">{{ modalTitle }}</h3>
+            </div>
+            <div class="px-6 py-4">
+                <p class="text-gray-600">{{ modalMessage }}</p>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                <button @click="closeModal" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                    취소
+                </button>
+                <button @click="confirmModal" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    user: {
+                        username: '{{ current_user.username if current_user else "관리자" }}'
+                    },
+                    activeTab: 'dashboard',
+                    stats: {
+                        modules: 0,
+                        plugins: 0,
+                        marketplace: 0,
+                        active: 0
+                    },
+                    projects: [],
+                    recentProjects: [],
+                    templates: {},
+                    loading: false,
+                    creating: false,
+                    projectFilter: '',
+                    showModal: false,
+                    modalTitle: '',
+                    modalMessage: '',
+                    modalAction: null,
+                    newProject: {
+                        type: 'module',
+                        name: '',
+                        version: '1.0.0',
+                        description: '',
+                        template: 'basic'
+                    }
+                }
+            },
+            computed: {
+                filteredProjects() {
+                    if (!this.projectFilter) return this.projects;
+                    return this.projects.filter(p => p.type === this.projectFilter);
+                }
+            },
+            mounted() {
+                this.loadDashboard();
+                this.loadTemplates();
+            },
+            methods: {
+                async loadDashboard() {
+                    try {
+                        const response = await axios.get('/api/module-plugin-dev/list');
+                        if (response.data.success) {
+                            this.projects = response.data.projects;
+                            this.recentProjects = this.projects.slice(0, 5);
+                            
+                            // 통계 계산
+                            this.stats.modules = this.projects.filter(p => p.type === 'module').length;
+                            this.stats.plugins = this.projects.filter(p => p.type === 'plugin').length;
+                            this.stats.active = this.projects.filter(p => p.enabled).length;
+                            this.stats.marketplace = 0; // TODO: 마켓플레이스 통계
+                        }
+                    } catch (error) {
+                        console.error('대시보드 로드 실패:', error);
+                    }
+                },
+                async loadTemplates() {
+                    try {
+                        const response = await axios.get('/api/module-plugin-dev/templates');
+                        if (response.data.success) {
+                            this.templates = response.data.templates;
+                        }
+                    } catch (error) {
+                        console.error('템플릿 로드 실패:', error);
+                    }
+                },
+                async loadProjects() {
+                    this.loading = true;
+                    try {
+                        await this.loadDashboard();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async createProject() {
+                    this.creating = true;
+                    try {
+                        const response = await axios.post('/api/module-plugin-dev/create', this.newProject);
+                        if (response.data.success) {
+                            alert('프로젝트가 성공적으로 생성되었습니다!');
+                            this.activeTab = 'projects';
+                            this.loadProjects();
+                            this.resetNewProject();
+                        } else {
+                            alert('프로젝트 생성 실패: ' + response.data.error);
+                        }
+                    } catch (error) {
+                        console.error('프로젝트 생성 실패:', error);
+                        alert('프로젝트 생성 중 오류가 발생했습니다.');
+                    } finally {
+                        this.creating = false;
+                    }
+                },
+                resetNewProject() {
+                    this.newProject = {
+                        type: 'module',
+                        name: '',
+                        version: '1.0.0',
+                        description: '',
+                        template: 'basic'
+                    };
+                },
+                editProject(project) {
+                    // TODO: 프로젝트 편집 기능 구현
+                    alert('프로젝트 편집 기능은 준비 중입니다.');
+                },
+                convertProject(project) {
+                    const targetType = project.type === 'module' ? 'plugin' : 'module';
+                    this.showConfirmModal(
+                        '프로젝트 변환',
+                        `이 프로젝트를 ${targetType}로 변환하시겠습니까?`,
+                        () => this.performConvert(project, targetType)
+                    );
+                },
+                async performConvert(project, targetType) {
+                    try {
+                        const response = await axios.post('/api/module-plugin-dev/convert', {
+                            source_path: project.path,
+                            target_type: targetType
+                        });
+                        if (response.data.success) {
+                            alert('프로젝트가 성공적으로 변환되었습니다!');
+                            this.loadProjects();
+                        } else {
+                            alert('변환 실패: ' + response.data.error);
+                        }
+                    } catch (error) {
+                        console.error('변환 실패:', error);
+                        alert('변환 중 오류가 발생했습니다.');
+                    }
+                },
+                deployProject(project) {
+                    // TODO: 마켓플레이스 배포 기능 구현
+                    alert('마켓플레이스 배포 기능은 준비 중입니다.');
+                },
+                deleteProject(project) {
+                    this.showConfirmModal(
+                        '프로젝트 삭제',
+                        `정말로 "${project.name}" 프로젝트를 삭제하시겠습니까?`,
+                        () => this.performDelete(project)
+                    );
+                },
+                async performDelete(project) {
+                    // TODO: 실제 삭제 API 구현
+                    alert('프로젝트 삭제 기능은 준비 중입니다.');
+                },
+                useTemplate(template) {
+                    this.newProject.template = template.name;
+                    this.activeTab = 'create';
+                },
+                showConfirmModal(title, message, action) {
+                    this.modalTitle = title;
+                    this.modalMessage = message;
+                    this.modalAction = action;
+                    this.showModal = true;
+                },
+                closeModal() {
+                    this.showModal = false;
+                    this.modalAction = null;
+                },
+                confirmModal() {
+                    if (this.modalAction) {
+                        this.modalAction();
+                    }
+                    this.closeModal();
+                },
+                logout() {
+                    // TODO: 로그아웃 구현
+                    window.location.href = '/logout';
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html> 
