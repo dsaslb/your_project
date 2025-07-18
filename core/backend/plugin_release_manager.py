@@ -1,18 +1,26 @@
-import shutil
-import json
-from typing import Dict, List, Optional
-from datetime import datetime
 from pathlib import Path
+from datetime import datetime
+from typing import Dict, List, Optional
+import json
+import shutil
+from typing import Optional
+
+config = None  # pyright: ignore
+form = None  # pyright: ignore
+
 
 class PluginReleaseManager:
     """플러그인 배포/업데이트/롤백 기록 및 파일 관리"""
-    def __init__(self, plugins_dir: str = "plugins"):
+
+    def __init__(self, plugins_dir="plugins"):
         self.plugins_dir = Path(plugins_dir)
 
     def get_release_dir(self, plugin_name: str) -> Path:
         return self.plugins_dir / plugin_name / "releases"
 
-    def list_releases(self, plugin_name: str) -> List[Dict]:
+    def list_releases(
+        self, plugin_name: str
+    ) -> List[Dict] if List is not None else None:
         """플러그인 배포본(버전) 목록 조회"""
         release_dir = self.get_release_dir(plugin_name)
         if not release_dir.exists():
@@ -22,16 +30,14 @@ class PluginReleaseManager:
             if item.is_dir():
                 manifest = item / "plugin.json"
                 if manifest.exists():
-                    with open(manifest, 'r', encoding='utf-8') as f:
+                    with open(manifest, "r", encoding="utf-8") as f:
                         config = json.load(f)
-                    releases.append({
-                        "version": item.name,
-                        "manifest": config,
-                        "path": str(item)
-                    })
+                    releases.append(
+                        {"version": item.name, "manifest": config, "path": str(item)}
+                    )
         return releases
 
-    def save_release(self, plugin_name: str, version: str, plugin_dir: Optional[Path] = None) -> bool:
+    def save_release(self, plugin_name: str, version: str, plugin_dir=None) -> bool:
         """플러그인 현재 상태를 releases/{version}에 저장"""
         try:
             src_dir = plugin_dir or (self.plugins_dir / plugin_name)
@@ -53,7 +59,10 @@ class PluginReleaseManager:
                 print(f"롤백 대상 버전이 존재하지 않음: {release_dir}")
                 return False
             # 기존 플러그인 백업
-            backup_dir = self.plugins_dir / f"{plugin_name}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            backup_dir = (
+                self.plugins_dir
+                / f"{plugin_name}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
             if plugin_dir.exists():
                 shutil.copytree(plugin_dir, backup_dir)
                 shutil.rmtree(plugin_dir)
@@ -63,7 +72,9 @@ class PluginReleaseManager:
             print(f"롤백 실패: {e}")
             return False
 
-    def log_release_action(self, plugin_name: str, action: str, version: str, user: str = "system", detail: str = ""):
+    def log_release_action(
+        self, plugin_name: str, action: str, version: str, user="system", detail=""
+    ):
         """배포/업데이트/롤백 이력 기록"""
         log_file = self.plugins_dir / plugin_name / "release_history.json"
         entry = {
@@ -71,26 +82,28 @@ class PluginReleaseManager:
             "action": action,
             "version": version,
             "user": user,
-            "detail": detail
+            "detail": detail,
         }
         logs = []
         if log_file.exists():
             try:
-                with open(log_file, 'r', encoding='utf-8') as f:
+                with open(log_file, "r", encoding="utf-8") as f:
                     logs = json.load(f)
             except Exception:
                 logs = []
         logs.append(entry)
-        with open(log_file, 'w', encoding='utf-8') as f:
+        with open(log_file, "w", encoding="utf-8") as f:
             json.dump(logs, f, indent=2, ensure_ascii=False)
 
-    def get_release_history(self, plugin_name: str, limit: int = 50) -> List[Dict]:
+    def get_release_history(
+        self, plugin_name: str, limit=50
+    ) -> List[Dict] if List is not None else None:
         log_file = self.plugins_dir / plugin_name / "release_history.json"
         if not log_file.exists():
             return []
         try:
-            with open(log_file, 'r', encoding='utf-8') as f:
+            with open(log_file, "r", encoding="utf-8") as f:
                 logs = json.load(f)
-            return logs[-limit:]
+            return logs[-limit:] if logs is not None else None
         except Exception:
-            return [] 
+            return []

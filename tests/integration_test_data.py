@@ -6,9 +6,10 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List
 
+
 class IntegrationTestData:
     """모듈 간 데이터 연동 테스트용 샘플 데이터"""
-    
+
     @staticmethod
     def get_sample_data() -> Dict:
         """전체 샘플 데이터 구조"""
@@ -20,9 +21,9 @@ class IntegrationTestData:
             "inventory": IntegrationTestData.get_inventory_data(),
             "payroll": IntegrationTestData.get_payroll_data(),
             "notifications": IntegrationTestData.get_notifications_data(),
-            "analytics": IntegrationTestData.get_analytics_data()
+            "analytics": IntegrationTestData.get_analytics_data(),
         }
-    
+
     @staticmethod
     def get_users_data() -> List[Dict]:
         """직원 데이터"""
@@ -36,7 +37,7 @@ class IntegrationTestData:
                 "branch_id": 1,
                 "brand_id": 1,
                 "status": "approved",
-                "created_at": "2024-01-01T09:00:00"
+                "created_at": "2024-01-01T09:00:00",
             },
             {
                 "id": 2,
@@ -47,7 +48,7 @@ class IntegrationTestData:
                 "branch_id": 1,
                 "brand_id": 1,
                 "status": "approved",
-                "created_at": "2024-01-01T09:00:00"
+                "created_at": "2024-01-01T09:00:00",
             },
             {
                 "id": 3,
@@ -58,10 +59,10 @@ class IntegrationTestData:
                 "branch_id": 1,
                 "brand_id": 1,
                 "status": "approved",
-                "created_at": "2024-01-01T09:00:00"
-            }
+                "created_at": "2024-01-01T09:00:00",
+            },
         ]
-    
+
     @staticmethod
     def get_branches_data() -> List[Dict]:
         """매장 데이터"""
@@ -73,14 +74,14 @@ class IntegrationTestData:
                 "address": "서울시 강남구 테헤란로 123",
                 "phone": "02-1234-5678",
                 "status": "active",
-                "created_at": "2024-01-01T09:00:00"
+                "created_at": "2024-01-01T09:00:00",
             }
         ]
-    
+
     @staticmethod
     def get_attendance_data() -> List[Dict]:
         """출퇴근 데이터"""
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now().strftime("%Y-%m-%d")
         return [
             {
                 "id": 1,
@@ -91,7 +92,7 @@ class IntegrationTestData:
                 "is_late": False,
                 "work_hours": 9.5,
                 "overtime_hours": 0.5,
-                "status": "completed"
+                "status": "completed",
             },
             {
                 "id": 2,
@@ -102,7 +103,7 @@ class IntegrationTestData:
                 "is_late": True,
                 "work_hours": 8.75,
                 "overtime_hours": 0,
-                "status": "completed"
+                "status": "completed",
             },
             {
                 "id": 3,
@@ -113,10 +114,10 @@ class IntegrationTestData:
                 "is_late": False,
                 "work_hours": None,
                 "overtime_hours": 0,
-                "status": "checked_in"
-            }
+                "status": "checked_in",
+            },
         ]
-    
+
     @staticmethod
     def get_orders_data() -> List[Dict]:
         """주문/발주 데이터"""
@@ -124,34 +125,36 @@ class IntegrationTestData:
             {
                 "id": 1,
                 "customer_name": "홍길동",
-                "order_items": json.dumps([
-                    {"name": "스테이크", "quantity": 2, "price": 25000},
-                    {"name": "파스타", "quantity": 1, "price": 15000}
-                ]),
+                "order_items": json.dumps(
+                    [
+                        {"name": "스테이크", "quantity": 2, "price": 25000},
+                        {"name": "파스타", "quantity": 1, "price": 15000},
+                    ]
+                ),
                 "total_amount": 65000,
                 "status": "completed",
                 "employee_id": 1,
                 "store_id": 1,
                 "created_at": "2024-01-15T12:00:00",
                 "completed_at": "2024-01-15T12:25:00",
-                "processing_minutes": 25
+                "processing_minutes": 25,
             },
             {
                 "id": 2,
                 "customer_name": "김철수",
-                "order_items": json.dumps([
-                    {"name": "피자", "quantity": 1, "price": 20000}
-                ]),
+                "order_items": json.dumps(
+                    [{"name": "피자", "quantity": 1, "price": 20000}]
+                ),
                 "total_amount": 20000,
                 "status": "processing",
                 "employee_id": 2,
                 "store_id": 1,
                 "created_at": "2024-01-15T12:30:00",
                 "completed_at": None,
-                "processing_minutes": None
-            }
+                "processing_minutes": None,
+            },
         ]
-    
+
     @staticmethod
     def get_inventory_data() -> List[Dict]:
         """재고 데이터"""
@@ -167,7 +170,7 @@ class IntegrationTestData:
                 "unit_price": 2000,
                 "supplier": "농협",
                 "branch_id": 1,
-                "status": "active"
+                "status": "active",
             },
             {
                 "id": 2,
@@ -180,7 +183,7 @@ class IntegrationTestData:
                 "unit_price": 1500,
                 "supplier": "농협",
                 "branch_id": 1,
-                "status": "active"
+                "status": "active",
             },
             {
                 "id": 3,
@@ -193,10 +196,10 @@ class IntegrationTestData:
                 "unit_price": 50000,
                 "supplier": "축협",
                 "branch_id": 1,
-                "status": "active"
-            }
+                "status": "active",
+            },
         ]
-    
+
     @staticmethod
     def get_payroll_data() -> List[Dict]:
         """급여 데이터"""
@@ -210,7 +213,7 @@ class IntegrationTestData:
                 "allowance": 200000,
                 "deduction": 100000,
                 "net_salary": 3100000,
-                "created_at": "2024-01-15T09:00:00"
+                "created_at": "2024-01-15T09:00:00",
             },
             {
                 "id": 2,
@@ -221,10 +224,10 @@ class IntegrationTestData:
                 "allowance": 150000,
                 "deduction": 80000,
                 "net_salary": 2570000,
-                "created_at": "2024-01-15T09:00:00"
-            }
+                "created_at": "2024-01-15T09:00:00",
+            },
         ]
-    
+
     @staticmethod
     def get_notifications_data() -> List[Dict]:
         """알림 데이터"""
@@ -236,7 +239,7 @@ class IntegrationTestData:
                 "category": "재고",
                 "priority": "긴급",
                 "is_read": False,
-                "created_at": "2024-01-15T10:00:00"
+                "created_at": "2024-01-15T10:00:00",
             },
             {
                 "id": 2,
@@ -245,10 +248,10 @@ class IntegrationTestData:
                 "category": "출퇴근",
                 "priority": "일반",
                 "is_read": False,
-                "created_at": "2024-01-15T09:30:00"
-            }
+                "created_at": "2024-01-15T09:30:00",
+            },
         ]
-    
+
     @staticmethod
     def get_analytics_data() -> Dict:
         """분석 데이터"""
@@ -259,29 +262,29 @@ class IntegrationTestData:
                 "average_order_value": 42500,
                 "top_selling_items": [
                     {"name": "스테이크", "quantity": 2, "revenue": 50000},
-                    {"name": "파스타", "quantity": 1, "revenue": 15000}
-                ]
+                    {"name": "파스타", "quantity": 1, "revenue": 15000},
+                ],
             },
             "attendance_analytics": {
                 "total_employees": 3,
                 "present_today": 3,
                 "late_count": 1,
                 "on_time_rate": 66.7,
-                "average_work_hours": 9.125
+                "average_work_hours": 9.125,
             },
             "inventory_analytics": {
                 "total_items": 3,
                 "low_stock_items": 2,
                 "out_of_stock_items": 0,
-                "total_inventory_value": 125000
+                "total_inventory_value": 125000,
             },
             "performance_analytics": {
                 "average_order_processing_time": 25,
                 "customer_satisfaction_score": 4.5,
-                "employee_productivity_score": 8.2
-            }
+                "employee_productivity_score": 8.2,
+            },
         }
-    
+
     @staticmethod
     def get_integration_test_scenarios() -> List[Dict]:
         """통합 테스트 시나리오"""
@@ -295,9 +298,9 @@ class IntegrationTestData:
                         "user_id": 1,
                         "work_hours": 9.5,
                         "overtime_hours": 0.5,
-                        "calculated_salary": 3100000
-                    }
-                }
+                        "calculated_salary": 3100000,
+                    },
+                },
             },
             {
                 "scenario": "재고 → 주문 연동",
@@ -309,10 +312,10 @@ class IntegrationTestData:
                             "type": "low_stock",
                             "item": "양파",
                             "current_stock": 15,
-                            "min_stock": 20
+                            "min_stock": 20,
                         }
-                    ]
-                }
+                    ],
+                },
             },
             {
                 "scenario": "주문 → 직원 성과 연동",
@@ -323,9 +326,9 @@ class IntegrationTestData:
                         "employee_id": 1,
                         "orders_processed": 1,
                         "average_processing_time": 25,
-                        "performance_score": 8.5
-                    }
-                }
+                        "performance_score": 8.5,
+                    },
+                },
             },
             {
                 "scenario": "실시간 알림 통합",
@@ -334,35 +337,37 @@ class IntegrationTestData:
                     "events": [
                         {"type": "attendance", "event": "late_check_in", "user_id": 2},
                         {"type": "inventory", "event": "low_stock", "item_id": 2},
-                        {"type": "order", "event": "processing_delay", "order_id": 2}
+                        {"type": "order", "event": "processing_delay", "order_id": 2},
                     ],
                     "expected_notifications": [
                         {"user_id": 2, "content": "지각 알림"},
                         {"user_id": 1, "content": "재고 부족 알림"},
-                        {"user_id": 1, "content": "주문 지연 알림"}
-                    ]
-                }
-            }
+                        {"user_id": 1, "content": "주문 지연 알림"},
+                    ],
+                },
+            },
         ]
+
 
 # 테스트 실행 함수
 def run_integration_tests():
     """통합 테스트 실행"""
     print("=== 모듈 간 데이터 연동 테스트 ===")
-    
+
     # 샘플 데이터 로드
     sample_data = IntegrationTestData.get_sample_data()
     print(f"✅ 샘플 데이터 로드 완료: {len(sample_data)}개 모듈")
-    
+
     # 테스트 시나리오 실행
     scenarios = IntegrationTestData.get_integration_test_scenarios()
     for i, scenario in enumerate(scenarios, 1):
         print(f"\n📋 시나리오 {i}: {scenario['scenario']}")
         print(f"   설명: {scenario['description']}")
         print(f"   ✅ 테스트 데이터 준비 완료")
-    
+
     print(f"\n🎯 총 {len(scenarios)}개 통합 테스트 시나리오 준비 완료")
     return sample_data, scenarios
 
+
 if __name__ == "__main__":
-    run_integration_tests() 
+    run_integration_tests()

@@ -1,3 +1,20 @@
+import time
+import threading
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+from datetime import datetime
+import uuid
+import zipfile
+import shutil
+import sqlite3
+import json
+import os
+from typing import Optional
+from flask import jsonify
+from flask import request
+query = None  # pyright: ignore
+form = None  # pyright: ignore
+environ = None  # pyright: ignore
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -5,35 +22,24 @@
 실제 SaaS/노코드 툴 수준의 개발·테스트·배포 시스템
 """
 
-import os
-import json
-import sqlite3
-import shutil
-import zipfile
-import uuid
-from datetime import datetime
-from typing import Dict, List, Optional, Any
-from pathlib import Path
-import threading
-import time
 
 class ModuleDevelopmentSystem:
-    def __init__(self, sandbox_path: str = "sandbox", production_path: str = "production"):
+    def __init__(self, sandbox_path="sandbox", production_path="production"):
         self.sandbox_path = Path(sandbox_path)
         self.production_path = Path(production_path)
         self.sandbox_path.mkdir(exist_ok=True)
         self.production_path.mkdir(exist_ok=True)
-        
+
         self.init_sandbox_database()
         self.init_component_library()
         self.create_sample_projects()
-    
+
     def init_sandbox_database(self):
         """샌드박스 데이터베이스 초기화"""
         db_path = self.sandbox_path / "sandbox.db"
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        
+
         # 개발 프로젝트 테이블
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS development_projects (
@@ -51,7 +57,7 @@ class ModuleDevelopmentSystem:
                 preview_data TEXT
             )
         ''')
-        
+
         # 컴포넌트 테이블
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS components (
@@ -72,7 +78,7 @@ class ModuleDevelopmentSystem:
                 FOREIGN KEY (project_id) REFERENCES development_projects (project_id)
             )
         ''')
-        
+
         # 페이지 테이블
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS pages (
@@ -87,7 +93,7 @@ class ModuleDevelopmentSystem:
                 FOREIGN KEY (project_id) REFERENCES development_projects (project_id)
             )
         ''')
-        
+
         # 버전 관리 테이블
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS versions (
@@ -102,7 +108,7 @@ class ModuleDevelopmentSystem:
                 FOREIGN KEY (project_id) REFERENCES development_projects (project_id)
             )
         ''')
-        
+
         # 배포 기록 테이블
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS deployments (
@@ -118,7 +124,7 @@ class ModuleDevelopmentSystem:
                 FOREIGN KEY (project_id) REFERENCES development_projects (project_id)
             )
         ''')
-        
+
         # 테스트 데이터 테이블
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS test_data (
@@ -132,10 +138,10 @@ class ModuleDevelopmentSystem:
                 FOREIGN KEY (project_id) REFERENCES development_projects (project_id)
             )
         ''')
-        
+
         conn.commit()
         conn.close()
-    
+
     def init_component_library(self):
         """컴포넌트 라이브러리 초기화"""
         self.component_library = {
@@ -269,42 +275,42 @@ class ModuleDevelopmentSystem:
                 }
             ]
         }
-    
-    def create_project(self, name: str, description: str, module_type: str, created_by: str) -> Dict:
+
+    def create_project(self,  name: str,  description: str,  module_type: str,  created_by: str) -> Dict[str, Any]:
         """새 개발 프로젝트 생성"""
         project_id = str(uuid.uuid4())
-        
+
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO development_projects 
             (project_id, name, description, module_type, created_by)
             VALUES (?, ?, ?, ?, ?)
         ''', (project_id, name, description, module_type, created_by))
-        
+
         # 프로젝트 디렉토리 생성
         project_dir = self.sandbox_path / project_id
         project_dir.mkdir(exist_ok=True)
-        
+
         # 기본 파일 생성
         self.create_project_files(project_dir, name, module_type)
-        
+
         conn.commit()
         conn.close()
-        
+
         return {
             'project_id': project_id,
             'name': name,
             'status': 'development',
             'created_at': datetime.now().isoformat()
         }
-    
+
     def create_project_files(self, project_dir: Path, name: str, module_type: str):
         """프로젝트 기본 파일 생성"""
         # package.json
         package_json = {
-            'name': name.lower().replace(' ', '-'),
+            'name': name.lower() if name is not None else ''.replace(' ', '-'),
             'version': '1.0.0',
             'description': f'{name} 모듈',
             'type': module_type,
@@ -319,10 +325,10 @@ class ModuleDevelopmentSystem:
                 'sqlite3': '^3.0.0'
             }
         }
-        
+
         with open(project_dir / 'package.json', 'w', encoding='utf-8') as f:
             json.dump(package_json, f, indent=2, ensure_ascii=False)
-        
+
         # 기본 Python 파일
         main_py = f'''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -347,14 +353,14 @@ def api_data():
 if __name__ == '__main__':
     app.run(debug=True, port=5002)
 '''
-        
+
         with open(project_dir / 'main.py', 'w', encoding='utf-8') as f:
             f.write(main_py)
-        
+
         # templates 디렉토리
         templates_dir = project_dir / 'templates'
         templates_dir.mkdir(exist_ok=True)
-        
+
         # 기본 HTML 템플릿
         index_html = f'''<!DOCTYPE html>
 <html lang="ko">
@@ -403,15 +409,15 @@ if __name__ == '__main__':
 </body>
 </html>
 '''
-        
+
         with open(templates_dir / 'index.html', 'w', encoding='utf-8') as f:
             f.write(index_html)
-    
-    def get_projects(self, user_id: str) -> List[Dict]:
+
+    def get_projects(self,  user_id: str) -> List[Dict[str, Any]]:
         """사용자의 프로젝트 목록 조회"""
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT project_id, name, description, module_type, status, version, 
                    created_at, updated_at
@@ -419,50 +425,50 @@ if __name__ == '__main__':
             WHERE created_by = ?
             ORDER BY updated_at DESC
         ''', (user_id,))
-        
+
         projects = []
         for row in cursor.fetchall():
             projects.append({
-                'project_id': row[0],
-                'name': row[1],
-                'description': row[2],
-                'module_type': row[3],
-                'status': row[4],
-                'version': row[5],
-                'created_at': row[6],
-                'updated_at': row[7]
+                'project_id': row[0] if row is not None else None,
+                'name': row[1] if row is not None else None,
+                'description': row[2] if row is not None else None,
+                'module_type': row[3] if row is not None else None,
+                'status': row[4] if row is not None else None,
+                'version': row[5] if row is not None else None,
+                'created_at': row[6] if row is not None else None,
+                'updated_at': row[7] if row is not None else None
             })
-        
+
         conn.close()
         return projects
-    
-    def get_project(self, project_id: str) -> Optional[Dict]:
+
+    def get_project(self,  project_id: str) -> Optional[Dict[str, Any]]:
         """프로젝트 상세 정보 조회"""
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT project_id, name, description, module_type, status, version, 
                    created_at, updated_at, settings, preview_data
             FROM development_projects 
             WHERE project_id = ?
         ''', (project_id,))
-        
+
         row = cursor.fetchone()
         if row:
             project = {
-                'project_id': row[0],
-                'name': row[1],
-                'description': row[2],
-                'module_type': row[3],
-                'status': row[4],
-                'version': row[5],
-                'created_at': row[6],
-                'updated_at': row[7],
+                'project_id': row[0] if row is not None else None,
+                'name': row[1] if row is not None else None,
+                'description': row[2] if row is not None else None,
+                'module_type': row[3] if row is not None else None,
+                'status': row[4] if row is not None else None,
+                'version': row[5] if row is not None else None,
+                'created_at': row[6] if row is not None else None,
+                'updated_at': row[7] if row is not None else None,
                 'settings': json.loads(row[8]) if row[8] else {},
                 'preview_data': json.loads(row[9]) if row[9] else {}
             }
-            
+
             # 컴포넌트 목록 조회
             cursor.execute('''
                 SELECT component_id, type, name, position_x, position_y, 
@@ -471,38 +477,38 @@ if __name__ == '__main__':
                 WHERE project_id = ?
                 ORDER BY order_index
             ''', (project_id,))
-            
+
             components = []
             for comp_row in cursor.fetchall():
                 components.append({
-                    'component_id': comp_row[0],
-                    'type': comp_row[1],
-                    'name': comp_row[2],
-                    'position_x': comp_row[3],
-                    'position_y': comp_row[4],
-                    'width': comp_row[5],
-                    'height': comp_row[6],
+                    'component_id': comp_row[0] if comp_row is not None else None,
+                    'type': comp_row[1] if comp_row is not None else None,
+                    'name': comp_row[2] if comp_row is not None else None,
+                    'position_x': comp_row[3] if comp_row is not None else None,
+                    'position_y': comp_row[4] if comp_row is not None else None,
+                    'width': comp_row[5] if comp_row is not None else None,
+                    'height': comp_row[6] if comp_row is not None else None,
                     'properties': json.loads(comp_row[7]) if comp_row[7] else {},
                     'styles': json.loads(comp_row[8]) if comp_row[8] else {},
-                    'parent_id': comp_row[9],
-                    'order_index': comp_row[10]
+                    'parent_id': comp_row[9] if comp_row is not None else None,
+                    'order_index': comp_row[10] if comp_row is not None else None
                 })
-            
+
             project['components'] = components
-            
+
             conn.close()
             return project
-        
+
         conn.close()
         return None
-    
-    def add_component(self, project_id: str, component_data: Dict) -> Dict:
+
+    def add_component(self,  project_id: str,  component_data: Dict[str, Any]) -> Dict[str, Any]:
         """컴포넌트 추가"""
         component_id = str(uuid.uuid4())
-        
+
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO components 
             (project_id, component_id, type, name, position_x, position_y, 
@@ -511,36 +517,36 @@ if __name__ == '__main__':
         ''', (
             project_id,
             component_id,
-            component_data['type'],
-            component_data['name'],
-            component_data.get('position_x', 0),
-            component_data.get('position_y', 0),
-            component_data.get('width', 200),
-            component_data.get('height', 100),
-            json.dumps(component_data.get('properties', {})),
-            json.dumps(component_data.get('styles', {})),
-            component_data.get('parent_id'),
-            component_data.get('order_index', 0)
+            component_data['type'] if component_data is not None else None,
+            component_data['name'] if component_data is not None else None,
+            component_data.get('position_x', 0) if component_data else 0,
+            component_data.get('position_y', 0) if component_data else 0,
+            component_data.get('width', 200) if component_data else 200,
+            component_data.get('height', 100) if component_data else 100,
+            json.dumps(component_data.get('properties', {})) if component_data else '{}',
+            json.dumps(component_data.get('styles', {})) if component_data else '{}',
+            component_data.get('parent_id') if component_data else None,
+            component_data.get('order_index', 0) if component_data else 0
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         return {
             'component_id': component_id,
             'success': True
         }
-    
-    def update_component(self, project_id: str, component_id: str, updates: Dict) -> Dict:
+
+    def update_component(self, project_id: str, component_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
         """컴포넌트 업데이트"""
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         # 업데이트할 필드들
         update_fields = []
         params = []
-        
-        for field, value in updates.items():
+
+        for field, value in updates.items() if updates is not None else []:
             if field in ['position_x', 'position_y', 'width', 'height', 'order_index']:
                 update_fields.append(f"{field} = ?")
                 params.append(value)
@@ -550,7 +556,7 @@ if __name__ == '__main__':
             elif field in ['type', 'name', 'parent_id']:
                 update_fields.append(f"{field} = ?")
                 params.append(value)
-        
+
         if update_fields:
             params.extend([project_id, component_id])
             query = f'''
@@ -559,42 +565,42 @@ if __name__ == '__main__':
                 WHERE project_id = ? AND component_id = ?
             '''
             cursor.execute(query, params)
-            
+
             conn.commit()
             conn.close()
-            
+
             return {'success': True}
-        
+
         conn.close()
         return {'success': False, 'error': '업데이트할 필드가 없습니다.'}
-    
-    def delete_component(self, project_id: str, component_id: str) -> Dict:
+
+    def delete_component(self, project_id: str, component_id: str) -> Dict[str, Any]:
         """컴포넌트 삭제"""
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             DELETE FROM components 
             WHERE project_id = ? AND component_id = ?
         ''', (project_id, component_id))
-        
+
         conn.commit()
         conn.close()
-        
+
         return {'success': True}
-    
-    def create_version(self, project_id: str, version_name: str, description: str, created_by: str) -> Dict:
+
+    def create_version(self, project_id: str, version_name: str, description: str, created_by: str) -> Dict[str, Any]:
         """버전 스냅샷 생성"""
         version_id = str(uuid.uuid4())
-        
+
         # 현재 프로젝트 상태 스냅샷
         project = self.get_project(project_id)
         if not project:
             return {'success': False, 'error': '프로젝트를 찾을 수 없습니다.'}
-        
+
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO versions 
             (project_id, version_id, version_name, description, snapshot_data, created_by)
@@ -607,63 +613,63 @@ if __name__ == '__main__':
             json.dumps(project),
             created_by
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         return {
             'version_id': version_id,
             'success': True
         }
-    
-    def get_versions(self, project_id: str) -> List[Dict]:
+
+    def get_versions(self, project_id: str) -> List[Dict[str, Any]]:
         """프로젝트 버전 목록 조회"""
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT version_id, version_name, description, created_at, created_by
             FROM versions 
             WHERE project_id = ?
             ORDER BY created_at DESC
         ''', (project_id,))
-        
+
         versions = []
         for row in cursor.fetchall():
             versions.append({
-                'version_id': row[0],
-                'version_name': row[1],
-                'description': row[2],
-                'created_at': row[3],
-                'created_by': row[4]
+                'version_id': row[0] if row is not None else None,
+                'version_name': row[1] if row is not None else None,
+                'description': row[2] if row is not None else None,
+                'created_at': row[3] if row is not None else None,
+                'created_by': row[4] if row is not None else None
             })
-        
+
         conn.close()
         return versions
-    
-    def rollback_version(self, project_id: str, version_id: str) -> Dict:
+
+    def rollback_version(self,  project_id: str,  version_id: str) -> Dict[str, Any]:
         """버전 롤백"""
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         # 버전 스냅샷 조회
         cursor.execute('''
             SELECT snapshot_data FROM versions 
             WHERE project_id = ? AND version_id = ?
         ''', (project_id, version_id))
-        
+
         row = cursor.fetchone()
         if not row:
             conn.close()
             return {'success': False, 'error': '버전을 찾을 수 없습니다.'}
-        
-        snapshot = json.loads(row[0])
-        
+
+        snapshot = json.loads(row[0] if row is not None and row[0] is not None else '{}')
+
         # 현재 컴포넌트 삭제
         cursor.execute('DELETE FROM components WHERE project_id = ?', (project_id,))
-        
+
         # 스냅샷에서 컴포넌트 복원
-        for component in snapshot.get('components', []):
+        for component in snapshot.get('components', []) if snapshot else []:
             cursor.execute('''
                 INSERT INTO components 
                 (project_id, component_id, type, name, position_x, position_y, 
@@ -671,39 +677,39 @@ if __name__ == '__main__':
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 project_id,
-                component['component_id'],
-                component['type'],
-                component['name'],
-                component['position_x'],
-                component['position_y'],
-                component['width'],
-                component['height'],
-                json.dumps(component['properties']),
-                json.dumps(component['styles']),
-                component['parent_id'],
-                component['order_index']
+                component['component_id'] if component is not None else None,
+                component['type'] if component is not None else None,
+                component['name'] if component is not None else None,
+                component['position_x'] if component is not None else None,
+                component['position_y'] if component is not None else None,
+                component['width'] if component is not None else None,
+                component['height'] if component is not None else None,
+                json.dumps(component['properties'] if component is not None else {}),
+                json.dumps(component['styles'] if component is not None else {}),
+                component['parent_id'] if component is not None else None,
+                component['order_index'] if component is not None else None
             ))
-        
+
         conn.commit()
         conn.close()
-        
+
         return {'success': True}
-    
-    def deploy_project(self, project_id: str, version_id: str, environment: str, deployed_by: str) -> Dict:
+
+    def deploy_project(self, project_id: str, version_id: str, environment: str, deployed_by: str) -> Dict[str, Any]:
         """프로젝트 배포"""
         deployment_id = str(uuid.uuid4())
-        
+
         # 프로젝트 정보 조회
         project = self.get_project(project_id)
         if not project:
             return {'success': False, 'error': '프로젝트를 찾을 수 없습니다.'}
-        
+
         # 배포 패키지 생성
         package_path = self.create_deployment_package(project_id, project)
-        
+
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO deployments 
             (project_id, deployment_id, version_id, environment, status, deployed_at, deployed_by)
@@ -717,30 +723,30 @@ if __name__ == '__main__':
             datetime.now().isoformat(),
             deployed_by
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         return {
             'deployment_id': deployment_id,
             'package_path': str(package_path),
             'success': True
         }
-    
-    def create_deployment_package(self, project_id: str, project: Dict) -> Path:
+
+    def create_deployment_package(self, project_id: str, project: Dict[str, Any]) -> Any:
         """배포 패키지 생성"""
         project_dir = self.sandbox_path / project_id
-        package_path = self.production_path / f"{project['name']}_{project_id}.zip"
-        
+        package_path = self.production_path / f"{project['name'] if project is not None else None}_{project_id}.zip"
+
         with zipfile.ZipFile(package_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for file_path in project_dir.rglob('*'):
                 if file_path.is_file():
                     arcname = file_path.relative_to(project_dir)
                     zipf.write(file_path, arcname)
-        
+
         return package_path
-    
-    def generate_test_data(self, project_id: str, data_type: str) -> Dict:
+
+    def generate_test_data(self,  project_id: str,  data_type: str) -> Dict[str, Any]:
         """테스트 데이터 생성"""
         test_data = {
             'users': [
@@ -759,11 +765,11 @@ if __name__ == '__main__':
                 {'id': 3, 'user_id': 3, 'product_id': 3, 'quantity': 3, 'total': 45000}
             ]
         }
-        
+
         if data_type in test_data:
             conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 INSERT INTO test_data (project_id, data_type, data_name, data_content)
                 VALUES (?, ?, ?, ?)
@@ -771,38 +777,38 @@ if __name__ == '__main__':
                 project_id,
                 data_type,
                 f'{data_type}_sample',
-                json.dumps(test_data[data_type])
+                json.dumps(test_data[data_type] if test_data is not None else None)
             ))
-            
+
             conn.commit()
             conn.close()
-            
-            return {'success': True, 'data': test_data[data_type]}
-        
+
+            return {'success': True, 'data': test_data[data_type] if test_data is not None else None}
+
         return {'success': False, 'error': '지원하지 않는 데이터 타입입니다.'}
-    
-    def get_component_library(self) -> Dict:
+
+    def get_component_library(self) -> Dict[str, Any]:
         """컴포넌트 라이브러리 반환"""
         return self.component_library
-    
-    def get_deployment_statistics(self, user_id: str) -> Dict:
+
+    def get_deployment_statistics(self, user_id: str) -> Dict[str, Any]:
         """배포 통계 조회"""
         conn = sqlite3.connect(self.sandbox_path / "sandbox.db")
         cursor = conn.cursor()
-        
+
         # 전체 프로젝트 수
         cursor.execute('''
             SELECT COUNT(*) FROM development_projects WHERE created_by = ?
         ''', (user_id,))
         total_projects = cursor.fetchone()[0]
-        
+
         # 상태별 프로젝트 수
         cursor.execute('''
             SELECT status, COUNT(*) FROM development_projects 
             WHERE created_by = ? GROUP BY status
         ''', (user_id,))
         status_counts = dict(cursor.fetchall())
-        
+
         # 최근 배포
         cursor.execute('''
             SELECT d.deployment_id, p.name, d.environment, d.deployed_at
@@ -812,18 +818,18 @@ if __name__ == '__main__':
             ORDER BY d.deployed_at DESC
             LIMIT 5
         ''', (user_id,))
-        
+
         recent_deployments = []
         for row in cursor.fetchall():
             recent_deployments.append({
-                'deployment_id': row[0],
-                'project_name': row[1],
-                'environment': row[2],
-                'deployed_at': row[3]
+                'deployment_id': row[0] if row is not None else None,
+                'project_name': row[1] if row is not None else None,
+                'environment': row[2] if row is not None else None,
+                'deployed_at': row[3] if row is not None else None
             })
-        
+
         conn.close()
-        
+
         return {
             'total_projects': total_projects,
             'status_counts': status_counts,
@@ -855,23 +861,30 @@ if __name__ == '__main__':
                 'created_by': 'default_user'
             }
         ]
-        
-        for project_data in sample_projects:
-            try:
-                # 프로젝트가 이미 존재하는지 확인
-                existing_projects = self.get_projects('default_user')
-                project_exists = any(p['name'] == project_data['name'] for p in existing_projects)
-                
-                if not project_exists:
-                    self.create_project(
-                        project_data['name'],
-                        project_data['description'],
-                        project_data['module_type'],
-                        project_data['created_by']
-                    )
-            except Exception as e:
-                print(f"샘플 프로젝트 생성 실패: {e}")
+
+        if sample_projects is not None:
+            for project_data in sample_projects:
+                try:
+                    # 프로젝트가 이미 존재하는지 확인
+                    existing_projects = self.get_projects('default_user')
+                    project_exists = any(p['name'] if p is not None else None == project_data['name'] if project_data is not None else None for p in existing_projects)
+
+                    # None이 들어갈 수 있는 부분은 빈 문자열로 대체
+                    name = project_data['name'] if project_data and project_data['name'] is not None else ''
+                    description = project_data['description'] if project_data and project_data['description'] is not None else ''
+                    module_type = project_data['module_type'] if project_data and project_data['module_type'] is not None else ''
+                    created_by = project_data['created_by'] if project_data and project_data['created_by'] is not None else ''
+                    if not project_exists:
+                        self.create_project(
+                            name,
+                            description,
+                            module_type,
+                            created_by
+                        )
+                except Exception as e:
+                    print(f"샘플 프로젝트 생성 실패: {e}")
+
 
 # 전역 인스턴스
 module_development_system = ModuleDevelopmentSystem()
-dev_system = module_development_system  # 호환성을 위한 별칭 
+dev_system = module_development_system  # 호환성을 위한 별칭

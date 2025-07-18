@@ -5,6 +5,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
+import redis
 
 # 데이터베이스
 db = SQLAlchemy()
@@ -15,9 +16,9 @@ login_manager = LoginManager()
 
 # 요청 제한 (메모리 저장소 명시적 설정)
 limiter = Limiter(
-    key_func=get_remote_address, 
+    key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"  # 메모리 저장소 명시적 설정
+    storage_uri="memory://",  # 메모리 저장소 명시적 설정
 )
 
 # 캐싱
@@ -25,6 +26,13 @@ cache = Cache()
 
 # CSRF 보호
 csrf = CSRFProtect()
+
+# Redis 클라이언트 (기본 설정)
+try:
+    redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    redis_client.ping()  # 연결 테스트
+except:
+    redis_client = None
 
 
 def init_extensions(app):

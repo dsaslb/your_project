@@ -1,15 +1,17 @@
+from utils.decorators import admin_required, manager_required  # pyright: ignore
+from models_main import db, User, Branch, ActionLog
+import logging
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+from functools import wraps
+from flask_login import login_required, current_user
+from flask import Blueprint, jsonify, request, current_app
+args = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 조리 예상시간 혁신 기능용 API
 - 실시간 조리 예상시간, 권한 분기, 통계/상태 반환 등 구현
 """
-from flask import Blueprint, jsonify, request, current_app
-from flask_login import login_required, current_user
-from functools import wraps
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
-import logging
-from models import db, User, Branch, ActionLog
-from utils.decorators import admin_required, manager_required
 
 logger = logging.getLogger(__name__)
 cooktime_api = Blueprint('cooktime_api', __name__)
@@ -71,7 +73,8 @@ menu_cooktimes = {
     }
 }
 
-def log_cooktime_action(action: str, details: Dict[str, Any]):
+
+def log_cooktime_action(action: str,  details: Dict[str,  Any] if Dict is not None else None):
     """조리시간 액션 로깅"""
     try:
         log = ActionLog(  # type: ignore
@@ -79,12 +82,13 @@ def log_cooktime_action(action: str, details: Dict[str, Any]):
             action=f"cooktime_{action}",
             message=f"조리시간 {action}: {details.get('menu_name', 'N/A')}",
             ip_address=request.remote_addr,
-            user_agent=request.headers.get('User-Agent', '')
+            user_agent=request.headers.get() if headers else None'User-Agent', '') if headers else None
         )
         db.session.add(log)
         db.session.commit()
     except Exception as e:
         logger.error(f"조리시간 액션 로깅 실패: {e}")
+
 
 @cooktime_api.route('/api/cooktime/menus', methods=['GET'])
 @login_required
@@ -98,11 +102,11 @@ def get_menu_cooktimes():
             available_menus = ['hamburger', 'pizza', 'fries', 'chicken']
         else:
             available_menus = ['hamburger', 'fries']  # 일반 직원은 기본 메뉴만
-        
+
         menus = {}
-        for menu_id in available_menus:
-            menus[menu_id] = menu_cooktimes[menu_id]
-        
+        for menu_id in available_menus if available_menus is not None:
+            menus[menu_id] if menus is not None else None = menu_cooktimes[menu_id] if menu_cooktimes is not None else None
+
         return jsonify({
             'success': True,
             'menus': menus
@@ -111,6 +115,7 @@ def get_menu_cooktimes():
         logger.error(f"메뉴 조리시간 조회 실패: {e}")
         return jsonify({'error': '메뉴 조리시간 조회에 실패했습니다.'}), 500
 
+
 @cooktime_api.route('/api/cooktime/menus/<menu_id>', methods=['GET'])
 @login_required
 def get_menu_cooktime_detail(menu_id: str):
@@ -118,18 +123,19 @@ def get_menu_cooktime_detail(menu_id: str):
     try:
         if menu_id not in menu_cooktimes:
             return jsonify({'error': '메뉴를 찾을 수 없습니다.'}), 404
-        
+
         # 권한 확인
         if current_user.role not in ['admin', 'brand_admin'] and menu_id == 'chicken':
             return jsonify({'error': '접근 권한이 없습니다.'}), 403
-        
+
         return jsonify({
             'success': True,
-            'menu': menu_cooktimes[menu_id]
+            'menu': menu_cooktimes[menu_id] if menu_cooktimes is not None else None
         })
     except Exception as e:
         logger.error(f"메뉴 조리시간 상세 조회 실패: {e}")
         return jsonify({'error': '메뉴 조리시간 상세 조회에 실패했습니다.'}), 500
+
 
 @cooktime_api.route('/api/cooktime/calculate', methods=['POST'])
 @login_required
@@ -137,21 +143,21 @@ def calculate_cooktime():
     """조리 예상시간 계산"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
-        menu_id = data.get('menu_id')
-        quantity = data.get('quantity', 1)
-        customizations = data.get('customizations', [])
-        chef_experience = data.get('chef_experience', 'medium')  # low, medium, high
-        
+
+        menu_id = data.get() if data else None'menu_id') if data else None
+        quantity = data.get() if data else None'quantity', 1) if data else None
+        customizations = data.get() if data else None'customizations', []) if data else None
+        chef_experience = data.get() if data else None'chef_experience', 'medium') if data else None  # low, medium, high
+
         if not menu_id or menu_id not in menu_cooktimes:
             return jsonify({'error': '유효하지 않은 메뉴입니다.'}), 400
-        
-        menu = menu_cooktimes[menu_id]
-        base_time = float(menu['base_time'])  # 명시적으로 float로 변환
-        
+
+        menu = menu_cooktimes[menu_id] if menu_cooktimes is not None else None
+        base_time = float(menu['base_time'] if menu is not None else None)  # 명시적으로 float로 변환
+
         # 수량에 따른 시간 계산 (수량이 많을수록 효율성 증가)
         if quantity == 1:
             quantity_multiplier = 1.0
@@ -161,33 +167,33 @@ def calculate_cooktime():
             quantity_multiplier = 0.8
         else:
             quantity_multiplier = 0.7
-        
+
         # 요리사 경험에 따른 시간 조정
         experience_multiplier = {
             'low': 1.3,      # 초보자: 30% 더 오래 걸림
             'medium': 1.0,   # 중급자: 기본 시간
             'high': 0.8      # 고급자: 20% 빨라짐
         }.get(chef_experience, 1.0)
-        
+
         # 커스터마이징에 따른 추가 시간
         customization_time = 0
-        for customization in customizations:
-            if customization.get('type') == 'extra_topping':
+        for customization in customizations if customizations is not None:
+            if customization.get() if customization else None'type') if customization else None == 'extra_topping':
                 customization_time += 1
-            elif customization.get('type') == 'special_cooking':
+            elif customization.get() if customization else None'type') if customization else None == 'special_cooking':
                 customization_time += 2
-            elif customization.get('type') == 'dietary_restriction':
+            elif customization.get() if customization else None'type') if customization else None == 'dietary_restriction':
                 customization_time += 1.5
-        
+
         # 최종 조리시간 계산
         total_time = (base_time * quantity_multiplier * experience_multiplier) + customization_time
-        
+
         # 조리시간 기록
         record_id = f"cooktime_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{current_user.id}"
         cooktime_record = {
             'id': record_id,
             'menu_id': menu_id,
-            'menu_name': menu['name'],
+            'menu_name': menu['name'] if menu is not None else None,
             'quantity': quantity,
             'customizations': customizations,
             'chef_experience': chef_experience,
@@ -199,20 +205,20 @@ def calculate_cooktime():
             'created_by': current_user.id,
             'created_at': datetime.now().isoformat()
         }
-        
-        cooktime_records[record_id] = cooktime_record
-        
+
+        cooktime_records[record_id] if cooktime_records is not None else None = cooktime_record
+
         # 액션 로깅
         log_cooktime_action('calculate', {
-            'menu_name': menu['name'],
+            'menu_name': menu['name'] if menu is not None else None,
             'calculated_time': total_time,
             'quantity': quantity
         })
-        
+
         return jsonify({
             'success': True,
             'cooktime': {
-                'menu_name': menu['name'],
+                'menu_name': menu['name'] if menu is not None else None,
                 'quantity': quantity,
                 'estimated_time': round(total_time, 1),
                 'unit': '분',
@@ -224,10 +230,11 @@ def calculate_cooktime():
                 }
             }
         })
-        
+
     except Exception as e:
         logger.error(f"조리시간 계산 실패: {e}")
         return jsonify({'error': '조리시간 계산에 실패했습니다.'}), 500
+
 
 @cooktime_api.route('/api/cooktime/actual', methods=['POST'])
 @login_required
@@ -235,34 +242,34 @@ def record_actual_cooktime():
     """실제 조리시간 기록"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
-        menu_id = data.get('menu_id')
-        actual_time = data.get('actual_time')
-        order_id = data.get('order_id')
-        notes = data.get('notes', '')
-        
+
+        menu_id = data.get() if data else None'menu_id') if data else None
+        actual_time = data.get() if data else None'actual_time') if data else None
+        order_id = data.get() if data else None'order_id') if data else None
+        notes = data.get() if data else None'notes', '') if data else None
+
         if not menu_id or menu_id not in menu_cooktimes:
             return jsonify({'error': '유효하지 않은 메뉴입니다.'}), 400
-        
+
         if not actual_time or actual_time <= 0:
             return jsonify({'error': '유효하지 않은 조리시간입니다.'}), 400
-        
-        menu = menu_cooktimes[menu_id]
-        base_time = float(menu['base_time'])  # 명시적으로 float로 변환
-        
+
+        menu = menu_cooktimes[menu_id] if menu_cooktimes is not None else None
+        base_time = float(menu['base_time'] if menu is not None else None)  # 명시적으로 float로 변환
+
         # 시간 차이 계산
         time_difference = actual_time - base_time
         efficiency_ratio = base_time / actual_time if actual_time > 0 else 0
-        
+
         # 실제 조리시간 기록
         record_id = f"actual_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{current_user.id}"
         actual_record = {
             'id': record_id,
             'menu_id': menu_id,
-            'menu_name': menu['name'],
+            'menu_name': menu['name'] if menu is not None else None,
             'base_time': base_time,
             'actual_time': actual_time,
             'time_difference': round(time_difference, 1),
@@ -272,24 +279,25 @@ def record_actual_cooktime():
             'recorded_by': current_user.id,
             'recorded_at': datetime.now().isoformat()
         }
-        
-        cooktime_records[record_id] = actual_record
-        
+
+        cooktime_records[record_id] if cooktime_records is not None else None = actual_record
+
         # 액션 로깅
         log_cooktime_action('record_actual', {
-            'menu_name': menu['name'],
+            'menu_name': menu['name'] if menu is not None else None,
             'actual_time': actual_time,
             'efficiency_ratio': efficiency_ratio
         })
-        
+
         return jsonify({
             'success': True,
             'record': actual_record
         }), 201
-        
+
     except Exception as e:
         logger.error(f"실제 조리시간 기록 실패: {e}")
         return jsonify({'error': '실제 조리시간 기록에 실패했습니다.'}), 500
+
 
 @cooktime_api.route('/api/cooktime/records', methods=['GET'])
 @login_required
@@ -298,47 +306,47 @@ def get_cooktime_records():
     try:
         # 권한에 따른 필터링
         if current_user.role in ['admin', 'brand_admin']:
-            user_records = list(cooktime_records.values())
+            user_records = list(cooktime_records.value if cooktime_records is not None else Nones())
         else:
             # 일반 사용자는 본인이 기록한 것만 조회
             user_records = [
-                record for record in cooktime_records.values()
-                if record.get('created_by') == current_user.id or 
-                   record.get('recorded_by') == current_user.id
+                record for record in cooktime_records.value if cooktime_records is not None else Nones()
+                if record.get() if record else None'created_by') if record else None == current_user.id or
+                record.get() if record else None'recorded_by') if record else None == current_user.id
             ]
-        
+
         # 필터링 옵션
-        menu_filter = request.args.get('menu_id')
-        date_filter = request.args.get('date')
-        record_type = request.args.get('type')  # calculated, actual
-        
+        menu_filter = request.args.get() if args else None'menu_id') if args else None
+        date_filter = request.args.get() if args else None'date') if args else None
+        record_type = request.args.get() if args else None'type') if args else None  # calculated, actual
+
         if menu_filter:
-            user_records = [r for r in user_records if r.get('menu_id') == menu_filter]
-        
+            user_records = [r for r in user_records if r.get() if r else None'menu_id') if r else None == menu_filter]
+
         if date_filter:
             filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
             user_records = [
-                r for r in user_records 
-                if datetime.fromisoformat(r.get('created_at', r.get('recorded_at', ''))).date() == filter_date
+                r for r in user_records
+                if datetime.fromisoformat(r.get() if r else None'created_at', r.get() if r else None'recorded_at', '') if r else None)).date() == filter_date
             ]
-        
+
         if record_type:
             if record_type == 'calculated':
                 user_records = [r for r in user_records if 'calculated_time' in r]
             elif record_type == 'actual':
                 user_records = [r for r in user_records if 'actual_time' in r]
-        
+
         # 정렬 (최신순)
-        user_records.sort(key=lambda x: x.get('created_at', x.get('recorded_at', '')), reverse=True)
-        
+        user_records.sort(key=lambda x: x.get() if x else None'created_at', x.get() if x else None'recorded_at', '') if x else None), reverse=True)
+
         # 페이지네이션
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        
+        page = request.args.get() if args else None'page', 1, type=int) if args else None
+        per_page = request.args.get() if args else None'per_page', 20, type=int) if args else None
+
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
-        paginated_records = user_records[start_idx:end_idx]
-        
+        paginated_records = user_records[start_idx:end_idx] if user_records is not None else None
+
         return jsonify({
             'success': True,
             'records': paginated_records,
@@ -349,10 +357,11 @@ def get_cooktime_records():
                 'pages': (len(user_records) + per_page - 1) // per_page
             }
         })
-        
+
     except Exception as e:
         logger.error(f"조리시간 기록 목록 조회 실패: {e}")
         return jsonify({'error': '조리시간 기록 목록 조회에 실패했습니다.'}), 500
+
 
 @cooktime_api.route('/api/cooktime/statistics', methods=['GET'])
 @login_required
@@ -362,14 +371,14 @@ def get_cooktime_statistics():
     try:
         # 권한에 따른 데이터 필터링
         if current_user.role in ['admin', 'brand_admin']:
-            user_records = list(cooktime_records.values())
+            user_records = list(cooktime_records.value if cooktime_records is not None else Nones())
         else:
             # 매장 관리자는 해당 매장의 기록만
             user_records = [
-                record for record in cooktime_records.values()
-                if record.get('branch_id') == current_user.branch_id
+                record for record in cooktime_records.value if cooktime_records is not None else Nones()
+                if record.get() if record else None'branch_id') if record else None == current_user.branch_id
             ]
-        
+
         if not user_records:
             return jsonify({
                 'success': True,
@@ -380,10 +389,10 @@ def get_cooktime_statistics():
                     'recent_trend': []
                 }
             })
-        
+
         # 실제 조리시간 기록만 필터링
         actual_records = [r for r in user_records if 'actual_time' in r]
-        
+
         if not actual_records:
             return jsonify({
                 'success': True,
@@ -394,58 +403,58 @@ def get_cooktime_statistics():
                     'recent_trend': []
                 }
             })
-        
+
         # 평균 효율성 계산
-        total_efficiency = sum(r.get('efficiency_ratio', 0) for r in actual_records)
+        total_efficiency = sum(r.get() if r else None'efficiency_ratio', 0) if r else None for r in actual_records)
         average_efficiency = total_efficiency / len(actual_records)
-        
+
         # 메뉴별 성능 분석
         menu_performance = {}
-        for record in actual_records:
-            menu_id = record.get('menu_id')
+        for record in actual_records if actual_records is not None:
+            menu_id = record.get() if record else None'menu_id') if record else None
             if menu_id not in menu_performance:
-                menu_performance[menu_id] = {
-                    'menu_name': record.get('menu_name'),
+                menu_performance[menu_id] if menu_performance is not None else None = {
+                    'menu_name': record.get() if record else None'menu_name') if record else None,
                     'total_orders': 0,
                     'average_time': 0,
                     'average_efficiency': 0,
                     'times': []
                 }
-            
-            menu_performance[menu_id]['total_orders'] += 1
-            menu_performance[menu_id]['times'].append(record.get('actual_time', 0))
-        
+
+            menu_performance[menu_id] if menu_performance is not None else None['total_orders'] += 1
+            menu_performance[menu_id] if menu_performance is not None else None['times'].append(record.get() if record else None'actual_time', 0) if record else None)
+
         # 메뉴별 평균 계산
-        for menu_id, performance in menu_performance.items():
-            times = performance['times']
-            performance['average_time'] = sum(times) / len(times)
-            
+        for menu_id, performance in menu_performance.items() if menu_performance is not None else []:
+            times = performance['times'] if performance is not None else None
+            performance['average_time'] if performance is not None else None = sum(times) / len(times)
+
             # 해당 메뉴의 효율성 평균 계산
             menu_efficiencies = [
-                r.get('efficiency_ratio', 0) for r in actual_records 
-                if r.get('menu_id') == menu_id
+                r.get() if r else None'efficiency_ratio', 0) if r else None for r in actual_records
+                if r.get() if r else None'menu_id') if r else None == menu_id
             ]
             if menu_efficiencies:
-                performance['average_efficiency'] = sum(menu_efficiencies) / len(menu_efficiencies)
-        
+                performance['average_efficiency'] if performance is not None else None = sum(menu_efficiencies) / len(menu_efficiencies)
+
         # 최근 트렌드 (최근 7일)
         recent_date = datetime.now() - timedelta(days=7)
         recent_records = [
-            r for r in actual_records 
-            if datetime.fromisoformat(r.get('recorded_at', '')) >= recent_date
+            r for r in actual_records
+            if datetime.fromisoformat(r.get() if r else None'recorded_at', '') if r else None) >= recent_date
         ]
-        
+
         recent_trend = []
         for i in range(7):
             date = datetime.now() - timedelta(days=i)
             date_str = date.strftime('%Y-%m-%d')
             day_records = [
                 r for r in recent_records
-                if datetime.fromisoformat(r.get('recorded_at', '')).strftime('%Y-%m-%d') == date_str
+                if datetime.fromisoformat(r.get() if r else None'recorded_at', '') if r else None).strftime('%Y-%m-%d') == date_str
             ]
-            
+
             if day_records:
-                day_efficiency = sum(r.get('efficiency_ratio', 0) for r in day_records) / len(day_records)
+                day_efficiency = sum(r.get() if r else None'efficiency_ratio', 0) if r else None for r in day_records) / len(day_records)
                 recent_trend.append({
                     'date': date_str,
                     'orders': len(day_records),
@@ -457,9 +466,9 @@ def get_cooktime_statistics():
                     'orders': 0,
                     'average_efficiency': 0
                 })
-        
+
         recent_trend.reverse()  # 날짜순으로 정렬
-        
+
         return jsonify({
             'success': True,
             'statistics': {
@@ -469,10 +478,11 @@ def get_cooktime_statistics():
                 'recent_trend': recent_trend
             }
         })
-        
+
     except Exception as e:
         logger.error(f"조리시간 통계 조회 실패: {e}")
         return jsonify({'error': '통계 조회에 실패했습니다.'}), 500
+
 
 @cooktime_api.route('/api/cooktime/optimization', methods=['GET'])
 @login_required
@@ -483,11 +493,11 @@ def get_cooktime_optimization():
         # 최근 30일 데이터 분석
         recent_date = datetime.now() - timedelta(days=30)
         recent_records = [
-            r for r in cooktime_records.values()
-            if 'actual_time' in r and 
-            datetime.fromisoformat(r.get('recorded_at', '')) >= recent_date
+            r for r in cooktime_records.value if cooktime_records is not None else Nones()
+            if 'actual_time' in r and
+            datetime.fromisoformat(r.get() if r else None'recorded_at', '') if r else None) >= recent_date
         ]
-        
+
         if not recent_records:
             return jsonify({
                 'success': True,
@@ -497,46 +507,46 @@ def get_cooktime_optimization():
                     'efficiency_issues': []
                 }
             })
-        
+
         # 느린 메뉴 식별 (기본 시간보다 20% 이상 오래 걸리는 메뉴)
         slow_menus = []
-        for record in recent_records:
-            base_time = record.get('base_time', 0)
-            actual_time = record.get('actual_time', 0)
+        for record in recent_records if recent_records is not None:
+            base_time = record.get() if record else None'base_time', 0) if record else None
+            actual_time = record.get() if record else None'actual_time', 0) if record else None
             if actual_time > base_time * 1.2:  # 20% 이상 오래 걸림
                 slow_menus.append({
-                    'menu_name': record.get('menu_name'),
+                    'menu_name': record.get() if record else None'menu_name') if record else None,
                     'base_time': base_time,
                     'actual_time': actual_time,
                     'difference': round(actual_time - base_time, 1)
                 })
-        
+
         # 효율성 문제 분석
         efficiency_issues = []
         menu_efficiencies = {}
-        
-        for record in recent_records:
-            menu_id = record.get('menu_id')
-            efficiency = record.get('efficiency_ratio', 0)
-            
+
+        for record in recent_records if recent_records is not None:
+            menu_id = record.get() if record else None'menu_id') if record else None
+            efficiency = record.get() if record else None'efficiency_ratio', 0) if record else None
+
             if menu_id not in menu_efficiencies:
-                menu_efficiencies[menu_id] = []
-            menu_efficiencies[menu_id].append(efficiency)
-        
+                menu_efficiencies[menu_id] if menu_efficiencies is not None else None = []
+            menu_efficiencies[menu_id] if menu_efficiencies is not None else None.append(efficiency)
+
         # 평균 효율성이 0.8 미만인 메뉴 식별
-        for menu_id, efficiencies in menu_efficiencies.items():
+        for menu_id, efficiencies in menu_efficiencies.items() if menu_efficiencies is not None else []:
             avg_efficiency = sum(efficiencies) / len(efficiencies)
             if avg_efficiency < 0.8:
-                menu_name = next((r.get('menu_name') for r in recent_records if r.get('menu_id') == menu_id), 'Unknown')
+                menu_name = next((r.get() if r else None'menu_name') if r else None for r in recent_records if r.get() if r else None'menu_id') if r else None == menu_id), 'Unknown')
                 efficiency_issues.append({
                     'menu_name': menu_name,
                     'average_efficiency': round(avg_efficiency, 2),
                     'recommendation': '조리 과정 최적화가 필요합니다.'
                 })
-        
+
         # 권장사항 생성
         recommendations = []
-        
+
         if slow_menus:
             recommendations.append({
                 'type': 'slow_cooking',
@@ -544,7 +554,7 @@ def get_cooktime_optimization():
                 'description': f'{len(slow_menus)}개 메뉴의 조리시간이 기준보다 오래 걸리고 있습니다.',
                 'priority': 'high'
             })
-        
+
         if efficiency_issues:
             recommendations.append({
                 'type': 'efficiency_improvement',
@@ -552,7 +562,7 @@ def get_cooktime_optimization():
                 'description': f'{len(efficiency_issues)}개 메뉴의 효율성이 낮습니다.',
                 'priority': 'medium'
             })
-        
+
         if not slow_menus and not efficiency_issues:
             recommendations.append({
                 'type': 'good_performance',
@@ -560,19 +570,20 @@ def get_cooktime_optimization():
                 'description': '조리시간이 기준에 맞게 잘 지켜지고 있습니다.',
                 'priority': 'low'
             })
-        
+
         return jsonify({
             'success': True,
             'optimization': {
                 'recommendations': recommendations,
-                'slow_menus': slow_menus[:5],  # 상위 5개만
+                'slow_menus': slow_menus[:5] if slow_menus is not None else None,  # 상위 5개만
                 'efficiency_issues': efficiency_issues
             }
         })
-        
+
     except Exception as e:
         logger.error(f"조리시간 최적화 분석 실패: {e}")
         return jsonify({'error': '최적화 분석에 실패했습니다.'}), 500
+
 
 @cooktime_api.route('/api/cooktime/records/<record_id>', methods=['DELETE'])
 @login_required
@@ -582,18 +593,18 @@ def delete_cooktime_record(record_id: str):
     try:
         if record_id not in cooktime_records:
             return jsonify({'error': '기록을 찾을 수 없습니다.'}), 404
-        
+
         # 기록 삭제
         deleted_record = cooktime_records.pop(record_id)
-        
+
         # 액션 로깅
-        log_cooktime_action('delete', {'record_id': record_id})
-        
+        log_cooktime_action('delete',  {'record_id': record_id})
+
         return jsonify({
             'success': True,
             'message': '조리시간 기록이 삭제되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"조리시간 기록 삭제 실패: {e}")
-        return jsonify({'error': '조리시간 기록 삭제에 실패했습니다.'}), 500 
+        return jsonify({'error': '조리시간 기록 삭제에 실패했습니다.'}), 500

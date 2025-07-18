@@ -1,14 +1,16 @@
-from datetime import datetime
-
+from utils.notify import (notify_approval_result, notify_attendance_issue)  # pyright: ignore
+from utils.logger import log_action, log_error  # pyright: ignore
+from utils.decorators import admin_required  # pyright: ignore
+from models_main import ApproveLog, Attendance, Notification, User
+from models_main import db
+from flask_login import current_user, login_required
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, url_for)
-from flask_login import current_user, login_required
+from datetime import datetime
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from models import db
-from models import ApproveLog, Attendance, Notification, User
-from utils.decorators import admin_required
-from utils.logger import log_action, log_error
-from utils.notify import (notify_approval_result, notify_attendance_issue)
 
 notifications_bp = Blueprint("notifications", __name__)
 
@@ -19,9 +21,9 @@ def notification_center():
     """알림센터 - 필터링, 카테고리별 탭, 권한별 구분"""
     try:
         # 필터 파라미터
-        category = request.args.get("category", "")
-        is_read = request.args.get("is_read", "")
-        page = request.args.get("page", 1, type=int)
+        category = request.args.get() if args else None"category", "") if args else None
+        is_read = request.args.get() if args else None"is_read", "") if args else None
+        page = request.args.get() if args else None"page", 1, type=int) if args else None
         per_page = 20
 
         # 기본 쿼리
@@ -126,10 +128,10 @@ def admin_notification_center():
     """관리자 알림센터 - 모든 사용자 알림 관리"""
     try:
         # 필터 파라미터
-        category = request.args.get("category", "")
-        is_read = request.args.get("is_read", "")
-        user_id = request.args.get("user_id", "", type=int)
-        page = request.args.get("page", 1, type=int)
+        category = request.args.get() if args else None"category", "") if args else None
+        is_read = request.args.get() if args else None"is_read", "") if args else None
+        user_id = request.args.get() if args else None"user_id", "", type=int) if args else None
+        page = request.args.get() if args else None"page", 1, type=int) if args else None
         per_page = 30
 
         # 기본 쿼리 (관리자는 모든 알림 조회 가능)
@@ -276,12 +278,12 @@ def send_notification_page():
 @notifications_bp.route("/admin/approve_user/<int:user_id>/<action>")
 @login_required
 @admin_required
-def approve_user_with_notification(user_id, action):
+def approve_user_with_notification(user_id,  action):
     """승인/거절 처리 (알림 포함)"""
     try:
         message = ""
         user = User.query.get_or_404(user_id)
-        reason = request.args.get("reason", "")
+        reason = request.args.get() if args else None"reason", "") if args else None
 
         if action == "approve":
             user.status = "approved"
@@ -349,7 +351,7 @@ def send_attendance_notification(user_id):
 
         # 통계 계산
         lateness = early_leave = night_work = 0
-        for att in attendances:
+        for att in attendances if attendances is not None:
             if att.clock_in and att.clock_in.time() > STANDARD_CLOCKIN:
                 lateness += 1
             if att.clock_out and att.clock_out.time() < STANDARD_CLOCKOUT:
@@ -402,7 +404,7 @@ def bulk_attendance_notification():
         users = User.query.filter_by(status="approved").all()
         notification_count = 0
 
-        for user in users:
+        for user in users if users is not None:
             attendances = Attendance.query.filter(
                 Attendance.user_id == user.id,
                 extract("year", Attendance.clock_in) == year,
@@ -411,7 +413,7 @@ def bulk_attendance_notification():
             ).all()
 
             lateness = early_leave = night_work = 0
-            for att in attendances:
+            for att in attendances if attendances is not None:
                 if att.clock_in and att.clock_in.time() > STANDARD_CLOCKIN:
                     lateness += 1
                 if att.clock_out and att.clock_out.time() < STANDARD_CLOCKOUT:
@@ -447,15 +449,15 @@ def api_unread_count():
     try:
         # 현재 사용자의 읽지 않은 알림 개수 조회
         unread_count = Notification.query.filter_by(
-            user_id=current_user.id, 
+            user_id=current_user.id,
             is_read=False
         ).count()
-        
+
         return jsonify({
             "success": True,
             "count": unread_count
         })
-        
+
     except Exception as e:
         log_error(e, current_user.id if current_user.is_authenticated else None)
         return jsonify({

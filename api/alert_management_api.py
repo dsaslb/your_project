@@ -1,14 +1,18 @@
+import os
+from typing import Dict, Any, Optional
+import logging
+from datetime import datetime, timedelta
+from flask import Blueprint, jsonify, request
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
+environ = None  # pyright: ignore
 #!/usr/bin/env python3
 """
 알림 관리 API 엔드포인트
 알림 로그, 통계, 설정 관리 기능
 """
 
-from flask import Blueprint, jsonify, request
-from datetime import datetime, timedelta
-import logging
-from typing import Dict, Any, Optional
-import os
 
 # 알림 로그 모델 import
 try:
@@ -22,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Blueprint 생성
 alert_management_bp = Blueprint('alert_management', __name__, url_prefix='/api/alerts')
 
+
 @alert_management_bp.route('/logs', methods=['GET'])
 def get_alert_logs():
     """알림 로그 조회"""
@@ -31,7 +36,7 @@ def get_alert_logs():
                 'success': False,
                 'error': '알림 로그 모델을 사용할 수 없습니다'
             }), 500
-        
+
         # 쿼리 파라미터
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
@@ -39,12 +44,12 @@ def get_alert_logs():
         channel = request.args.get('channel')
         plugin_id = request.args.get('plugin_id')
         days = request.args.get('days', 7, type=int)
-        
+
         # 기본 쿼리 (최근 N일)
         query = AlertLog.query.filter(
             AlertLog.timestamp >= datetime.utcnow() - timedelta(days=days)
         )
-        
+
         # 필터 적용
         if level:
             query = query.filter(AlertLog.level == level)
@@ -52,12 +57,12 @@ def get_alert_logs():
             query = query.filter(AlertLog.channel == channel)
         if plugin_id:
             query = query.filter(AlertLog.plugin_id == plugin_id)
-        
+
         # 정렬 및 페이징
         logs = query.order_by(AlertLog.timestamp.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -71,7 +76,7 @@ def get_alert_logs():
             },
             'timestamp': datetime.now().isoformat()
         })
-        
+
     except Exception as e:
         logger.error(f"알림 로그 조회 실패: {e}")
         return jsonify({
@@ -79,6 +84,7 @@ def get_alert_logs():
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
+
 
 @alert_management_bp.route('/stats', methods=['GET'])
 def get_alert_stats():
@@ -89,15 +95,15 @@ def get_alert_stats():
                 'success': False,
                 'error': '알림 로그 모델을 사용할 수 없습니다'
             }), 500
-        
-        days = request.args.get('days', 7, type=int)
+
+        days = request.args.get('days', 7, type=int) if args else None
         start_date = datetime.utcnow() - timedelta(days=days)
-        
+
         # 전체 알림 수
         total_alerts = AlertLog.query.filter(
             AlertLog.timestamp >= start_date
         ).count()
-        
+
         # 레벨별 통계
         level_stats = db.session.query(
             AlertLog.level,
@@ -105,7 +111,7 @@ def get_alert_stats():
         ).filter(
             AlertLog.timestamp >= start_date
         ).group_by(AlertLog.level).all()
-        
+
         # 채널별 통계
         channel_stats = db.session.query(
             AlertLog.channel,
@@ -113,7 +119,7 @@ def get_alert_stats():
         ).filter(
             AlertLog.timestamp >= start_date
         ).group_by(AlertLog.channel).all()
-        
+
         # 플러그인별 통계
         plugin_stats = db.session.query(
             AlertLog.plugin_id,
@@ -122,7 +128,7 @@ def get_alert_stats():
             AlertLog.timestamp >= start_date,
             AlertLog.plugin_id.isnot(None)
         ).group_by(AlertLog.plugin_id).all()
-        
+
         # 시간대별 통계 (최근 24시간)
         hourly_stats = db.session.query(
             db.func.date_trunc('hour', AlertLog.timestamp),
@@ -134,7 +140,7 @@ def get_alert_stats():
         ).order_by(
             db.func.date_trunc('hour', AlertLog.timestamp)
         ).all()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -151,7 +157,7 @@ def get_alert_stats():
             },
             'timestamp': datetime.now().isoformat()
         })
-        
+
     except Exception as e:
         logger.error(f"알림 통계 조회 실패: {e}")
         return jsonify({
@@ -159,6 +165,7 @@ def get_alert_stats():
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
+
 
 @alert_management_bp.route('/settings', methods=['GET'])
 def get_alert_settings():
@@ -186,13 +193,13 @@ def get_alert_settings():
                 'to_number': os.environ.get('KAKAO_TO_NUMBER', '')
             }
         }
-        
+
         return jsonify({
             'success': True,
             'data': settings,
             'timestamp': datetime.now().isoformat()
         })
-        
+
     except Exception as e:
         logger.error(f"알림 설정 조회 실패: {e}")
         return jsonify({
@@ -201,30 +208,31 @@ def get_alert_settings():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @alert_management_bp.route('/test', methods=['POST'])
 def test_alert():
     """알림 테스트 전송"""
     try:
         data = request.get_json()
-        channel = data.get('channel', 'slack')
-        message = data.get('message', '테스트 알림입니다.')
-        level = data.get('level', 'info')
-        
+        channel = data.get('channel', 'slack') if data else None
+        message = data.get('message', '테스트 알림입니다.') if data else None
+        level = data.get('level', 'info') if data else None
+
         from utils.alert_notifier import send_alert
-        
+
         # 테스트 알림 전송
         send_alert(message, level=level)
-        
+
         return jsonify({
             'success': True,
             'message': f'{channel} 채널로 테스트 알림이 전송되었습니다.',
             'timestamp': datetime.now().isoformat()
         })
-        
+
     except Exception as e:
         logger.error(f"알림 테스트 실패: {e}")
         return jsonify({
             'success': False,
             'error': str(e),
             'timestamp': datetime.now().isoformat()
-        }), 500 
+        }), 500

@@ -1,13 +1,14 @@
-import io
-from datetime import datetime
-
-import pandas as pd
-import pdfkit
+from app import Attendance, AttendanceReport, User, db
+from flask_login import current_user, login_required
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, send_file, url_for)
-from flask_login import current_user, login_required
+import pdfkit
+import pandas as pd
+from datetime import datetime
+import io
+args = None  # pyright: ignore
+query = None  # pyright: ignore
 
-from app import Attendance, AttendanceReport, User, db
 
 admin_dashboard_export_bp = Blueprint("admin_dashboard_export", __name__)
 
@@ -105,9 +106,7 @@ def export_admin_dashboard_pdf():
         stats["total_records"] = len(records)
         stats["late_count"] = len([r for r in records if "지각" in (r.reason or "")])
         stats["absent_count"] = len([r for r in records if "결근" in (r.reason or "")])
-        stats["normal_count"] = (
-            stats["total_records"] - stats["late_count"] - stats["absent_count"]
-        )
+        stats["normal_count"] = stats["total_records"] - stats["late_count"] - stats["absent_count"]
 
     html = render_template(
         "admin_dashboard_pdf.html",

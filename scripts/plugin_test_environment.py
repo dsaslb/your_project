@@ -8,6 +8,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
 # from typing import Any  # 미사용
 
 
@@ -24,8 +25,8 @@ class PluginTestEnvironment:
                     "-v",
                     "--tb=short",
                     "--strict-markers",
-                    "--disable-warnings"
-                ]
+                    "--disable-warnings",
+                ],
             }
         }
 
@@ -64,10 +65,17 @@ class PluginTestEnvironment:
 
             # 테스트 의존성 설치
             print("📦 테스트 의존성 설치 중...")
-            subprocess.run([
-                sys.executable, "-m", "pip", "install", "-r",
-                str(plugin_path / "test_requirements.txt")
-            ], check=True)
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "-r",
+                    str(plugin_path / "test_requirements.txt"),
+                ],
+                check=True,
+            )
 
             # 테스트 실행
             print(f"🧪 {plugin_id} 플러그인 테스트 실행 중...")
@@ -98,12 +106,17 @@ class PluginTestEnvironment:
                 print(f"❌ 플러그인 {plugin_id}이 존재하지 않습니다.")
                 return False
             # HTML 리포트 생성
-            subprocess.run([
-                "pytest", str(plugin_path / "tests"),
-                "--cov=backend",
-                "--cov-report=html",
-                "--cov-report=term-missing"
-            ], cwd=plugin_path, check=True)
+            subprocess.run(
+                [
+                    "pytest",
+                    str(plugin_path / "tests"),
+                    "--cov=backend",
+                    "--cov-report=html",
+                    "--cov-report=term-missing",
+                ],
+                cwd=plugin_path,
+                check=True,
+            )
             report_path = plugin_path / "htmlcov"
             if report_path.exists():
                 print(f"📊 테스트 리포트가 생성되었습니다: {report_path}")
@@ -118,7 +131,7 @@ class PluginTestEnvironment:
     def _create_pytest_config(self, plugin_path: Path):
         """pytest 설정 파일 생성"""
         config_path = plugin_path / "pytest.ini"
-        
+
         config_content = f"""[pytest]
 testpaths = tests
 python_files = test_*.py *_test.py
@@ -137,7 +150,7 @@ markers =
     integration: Integration tests
     slow: Slow running tests
 """
-        
+
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(config_content)
 
@@ -156,7 +169,7 @@ from pathlib import Path
 plugin_path = Path(__file__).parent.parent
 sys.path.insert(0, str(plugin_path))
 '''
-        
+
         with open(test_path / "__init__.py", "w", encoding="utf-8") as f:
             f.write(init_content)
 
@@ -184,9 +197,9 @@ sys.path.insert(0, str(plugin_path))
             "pytest-asyncio>=0.21.0",
             "flask-testing>=0.8.1",
             "factory-boy>=3.2.0",
-            "faker>=18.0.0"
+            "faker>=18.0.0",
         ]
-        
+
         with open(plugin_path / "test_requirements.txt", "w", encoding="utf-8") as f:
             f.write("\n".join(test_requirements))
 
@@ -200,12 +213,9 @@ sys.path.insert(0, str(plugin_path))
             "plugin_id": plugin_id,
             "test_mode": True,
             "mock_data": True,
-            "database": {
-                "url": "sqlite:///:memory:",
-                "echo": False
-            }
+            "database": {"url": "sqlite:///:memory:", "echo": False},
         }
-        
+
         with open(test_data_path / "test_config.json", "w", encoding="utf-8") as f:
             json.dump(test_config, f, indent=2, ensure_ascii=False)
 
@@ -213,22 +223,18 @@ sys.path.insert(0, str(plugin_path))
         sample_data = {
             "users": [
                 {"id": 1, "name": "Test User 1", "email": "test1@example.com"},
-                {"id": 2, "name": "Test User 2", "email": "test2@example.com"}
+                {"id": 2, "name": "Test User 2", "email": "test2@example.com"},
             ],
-            "settings": {
-                "debug": True,
-                "timeout": 30,
-                "retry_count": 3
-            }
+            "settings": {"debug": True, "timeout": 30, "retry_count": 3},
         }
-        
+
         with open(test_data_path / "sample_data.json", "w", encoding="utf-8") as f:
             json.dump(sample_data, f, indent=2, ensure_ascii=False)
 
     def _generate_unit_tests(self, plugin_id: str) -> str:
         """단위 테스트 파일 내용 생성"""
-        class_name = plugin_id.replace('-', '_').title()
-        
+        class_name = plugin_id.replace("-", "_").title()
+
         return f'''"""
 {plugin_id} 플러그인 단위 테스트
 """
@@ -330,8 +336,8 @@ class Test{class_name}Plugin:
 
     def _generate_integration_tests(self, plugin_id: str) -> str:
         """통합 테스트 파일 내용 생성"""
-        class_name = plugin_id.replace('-', '_').title()
-        
+        class_name = plugin_id.replace("-", "_").title()
+
         return f'''"""
 {plugin_id} 플러그인 통합 테스트
 """
@@ -617,95 +623,91 @@ class PluginTestUtils:
 # 테스트 데이터 팩토리
 class TestDataFactory:
     """테스트 데이터 팩토리"""
-    
+
     @staticmethod
     def create_user_data(user_id: int = 1):
         """사용자 테스트 데이터 생성"""
         return {
-            'id': user_id,
-            'name': f'Test User {user_id}',
-            'email': f'test{user_id}@example.com',
-            'role': 'user'
+            "id": user_id,
+            "name": f"Test User {user_id}",
+            "email": f"test{user_id}@example.com",
+            "role": "user",
         }
-    
+
     @staticmethod
     def create_plugin_config_data(plugin_id: str):
         """플러그인 설정 테스트 데이터 생성"""
         return {
-            'plugin_id': plugin_id,
-            'enabled': True,
-            'debug_mode': False,
-            'version': '1.0.0',
-            'settings': {
-                'timeout': 30,
-                'retry_count': 3
-            }
+            "plugin_id": plugin_id,
+            "enabled": True,
+            "debug_mode": False,
+            "version": "1.0.0",
+            "settings": {"timeout": 30, "retry_count": 3},
         }
-    
+
     @staticmethod
     def create_health_status_data():
         """상태 확인 테스트 데이터 생성"""
         return {
-            'status': 'healthy',
-            'uptime': '2023-01-01T00:00:00',
-            'version': '1.0.0',
-            'features': ['feature1', 'feature2']
+            "status": "healthy",
+            "uptime": "2023-01-01T00:00:00",
+            "version": "1.0.0",
+            "features": ["feature1", "feature2"],
         }
 
 
 # 테스트 마커 정의
-pytest_plugins = ['pytest_mock']
+pytest_plugins = ["pytest_mock"]
 
 
 def pytest_configure(config):
     """pytest 설정"""
-    config.addinivalue_line(
-        "markers", "unit: Unit tests"
-    )
-    config.addinivalue_line(
-        "markers", "integration: Integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "slow: Slow running tests"
-    )
+    config.addinivalue_line("markers", "unit: Unit tests")
+    config.addinivalue_line("markers", "integration: Integration tests")
+    config.addinivalue_line("markers", "slow: Slow running tests")
 
 
 def main():
     """메인 함수"""
     test_env = PluginTestEnvironment()
-    
+
     print("🧪 플러그인 테스트 환경 구축")
     print("=" * 50)
-    
+
     # 플러그인 ID 입력
     plugin_id = input("테스트 환경을 설정할 플러그인 ID를 입력하세요: ").strip()
-    
+
     if not plugin_id:
         print("❌ 플러그인 ID를 입력해주세요.")
         return
-    
+
     # 테스트 환경 설정
     print(f"\n🔧 {plugin_id} 플러그인 테스트 환경 설정 중...")
     if test_env.setup_test_environment(plugin_id):
         print(f"\n✅ {plugin_id} 플러그인 테스트 환경이 설정되었습니다!")
-        
+
         # 테스트 실행 여부 확인
         run_tests = input("\n테스트를 실행하시겠습니까? (y/N): ").strip().lower()
-        if run_tests == 'y':
-            test_type = input("테스트 유형을 선택하세요 (all/unit/integration): ").strip() or "all"
+        if run_tests == "y":
+            test_type = (
+                input("테스트 유형을 선택하세요 (all/unit/integration): ").strip()
+                or "all"
+            )
             test_env.run_tests(plugin_id, test_type)
-        
+
         # 리포트 생성 여부 확인
-        generate_report = input("\n테스트 리포트를 생성하시겠습니까? (y/N): ").strip().lower()
-        if generate_report == 'y':
+        generate_report = (
+            input("\n테스트 리포트를 생성하시겠습니까? (y/N): ").strip().lower()
+        )
+        if generate_report == "y":
             test_env.generate_test_report(plugin_id)
-        
+
         print(f"\n📁 테스트 파일 위치:")
         print(f"  - 테스트 디렉토리: plugins/{plugin_id}/tests/")
         print(f"  - 설정 파일: plugins/{plugin_id}/pytest.ini")
         print(f"  - 의존성: plugins/{plugin_id}/test_requirements.txt")
         print(f"  - 리포트: plugins/{plugin_id}/htmlcov/ (테스트 실행 후)")
-        
+
         print(f"\n🚀 다음 명령어로 테스트를 실행할 수 있습니다:")
         print(f"  cd plugins/{plugin_id}")
         print(f"  pytest tests/")
@@ -714,4 +716,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

@@ -1,3 +1,18 @@
+from utils.notify import send_notification_enhanced  # pyright: ignore
+from utils.logger import log_action  # pyright: ignore
+from models_main import (Attendance, Notification, ReasonEditLog, ReasonTemplate,
+                         User, db)
+from sqlalchemy import func, and_
+from flask_login import current_user, login_required
+from flask import (Blueprint, Response, jsonify, render_template, request,
+                   session)
+from typing import Dict, List, Optional
+import logging
+from datetime import datetime, timedelta
+import time
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 알림 자동화 라우트
 - 승인/거절 자동 알림
@@ -8,27 +23,13 @@
 - AI 기반 우선순위
 """
 
-import time
-from datetime import datetime, timedelta
-import logging
-from typing import Dict, List, Optional
-
-from flask import (Blueprint, Response, jsonify, render_template, request,
-                   session)
-from flask_login import current_user, login_required
-from sqlalchemy import func, and_
-
-from models import (Attendance, Notification, ReasonEditLog, ReasonTemplate,
-                    User, db)
-from utils.logger import log_action
-from utils.notify import send_notification_enhanced
 
 logger = logging.getLogger(__name__)
 
 notification_automation_bp = Blueprint("notification_automation", __name__)
 
 
-def send_automated_notification(user_id, content, category="공지", link=None):
+def send_automated_notification(user_id,  content, category="공지", link=None):
     """자동화된 알림 발송 함수"""
     try:
         notification = Notification()
@@ -98,7 +99,7 @@ def send_notification(
 
 def ai_classify_notification(content):
     """AI 기반 알림 분류/우선순위 추천"""
-    content_lower = content.lower()
+    content_lower = content.lower() if content is not None else ''
 
     # 긴급 키워드
     if any(
@@ -120,18 +121,18 @@ def ai_classify_notification(content):
     return "일반"
 
 
-def send_mobile_push(user, message):
+def send_mobile_push(user,  message):
     """모바일 푸시 알림 (샘플)"""
     # 추후 FCM/APNS 연동
     logger.info(f"[푸시알림] {user.username}: {message}")
 
 
-def send_notification_with_push(user_id, content, **kwargs):
+def send_notification_with_push(user_id,  content,  **kwargs):
     """푸시 알림과 함께 알림 발송"""
-    user = User.query.get(user_id)
-    success = send_notification(user_id=user_id, content=content, **kwargs)
+    user = User.query.get() if query else Noneuser_id) if query else None
+    success = send_notification(user_id=user_id, content=content,  **kwargs)
     if success and user:
-        send_mobile_push(user, content)
+        send_mobile_push(user,  content)
     return success
 
 
@@ -146,17 +147,17 @@ def ai_reason_analyze(user_id):
 
         # 사유별 카운트
         reason_counts = {}
-        for record in recent:
+        for record in recent if recent is not None:
             if record.reason:
-                reason = record.reason.strip()
-                reason_counts[reason] = reason_counts.get(reason, 0) + 1
+                reason = record.reason.strip() if reason is not None else ''
+                reason_counts[reason] if reason_counts is not None else None = reason_counts.get() if reason_counts else Nonereason, 0) if reason_counts else None + 1
 
         warnings = []
         recommendations = []
 
         # 지각 관련 경고
         late_count = sum(
-            count for reason, count in reason_counts.items() if "지각" in reason
+            count for reason, count in reason_counts.items() if reason_counts is not None else [] if "지각" in reason
         )
         if late_count >= 5:
             warnings.append(f"지각 {late_count}회 - 경고 대상")
@@ -167,7 +168,7 @@ def ai_reason_analyze(user_id):
         # 병가 관련 경고
         sick_count = sum(
             count
-            for reason, count in reason_counts.items()
+            for reason, count in reason_counts.items() if reason_counts is not None else []
             if "병가" in reason or "아픔" in reason
         )
         if sick_count >= 3:
@@ -195,8 +196,8 @@ def ai_reason_analyze(user_id):
 @login_required
 def notifications_dashboard():
     """알림센터 대시보드 - 필터/검색/상태 집계"""
-    user_id = session.get("user_id")
-    role = session.get("role")
+    user_id = session.get() if session else None"user_id") if session else None
+    role = session.get() if session else None"role") if session else None
 
     # 알림 필터
     q = Notification.query
@@ -204,22 +205,22 @@ def notifications_dashboard():
         q = q.filter_by(user_id=user_id)
 
     # 카테고리 필터
-    category = request.args.get("category")
+    category = request.args.get() if args else None"category") if args else None
     if category:
         q = q.filter_by(category=category)
 
     # 읽음 상태 필터
-    is_read = request.args.get("is_read")
+    is_read = request.args.get() if args else None"is_read") if args else None
     if is_read in ["0", "1"]:
         q = q.filter_by(is_read=bool(int(is_read)))
 
     # 우선순위 필터
-    priority = request.args.get("priority")
+    priority = request.args.get() if args else None"priority") if args else None
     if priority:
         q = q.filter_by(priority=priority)
 
     # 키워드 검색
-    keyword = request.args.get("q")
+    keyword = request.args.get() if args else None"q") if args else None
     if keyword:
         q = q.filter(Notification.content.contains(keyword))
 
@@ -261,7 +262,7 @@ def notifications_dashboard():
 @login_required
 def mark_notification_read():
     """알림 읽음 처리"""
-    notification_id = request.json.get("notification_id")
+    notification_id = request.json.get() if json else None"notification_id") if json else None
 
     if not notification_id:
         return jsonify({"error": "notification_id required"}), 400
@@ -283,8 +284,8 @@ def mark_notification_read():
 @login_required
 def notifications_stats():
     """알림 통계 차트 - 일별/카테고리별"""
-    user_id = session.get("user_id")
-    role = session.get("role")
+    user_id = session.get() if session else None"user_id") if session else None
+    role = session.get() if session else None"role") if session else None
 
     # 쿼리 구성
     q = Notification.query
@@ -292,7 +293,7 @@ def notifications_stats():
         q = q.filter_by(user_id=user_id)
 
     # 일별 통계 (최근 30일)
-    days = request.args.get("days", 30, type=int)
+    days = request.args.get() if args else None"days", 30, type=int) if args else None
     start_date = datetime.now() - timedelta(days=days)
 
     daily_stats = db.session.query(
@@ -344,12 +345,12 @@ def send_bulk_notification():
         return jsonify({"error": "관리자 권한이 필요합니다."}), 403
 
     data = request.json
-    content = data.get("content")
-    category = data.get("category", "공지")
-    recipient_role = data.get("recipient_role")
-    recipient_team = data.get("recipient_team")
-    priority = data.get("priority", "일반")
-    send_push = data.get("send_push", False)
+    content = data.get() if data else None"content") if data else None
+    category = data.get() if data else None"category", "공지") if data else None
+    recipient_role = data.get() if data else None"recipient_role") if data else None
+    recipient_team = data.get() if data else None"recipient_team") if data else None
+    priority = data.get() if data else None"priority", "일반") if data else None
+    send_push = data.get() if data else None"send_push", False) if data else None
 
     if not content:
         return jsonify({"error": "content required"}), 400
@@ -374,7 +375,7 @@ def send_bulk_notification():
             users = users.filter_by(team=recipient_team)
 
         for user in users.all():
-            send_mobile_push(user, content)
+            send_mobile_push(user,  content)
 
     return jsonify({"success": success})
 
@@ -390,13 +391,13 @@ def admin_ai_reason_warnings():
     users = User.query.filter_by(status="approved").all()
     results = []
 
-    for user in users:
+    for user in users if users is not None:
         analysis = ai_reason_analyze(user.id)
-        if analysis["warnings"]:  # 경고가 있는 경우만
+        if analysis["warnings"] if analysis is not None else None:  # 경고가 있는 경우만
             results.append({"user": user, "analysis": analysis})
 
     # 전체 통계
-    total_warnings = sum(len(result["analysis"]["warnings"]) for result in results)
+    total_warnings = sum(len(result["analysis"] if result is not None else None["warnings"]) for result in results)
     total_users_with_warnings = len(results)
 
     return render_template(
@@ -415,7 +416,7 @@ def reason_edit_log_chart():
     if not current_user.is_admin():
         return jsonify({"error": "관리자 권한이 필요합니다."}), 403
 
-    days = request.args.get("days", 30, type=int)
+    days = request.args.get() if args else None"days", 30, type=int) if args else None
     start_date = datetime.now() - timedelta(days=days)
 
     # 일자별 변경 건수
@@ -434,7 +435,7 @@ def reason_edit_log_chart():
     labels = [d.date.strftime("%m-%d") for d in daily_data]
     counts = [d.count for d in daily_data]
 
-    if request.headers.get("Accept") == "application/json":
+    if request.headers.get() if headers else None"Accept") if headers else None == "application/json":
         return jsonify({"daily_labels": labels, "daily_counts": counts})
 
     return render_template(
@@ -446,9 +447,9 @@ def reason_edit_log_chart():
 @notification_automation_bp.route("/api/mobile/notifications")
 def api_mobile_notifications():
     """모바일 알림 API"""
-    user_id = request.args.get("user_id", type=int)
-    limit = request.args.get("limit", 20, type=int)
-    category = request.args.get("category")
+    user_id = request.args.get() if args else None"user_id", type=int) if args else None
+    limit = request.args.get() if args else None"limit", 20, type=int) if args else None
+    category = request.args.get() if args else None"category") if args else None
 
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
@@ -482,8 +483,8 @@ def api_mobile_notifications():
 )
 def api_mobile_mark_notification_read():
     """모바일 알림 읽음 처리 API"""
-    user_id = request.json.get("user_id")
-    notification_id = request.json.get("notification_id")
+    user_id = request.json.get() if json else None"user_id") if json else None
+    notification_id = request.json.get() if json else None"notification_id") if json else None
 
     if not user_id or not notification_id:
         return jsonify({"error": "user_id and notification_id required"}), 400
@@ -503,7 +504,7 @@ def api_mobile_mark_notification_read():
 @notification_automation_bp.route("/api/mobile/notifications/unread_count")
 def api_mobile_unread_count():
     """모바일 읽지 않은 알림 개수 API"""
-    user_id = request.args.get("user_id", type=int)
+    user_id = request.args.get() if args else None"user_id", type=int) if args else None
 
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
@@ -545,14 +546,14 @@ def api_send_notification():
         return jsonify({"error": "관리자 권한이 필요합니다."}), 403
 
     data = request.json
-    user_id = data.get("user_id")
-    content = data.get("content")
-    category = data.get("category", "공지")
+    user_id = data.get() if data else None"user_id") if data else None
+    content = data.get() if data else None"content") if data else None
+    category = data.get() if data else None"category", "공지") if data else None
 
     if not user_id or not content:
         return jsonify({"error": "user_id and content required"}), 400
 
-    success = send_automated_notification(user_id, content, category)
+    success = send_automated_notification(user_id,  content,  category)
     return jsonify({"success": success})
 
 
@@ -564,7 +565,7 @@ def api_user_info(user_id):
     if not current_user.is_admin():
         return jsonify({"error": "관리자 권한이 필요합니다."}), 403
 
-    user = User.query.get(user_id)
+    user = User.query.get() if query else Noneuser_id) if query else None
     if not user:
         return jsonify({"error": "User not found"}), 404
 
@@ -583,12 +584,12 @@ def send_bulk_notifications():
     """대량 알림 발송"""
     try:
         data = request.get_json()
-        user_ids = data.get("user_ids", [])
-        content = data.get("content", "")
-        category = data.get("category", "공지")
-        
+        user_ids = data.get() if data else None"user_ids", []) if data else None
+        content = data.get() if data else None"content", "") if data else None
+        category = data.get() if data else None"category", "공지") if data else None
+
         success_count = 0
-        for user_id in user_ids:
+        for user_id in user_ids if user_ids is not None:
             try:
                 send_notification_enhanced(
                     user_id=user_id,
@@ -598,14 +599,14 @@ def send_bulk_notifications():
                 success_count += 1
             except Exception as e:
                 logger.error(f"알림 발송 오류: {e}")
-        
+
         return jsonify({
             "success": True,
             "message": f"{success_count}건 발송 완료",
             "total": len(user_ids),
             "success_count": success_count
         })
-        
+
     except Exception as e:
         logger.error(f"대량 알림 발송 실패: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -616,15 +617,15 @@ def send_scheduled_notifications():
     """예약 알림 발송"""
     try:
         data = request.get_json()
-        user_ids = data.get("user_ids", [])
-        content = data.get("content", "")
-        scheduled_time = data.get("scheduled_time")
-        
+        user_ids = data.get() if data else None"user_ids", []) if data else None
+        content = data.get() if data else None"content", "") if data else None
+        scheduled_time = data.get() if data else None"scheduled_time") if data else None
+
         # 예약 시간 파싱
         scheduled_datetime = datetime.fromisoformat(scheduled_time)
-        
+
         success_count = 0
-        for user_id in user_ids:
+        for user_id in user_ids if user_ids is not None:
             try:
                 # 예약 알림 생성 (실제로는 스케줄러 사용)
                 notification = Notification()
@@ -636,15 +637,15 @@ def send_scheduled_notifications():
                 success_count += 1
             except Exception as e:
                 logger.error(f"알림 발송 오류: {e}")
-        
+
         db.session.commit()
-        
+
         return jsonify({
             "success": True,
             "message": f"{success_count}건 예약 완료",
             "scheduled_time": scheduled_time
         })
-        
+
     except Exception as e:
         logger.error(f"예약 알림 발송 실패: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -655,25 +656,25 @@ def send_push_notifications():
     """푸시 알림 발송"""
     try:
         data = request.get_json()
-        user_ids = data.get("user_ids", [])
-        message = data.get("message", "")
-        
+        user_ids = data.get() if data else None"user_ids", []) if data else None
+        message = data.get() if data else None"message", "") if data else None
+
         success_count = 0
-        for user_id in user_ids:
+        for user_id in user_ids if user_ids is not None:
             try:
-                user = User.query.get(user_id)
+                user = User.query.get() if query else Noneuser_id) if query else None
                 if user:
                     logger.info(f"[푸시알림] {user.username}: {message}")
                     # 실제 푸시 알림 로직 구현
                     success_count += 1
             except Exception as e:
                 logger.error(f"푸시 알림 발송 실패: {e}")
-        
+
         return jsonify({
             "success": True,
             "message": f"{success_count}건 푸시 알림 발송 완료"
         })
-        
+
     except Exception as e:
         logger.error(f"푸시 알림 발송 실패: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -686,7 +687,7 @@ def analyze_notification_engagement():
         # 최근 30일 알림 통계
         end_date = datetime.now()
         start_date = end_date - timedelta(days=30)
-        
+
         # 알림 발송 통계
         sent_stats = (
             db.session.query(
@@ -702,7 +703,7 @@ def analyze_notification_engagement():
             .group_by(func.date(Notification.created_at))
             .all()
         )
-        
+
         # 읽음 통계 - read_at이 없으므로 created_at로 대체(실제 읽음 필드 필요시 모델에 추가)
         read_stats = (
             db.session.query(
@@ -718,19 +719,19 @@ def analyze_notification_engagement():
             .group_by(func.date(Notification.created_at))
             .all()
         )
-        
+
         analysis_data = {
             "period": f"{start_date.date()} ~ {end_date.date()}",
             "sent_notifications": len(sent_stats),
             "read_notifications": len(read_stats),
             "engagement_rate": round(len(read_stats) / len(sent_stats) * 100, 2) if sent_stats else 0
         }
-        
+
         return jsonify({
             "success": True,
             "data": analysis_data
         })
-        
+
     except Exception as e:
         logger.error(f"AI 분석 오류: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -751,15 +752,15 @@ def notification_stream():
                     .limit(10)
                     .all()
                 )
-                
+
                 if new_notifications:
-                    for notification in new_notifications:
+                    for notification in new_notifications if new_notifications is not None:
                         yield f"data: {notification.content}\n\n"
-                
+
                 time.sleep(5)  # 5초마다 확인
-        
+
         return Response(generate(), mimetype="text/event-stream")
-        
+
     except Exception as e:
         logger.error(f"알림 스트림 오류: {e}")
         return jsonify({"success": False, "message": str(e)}), 500

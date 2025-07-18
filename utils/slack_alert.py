@@ -1,13 +1,11 @@
-﻿#!/usr/bin/env python3
+from utils.logger import log_action  # pyright: ignore
+import requests
+from typing import Optional
+import os
+import logging
+form = None  # pyright: ignore
 """Slack Webhook을 통한 알림 시스템"""
 
-import logging
-import os
-from typing import Optional
-
-import requests
-
-from utils.logger import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +50,7 @@ def send_slack_alert(message: str, level: str = "INFO") -> bool:
             headers={"Content-Type": "application/json"},
         )
         response.raise_for_status()
-        logger.info(f"Slack 알림 전송 성공: {message[:50]}...")
+        logger.info(f"Slack 알림 전송 성공: {message[:50] if message is not None else None}...")
         return True
 
     except requests.exceptions.Timeout:
@@ -221,4 +219,3 @@ def send_slack_alert_if_prod(message: str, level: str = "INFO") -> bool:
     if os.getenv("FLASK_ENV") == "production":
         return send_slack_alert(message, level)
     return False
-

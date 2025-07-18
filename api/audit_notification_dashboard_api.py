@@ -1,10 +1,13 @@
-from flask import Blueprint, request, jsonify, send_file
-from utils.role_required import role_required
-from models import AuditLog, NotificationLog
-import io
 import csv
+import io
+from models_main import AuditLog, NotificationLog
+from utils.role_required import role_required  # pyright: ignore
+from flask import Blueprint, request, jsonify, send_file
+args = None  # pyright: ignore
+query = None  # pyright: ignore
 
 dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/api/dashboard')
+
 
 @dashboard_bp.route('/list', methods=['GET'])
 @role_required('admin', 'super_admin', 'brand_manager')
@@ -18,13 +21,16 @@ def list_items():
     items = []
     for log in AuditLog.query.all():
         if (not q or q in log.detail) and (not type_filter or type_filter == 'audit'):
-            items.append({'type': 'audit', 'content': log.detail, 'user_name': log.user_id, 'status': 'success', 'timestamp': log.timestamp})
+            items.append({'type': 'audit', 'content': log.detail, 'user_name': log.user_id,
+                         'status': 'success', 'timestamp': log.timestamp})
     for log in NotificationLog.query.all():
         if (not q or q in log.message) and (not type_filter or type_filter == 'notification'):
-            items.append({'type': 'notification', 'content': log.message, 'user_name': log.user_id, 'status': log.status, 'timestamp': log.timestamp})
+            items.append({'type': 'notification', 'content': log.message, 'user_name': log.user_id,
+                         'status': log.status, 'timestamp': log.timestamp})
     # 정렬(예시)
-    items.sort(key=lambda x: x['timestamp'], reverse=(sort=='timestamp_desc'))
+    items.sort(key=lambda x: x['timestamp'] if x is not None else None, reverse=(sort == 'timestamp_desc'))
     return jsonify({'success': True, 'items': items})
+
 
 @dashboard_bp.route('/export', methods=['GET'])
 @role_required('admin', 'super_admin')
@@ -38,4 +44,4 @@ def export_items():
     for log in NotificationLog.query.all():
         writer.writerow(['알림', log.message, log.user_id, log.status, log.timestamp])
     output.seek(0)
-    return send_file(io.BytesIO(output.getvalue().encode('utf-8')), mimetype='text/csv', as_attachment=True, download_name='dashboard_export.csv') 
+    return send_file(io.BytesIO(output.getvalue().encode('utf-8')), mimetype='text/csv', as_attachment=True, download_name='dashboard_export.csv')

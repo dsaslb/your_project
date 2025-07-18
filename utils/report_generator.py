@@ -1,18 +1,20 @@
-﻿import io
-import logging
-import os
-import smtplib
-from datetime import date, datetime, timedelta
-from email import encoders
-from email.mime.base import MIMEBase
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
-from flask import render_template
+from utils.logger import log_action  # pyright: ignore
+from models_main import Attendance, AttendanceReport, User, db
 from sqlalchemy import and_, extract, func
+from flask import render_template
+from email.mime.text import MIMEText  # pyright: ignore
+from email.mime.multipart import MIMEMultipart  # pyright: ignore
+from email.mime.base import MIMEBase  # pyright: ignore
+from email import encoders
+from datetime import date, datetime, timedelta
+import smtplib
+import os
+import logging
+query = None  # pyright: ignore
+form = None  # pyright: ignore
+import io
+from typing import Dict, Any, Union
 
-from models import Attendance, AttendanceReport, User, db
-from utils.logger import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +46,13 @@ def generate_attendance_report_pdf(period="week", user_id=None, admin_view=True)
                 .order_by(Attendance.clock_in.desc())
                 .all()
             )
-
-            user = User.query.get(user_id)
-            title = f"{user.name or user.username}님의 {period} 근태 리포트"
+            user = None
+            if query:
+                user = User.query.get(user_id)
+            if user is not None:
+                title = f"{user.name or user.username}님의 {period} 근태 리포트"
+            else:
+                title = f"{period} 근태 리포트"
         else:
             # 전체 사용자 리포트 (관리자용)
             records = (
@@ -62,7 +68,7 @@ def generate_attendance_report_pdf(period="week", user_id=None, admin_view=True)
             title = f"전체 직원 {period} 근태 리포트"
 
         # 통계 계산
-        stats = calculate_attendance_stats(records, from_date, to_date)
+        stats = calculate_attendance_stats(records,  from_date,  to_date)
 
         # HTML 템플릿 렌더링
         html = render_template(
@@ -124,9 +130,11 @@ def generate_attendance_report_pdf(period="week", user_id=None, admin_view=True)
         return None
 
 
-def calculate_attendance_stats(records, from_date, to_date):
-    """근태 통계 계산"""
-    stats = {
+def calculate_attendance_stats(records,  from_date,  to_date):
+    """
+    근태 통계 계산
+    """
+    stats: Dict[str, Any] = {
         "total_days": len(records),
         "total_hours": 0,
         "late_count": 0,
@@ -136,56 +144,49 @@ def calculate_attendance_stats(records, from_date, to_date):
         "normal_count": 0,
         "users": {},
     }
-
-    for record in records:
-        user_id = record.user_id
-        if user_id not in stats["users"]:
-            stats["users"][user_id] = {
-                "name": record.user.name or record.user.username,
-                "total_days": 0,
-                "total_hours": 0,
-                "late_count": 0,
-                "early_leave_count": 0,
-                "overtime_hours": 0,
-            }
-
-        user_stats = stats["users"][user_id]
-        user_stats["total_days"] += 1
-
-        if record.clock_in and record.clock_out:
-            work_seconds = (record.clock_out - record.clock_in).total_seconds()
-            work_hours = work_seconds / 3600
-            stats["total_hours"] += work_hours
-            user_stats["total_hours"] += work_hours
-
-            # 지각/조퇴/야근 판정
-            if record.clock_in.time() > datetime.strptime("09:00", "%H:%M").time():
-                stats["late_count"] += 1
-                user_stats["late_count"] += 1
-            if record.clock_out.time() < datetime.strptime("18:00", "%H:%M").time():
-                stats["early_leave_count"] += 1
-                user_stats["early_leave_count"] += 1
-            if work_hours > 8:
-                overtime = work_hours - 8
-                stats["overtime_hours"] += overtime
-                user_stats["overtime_hours"] += overtime
+    users: Dict[int, Dict[str, Any]] = stats["users"]
+    if records is not None:
+        for record in records:
+            user_id = record.user_id
+            if user_id not in users:
+                users[user_id] = {
+                    "name": record.user.name or record.user.username,
+                    "total_days": 0,
+                    "total_hours": 0,
+                    "late_count": 0,
+                    "early_leave_count": 0,
+                    "overtime_hours": 0,
+                }
+            user_stats = users[user_id]
+            user_stats["total_days"] += 1  # pyright: ignore
+            if record.clock_in and record.clock_out:
+                work_seconds = (record.clock_out - record.clock_in).total_seconds()
+                work_hours = work_seconds / 3600
+                stats["total_hours"] += work_hours  # pyright: ignore
+                user_stats["total_hours"] += work_hours  # pyright: ignore
+                if record.clock_in.time() > datetime.strptime("09:00", "%H:%M").time():
+                    stats["late_count"] += 1  # pyright: ignore
+                    user_stats["late_count"] += 1  # pyright: ignore
+                if record.clock_out.time() < datetime.strptime("18:00", "%H:%M").time():
+                    stats["early_leave_count"] += 1  # pyright: ignore
+                    user_stats["early_leave_count"] += 1  # pyright: ignore
+                if work_hours > 8:
+                    overtime = work_hours - 8
+                    stats["overtime_hours"] += overtime  # pyright: ignore
+                    user_stats["overtime_hours"] += overtime  # pyright: ignore
+                else:
+                    stats["normal_count"] += 1  # pyright: ignore
             else:
-                stats["normal_count"] += 1
-        else:
-            stats["absent_count"] += 1
-
+                stats["absent_count"] += 1  # pyright: ignore
     # 평균 계산
     if stats["total_days"] > 0:
-        stats["avg_hours_per_day"] = round(
-            stats["total_hours"] / stats["total_days"], 2
-        )
+        stats["avg_hours_per_day"] = round(stats["total_hours"] / stats["total_days"], 2)  # pyright: ignore
     else:
-        stats["avg_hours_per_day"] = 0
-
+        stats["avg_hours_per_day"] = 0  # pyright: ignore
     return stats
 
 
-def send_email(to_email, subject, body, attach_path=None, html_body=None):
+def send_email(to_email,  subject,  body, attach_path=None, html_body=None):
     """이메일 발송 함수"""
     try:
         # 환경 변수에서 SMTP 설정 가져오기
@@ -350,7 +351,7 @@ def send_monthly_attendance_report():
 def send_individual_attendance_report(user_id, period="week"):
     """개별 사용자 근태 리포트 발송"""
     try:
-        user = User.query.get(user_id)
+        user = User.query.get(user_id) if query else None
         if not user or not user.email:
             logger.warning(f"사용자 {user_id}의 이메일이 없습니다.")
             return False
@@ -395,7 +396,7 @@ def send_individual_attendance_report(user_id, period="week"):
         return False
 
 
-def generate_attendance_report(start_date, end_date, user_id=None):
+def generate_attendance_report(start_date,  end_date, user_id=None):
     """근태 리포트 생성"""
     try:
         # 근태 데이터 조회
@@ -403,12 +404,12 @@ def generate_attendance_report(start_date, end_date, user_id=None):
             Attendance.date >= start_date,
             Attendance.date <= end_date
         )
-        
+
         if user_id:
             query = query.filter(Attendance.user_id == user_id)
-        
+
         attendances = query.all()
-        
+
         # 리포트 데이터 구성
         report_data = {
             "period": f"{start_date} ~ {end_date}",
@@ -416,13 +417,16 @@ def generate_attendance_report(start_date, end_date, user_id=None):
             "generated_at": datetime.now().isoformat(),
             "data": []
         }
-        
+
+        if "data" not in report_data or not isinstance(report_data["data"], list):
+            report_data["data"] = []
+
         for attendance in attendances:
             # date 속성이 있는지 확인
             attendance_date = getattr(attendance, 'date', None)
             if attendance_date is None:
                 continue
-                
+
             report_data["data"].append({
                 "user_id": attendance.user_id,
                 "date": attendance_date.isoformat() if hasattr(attendance_date, 'isoformat') else str(attendance_date),
@@ -430,11 +434,10 @@ def generate_attendance_report(start_date, end_date, user_id=None):
                 "clock_in": attendance.clock_in.isoformat() if attendance.clock_in else None,
                 "clock_out": attendance.clock_out.isoformat() if attendance.clock_out else None
             })
-        
+
         logger.info(f"근태 리포트 생성 완료: {len(attendances)}건")
         return report_data
-        
+
     except Exception as e:
         logger.error(f"근태 리포트 생성 실패: {e}")
         return None
-

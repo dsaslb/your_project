@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from models import Notice
+from models_main import Notice
 
 
 class TestAPINotice:

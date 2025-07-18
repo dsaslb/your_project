@@ -1,31 +1,36 @@
+from datetime import datetime, timedelta
+import logging
+from functools import wraps
+from flask_login import login_required, current_user
+from flask import Blueprint, jsonify, request
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 모바일 앱 통합 API
 PWA 지원, 오프라인 기능, 푸시 알림 통합
 """
 
-from flask import Blueprint, jsonify, request
-from flask_login import login_required, current_user
-from functools import wraps
-import logging
-from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
 mobile_api_bp = Blueprint('mobile_api', __name__)
 
+
 def mobile_required(f):
     """모바일 앱 권한 확인 데코레이터"""
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args,  **kwargs):
         # 모바일 앱 헤더 확인
-        user_agent = request.headers.get('User-Agent', '')
-        is_mobile = any(agent in user_agent.lower() for agent in ['mobile', 'android', 'ios'])
-        
+        user_agent = request.headers.get() if headers else None'User-Agent', '') if headers else None
+        is_mobile = any(agent in user_agent.lower() if user_agent is not None else '' for agent in ['mobile', 'android', 'ios'])
+
         if not is_mobile:
             return jsonify({'error': '모바일 앱에서만 접근 가능합니다.'}), 403
-        
+
         return f(*args, **kwargs)
     return decorated_function
+
 
 @mobile_api_bp.route('/api/mobile/dashboard', methods=['GET'])
 @login_required
@@ -92,16 +97,17 @@ def mobile_dashboard():
                 }
             ]
         }
-        
+
         return jsonify({
             'success': True,
             'data': dashboard_data,
             'last_updated': datetime.now().isoformat()
         })
-        
+
     except Exception as e:
         logger.error(f"모바일 대시보드 조회 실패: {e}")
         return jsonify({'error': '대시보드 조회에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/offline-data', methods=['GET'])
 @login_required
@@ -110,8 +116,8 @@ def get_offline_data():
     """오프라인용 데이터 제공"""
     try:
         # 실제 데이터베이스에서 오프라인용 데이터 조회
-        from models import User, Branch
-        
+        from models_main import User, Branch
+
         # 메뉴 아이템 조회 (실제 메뉴 모델이 있다면)
         menu_data = [
             {
@@ -122,7 +128,7 @@ def get_offline_data():
                 'available': True
             }
         ]
-        
+
         # 직원 목록 조회
         staff_list = User.query.filter_by(status='approved').all()
         staff_data = [
@@ -134,14 +140,14 @@ def get_offline_data():
             }
             for user in staff_list
         ]
-        
+
         # 테이블 정보 조회 (실제 테이블 모델이 있다면)
         tables_data = [
             {'id': 1, 'name': '테이블 1', 'capacity': 4, 'status': 'available'},
             {'id': 2, 'name': '테이블 2', 'capacity': 4, 'status': 'occupied'},
             {'id': 3, 'name': '테이블 3', 'capacity': 6, 'status': 'available'}
         ]
-        
+
         # 매장 설정 조회
         branch = Branch.query.first()
         settings_data = {
@@ -150,23 +156,24 @@ def get_offline_data():
             'phone': branch.phone if branch else '',
             'opening_hours': '09:00-22:00'
         }
-        
+
         offline_data = {
             'menu_items': menu_data,
             'staff_list': staff_data,
             'tables': tables_data,
             'settings': settings_data
         }
-        
+
         return jsonify({
             'success': True,
             'data': offline_data,
             'cache_until': (datetime.now() + timedelta(hours=24)).isoformat()
         })
-        
+
     except Exception as e:
         logger.error(f"오프라인 데이터 조회 실패: {e}")
         return jsonify({'error': '오프라인 데이터 조회에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/sync', methods=['POST'])
 @login_required
@@ -177,9 +184,9 @@ def sync_offline_data():
         data = request.json
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
-        sync_data = data.get('sync_data', {})
-        
+
+        sync_data = data.get() if data else None'sync_data', {}) if data else None
+
         # 동기화할 데이터 처리
         synced_items = {
             'orders': [],
@@ -187,46 +194,47 @@ def sync_offline_data():
             'attendance_records': [],
             'sync_timestamp': datetime.now().isoformat()
         }
-        
+
         # 주문 데이터 동기화
         if 'orders' in sync_data:
-            for order in sync_data['orders']:
+            for order in sync_data['orders'] if sync_data is not None else None:
                 # 주문 처리 로직
-                synced_items['orders'].append({
-                    'id': order.get('id'),
+                synced_items['orders'] if synced_items is not None else None.append({
+                    'id': order.get() if order else None'id') if order else None,
                     'status': 'synced',
                     'synced_at': datetime.now().isoformat()
                 })
-        
+
         # 재고 업데이트 동기화
         if 'inventory_updates' in sync_data:
-            for update in sync_data['inventory_updates']:
+            for update in sync_data['inventory_updates'] if sync_data is not None else None:
                 # 재고 업데이트 처리 로직
-                synced_items['inventory_updates'].append({
-                    'id': update.get('id'),
+                synced_items['inventory_updates'] if synced_items is not None else None.append({
+                    'id': update.get() if update else None'id') if update else None,
                     'status': 'synced',
                     'synced_at': datetime.now().isoformat()
                 })
-        
+
         # 출근 기록 동기화
         if 'attendance_records' in sync_data:
-            for record in sync_data['attendance_records']:
+            for record in sync_data['attendance_records'] if sync_data is not None else None:
                 # 출근 기록 처리 로직
-                synced_items['attendance_records'].append({
-                    'id': record.get('id'),
+                synced_items['attendance_records'] if synced_items is not None else None.append({
+                    'id': record.get() if record else None'id') if record else None,
                     'status': 'synced',
                     'synced_at': datetime.now().isoformat()
                 })
-        
+
         return jsonify({
             'success': True,
             'synced_items': synced_items,
-            'message': f'{len(synced_items["orders"])}개 주문, {len(synced_items["inventory_updates"])}개 재고 업데이트, {len(synced_items["attendance_records"])}개 출근 기록이 동기화되었습니다.'
+            'message': f'{len(synced_items["orders"] if synced_items is not None else None)}개 주문, {len(synced_items["inventory_updates"] if synced_items is not None else None)}개 재고 업데이트, {len(synced_items["attendance_records"] if synced_items is not None else None)}개 출근 기록이 동기화되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"오프라인 데이터 동기화 실패: {e}")
         return jsonify({'error': '데이터 동기화에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/push-token', methods=['POST'])
 @login_required
@@ -237,26 +245,27 @@ def register_push_token():
         data = request.json
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
-        token = data.get('token')
-        platform = data.get('platform', 'unknown')
-        
+
+        token = data.get() if data else None'token') if data else None
+        platform = data.get() if data else None'platform', 'unknown') if data else None
+
         if not token:
             return jsonify({'error': '토큰이 필요합니다.'}), 400
-        
+
         # 토큰 저장 로직 (실제로는 데이터베이스에 저장)
         # 여기서는 간단히 로그만 남김
         logger.info(f"푸시 토큰 등록: 사용자 {current_user.id}, 플랫폼 {platform}")
-        
+
         return jsonify({
             'success': True,
             'message': '푸시 토큰이 성공적으로 등록되었습니다.',
             'registered_at': datetime.now().isoformat()
         })
-        
+
     except Exception as e:
         logger.error(f"푸시 토큰 등록 실패: {e}")
         return jsonify({'error': '푸시 토큰 등록에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/notifications', methods=['GET'])
 @login_required
@@ -294,16 +303,17 @@ def get_mobile_notifications():
                 'priority': 'low'
             }
         ]
-        
+
         return jsonify({
             'success': True,
             'notifications': notifications,
-            'unread_count': len([n for n in notifications if not n['read']])
+            'unread_count': len([n for n in notifications if not n['read'] if n is not None else None])
         })
-        
+
     except Exception as e:
         logger.error(f"모바일 알림 조회 실패: {e}")
         return jsonify({'error': '알림 조회에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/notifications/<int:notification_id>/read', methods=['POST'])
 @login_required
@@ -313,16 +323,17 @@ def mark_notification_read(notification_id):
     try:
         # 알림 읽음 처리 로직
         logger.info(f"알림 읽음 처리: 사용자 {current_user.id}, 알림 {notification_id}")
-        
+
         return jsonify({
             'success': True,
             'message': '알림이 읽음 처리되었습니다.',
             'notification_id': notification_id
         })
-        
+
     except Exception as e:
         logger.error(f"알림 읽음 처리 실패: {e}")
         return jsonify({'error': '알림 읽음 처리에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/orders/quick', methods=['POST'])
 @login_required
@@ -333,33 +344,34 @@ def create_quick_order():
         data = request.json
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
-        table_id = data.get('table_id')
-        items = data.get('items', [])
-        
+
+        table_id = data.get() if data else None'table_id') if data else None
+        items = data.get() if data else None'items', []) if data else None
+
         if not table_id or not items:
             return jsonify({'error': '테이블 ID와 주문 항목이 필요합니다.'}), 400
-        
+
         # 빠른 주문 생성 로직
         order_data = {
             'id': 12345,  # 실제로는 데이터베이스에서 생성
             'table_id': table_id,
             'items': items,
-            'total_amount': sum(item.get('price', 0) * item.get('quantity', 1) for item in items),
+            'total_amount': sum(item.get() if item else None'price', 0) if item else None * item.get() if item else None'quantity', 1) if item else None for item in items),
             'status': 'pending',
             'created_at': datetime.now().isoformat(),
             'created_by': current_user.id
         }
-        
+
         return jsonify({
             'success': True,
             'order': order_data,
             'message': '주문이 성공적으로 생성되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"빠른 주문 생성 실패: {e}")
         return jsonify({'error': '주문 생성에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/orders/<int:order_id>/status', methods=['PUT'])
 @login_required
@@ -370,12 +382,12 @@ def update_order_status(order_id):
         data = request.json
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
-        new_status = data.get('status')
-        
+
+        new_status = data.get() if data else None'status') if data else None
+
         if not new_status:
             return jsonify({'error': '새로운 상태가 필요합니다.'}), 400
-        
+
         # 주문 상태 업데이트 로직
         updated_order = {
             'id': order_id,
@@ -383,16 +395,17 @@ def update_order_status(order_id):
             'updated_at': datetime.now().isoformat(),
             'updated_by': current_user.id
         }
-        
+
         return jsonify({
             'success': True,
             'order': updated_order,
             'message': f'주문 상태가 {new_status}로 업데이트되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"주문 상태 업데이트 실패: {e}")
         return jsonify({'error': '주문 상태 업데이트에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/inventory/check', methods=['GET'])
 @login_required
@@ -427,16 +440,17 @@ def check_inventory():
                 'status': 'low'
             }
         ]
-        
+
         return jsonify({
             'success': True,
             'inventory': inventory_data,
-            'low_stock_count': len([item for item in inventory_data if item['status'] == 'low'])
+            'low_stock_count': len([item for item in inventory_data if item['status'] if item is not None else None == 'low'])
         })
-        
+
     except Exception as e:
         logger.error(f"재고 확인 실패: {e}")
         return jsonify({'error': '재고 확인에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/attendance/check-in', methods=['POST'])
 @login_required
@@ -447,9 +461,9 @@ def mobile_check_in():
         data = request.json
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
-        location = data.get('location', {})
-        
+
+        location = data.get() if data else None'location', {}) if data else None
+
         # 출근 체크인 로직
         attendance_record = {
             'id': 12345,  # 실제로는 데이터베이스에서 생성
@@ -458,16 +472,17 @@ def mobile_check_in():
             'location': location,
             'status': 'checked_in'
         }
-        
+
         return jsonify({
             'success': True,
             'attendance': attendance_record,
             'message': '출근이 기록되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"모바일 출근 체크인 실패: {e}")
         return jsonify({'error': '출근 체크인에 실패했습니다.'}), 500
+
 
 @mobile_api_bp.route('/api/mobile/attendance/check-out', methods=['POST'])
 @login_required
@@ -478,9 +493,9 @@ def mobile_check_out():
         data = request.json
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
-        location = data.get('location', {})
-        
+
+        location = data.get() if data else None'location', {}) if data else None
+
         # 퇴근 체크아웃 로직
         attendance_record = {
             'id': 12345,  # 실제로는 데이터베이스에서 생성
@@ -489,13 +504,13 @@ def mobile_check_out():
             'location': location,
             'status': 'checked_out'
         }
-        
+
         return jsonify({
             'success': True,
             'attendance': attendance_record,
             'message': '퇴근이 기록되었습니다.'
         })
-        
+
     except Exception as e:
         logger.error(f"모바일 퇴근 체크아웃 실패: {e}")
-        return jsonify({'error': '퇴근 체크아웃에 실패했습니다.'}), 500 
+        return jsonify({'error': '퇴근 체크아웃에 실패했습니다.'}), 500

@@ -5,6 +5,8 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "jsx": "react-native",
+    "moduleResolution": "node16", // lint 오류 수정: customConditions 사용 시 node16 필요 # noqa
+    "moduleResolution": "node16", // lint 오류 수정: customConditions 사용 시 node16 필요 # noqa
     "lib": ["dom", "esnext"],
     "moduleResolution": "node",
     "noEmit": true,

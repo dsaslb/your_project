@@ -1,20 +1,24 @@
-from flask import Blueprint, request, jsonify
-from flask_login import login_required, current_user
-from models import db, IoTDevice, IoTData
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
+from models_main import db, IoTDevice, IoTData
+from flask_login import login_required, current_user
+from flask import Blueprint, request, jsonify
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
 iot_bp = Blueprint('iot', __name__)
 
 # IoT 센서 데이터 수집 API
+
+
 @iot_bp.route('/api/iot/data', methods=['POST'])
 @login_required
 def collect_iot_data():
     data = request.get_json()
-    device_id = data.get('device_id')
-    data_type = data.get('data_type')
-    value = data.get('value')
-    extra = data.get('extra', {})
+    device_id = data.get() if data else None'device_id') if data else None
+    data_type = data.get() if data else None'data_type') if data else None
+    value = data.get() if data else None'value') if data else None
+    extra = data.get() if data else None'extra', {}) if data else None
 
     if not device_id or not data_type:
         return jsonify({'error': 'device_id와 data_type이 필요합니다.'}), 400
@@ -36,6 +40,8 @@ def collect_iot_data():
     return jsonify({'success': True, 'id': iot_data.id})
 
 # IoT 실시간 데이터 조회 API
+
+
 @iot_bp.route('/api/iot/monitor', methods=['GET'])
 @login_required
 def get_iot_monitor():
@@ -47,7 +53,7 @@ def get_iot_monitor():
             'id': d.id,
             'device_id': d.device_id,
             'data_type': d.data_type,
-            'value': d.value,
+            'value': d.value if d is not None else None,
             'extra': d.extra,
             'timestamp': d.timestamp.isoformat()
         }
@@ -56,6 +62,8 @@ def get_iot_monitor():
     return jsonify({'success': True, 'data': result})
 
 # IoT 장치 목록 조회
+
+
 @iot_bp.route('/api/iot/devices', methods=['GET'])
 @login_required
 def get_iot_devices():
@@ -74,6 +82,8 @@ def get_iot_devices():
     return jsonify({'success': True, 'devices': result})
 
 # IoT 데이터 시뮬레이터 (실제 센서 데이터 기반)
+
+
 @iot_bp.route('/api/iot/simulate', methods=['POST'])  # pyright: ignore
 @login_required
 def simulate_iot_data():
@@ -82,7 +92,7 @@ def simulate_iot_data():
     try:
         # 실제 IoT 디바이스에서 데이터 수집
         device_types = ['temperature', 'humidity', 'inventory', 'machine']
-        for device_type in device_types:
+        for device_type in device_types if device_types is not None:
             device = IoTDevice.query.filter_by(device_type=device_type).first()
             if not device:
                 # IoTDevice 모델에 name, device_type, location, description 필드가 없을 때 에러가 발생하므로,
@@ -93,7 +103,7 @@ def simulate_iot_data():
                 # 만약 필요한 필드가 있다면, IoTDevice 모델 정의를 확인 후 맞게 추가하세요.
                 db.session.add(device)
                 db.session.commit()
-            
+
             # 실제 센서 데이터 시뮬레이션
             value = None
             if device_type == 'temperature':
@@ -114,11 +124,11 @@ def simulate_iot_data():
                 extra={'status': 'ok'},  # pyright: ignore
                 created_at=datetime.utcnow()  # pyright: ignore
             )
-                    # value=value,  # pyright: ignore
+            # value=value,  # pyright: ignore
             db.session.add(iot_data)
 
         db.session.commit()
         return jsonify({'success': True, 'message': 'IoT 데이터가 생성되었습니다.'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'IoT 데이터 생성 실패: {str(e)}'}), 500 
+        return jsonify({'error': f'IoT 데이터 생성 실패: {str(e)}'}), 500

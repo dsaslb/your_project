@@ -1,8 +1,10 @@
+from utils.role_required import role_required  # pyright: ignore
+from models_main import SystemLog
+from api.utils import admin_required  # pyright: ignore
 from flask import Blueprint, jsonify, request
+args = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from api.utils import admin_required
-from models import SystemLog
-from utils.role_required import role_required
 
 admin_log_bp = Blueprint("admin_log", __name__, url_prefix="/api/admin/system-logs")
 

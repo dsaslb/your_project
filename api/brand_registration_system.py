@@ -1,36 +1,40 @@
+from models.settings_models import BrandSettings, SystemSettings  # pyright: ignore
+from models.report_models import Report, ReportTemplate  # pyright: ignore
+from models.order_models import Order, OrderTemplate  # pyright: ignore
+from models.inventory_models import Inventory, InventoryCategory  # pyright: ignore
+from models.notification_models import Notification, NotificationTemplate  # pyright: ignore
+from models.schedule_models import Schedule, WorkRule  # pyright: ignore
+from models.menu_models import Menu, MenuCategory  # pyright: ignore
+from models.employee_models import Employee, EmployeeRole  # pyright: ignore
+from models.store_models import Store  # pyright: ignore
+from models.brand_models import Brand  # pyright: ignore
+from models.database import db  # pyright: ignore
+from sqlalchemy import and_, or_
+from datetime import datetime, timedelta
+import uuid
+import json
+import logging
+from flask_login import login_required, current_user
+from flask import Blueprint, request, jsonify, current_app
+query = None  # pyright: ignore
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 브랜드 등록 시스템 - 연관 기능 동기화
 신규 브랜드 등록 시 모든 연관 데이터를 자동으로 생성하고 동기화
 """
 
-from flask import Blueprint, request, jsonify, current_app
-from flask_login import login_required, current_user
-import logging
-import json
-import uuid
-from datetime import datetime, timedelta
-from sqlalchemy import and_, or_
-from models.database import db
-from models.brand_models import Brand
-from models.store_models import Store
-from models.employee_models import Employee, EmployeeRole
-from models.menu_models import Menu, MenuCategory
-from models.schedule_models import Schedule, WorkRule
-from models.notification_models import Notification, NotificationTemplate
-from models.inventory_models import Inventory, InventoryCategory
-from models.order_models import Order, OrderTemplate
-from models.report_models import Report, ReportTemplate
-from models.settings_models import BrandSettings, SystemSettings
 
 brand_registration_bp = Blueprint('brand_registration', __name__)
 logger = logging.getLogger(__name__)
 
+
 class BrandRegistrationSystem:
     """브랜드 등록 및 연관 데이터 동기화 시스템"""
-    
+
     def __init__(self):
         self.default_templates = self._load_default_templates()
-    
+
     def _load_default_templates(self):
         """기본 템플릿 데이터 로드"""
         return {
@@ -101,47 +105,47 @@ class BrandRegistrationSystem:
                 }
             ]
         }
-    
-    def create_brand_with_related_data(self, brand_data, creator_user_id):
+
+    def create_brand_with_related_data(self,  brand_data,  creator_user_id):
         """브랜드와 연관 데이터를 함께 생성"""
         try:
             # 트랜잭션 시작
             with db.session.begin():
                 # 1. 브랜드 생성
-                brand = self._create_brand(brand_data, creator_user_id)
-                
+                brand = self._create_brand(brand_data,  creator_user_id)
+
                 # 2. 기본 매장 생성
-                default_store = self._create_default_store(brand.id, brand_data)
-                
+                default_store = self._create_default_store(brand.id,  brand_data)
+
                 # 3. 브랜드 관리자 생성
-                brand_admin = self._create_brand_admin(brand.id, creator_user_id)
-                
+                brand_admin = self._create_brand_admin(brand.id,  creator_user_id)
+
                 # 4. 기본 설정 생성
                 brand_settings = self._create_brand_settings(brand.id)
-                
+
                 # 5. 메뉴 카테고리 생성
                 menu_categories = self._create_menu_categories(brand.id)
-                
+
                 # 6. 근무 규칙 생성
                 work_rules = self._create_work_rules(brand.id)
-                
+
                 # 7. 알림 템플릿 생성
                 notification_templates = self._create_notification_templates(brand.id)
-                
+
                 # 8. 재고 카테고리 생성
                 inventory_categories = self._create_inventory_categories(brand.id)
-                
+
                 # 9. 보고서 템플릿 생성
                 report_templates = self._create_report_templates(brand.id)
-                
+
                 # 10. 기본 발주 템플릿 생성
                 order_templates = self._create_order_templates(brand.id)
-                
+
                 # 11. 온보딩 상태 설정
                 onboarding_status = self._create_onboarding_status(brand.id)
-                
+
                 logger.info(f"브랜드 '{brand.name}' 생성 완료 (ID: {brand.id})")
-                
+
                 return {
                     'success': True,
                     'brand': brand,
@@ -158,66 +162,66 @@ class BrandRegistrationSystem:
                         'onboarding_status': onboarding_status
                     }
                 }
-                
+
         except Exception as e:
             logger.error(f"브랜드 생성 중 오류: {str(e)}")
             db.session.rollback()
             raise e
-    
-    def _create_brand(self, brand_data, creator_user_id):
+
+    def _create_brand(self,  brand_data,  creator_user_id):
         """브랜드 생성"""
         brand = Brand(
-            name=brand_data['name'],
+            name=brand_data['name'] if brand_data is not None else None,
             description=brand_data.get('description', ''),
-            address=brand_data.get('address', ''),
-            zipcode=brand_data.get('zipcode', ''),
-            road_address=brand_data.get('road_address', ''),
-            jibun_address=brand_data.get('jibun_address', ''),
-            detail_address=brand_data.get('detail_address', ''),
-            latitude=brand_data.get('latitude'),
-            longitude=brand_data.get('longitude'),
-            phone=brand_data.get('phone', ''),
-            email=brand_data.get('email', ''),
-            website=brand_data.get('website', ''),
-            business_number=brand_data.get('business_number', ''),
-            representative_name=brand_data.get('representative_name', ''),
-            industry=brand_data.get('industry', ''),
+            address=brand_data.get() if brand_data else None'address', '') if brand_data else None,
+            zipcode=brand_data.get() if brand_data else None'zipcode', '') if brand_data else None,
+            road_address=brand_data.get() if brand_data else None'road_address', '') if brand_data else None,
+            jibun_address=brand_data.get() if brand_data else None'jibun_address', '') if brand_data else None,
+            detail_address=brand_data.get() if brand_data else None'detail_address', '') if brand_data else None,
+            latitude=brand_data.get() if brand_data else None'latitude') if brand_data else None,
+            longitude=brand_data.get() if brand_data else None'longitude') if brand_data else None,
+            phone=brand_data.get() if brand_data else None'phone', '') if brand_data else None,
+            email=brand_data.get() if brand_data else None'email', '') if brand_data else None,
+            website=brand_data.get() if brand_data else None'website', '') if brand_data else None,
+            business_number=brand_data.get() if brand_data else None'business_number', '') if brand_data else None,
+            representative_name=brand_data.get() if brand_data else None'representative_name', '') if brand_data else None,
+            industry=brand_data.get() if brand_data else None'industry', '') if brand_data else None,
             created_by=creator_user_id,
             status='active',
             registration_date=datetime.now()
         )
-        
+
         db.session.add(brand)
         db.session.flush()  # ID 생성
         return brand
-    
-    def _create_default_store(self, brand_id, brand_data):
+
+    def _create_default_store(self,  brand_id,  brand_data):
         """기본 매장 생성"""
         store = Store(
             brand_id=brand_id,
-            name=f"{brand_data['name']} 본점",
+            name=f"{brand_data['name'] if brand_data is not None else None} 본점",
             description="기본 매장",
-            address=brand_data.get('address', ''),
-            zipcode=brand_data.get('zipcode', ''),
-            road_address=brand_data.get('road_address', ''),
-            jibun_address=brand_data.get('jibun_address', ''),
-            detail_address=brand_data.get('detail_address', ''),
-            latitude=brand_data.get('latitude'),
-            longitude=brand_data.get('longitude'),
-            phone=brand_data.get('phone', ''),
-            email=brand_data.get('email', ''),
+            address=brand_data.get() if brand_data else None'address', '') if brand_data else None,
+            zipcode=brand_data.get() if brand_data else None'zipcode', '') if brand_data else None,
+            road_address=brand_data.get() if brand_data else None'road_address', '') if brand_data else None,
+            jibun_address=brand_data.get() if brand_data else None'jibun_address', '') if brand_data else None,
+            detail_address=brand_data.get() if brand_data else None'detail_address', '') if brand_data else None,
+            latitude=brand_data.get() if brand_data else None'latitude') if brand_data else None,
+            longitude=brand_data.get() if brand_data else None'longitude') if brand_data else None,
+            phone=brand_data.get() if brand_data else None'phone', '') if brand_data else None,
+            email=brand_data.get() if brand_data else None'email', '') if brand_data else None,
             store_type='main',
             status='active',
             opening_hours='09:00-18:00',
-            created_by=brand_data.get('created_by'),
+            created_by=brand_data.get() if brand_data else None'created_by') if brand_data else None,
             created_at=datetime.now()
         )
-        
+
         db.session.add(store)
         db.session.flush()
         return store
-    
-    def _create_brand_admin(self, brand_id, creator_user_id):
+
+    def _create_brand_admin(self,  brand_id,  creator_user_id):
         """브랜드 관리자 생성"""
         # 기존 사용자를 브랜드 관리자로 설정
         admin_role = EmployeeRole(
@@ -237,12 +241,12 @@ class BrandRegistrationSystem:
             is_active=True,
             created_at=datetime.now()
         )
-        
+
         db.session.add(admin_role)
         db.session.flush()
         return admin_role
-    
-    def _create_brand_settings(self, brand_id):
+
+    def _create_brand_settings(self,  brand_id):
         """브랜드 기본 설정 생성"""
         settings = BrandSettings(
             brand_id=brand_id,
@@ -276,106 +280,106 @@ class BrandRegistrationSystem:
             }),
             created_at=datetime.now()
         )
-        
+
         db.session.add(settings)
         db.session.flush()
         return settings
-    
-    def _create_menu_categories(self, brand_id):
+
+    def _create_menu_categories(self,  brand_id):
         """메뉴 카테고리 생성"""
         categories = []
-        for cat_data in self.default_templates['menu_categories']:
+        for cat_data in self.default_templates['menu_categories'] if default_templates is not None else None:
             category = MenuCategory(
                 brand_id=brand_id,
-                name=cat_data['name'],
-                description=cat_data['description'],
-                sort_order=cat_data['sort_order'],
+                name=cat_data['name'] if cat_data is not None else None,
+                description=cat_data['description'] if cat_data is not None else None,
+                sort_order=cat_data['sort_order'] if cat_data is not None else None,
                 is_active=True,
                 created_at=datetime.now()
             )
             db.session.add(category)
             categories.append(category)
-        
+
         db.session.flush()
         return categories
-    
-    def _create_work_rules(self, brand_id):
+
+    def _create_work_rules(self,  brand_id):
         """근무 규칙 생성"""
         rules = []
-        for rule_data in self.default_templates['work_rules']:
+        for rule_data in self.default_templates['work_rules'] if default_templates is not None else None:
             rule = WorkRule(
                 brand_id=brand_id,
-                name=rule_data['name'],
-                work_start_time=rule_data['work_start_time'],
-                work_end_time=rule_data['work_end_time'],
-                break_start_time=rule_data['break_start_time'],
-                break_end_time=rule_data['break_end_time'],
-                overtime_threshold=rule_data['overtime_threshold'],
-                weekly_work_hours=rule_data['weekly_work_hours'],
+                name=rule_data['name'] if rule_data is not None else None,
+                work_start_time=rule_data['work_start_time'] if rule_data is not None else None,
+                work_end_time=rule_data['work_end_time'] if rule_data is not None else None,
+                break_start_time=rule_data['break_start_time'] if rule_data is not None else None,
+                break_end_time=rule_data['break_end_time'] if rule_data is not None else None,
+                overtime_threshold=rule_data['overtime_threshold'] if rule_data is not None else None,
+                weekly_work_hours=rule_data['weekly_work_hours'] if rule_data is not None else None,
                 is_active=True,
                 created_at=datetime.now()
             )
             db.session.add(rule)
             rules.append(rule)
-        
+
         db.session.flush()
         return rules
-    
-    def _create_notification_templates(self, brand_id):
+
+    def _create_notification_templates(self,  brand_id):
         """알림 템플릿 생성"""
         templates = []
-        for template_data in self.default_templates['notification_templates']:
+        for template_data in self.default_templates['notification_templates'] if default_templates is not None else None:
             template = NotificationTemplate(
                 brand_id=brand_id,
-                name=template_data['name'],
-                type=template_data['type'],
-                title=template_data['title'],
-                message=template_data['message'],
-                is_active=template_data['is_active'],
+                name=template_data['name'] if template_data is not None else None,
+                type=template_data['type'] if template_data is not None else None,
+                title=template_data['title'] if template_data is not None else None,
+                message=template_data['message'] if template_data is not None else None,
+                is_active=template_data['is_active'] if template_data is not None else None,
                 created_at=datetime.now()
             )
             db.session.add(template)
             templates.append(template)
-        
+
         db.session.flush()
         return templates
-    
-    def _create_inventory_categories(self, brand_id):
+
+    def _create_inventory_categories(self,  brand_id):
         """재고 카테고리 생성"""
         categories = []
-        for cat_data in self.default_templates['inventory_categories']:
+        for cat_data in self.default_templates['inventory_categories'] if default_templates is not None else None:
             category = InventoryCategory(
                 brand_id=brand_id,
-                name=cat_data['name'],
-                description=cat_data['description'],
+                name=cat_data['name'] if cat_data is not None else None,
+                description=cat_data['description'] if cat_data is not None else None,
                 is_active=True,
                 created_at=datetime.now()
             )
             db.session.add(category)
             categories.append(category)
-        
+
         db.session.flush()
         return categories
-    
-    def _create_report_templates(self, brand_id):
+
+    def _create_report_templates(self,  brand_id):
         """보고서 템플릿 생성"""
         templates = []
-        for template_data in self.default_templates['report_templates']:
+        for template_data in self.default_templates['report_templates'] if default_templates is not None else None:
             template = ReportTemplate(
                 brand_id=brand_id,
-                name=template_data['name'],
-                type=template_data['type'],
-                description=template_data['description'],
-                is_active=template_data['is_active'],
+                name=template_data['name'] if template_data is not None else None,
+                type=template_data['type'] if template_data is not None else None,
+                description=template_data['description'] if template_data is not None else None,
+                is_active=template_data['is_active'] if template_data is not None else None,
                 created_at=datetime.now()
             )
             db.session.add(template)
             templates.append(template)
-        
+
         db.session.flush()
         return templates
-    
-    def _create_order_templates(self, brand_id):
+
+    def _create_order_templates(self,  brand_id):
         """발주 템플릿 생성"""
         # 기본 발주 템플릿 생성
         order_template = OrderTemplate(
@@ -391,12 +395,12 @@ class BrandRegistrationSystem:
             is_active=True,
             created_at=datetime.now()
         )
-        
+
         db.session.add(order_template)
         db.session.flush()
         return [order_template]
-    
-    def _create_onboarding_status(self, brand_id):
+
+    def _create_onboarding_status(self,  brand_id):
         """온보딩 상태 생성"""
         onboarding = {
             'brand_id': brand_id,
@@ -413,20 +417,22 @@ class BrandRegistrationSystem:
             'progress': 10,
             'created_at': datetime.now()
         }
-        
+
         # 온보딩 상태를 시스템 설정에 저장
         system_setting = SystemSettings(
             setting_key=f'onboarding_status_{brand_id}',
             setting_value=json.dumps(onboarding),
             created_at=datetime.now()
         )
-        
+
         db.session.add(system_setting)
         db.session.flush()
         return onboarding
 
+
 # 전역 인스턴스
 brand_registration_system = BrandRegistrationSystem()
+
 
 @brand_registration_bp.route('/api/admin/create-brand-with-related-data', methods=['POST'])
 @login_required
@@ -434,64 +440,64 @@ def create_brand_with_related_data():
     """브랜드와 연관 데이터를 함께 생성하는 API"""
     try:
         data = request.get_json()
-        
+
         # 필수 필드 검증
         required_fields = ['name', 'address']
-        for field in required_fields:
-            if not data.get(field):
+        for field in required_fields if required_fields is not None:
+            if not data.get() if data else Nonefield) if data else None:
                 return jsonify({
                     'success': False,
                     'error': f'필수 필드가 누락되었습니다: {field}'
                 }), 400
-        
+
         # 브랜드명 중복 체크
         existing_brand = Brand.query.filter(
-            Brand.name == data['name']
+            Brand.name == data['name'] if data is not None else None
         ).first()
-        
+
         if existing_brand:
             return jsonify({
                 'success': False,
                 'error': '이미 존재하는 브랜드명입니다.'
             }), 400
-        
+
         # 주소 중복 체크 (선택적)
-        if data.get('address'):
+        if data.get() if data else None'address') if data else None:
             existing_address = Brand.query.filter(
-                Brand.address == data['address']
+                Brand.address == data['address'] if data is not None else None
             ).first()
-            
+
             if existing_address:
                 return jsonify({
                     'success': False,
                     'error': '이미 등록된 주소입니다.',
                     'existing_brand': existing_address.name
                 }), 400
-        
+
         # 브랜드 및 연관 데이터 생성
         result = brand_registration_system.create_brand_with_related_data(
             data, current_user.id
         )
-        
-        logger.info(f"브랜드 생성 완료: {result['brand'].name} (ID: {result['brand'].id})")
-        
+
+        logger.info(f"브랜드 생성 완료: {result['brand'] if result is not None else None.name} (ID: {result['brand'] if result is not None else None.id})")
+
         return jsonify({
             'success': True,
             'message': '브랜드가 성공적으로 생성되었습니다.',
-            'brand_id': result['brand'].id,
-            'brand_name': result['brand'].name,
-            'onboarding_url': f'/admin/brand-onboarding/{result["brand"].id}',
+            'brand_id': result['brand'] if result is not None else None.id,
+            'brand_name': result['brand'] if result is not None else None.name,
+            'onboarding_url': f'/admin/brand-onboarding/{result["brand"] if result is not None else None.id}',
             'related_data_summary': {
                 'store_count': 1,
                 'admin_count': 1,
-                'menu_categories': len(result['related_data']['menu_categories']),
-                'work_rules': len(result['related_data']['work_rules']),
-                'notification_templates': len(result['related_data']['notification_templates']),
-                'inventory_categories': len(result['related_data']['inventory_categories']),
-                'report_templates': len(result['related_data']['report_templates'])
+                'menu_categories': len(result['related_data'] if result is not None else None['menu_categories']),
+                'work_rules': len(result['related_data'] if result is not None else None['work_rules']),
+                'notification_templates': len(result['related_data'] if result is not None else None['notification_templates']),
+                'inventory_categories': len(result['related_data'] if result is not None else None['inventory_categories']),
+                'report_templates': len(result['related_data'] if result is not None else None['report_templates'])
             }
         })
-        
+
     except Exception as e:
         logger.error(f"브랜드 생성 API 오류: {str(e)}")
         return jsonify({
@@ -499,24 +505,25 @@ def create_brand_with_related_data():
             'error': f'브랜드 생성 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @brand_registration_bp.route('/api/admin/check-brand-duplicate', methods=['POST'])
 @login_required
 def check_brand_duplicate():
     """브랜드 중복 체크 API"""
     try:
         data = request.get_json()
-        name = data.get('name', '').strip()
-        address = data.get('address', '').strip()
-        exclude_id = data.get('exclude_id')
-        
+        name = data.get() if data else None'name', '') if data else None.strip() if None is not None else ''
+        address = data.get() if data else None'address', '') if data else None.strip() if None is not None else ''
+        exclude_id = data.get() if data else None'exclude_id') if data else None
+
         duplicates = []
-        
+
         # 브랜드명 중복 체크
         if name:
             name_query = Brand.query.filter(Brand.name == name)
             if exclude_id:
                 name_query = name_query.filter(Brand.id != exclude_id)
-            
+
             existing_name = name_query.first()
             if existing_name:
                 duplicates.append({
@@ -526,13 +533,13 @@ def check_brand_duplicate():
                     'existing_brand': existing_name.name,
                     'existing_id': existing_name.id
                 })
-        
+
         # 주소 중복 체크
         if address:
             address_query = Brand.query.filter(Brand.address == address)
             if exclude_id:
                 address_query = address_query.filter(Brand.id != exclude_id)
-            
+
             existing_address = address_query.first()
             if existing_address:
                 duplicates.append({
@@ -542,13 +549,13 @@ def check_brand_duplicate():
                     'existing_brand': existing_address.name,
                     'existing_id': existing_address.id
                 })
-        
+
         return jsonify({
             'success': True,
             'has_duplicates': len(duplicates) > 0,
             'duplicates': duplicates
         })
-        
+
     except Exception as e:
         logger.error(f"브랜드 중복 체크 오류: {str(e)}")
         return jsonify({
@@ -556,13 +563,14 @@ def check_brand_duplicate():
             'error': f'중복 체크 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @brand_registration_bp.route('/api/admin/get-brand-related-data/<int:brand_id>', methods=['GET'])
 @login_required
 def get_brand_related_data(brand_id):
     """브랜드 연관 데이터 조회 API"""
     try:
         brand = Brand.query.get_or_404(brand_id)
-        
+
         # 연관 데이터 조회
         stores = Store.query.filter(Store.brand_id == brand_id).all()
         employees = Employee.query.filter(Employee.brand_id == brand_id).all()
@@ -574,7 +582,7 @@ def get_brand_related_data(brand_id):
         inventory_categories = InventoryCategory.query.filter(
             InventoryCategory.brand_id == brand_id
         ).all()
-        
+
         return jsonify({
             'success': True,
             'brand': {
@@ -592,7 +600,7 @@ def get_brand_related_data(brand_id):
                 'inventory_categories': [{'id': c.id, 'name': c.name} for c in inventory_categories]
             }
         })
-        
+
     except Exception as e:
         logger.error(f"브랜드 연관 데이터 조회 오류: {str(e)}")
         return jsonify({
@@ -600,22 +608,23 @@ def get_brand_related_data(brand_id):
             'error': f'데이터 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @brand_registration_bp.route('/api/admin/sync-brand-data/<int:brand_id>', methods=['POST'])
 @login_required
 def sync_brand_data(brand_id):
     """브랜드 데이터 동기화 API"""
     try:
         data = request.get_json()
-        sync_type = data.get('sync_type', 'all')  # all, stores, employees, settings
-        
+        sync_type = data.get() if data else None'sync_type', 'all') if data else None  # all, stores, employees, settings
+
         brand = Brand.query.get_or_404(brand_id)
-        
+
         sync_results = {}
-        
+
         if sync_type in ['all', 'stores']:
             # 매장 정보 동기화
             stores = Store.query.filter(Store.brand_id == brand_id).all()
-            for store in stores:
+            for store in stores if stores is not None:
                 store.name = f"{brand.name} {store.name.split(' ')[-1]}" if '본점' in store.name else store.name
                 store.phone = brand.phone
                 store.email = brand.email
@@ -626,35 +635,35 @@ def sync_brand_data(brand_id):
                 store.detail_address = brand.detail_address
                 store.latitude = brand.latitude
                 store.longitude = brand.longitude
-            
-            sync_results['stores'] = len(stores)
-        
+
+            sync_results['stores'] if sync_results is not None else None = len(stores)
+
         if sync_type in ['all', 'settings']:
             # 브랜드 설정 동기화
             brand_settings = BrandSettings.query.filter(
                 BrandSettings.brand_id == brand_id
             ).first()
-            
+
             if brand_settings:
                 settings_data = json.loads(brand_settings.settings_data)
                 # 설정 업데이트 로직
                 brand_settings.settings_data = json.dumps(settings_data)
-                sync_results['settings'] = 1
-        
+                sync_results['settings'] if sync_results is not None else None = 1
+
         db.session.commit()
-        
+
         logger.info(f"브랜드 데이터 동기화 완료: {brand.name} (ID: {brand_id})")
-        
+
         return jsonify({
             'success': True,
             'message': '브랜드 데이터 동기화가 완료되었습니다.',
             'sync_results': sync_results
         })
-        
+
     except Exception as e:
         logger.error(f"브랜드 데이터 동기화 오류: {str(e)}")
         db.session.rollback()
         return jsonify({
             'success': False,
             'error': f'데이터 동기화 중 오류가 발생했습니다: {str(e)}'
-        }), 500 
+        }), 500

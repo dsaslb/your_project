@@ -1,32 +1,37 @@
-from flask import Blueprint, request, jsonify, current_app
-from flask_login import login_required, current_user
-import json
-import os
-import shutil
-from datetime import datetime
-import hashlib
-from typing import Dict, Any, List, Optional
-import jsonschema
-from jsonschema import validate
 import yaml
+from jsonschema import validate
+import jsonschema
+from typing import Dict, Any, List, Optional
+import hashlib
+from datetime import datetime
+import shutil
+import os
+import json
+from flask_login import login_required, current_user
+from flask import Blueprint, request, jsonify, current_app
+from typing import Optional
+args = None  # pyright: ignore
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 
 plugin_settings_bp = Blueprint('plugin_settings', __name__)
 
+
 class PluginSettingsManager:
-    def __init__(self, app):
+    def __init__(self,  app):
         self.app = app
         self.settings_dir = os.path.join(app.root_path, 'plugins', 'settings')
         self.backup_dir = os.path.join(app.root_path, 'plugins', 'settings_backup')
         self.templates_dir = os.path.join(app.root_path, 'plugins', 'settings_templates')
-        
+
         # 디렉토리 생성
         for directory in [self.settings_dir, self.backup_dir, self.templates_dir]:
             os.makedirs(directory, exist_ok=True)
-    
-    def get_plugin_settings_path(self, plugin_name: str) -> str:
+
+    def get_plugin_settings_path(self,  plugin_name: str) -> str:
         """플러그인 설정 파일 경로 반환"""
         return os.path.join(self.settings_dir, f"{plugin_name}_settings.json")
-    
+
     def get_plugin_template_path(self, plugin_name: str) -> str:
         """플러그인 설정 템플릿 파일 경로 반환"""
         return os.path.join(self.templates_dir, f"{plugin_name}_template.json")
@@ -37,11 +42,11 @@ class PluginSettingsManager:
             return os.path.join(self.backup_dir, f"{plugin_name}_settings_{version}.json")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             return os.path.join(self.backup_dir, f"{plugin_name}_settings_{timestamp}.json")
-    
+
     def load_settings(self, plugin_name: str) -> Dict[str, Any]:
         """플러그인 설정 로드"""
         settings_path = self.get_plugin_settings_path(plugin_name)
-        
+
         if os.path.exists(settings_path):
             try:
                 with open(settings_path, 'r', encoding='utf-8') as f:
@@ -52,44 +57,44 @@ class PluginSettingsManager:
         else:
             # 기본 설정 생성
             default_settings = self.get_default_settings(plugin_name)
-            self.save_settings(plugin_name, default_settings)
+            self.save_settings(plugin_name,  default_settings)
             return default_settings
-    
-    def save_settings(self, plugin_name: str, settings: Dict[str, Any]) -> bool:
+
+    def save_settings(self,  plugin_name: str,  settings: Dict[str,  Any]) -> bool:
         """플러그인 설정 저장"""
         try:
             # 설정 검증
-            if not self.validate_settings(plugin_name, settings):
+            if not self.validate_settings(plugin_name,  settings):
                 return False
-            
+
             # 백업 생성
             self.create_backup(plugin_name)
-            
+
             # 설정 저장
             settings_path = self.get_plugin_settings_path(plugin_name)
             with open(settings_path, 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=2, ensure_ascii=False)
-            
+
             # 설정 메타데이터 업데이트
-            self.update_settings_metadata(plugin_name, settings)
-            
+            self.update_settings_metadata(plugin_name,  settings)
+
             return True
         except Exception as e:
             current_app.logger.error(f"설정 저장 실패: {e}")
             return False
-    
-    def get_default_settings(self, plugin_name: str) -> Dict[str, Any]:
+
+    def get_default_settings(self,  plugin_name: str) -> Dict[str, Any]:
         """플러그인 기본 설정 반환"""
         template_path = self.get_plugin_template_path(plugin_name)
-        
+
         if os.path.exists(template_path):
             try:
                 with open(template_path, 'r', encoding='utf-8') as f:
                     template = json.load(f)
-                    return template.get('default_settings', {})
+                    return template.get('default_settings', {}) if template else {}
             except Exception as e:
                 current_app.logger.error(f"템플릿 로드 실패: {e}")
-        
+
         # 기본 템플릿 반환
         return {
             "enabled": True,
@@ -99,16 +104,16 @@ class PluginSettingsManager:
             "permissions": [],
             "config": {}
         }
-    
-    def validate_settings(self, plugin_name: str, settings: Dict[str, Any]) -> bool:
+
+    def validate_settings(self,  plugin_name: str,  settings: Dict[str,  Any]) -> bool:
         """설정 검증"""
         template_path = self.get_plugin_template_path(plugin_name)
-        
+
         if os.path.exists(template_path):
             try:
                 with open(template_path, 'r', encoding='utf-8') as f:
                     template = json.load(f)
-                    schema = template.get('schema', {})
+                    schema = template.get('schema', {}) if template else {}
             except Exception as e:
                 current_app.logger.error(f"스키마 파일 로드 실패: {e}")
                 schema = {}
@@ -124,98 +129,98 @@ class PluginSettingsManager:
                 current_app.logger.error(f"스키마 검증 실패: {e}")
                 return False
         return True
-    
-    def create_backup(self, plugin_name: str) -> bool:
+
+    def create_backup(self,  plugin_name: str) -> bool:
         """설정 백업 생성"""
         try:
             current_settings = self.load_settings(plugin_name)
             if not current_settings:
                 return False
-            
+
             backup_path = self.get_backup_path(plugin_name)
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(current_settings, f, indent=2, ensure_ascii=False)
-            
+
             return True
         except Exception as e:
             current_app.logger.error(f"백업 생성 실패: {e}")
             return False
-    
-    def restore_backup(self, plugin_name: str, version: str) -> bool:
+
+    def restore_backup(self,  plugin_name: str,  version: str) -> bool:
         """백업에서 설정 복원"""
         try:
             backup_path = self.get_backup_path(plugin_name, version)
-            
+
             if not os.path.exists(backup_path):
                 return False
-            
+
             with open(backup_path, 'r', encoding='utf-8') as f:
                 backup_settings = json.load(f)
-            
-            return self.save_settings(plugin_name, backup_settings)
+
+            return self.save_settings(plugin_name,  backup_settings)
         except Exception as e:
             current_app.logger.error(f"백업 복원 실패: {e}")
             return False
-    
-    def get_backup_list(self, plugin_name: str) -> List[Dict[str, Any]]:
+
+    def get_backup_list(self,  plugin_name: str) -> List[Dict[str, Any]]:
         """백업 목록 조회"""
         backups = []
         backup_pattern = f"{plugin_name}_settings_*.json"
-        
+
         try:
             for filename in os.listdir(self.backup_dir):
                 if filename.startswith(f"{plugin_name}_settings_") and filename.endswith('.json'):
                     file_path = os.path.join(self.backup_dir, filename)
                     stat = os.stat(file_path)
-                    
+
                     # 버전 추출
                     version = filename.replace(f"{plugin_name}_settings_", "").replace('.json', '')
-                    
+
                     backups.append({
                         'version': version,
                         'created_at': datetime.fromtimestamp(stat.st_mtime).isoformat(),
                         'size': stat.st_size,
                         'filename': filename
                     })
-            
+
             # 생성일 기준 내림차순 정렬
             backups.sort(key=lambda x: x['created_at'], reverse=True)
             return backups
         except Exception as e:
             current_app.logger.error(f"백업 목록 조회 실패: {e}")
             return []
-    
-    def update_settings_metadata(self, plugin_name: str, settings: Dict[str, Any]) -> None:
+
+    def update_settings_metadata(self,  plugin_name: str,  settings: Dict[str,  Any]) -> None:
         """설정 메타데이터 업데이트"""
         metadata_path = os.path.join(self.settings_dir, f"{plugin_name}_metadata.json")
-        
+
         metadata = {
             'last_modified': datetime.now().isoformat(),
             'modified_by': getattr(current_user, 'username', 'system'),
-            'version': settings.get('version', '1.0.0'),
+            'version': settings.get('version', '1.0.0') if settings else '1.0.0',
             'checksum': hashlib.md5(json.dumps(settings, sort_keys=True).encode()).hexdigest()
         }
-        
+
         try:
             with open(metadata_path, 'w', encoding='utf-8') as f:
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
         except Exception as e:
             current_app.logger.error(f"메타데이터 업데이트 실패: {e}")
-    
+
     def get_settings_metadata(self, plugin_name: str) -> Dict[str, Any]:
         """설정 메타데이터 조회"""
         metadata_path = os.path.join(self.settings_dir, f"{plugin_name}_metadata.json")
-        
+
         if os.path.exists(metadata_path):
             try:
                 with open(metadata_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
                 current_app.logger.error(f"메타데이터 로드 실패: {e}")
-        
+
         return {}
-    
-    def create_settings_template(self, plugin_name: str, template: Dict[str, Any]) -> bool:
+
+    def create_settings_template(self,  plugin_name: str,  template: Dict[str,  Any]) -> bool:
         """설정 템플릿 생성"""
         try:
             template_path = self.get_plugin_template_path(plugin_name)
@@ -225,44 +230,44 @@ class PluginSettingsManager:
         except Exception as e:
             current_app.logger.error(f"템플릿 생성 실패: {e}")
             return False
-    
-    def get_settings_template(self, plugin_name: str) -> Dict[str, Any]:
+
+    def get_settings_template(self,  plugin_name: str) -> Dict[str, Any]:
         """설정 템플릿 조회"""
         template_path = self.get_plugin_template_path(plugin_name)
-        
+
         if os.path.exists(template_path):
             try:
                 with open(template_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
                 current_app.logger.error(f"템플릿 로드 실패: {e}")
-        
+
         return {}
-    
-    def migrate_settings(self, plugin_name: str, from_version: str, to_version: str) -> bool:
+
+    def migrate_settings(self,  plugin_name: str,  from_version: str,  to_version: str) -> bool:
         """설정 마이그레이션"""
         try:
             current_settings = self.load_settings(plugin_name)
             template = self.get_settings_template(plugin_name)
-            
+
             # 마이그레이션 스크립트 실행
-            migration_scripts = template.get('migrations', {})
+            migration_scripts = template.get('migrations', {}) if template else {}
             migration_key = f"{from_version}_to_{to_version}"
-            
+
             if migration_key in migration_scripts:
-                migration_func = migration_scripts[migration_key]
+                migration_func = migration_scripts[migration_key] if migration_scripts is not None else None
                 # 여기서 실제 마이그레이션 로직 실행
                 # (실제 구현에서는 더 복잡한 마이그레이션 로직이 필요)
                 pass
-            
+
             # 새 버전으로 설정 저장
             current_settings['version'] = to_version
-            return self.save_settings(plugin_name, current_settings)
+            return self.save_settings(plugin_name,  current_settings)
         except Exception as e:
             current_app.logger.error(f"설정 마이그레이션 실패: {e}")
             return False  # pyright: ignore
 
-    def export_settings(self, plugin_name: str, format: str = 'json') -> str:
+    def export_settings(self,  plugin_name: str,  format: str = 'json') -> str:
         """설정 내보내기"""
         try:
             settings = self.load_settings(plugin_name)
@@ -318,10 +323,10 @@ class PluginSettingsManager:
                 return ""  # pyright: ignore
                 # 위의 except 블록은 json 변환 실패만 처리합니다.
         export_data = {
-                'plugin_name': plugin_name,
-                'settings': settings,
-                'metadata': metadata,
-                'exported_at': datetime.now().isoformat()
+            'plugin_name': plugin_name,
+            'settings': settings,
+            'metadata': metadata,
+            'exported_at': datetime.now().isoformat()
         }
         if format == 'yaml':
             result = yaml.dump(export_data, default_flow_style=False, allow_unicode=True)
@@ -333,14 +338,15 @@ class PluginSettingsManager:
                 return result
             else:
                 return json.dumps(export_data, indent=2, ensure_ascii=False)
-    def import_settings(self, plugin_name: str, import_data: str, format: str = 'json') -> bool:
+
+    def import_settings(self,  plugin_name: str,  import_data: str,  format: str = 'json') -> bool:
         """설정 가져오기"""
         try:
             if format == 'yaml':
                 data = yaml.safe_load(import_data)
             else:
                 data = json.loads(import_data)
-            
+
             # data가 dict인지 확인 (예: list 등일 경우 대비)
             if not isinstance(data, dict):
                 return False  # pyright: ignore
@@ -349,12 +355,12 @@ class PluginSettingsManager:
             if data.get('plugin_name') != plugin_name:
                 return False
 
-            settings = data.get('settings', {})
-            return self.save_settings(plugin_name, settings)
+            settings = data.get('settings', {}) if data else {}
+            return self.save_settings(plugin_name,  settings)
         except Exception as e:
             current_app.logger.error(f"설정 가져오기 실패: {e}")
             return False
-            
+
             if data.get('plugin_name') != plugin_name:
                 # data가 dict가 아닐 경우(예: list 등) .get을 사용할 수 없으므로 타입 체크를 추가합니다.
                 if not isinstance(data, dict):
@@ -363,11 +369,16 @@ class PluginSettingsManager:
                 if data.get('plugin_name') != plugin_name:
                     return False
 
-                settings = data.get('settings', {})
-                return self.save_settings(plugin_name, settings)
+                settings = data.get('settings', {}) if data else {}
+                return self.save_settings(plugin_name,  settings)
+
 
 # 전역 설정 관리자 인스턴스
-settings_manager = None
+settings_manager = None  # 반드시 앱 초기화 시점에 init_settings_manager(app) 호출 필요
+# (앱 팩토리 또는 main.py 등에서 반드시 아래 함수 호출 필요)
+# from api.plugin_settings_management import init_settings_manager
+# init_settings_manager(app)
+
 
 def init_settings_manager(app):
     """설정 관리자 초기화"""
@@ -375,6 +386,8 @@ def init_settings_manager(app):
     settings_manager = PluginSettingsManager(app)
 
 # API 엔드포인트들
+
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>', methods=['GET'])
 @login_required
 def get_plugin_settings(plugin_name):
@@ -382,7 +395,7 @@ def get_plugin_settings(plugin_name):
     try:
         settings = settings_manager.load_settings(plugin_name)
         metadata = settings_manager.get_settings_metadata(plugin_name)
-        
+
         return jsonify({
             'status': 'success',
             'data': {
@@ -396,15 +409,16 @@ def get_plugin_settings(plugin_name):
             'error': str(e)
         }), 500
 
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>', methods=['POST'])
 @login_required
 def update_plugin_settings(plugin_name):
     """플러그인 설정 업데이트"""
     try:
         data = request.get_json()
-        settings = data.get('settings', {})
-        
-        if settings_manager.save_settings(plugin_name, settings):
+        settings = data.get('settings', {}) if data else {}
+
+        if settings_manager.save_settings(plugin_name,  settings):
             return jsonify({
                 'status': 'success',
                 'message': '설정이 성공적으로 저장되었습니다.'
@@ -419,6 +433,7 @@ def update_plugin_settings(plugin_name):
             'status': 'error',
             'error': str(e)
         }), 500
+
 
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/template', methods=['GET'])
 @login_required
@@ -436,15 +451,16 @@ def get_settings_template(plugin_name):
             'error': str(e)
         }), 500
 
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/template', methods=['POST'])
 @login_required
 def create_settings_template(plugin_name):
     """설정 템플릿 생성"""
     try:
         data = request.get_json()
-        template = data.get('template', {})
-        
-        if settings_manager.create_settings_template(plugin_name, template):
+        template = data.get('template', {}) if data else {}
+
+        if settings_manager.create_settings_template(plugin_name,  template):
             return jsonify({
                 'status': 'success',
                 'message': '템플릿이 성공적으로 생성되었습니다.'
@@ -459,6 +475,7 @@ def create_settings_template(plugin_name):
             'status': 'error',
             'error': str(e)
         }), 500
+
 
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/backup', methods=['GET'])
 @login_required
@@ -475,6 +492,7 @@ def get_backup_list(plugin_name):
             'status': 'error',
             'error': str(e)
         }), 500
+
 
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/backup', methods=['POST'])
 @login_required
@@ -497,12 +515,13 @@ def create_backup(plugin_name):
             'error': str(e)
         }), 500
 
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/backup/<version>', methods=['POST'])
 @login_required
-def restore_backup(plugin_name, version):
+def restore_backup(plugin_name,  version):
     """백업 복원"""
     try:
-        if settings_manager.restore_backup(plugin_name, version):
+        if settings_manager.restore_backup(plugin_name,  version):
             return jsonify({
                 'status': 'success',
                 'message': '백업이 성공적으로 복원되었습니다.'
@@ -518,14 +537,15 @@ def restore_backup(plugin_name, version):
             'error': str(e)
         }), 500
 
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/export', methods=['GET'])
 @login_required
 def export_settings(plugin_name):
     """설정 내보내기"""
     try:
         format = request.args.get('format', 'json')
-        export_data = settings_manager.export_settings(plugin_name, format)
-        
+        export_data = settings_manager.export_settings(plugin_name,  format)
+
         if export_data:
             return jsonify({
                 'status': 'success',
@@ -543,16 +563,17 @@ def export_settings(plugin_name):
             'error': str(e)
         }), 500
 
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/import', methods=['POST'])
 @login_required
 def import_settings(plugin_name):
     """설정 가져오기"""
     try:
         data = request.get_json()
-        import_data = data.get('import_data', '')
-        format = data.get('format', 'json')
-        
-        if settings_manager.import_settings(plugin_name, import_data, format):
+        import_data = data.get('import_data', '') if data else ''
+        format = data.get('format', 'json') if data else 'json'
+
+        if settings_manager.import_settings(plugin_name,  import_data,  format):
             return jsonify({
                 'status': 'success',
                 'message': '설정이 성공적으로 가져와졌습니다.'
@@ -568,22 +589,23 @@ def import_settings(plugin_name):
             'error': str(e)
         }), 500
 
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/migrate', methods=['POST'])
 @login_required
 def migrate_settings(plugin_name):
     """설정 마이그레이션"""
     try:
         data = request.get_json()
-        from_version = data.get('from_version')
-        to_version = data.get('to_version')
-        
+        from_version = data.get('from_version') if data else None
+        to_version = data.get('to_version') if data else None
+
         if not from_version or not to_version:
             return jsonify({
                 'status': 'error',
                 'error': '버전 정보가 필요합니다.'
             }), 400
-        
-        if settings_manager.migrate_settings(plugin_name, from_version, to_version):
+
+        if settings_manager.migrate_settings(plugin_name,  from_version,  to_version):
             return jsonify({
                 'status': 'success',
                 'message': '설정 마이그레이션이 성공적으로 완료되었습니다.'
@@ -599,16 +621,17 @@ def migrate_settings(plugin_name):
             'error': str(e)
         }), 500
 
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/validate', methods=['POST'])
 @login_required
 def validate_settings(plugin_name):
     """설정 검증"""
     try:
         data = request.get_json()
-        settings = data.get('settings', {})
-        
-        is_valid = settings_manager.validate_settings(plugin_name, settings)
-        
+        settings = data.get('settings', {}) if data else {}
+
+        is_valid = settings_manager.validate_settings(plugin_name,  settings)
+
         return jsonify({
             'status': 'success',
             'data': {
@@ -621,14 +644,15 @@ def validate_settings(plugin_name):
             'error': str(e)
         }), 500
 
+
 @plugin_settings_bp.route('/api/plugin-settings/<plugin_name>/reset', methods=['POST'])
 @login_required
 def reset_settings(plugin_name):
     """설정 초기화"""
     try:
         default_settings = settings_manager.get_default_settings(plugin_name)
-        
-        if settings_manager.save_settings(plugin_name, default_settings):
+
+        if settings_manager.save_settings(plugin_name,  default_settings):
             return jsonify({
                 'status': 'success',
                 'message': '설정이 기본값으로 초기화되었습니다.'
@@ -642,4 +666,4 @@ def reset_settings(plugin_name):
         return jsonify({
             'status': 'error',
             'error': str(e)
-        }), 500 
+        }), 500

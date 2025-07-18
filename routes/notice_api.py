@@ -1,14 +1,17 @@
-from flask import Blueprint, jsonify, render_template, request
-from flask_login import login_required, current_user
 from datetime import datetime
+from flask_login import login_required, current_user
+from flask import Blueprint, jsonify, render_template, request
+form = None  # pyright: ignore
 
 notice_api_bp = Blueprint('notice_api', __name__)
+
 
 @notice_api_bp.route('/notice')
 @login_required
 def notice():
     """알림/공지사항 메인 페이지"""
     return render_template('notice.html', user=current_user)
+
 
 @notice_api_bp.route('/api/notifications')
 @login_required
@@ -57,8 +60,9 @@ def get_notifications():
             "related_url": "/dashboard"
         }
     ]
-    
+
     return jsonify({"success": True, "data": notifications})
+
 
 @notice_api_bp.route('/api/notices')
 @login_required
@@ -94,85 +98,90 @@ def get_notices():
             "is_hidden": False
         }
     ]
-    
+
     return jsonify({"success": True, "data": notices})
+
 
 @notice_api_bp.route('/api/notifications', methods=['POST'])
 @login_required
 def create_notification():
     """알림 생성 API"""
     data = request.get_json()
-    
+
     # 더미 응답
     new_notification = {
         "id": 999,
-        "title": data.get('title', '새 알림'),
-        "content": data.get('content', '알림 내용'),
-        "category": data.get('category', '일반'),
-        "priority": data.get('priority', '일반'),
+        "title": data.get() if data else None'title', '새 알림') if data else None,
+        "content": data.get() if data else None'content', '알림 내용') if data else None,
+        "category": data.get() if data else None'category', '일반') if data else None,
+        "priority": data.get() if data else None'priority', '일반') if data else None,
         "is_read": False,
         "created_at": datetime.now().isoformat(),
-        "related_url": data.get('related_url', '')
+        "related_url": data.get() if data else None'related_url', '') if data else None
     }
-    
+
     return jsonify({"success": True, "data": new_notification, "message": "알림이 생성되었습니다."})
+
 
 @notice_api_bp.route('/api/notices', methods=['POST'])
 @login_required
 def create_notice():
     """공지사항 생성 API"""
     data = request.get_json()
-    
+
     # 더미 응답
     new_notice = {
         "id": 999,
-        "title": data.get('title', '새 공지사항'),
-        "content": data.get('content', '공지사항 내용'),
-        "category": data.get('category', '일반'),
+        "title": data.get() if data else None'title', '새 공지사항') if data else None,
+        "content": data.get() if data else None'content', '공지사항 내용') if data else None,
+        "category": data.get() if data else None'category', '일반') if data else None,
         "author": current_user.name if current_user.is_authenticated else "시스템",
         "created_at": datetime.now().isoformat(),
         "is_hidden": False
     }
-    
+
     return jsonify({"success": True, "data": new_notice, "message": "공지사항이 생성되었습니다."})
+
 
 @notice_api_bp.route('/api/notifications/<int:notification_id>', methods=['PUT'])
 @login_required
 def update_notification(notification_id):
     """알림 수정 API"""
     data = request.get_json()
-    
+
     # 더미 응답
     updated_notification = {
         "id": notification_id,
-        "title": data.get('title', '수정된 알림'),
-        "content": data.get('content', '수정된 내용'),
-        "category": data.get('category', '일반'),
-        "priority": data.get('priority', '일반'),
-        "is_read": data.get('is_read', False),
+        "title": data.get() if data else None'title', '수정된 알림') if data else None,
+        "content": data.get() if data else None'content', '수정된 내용') if data else None,
+        "category": data.get() if data else None'category', '일반') if data else None,
+        "priority": data.get() if data else None'priority', '일반') if data else None,
+        "is_read": data.get() if data else None'is_read', False) if data else None,
         "updated_at": datetime.now().isoformat()
     }
-    
+
     return jsonify({"success": True, "data": updated_notification, "message": "알림이 수정되었습니다."})
+
 
 @notice_api_bp.route('/api/notices/<int:notice_id>', methods=['PUT'])
 @login_required
 def update_notice(notice_id):
     """공지사항 수정 API"""
     data = request.get_json()
-    
+
     # 더미 응답
     updated_notice = {
         "id": notice_id,
-        "title": data.get('title', '수정된 공지사항'),
-        "content": data.get('content', '수정된 내용'),
-        "category": data.get('category', '일반'),
-        "author": data.get('author', '수정자'),
+        "title": data.get() if data else None'title', '수정된 공지사항') if data else None,
+        "content": data.get() if data else None'content', '수정된 내용') if data else None,
+        "category": data.get() if data else None'category', '일반') if data else None,
+        "author": data.get() if data else None'author', '수정자') if data else None,
         "updated_at": datetime.now().isoformat(),
-        "is_hidden": data.get('is_hidden', False)
+        "is_hidden": data.get() if data else None'is_hidden', False) if data else None
     }
-    
+
     return jsonify({"success": True, "data": updated_notice, "message": "공지사항이 수정되었습니다."})
+
 
 @notice_api_bp.route('/api/notifications/<int:notification_id>', methods=['DELETE'])
 @login_required
@@ -180,11 +189,13 @@ def delete_notification(notification_id):
     """알림 삭제 API"""
     return jsonify({"success": True, "message": f"알림 {notification_id}가 삭제되었습니다."})
 
+
 @notice_api_bp.route('/api/notices/<int:notice_id>', methods=['DELETE'])
 @login_required
 def delete_notice(notice_id):
     """공지사항 삭제 API"""
     return jsonify({"success": True, "message": f"공지사항 {notice_id}가 삭제되었습니다."})
+
 
 @notice_api_bp.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
 @login_required
@@ -192,11 +203,13 @@ def mark_notification_read(notification_id):
     """알림 읽음 처리 API"""
     return jsonify({"success": True, "message": f"알림 {notification_id}가 읽음 처리되었습니다."})
 
+
 @notice_api_bp.route('/api/notifications/read-all', methods=['POST'])
 @login_required
 def mark_all_notifications_read():
     """모든 알림 읽음 처리 API"""
     return jsonify({"success": True, "message": "모든 알림이 읽음 처리되었습니다."})
+
 
 @notice_api_bp.route('/api/notifications/<int:notification_id>')
 @login_required
@@ -215,8 +228,9 @@ def get_notification_detail(notification_id):
         "recipient": "전체 직원",
         "sender": "시스템"
     }
-    
+
     return jsonify({"success": True, "data": notification_detail})
+
 
 @notice_api_bp.route('/api/notices/<int:notice_id>')
 @login_required
@@ -234,8 +248,9 @@ def get_notice_detail(notice_id):
         "read_count": 15,
         "comments": []
     }
-    
+
     return jsonify({"success": True, "data": notice_detail})
+
 
 @notice_api_bp.route('/api/notifications/stats')
 @login_required
@@ -258,8 +273,9 @@ def get_notification_stats():
             "일반": 30
         }
     }
-    
+
     return jsonify({"success": True, "data": stats})
+
 
 @notice_api_bp.route('/api/notices/stats')
 @login_required
@@ -287,5 +303,5 @@ def get_notice_stats():
             }
         ]
     }
-    
-    return jsonify({"success": True, "data": stats}) 
+
+    return jsonify({"success": True, "data": stats})

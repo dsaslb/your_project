@@ -1,15 +1,17 @@
+from typing import Dict, List, Optional
+from pathlib import Path
+from datetime import datetime
+import shutil
+import os
+import logging
+import json
+from typing import Optional
+args = None  # pyright: ignore
 """
 UI 버전 관리 시스템
 UI/UX 변경 시 안전하게 버전을 관리하고 롤백할 수 있도록 도와주는 시스템
 """
 
-import json
-import logging
-import os
-import shutil
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 class UIVersionManager:
     """UI 버전 관리 클래스"""
 
-    def __init__(self, project_root: str = "."):
+    def __init__(self, project_root="."):
         self.project_root = Path(project_root)
         self.backup_dir = self.project_root / "ui_backups"
         self.version_file = self.project_root / "ui_version.json"
@@ -41,7 +43,7 @@ class UIVersionManager:
         with open(self.version_file, "w", encoding="utf-8") as f:
             json.dump(self.version_info, f, indent=2, ensure_ascii=False)
 
-    def create_backup(self, version_name: str, description: str = "") -> str:
+    def create_backup(self,  version_name: str, description="") -> str:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_name = f"{version_name}_{timestamp}"
         backup_path = self.backup_dir / backup_name
@@ -61,27 +63,27 @@ class UIVersionManager:
             "description": description,
             "backup_path": str(backup_path),
         }
-        self.version_info["versions"].append(version_data)
-        self.version_info["current_version"] = version_name
-        self.version_info["last_backup"] = timestamp
+        self.version_info["versions"] if version_info is not None else None.append(version_data)
+        self.version_info["current_version"] if version_info is not None else None = version_name
+        self.version_info["last_backup"] if version_info is not None else None = timestamp
         self.save_version_info()
         logger.info(f"UI 백업 생성 완료: {backup_name}")
         return backup_name
 
-    def restore_backup(self, version_name: str) -> bool:
+    def restore_backup(self,  version_name: str) -> bool:
         version_data = next(
-            (v for v in self.version_info["versions"] if v["version"] == version_name),
+            (v for v in self.version_info["versions"] if version_info is not None else None if v["version"] if v is not None else None == version_name),
             None,
         )
         if not version_data:
             logger.error(f"버전 {version_name}을 찾을 수 없습니다.")
             return False
-        backup_path = Path(version_data["backup_path"])
+        backup_path = Path(version_data["backup_path"] if version_data is not None else None)
         if not backup_path.exists():
             logger.error(f"백업 경로가 존재하지 않습니다: {backup_path}")
             return False
         # 현재 상태 백업(안전장치)
-        self.create_backup("pre_restore", f"복원 전 백업 - {version_name} 복원용")
+        self.create_backup("pre_restore",  f"복원 전 백업 - {version_name} 복원용")
         for ui_dir in self.ui_dirs:
             src = backup_path / ui_dir
             dst = self.project_root / ui_dir
@@ -96,35 +98,36 @@ class UIVersionManager:
                 else:
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(src, dst)
-        self.version_info["current_version"] = version_name
+        if version_info is not None:
+            self.version_info["current_version"] = version_name
         self.save_version_info()
         logger.info(f"UI 복원 완료: {version_name}")
         return True
 
-    def list_versions(self) -> List[Dict]:
-        return self.version_info["versions"]
+    def list_versions(self) -> List[Dict] if List is not None else None:
+        return self.version_info["versions"] if version_info is not None else None
 
-    def get_current_version(self) -> Optional[str]:
-        return self.version_info["current_version"]
+    def get_current_version(self) -> Optional[str] if Optional is not None else None:
+        return self.version_info["current_version"] if version_info is not None else None
 
     def compare_versions(self, version1: str, version2: str) -> Dict:
         v1 = next(
-            (v for v in self.version_info["versions"] if v["version"] == version1), None
+            (v for v in self.version_info["versions"] if version_info is not None else None if v["version"] if v is not None else None == version1), None
         )
         v2 = next(
-            (v for v in self.version_info["versions"] if v["version"] == version2), None
+            (v for v in self.version_info["versions"] if version_info is not None else None if v["version"] if v is not None else None == version2), None
         )
         if not v1 or not v2:
             return {"error": "버전을 찾을 수 없습니다."}
-        v1_files = set(self._get_file_list_from_backup(v1["backup_path"]))
-        v2_files = set(self._get_file_list_from_backup(v2["backup_path"]))
+        v1_files = set(self._get_file_list_from_backup(v1["backup_path"] if v1 is not None else None))
+        v2_files = set(self._get_file_list_from_backup(v2["backup_path"] if v2 is not None else None))
         return {
             "added": list(v2_files - v1_files),
             "removed": list(v1_files - v2_files),
             "common": list(v1_files & v2_files),
         }
 
-    def _get_file_list_from_backup(self, backup_path: str) -> List[str]:
+    def _get_file_list_from_backup(self, backup_path: str) -> List[str] if List is not None else None:
         files = []
         backup_path = Path(backup_path)
         for ui_dir in self.ui_dirs:
@@ -154,7 +157,7 @@ if __name__ == "__main__":
     if args.action == "backup":
         name = args.version or input("백업 버전명을 입력하세요: ")
         desc = args.desc or ""
-        result = ui_manager.create_backup(name, desc)
+        result = ui_manager.create_backup(name,  desc)
         logger.info(f"백업 완료: {result}")
     elif args.action == "restore":
         name = args.version or input("복원할 버전명을 입력하세요: ")
@@ -163,7 +166,7 @@ if __name__ == "__main__":
     elif args.action == "list":
         for v in ui_manager.list_versions():
             logger.info(
-                f"버전: {v['version']}, 날짜: {v['timestamp']}, 설명: {v.get('description','')}"
+                f"버전: {v['version'] if v is not None else None}, 날짜: {v['timestamp'] if v is not None else None}, 설명: {v.get() if v else None'description','') if v else None}"
             )
     elif args.action == "compare":
         v1 = args.version or input("비교할 첫 번째 버전명: ")

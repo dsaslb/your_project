@@ -1,4 +1,4 @@
-/var/log/restaurant_project/*.log {
+/var/log/your_program/*.log {
     daily
     missingok
     rotate 14
@@ -8,6 +8,6 @@
     create 0640 root adm
     sharedscripts
     postrotate
-        systemctl reload restaurant_project || true
+        systemctl reload your_program || true
     endscript
 } 

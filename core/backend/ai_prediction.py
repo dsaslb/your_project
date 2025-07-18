@@ -1,18 +1,19 @@
+from enum import Enum
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional
+import numpy as np
+import logging
+from typing import Optional
+form = None  # pyright: ignore
 """
 AI 예측 시스템
 머신러닝 기반 예측 및 분석 기능
 """
 
-import logging
-import numpy as np
-
-from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from enum import Enum
-
 
 logger = logging.getLogger(__name__)
+
 
 class PredictionType(Enum):
     """예측 타입"""
@@ -22,6 +23,7 @@ class PredictionType(Enum):
     CUSTOMER_FLOW = "customer_flow"
     REVENUE = "revenue"
 
+
 class ModelType(Enum):
     """모델 타입"""
     LINEAR_REGRESSION = "linear_regression"
@@ -29,6 +31,7 @@ class ModelType(Enum):
     LSTM = "lstm"
     ARIMA = "arima"
     PROPHET = "prophet"
+
 
 @dataclass
 class PredictionResult:
@@ -38,8 +41,9 @@ class PredictionResult:
     predicted_value: float
     confidence: float
     timestamp: datetime
-    features: Dict[str, Any]
-    metadata: Dict[str, Any]
+    features: Dict[str, Any] if Dict is not None else None
+    metadata: Dict[str, Any] if Dict is not None else None
+
 
 @dataclass
 class ModelPerformance:
@@ -52,27 +56,28 @@ class ModelPerformance:
     accuracy: float
     last_updated: datetime
 
+
 class AIPredictionEngine:
     """AI 예측 엔진"""
-    
+
     def __init__(self):
-        self.models: Dict[str, Any] = {}
-        self.performance_metrics: Dict[str, ModelPerformance] = {}
-        self.feature_scalers: Dict[str, Any] = {}
-        self.prediction_history: List[PredictionResult] = []
-        
+        self.models: Dict[str, Any] if Dict is not None else None = {}
+        self.performance_metrics: Dict[str, ModelPerformance] if Dict is not None else None = {}
+        self.feature_scalers: Dict[str, Any] if Dict is not None else None = {}
+        self.prediction_history: List[PredictionResult] if List is not None else None = []
+
         # 기본 모델 초기화
         self._initialize_default_models()
-    
+
     def _initialize_default_models(self):
         """기본 모델 초기화"""
         try:
             # 간단한 선형 회귀 모델 (실제로는 scikit-learn 사용)
             logger.info("AI 예측 엔진 초기화")
-            
+
             # 더미 성능 메트릭 설정
-            for model_type in ModelType:
-                self.performance_metrics[model_type.value] = ModelPerformance(
+            for model_type in ModelType if ModelType is not None:
+                self.performance_metrics[model_type.value if model_type is not None else None] if performance_metrics is not None else None = ModelPerformance(
                     model_type=model_type,
                     mae=0.1,
                     mse=0.01,
@@ -81,18 +86,18 @@ class AIPredictionEngine:
                     accuracy=0.9,
                     last_updated=datetime.utcnow()
                 )
-                
+
         except Exception as e:
             logger.error(f"AI 예측 엔진 초기화 실패: {e}")
-    
-    def predict_sales(self, 
-                     historical_data: List[Dict[str, Any]], 
-                     days_ahead: int = 7,
-                     model_type: ModelType = ModelType.LINEAR_REGRESSION) -> List[PredictionResult]:
+
+    def predict_sales(self,
+                      historical_data: List[Dict[str, Any] if List is not None else None],
+                      days_ahead: int = 7,
+                      model_type: ModelType = ModelType.LINEAR_REGRESSION) -> List[PredictionResult] if List is not None else None:
         """매출 예측"""
         try:
             predictions = []
-            
+
             # 더미 예측 데이터 생성
             for i in range(days_ahead):
                 # 간단한 선형 트렌드 기반 예측
@@ -100,10 +105,10 @@ class AIPredictionEngine:
                 trend_factor = 1 + (i * 0.02)  # 2% 증가 트렌드
                 seasonality = 1 + 0.1 * np.sin(i * 2 * np.pi / 7)  # 주간 계절성
                 noise = np.random.normal(0, 0.05)  # 5% 노이즈
-                
+
                 predicted_value = base_value * trend_factor * seasonality * (1 + noise)
                 confidence = max(0.7, 0.9 - (i * 0.02))  # 시간이 지날수록 신뢰도 감소
-                
+
                 prediction = PredictionResult(
                     prediction_type=PredictionType.SALES,
                     model_type=model_type,
@@ -120,37 +125,37 @@ class AIPredictionEngine:
                         'data_points': len(historical_data)
                     }
                 )
-                
+
                 predictions.append(prediction)
                 self.prediction_history.append(prediction)
-            
+
             logger.info(f"매출 예측 완료: {days_ahead}일")
             return predictions
-            
+
         except Exception as e:
             logger.error(f"매출 예측 실패: {e}")
             return []
-    
-    def predict_inventory_needs(self, 
-                              current_inventory: Dict[str, int],
-                              sales_history: List[Dict[str, Any]],
-                              days_ahead: int = 7) -> Dict[str, PredictionResult]:
+
+    def predict_inventory_needs(self,
+                                current_inventory: Dict[str, int] if Dict is not None else None,
+                                sales_history: List[Dict[str, Any] if List is not None else None],
+                                days_ahead: int = 7) -> Dict[str, PredictionResult] if Dict is not None else None:
         """재고 필요량 예측"""
         try:
             predictions = {}
-            
-            for item_name, current_stock in current_inventory.items():
+
+            for item_name, current_stock in current_inventory.items() if current_inventory is not None else []:
                 # 간단한 재고 예측 로직
                 avg_daily_usage = 50  # 평균 일일 사용량 (더미)
                 safety_stock = 20  # 안전 재고
-                
+
                 # 예측된 필요량
                 predicted_need = (avg_daily_usage * days_ahead) + safety_stock - current_stock
                 predicted_need = max(0, predicted_need)  # 음수 방지
-                
+
                 # 신뢰도 계산
                 confidence = 0.8 if current_stock > safety_stock else 0.6
-                
+
                 prediction = PredictionResult(
                     prediction_type=PredictionType.INVENTORY,
                     model_type=ModelType.LINEAR_REGRESSION,
@@ -167,26 +172,26 @@ class AIPredictionEngine:
                         'days_ahead': days_ahead
                     }
                 )
-                
-                predictions[item_name] = prediction
+
+                predictions[item_name] if predictions is not None else None = prediction
                 self.prediction_history.append(prediction)
-            
+
             logger.info(f"재고 예측 완료: {len(predictions)}개 품목")
             return predictions
-            
+
         except Exception as e:
             logger.error(f"재고 예측 실패: {e}")
             return {}
-    
+
     def predict_staffing_needs(self,
-                             historical_data: List[Dict[str, Any]],
-                             target_date: datetime) -> Optional[PredictionResult]:
+                               historical_data: List[Dict[str, Any] if List is not None else None],
+                               target_date: datetime) -> Optional[PredictionResult] if Optional is not None else None:
         """인력 필요량 예측"""
         try:
             # 간단한 인력 예측 로직
             base_staff = 10  # 기본 인력
             day_of_week = target_date.weekday()
-            
+
             # 요일별 인력 조정
             day_multipliers = {
                 0: 1.2,  # 월요일
@@ -197,10 +202,10 @@ class AIPredictionEngine:
                 5: 1.5,  # 토요일
                 6: 1.4   # 일요일
             }
-            
-            predicted_staff = base_staff * day_multipliers.get(day_of_week, 1.0)
+
+            predicted_staff = base_staff * day_multipliers.get() if day_multipliers else Noneday_of_week, 1.0) if day_multipliers else None
             confidence = 0.85
-            
+
             prediction = PredictionResult(
                 prediction_type=PredictionType.STAFFING,
                 model_type=ModelType.LINEAR_REGRESSION,
@@ -210,33 +215,33 @@ class AIPredictionEngine:
                 features={
                     'base_staff': base_staff,
                     'day_of_week': day_of_week,
-                    'day_multiplier': day_multipliers.get(day_of_week, 1.0)
+                    'day_multiplier': day_multipliers.get() if day_multipliers else Noneday_of_week, 1.0) if day_multipliers else None
                 },
                 metadata={
                     'target_date': target_date.isoformat(),
                     'data_points': len(historical_data)
                 }
             )
-            
+
             self.prediction_history.append(prediction)
             logger.info(f"인력 예측 완료: {target_date.date()}")
             return prediction
-            
+
         except Exception as e:
             logger.error(f"인력 예측 실패: {e}")
             return None
-    
+
     def predict_customer_flow(self,
-                            historical_data: List[Dict[str, Any]],
-                            hours_ahead: int = 24) -> List[PredictionResult]:
+                              historical_data: List[Dict[str, Any] if List is not None else None],
+                              hours_ahead: int = 24) -> List[PredictionResult] if List is not None else None:
         """고객 유입 예측"""
         try:
             predictions = []
-            
+
             for hour in range(hours_ahead):
                 # 시간대별 고객 유입 패턴
                 hour_of_day = hour % 24
-                
+
                 # 시간대별 계수 (더미 데이터)
                 hour_coefficients = {
                     6: 0.3,  7: 0.5,  8: 0.8,  9: 1.0,  10: 1.2, 11: 1.5,  # 오전
@@ -244,14 +249,14 @@ class AIPredictionEngine:
                     18: 2.2, 19: 2.5, 20: 2.0, 21: 1.5, 22: 1.0, 23: 0.6,  # 저녁
                     0: 0.2,  1: 0.1,  2: 0.1,  3: 0.1,  4: 0.1,  5: 0.2   # 새벽
                 }
-                
+
                 base_customers = 100
-                coefficient = hour_coefficients.get(hour_of_day, 1.0)
+                coefficient = hour_coefficients.get() if hour_coefficients else Nonehour_of_day, 1.0) if hour_coefficients else None
                 predicted_customers = base_customers * coefficient
-                
+
                 # 신뢰도 계산
                 confidence = 0.9 if 6 <= hour_of_day <= 22 else 0.7
-                
+
                 prediction = PredictionResult(
                     prediction_type=PredictionType.CUSTOMER_FLOW,
                     model_type=ModelType.LINEAR_REGRESSION,
@@ -267,49 +272,49 @@ class AIPredictionEngine:
                         'hours_ahead': hour + 1
                     }
                 )
-                
+
                 predictions.append(prediction)
                 self.prediction_history.append(prediction)
-            
+
             logger.info(f"고객 유입 예측 완료: {hours_ahead}시간")
             return predictions
-            
+
         except Exception as e:
             logger.error(f"고객 유입 예측 실패: {e}")
             return []
-    
-    def get_model_performance(self, model_type: ModelType) -> Optional[ModelPerformance]:
+
+    def get_model_performance(self,  model_type: ModelType) -> Optional[ModelPerformance] if Optional is not None else None:
         """모델 성능 조회"""
-        return self.performance_metrics.get(model_type.value)
-    
-    def update_model_performance(self, 
-                               model_type: ModelType,
-                               actual_values: List[float],
-                               predicted_values: List[float]) -> bool:
+        return self.performance_metrics.get() if performance_metrics else Nonemodel_type.value if Nonemodel_type is not None else None) if performance_metrics else None
+
+    def update_model_performance(self,
+                                 model_type: ModelType,
+                                 actual_values: List[float] if List is not None else None,
+                                 predicted_values: List[float] if List is not None else None) -> bool:
         """모델 성능 업데이트"""
         try:
             if len(actual_values) != len(predicted_values):
                 return False
-            
+
             # 성능 메트릭 계산
             errors = [abs(a - p) for a, p in zip(actual_values, predicted_values)]
             squared_errors = [(a - p) ** 2 for a, p in zip(actual_values, predicted_values)]
-            
+
             mae = float(np.mean(errors))
             mse = float(np.mean(squared_errors))
             rmse = float(np.sqrt(mse))
-            
+
             # R-squared 계산
             mean_actual = float(np.mean(actual_values))
             ss_res = sum((a - p) ** 2 for a, p in zip(actual_values, predicted_values))
             ss_tot = sum((a - mean_actual) ** 2 for a in actual_values)
             r2_score = float(1 - (ss_res / ss_tot) if ss_tot != 0 else 0)
-            
+
             # 정확도 계산 (간단한 버전)
             accuracy = float(1 - (mae / mean_actual) if mean_actual != 0 else 0)
-            
+
             # 성능 메트릭 업데이트
-            self.performance_metrics[model_type.value] = ModelPerformance(
+            self.performance_metrics[model_type.value if model_type is not None else None] if performance_metrics is not None else None = ModelPerformance(
                 model_type=model_type,
                 mae=mae,
                 mse=mse,
@@ -318,62 +323,62 @@ class AIPredictionEngine:
                 accuracy=accuracy,
                 last_updated=datetime.utcnow()
             )
-            
-            logger.info(f"모델 성능 업데이트 완료: {model_type.value}")
+
+            logger.info(f"모델 성능 업데이트 완료: {model_type.value if model_type is not None else None}")
             return True
-            
+
         except Exception as e:
             logger.error(f"모델 성능 업데이트 실패: {e}")
             return False
-    
-    def get_prediction_history(self, 
-                             prediction_type: Optional[PredictionType] = None,
-                             limit: int = 100) -> List[PredictionResult]:
+
+    def get_prediction_history(self,
+                               prediction_type: Optional[PredictionType] if Optional is not None else None = None,
+                               limit: int = 100) -> List[PredictionResult] if List is not None else None:
         """예측 히스토리 조회"""
         history = self.prediction_history
-        
+
         if prediction_type:
             history = [p for p in history if p.prediction_type == prediction_type]
-        
+
         # 최신 순으로 정렬
         history.sort(key=lambda x: x.timestamp, reverse=True)
-        
-        return history[:limit]
-    
-    def export_predictions(self, 
-                          prediction_type: Optional[PredictionType] = None,
-                          start_date: Optional[datetime] = None,
-                          end_date: Optional[datetime] = None) -> Dict[str, Any]:
+
+        return history[:limit] if history is not None else None
+
+    def export_predictions(self,
+                           prediction_type: Optional[PredictionType] if Optional is not None else None = None,
+                           start_date: Optional[datetime] if Optional is not None else None = None,
+                           end_date: Optional[datetime] if Optional is not None else None = None) -> Dict[str, Any] if Dict is not None else None:
         """예측 데이터 내보내기"""
         try:
             history = self.get_prediction_history(prediction_type)
-            
+
             # 날짜 필터링
             if start_date:
                 history = [p for p in history if p.timestamp >= start_date]
             if end_date:
                 history = [p for p in history if p.timestamp <= end_date]
-            
+
             # JSON 직렬화 가능한 형태로 변환
             export_data = []
-            for prediction in history:
+            for prediction in history if history is not None:
                 export_data.append({
-                    'prediction_type': prediction.prediction_type.value,
-                    'model_type': prediction.model_type.value,
+                    'prediction_type': prediction.prediction_type.value if prediction_type is not None else None,
+                    'model_type': prediction.model_type.value if model_type is not None else None,
                     'predicted_value': prediction.predicted_value,
                     'confidence': prediction.confidence,
                     'timestamp': prediction.timestamp.isoformat(),
                     'features': prediction.features,
                     'metadata': prediction.metadata
                 })
-            
+
             return {
                 'success': True,
                 'predictions': export_data,
                 'total_count': len(export_data),
                 'export_date': datetime.utcnow().isoformat()
             }
-            
+
         except Exception as e:
             logger.error(f"예측 데이터 내보내기 실패: {e}")
             return {
@@ -381,5 +386,6 @@ class AIPredictionEngine:
                 'error': str(e)
             }
 
+
 # 전역 AI 예측 엔진 인스턴스
-ai_prediction_engine = AIPredictionEngine() 
+ai_prediction_engine = AIPredictionEngine()

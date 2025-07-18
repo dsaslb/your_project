@@ -1,21 +1,28 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import Navigation from '../components/Navigation'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "레스토랑 관리 시스템",
-  description: "4단계 계층별 통합 관리 플랫폼",
-};
+  title: '멀티테넌시 관리 시스템',
+  description: '업종/브랜드/매장/직원 계층별 관리 시스템',
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
     <html lang="ko">
-      <body className="min-h-screen bg-background antialiased font-sans w-full block">
-        {children}
+      <body className={inter.className}>
+        <Navigation />
+        <main className="container mx-auto">
+          {children}
+        </main>
       </body>
     </html>
-  );
+  )
 } 

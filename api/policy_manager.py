@@ -1,5 +1,5 @@
-from flask import Blueprint, request, jsonify
 from datetime import datetime
+from flask import Blueprint, request, jsonify
 
 policy_manager_bp = Blueprint('policy_manager', __name__, url_prefix='/api/policy')
 
@@ -18,6 +18,8 @@ def list_policies():
 def add_policy():
     """정책 추가(더미)"""
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "데이터가 없습니다."}), 400
     new_policy = {
         "id": len(DUMMY_POLICIES) + 1,
         "name": data.get("name", "새 정책"),
@@ -25,7 +27,7 @@ def add_policy():
         "condition": data.get("condition", ""),
         "action": data.get("action", ""),
         "enabled": data.get("enabled", True),
-        "created_at": datetime.now().isoformat()
+        "created_at": datetime.now().strftime("%Y-%m-%d")
     }
     DUMMY_POLICIES.append(new_policy)
     return jsonify({"success": True, "policy": new_policy}), 201
@@ -45,4 +47,4 @@ def delete_policy(policy_id):
     """정책 삭제(더미)"""
     global DUMMY_POLICIES
     DUMMY_POLICIES = [p for p in DUMMY_POLICIES if p["id"] != policy_id]
-    return jsonify({"success": True}), 200 
+    return jsonify({"success": True}), 200

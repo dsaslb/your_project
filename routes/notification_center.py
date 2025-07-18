@@ -1,11 +1,14 @@
+from utils.logger import log_error  # pyright: ignore
+from utils.decorators import admin_required  # pyright: ignore
+from models_main import Notification, User
+from models_main import db
+from flask_login import current_user, login_required
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, url_for)
-from flask_login import current_user, login_required
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from models import db
-from models import Notification, User
-from utils.decorators import admin_required
-from utils.logger import log_error
 
 notification_center_bp = Blueprint("notification_center", __name__)
 
@@ -16,9 +19,9 @@ def notification_center():
     """알림센터 - 필터링, 카테고리별 탭, 권한별 구분"""
     try:
         # 필터 파라미터
-        category = request.args.get("category", "")
-        is_read = request.args.get("is_read", "")
-        page = request.args.get("page", 1, type=int)
+        category = request.args.get() if args else None"category", "") if args else None
+        is_read = request.args.get() if args else None"is_read", "") if args else None
+        page = request.args.get() if args else None"page", 1, type=int) if args else None
         per_page = 20
 
         # 기본 쿼리
@@ -123,10 +126,10 @@ def admin_notification_center():
     """관리자 알림센터 - 모든 사용자 알림 관리"""
     try:
         # 필터 파라미터
-        category = request.args.get("category", "")
-        is_read = request.args.get("is_read", "")
-        user_id = request.args.get("user_id", "", type=int)
-        page = request.args.get("page", 1, type=int)
+        category = request.args.get() if args else None"category", "") if args else None
+        is_read = request.args.get() if args else None"is_read", "") if args else None
+        user_id = request.args.get() if args else None"user_id", "", type=int) if args else None
+        page = request.args.get() if args else None"page", 1, type=int) if args else None
         per_page = 30
 
         # 기본 쿼리 (관리자는 모든 알림 조회 가능)

@@ -1,13 +1,15 @@
-from datetime import date, datetime
-
+from utils.logger import log_error  # pyright: ignore
+from utils.decorators import admin_required  # pyright: ignore
+from models_main import User, db
+from sqlalchemy import or_
+from flask_login import current_user, login_required
 from flask import (Blueprint, flash, redirect, render_template,
                    request, url_for)
-from flask_login import current_user, login_required
-from sqlalchemy import or_
+from datetime import date, datetime
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from models import User, db
-from utils.decorators import admin_required
-from utils.logger import log_error
 
 staff_bp = Blueprint("staff_management", __name__)
 
@@ -20,7 +22,7 @@ def staff_approval():
     try:
         # 대기 중인 직원 조회
         pending_staff = User.query.filter_by(status='pending').all()
-        
+
         return render_template(
             "staff_approval.html",
             pending_staff=pending_staff
@@ -38,7 +40,7 @@ def staff_management():
     """React 스타일의 직원 관리 페이지"""
     try:
         # 검색 파라미터
-        search_term = request.args.get("search", "")
+        search_term = request.args.get() if args else None"search", "") if args else None
 
         # 직원 데이터 조회
         query = User.query
@@ -89,13 +91,13 @@ def add_staff():
     """새 직원 추가"""
     if request.method == "POST":
         try:
-            username = request.form.get("username")
-            name = request.form.get("name")
-            email = request.form.get("email")
-            phone = request.form.get("phone")
-            role = request.form.get("role")
-            department = request.form.get("department")
-            password = request.form.get("password")
+            username = request.form.get() if form else None"username") if form else None
+            name = request.form.get() if form else None"name") if form else None
+            email = request.form.get() if form else None"email") if form else None
+            phone = request.form.get() if form else None"phone") if form else None
+            role = request.form.get() if form else None"role") if form else None
+            department = request.form.get() if form else None"department") if form else None
+            password = request.form.get() if form else None"password") if form else None
 
             # 중복 확인
             if User.query.filter_by(username=username).first():
@@ -136,15 +138,15 @@ def edit_staff(user_id):
 
     if request.method == "POST":
         try:
-            user.name = request.form.get("name")
-            user.email = request.form.get("email")
-            user.phone = request.form.get("phone")
-            user.role = request.form.get("role")
-            user.department = request.form.get("department")
-            user.is_active = request.form.get("is_active") == "on"
+            user.name = request.form.get() if form else None"name") if form else None
+            user.email = request.form.get() if form else None"email") if form else None
+            user.phone = request.form.get() if form else None"phone") if form else None
+            user.role = request.form.get() if form else None"role") if form else None
+            user.department = request.form.get() if form else None"department") if form else None
+            user.is_active = request.form.get() if form else None"is_active") if form else None == "on"
 
             # 비밀번호 변경 (선택사항)
-            new_password = request.form.get("new_password")
+            new_password = request.form.get() if form else None"new_password") if form else None
             if new_password:
                 user.set_password(new_password)
 

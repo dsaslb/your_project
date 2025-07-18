@@ -4,18 +4,24 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!user && pathname !== "/login") {
-      router.replace("/login");
+    if (!isLoading) {
+      if (!user && pathname !== "/login") {
+        router.replace("/login");
+      }
+      if (user && pathname === "/login") {
+        router.replace("/dashboard");
+      }
     }
-    if (user && pathname === "/login") {
-      router.replace("/dashboard");
-    }
-  }, [user, pathname, router]);
+  }, [user, pathname, router, isLoading]);
+
+  if (isLoading) {
+    return <div>로딩 중...</div>;
+  }
 
   if (!user && pathname !== "/login") {
     return null;

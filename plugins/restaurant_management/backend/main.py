@@ -6,21 +6,26 @@
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 from core.backend.plugin_interface import (
-    BasePlugin, PluginMetadata, PluginRoute, PluginMenu, 
-    PluginConfig, PluginDependency
+    BasePlugin,
+    PluginMetadata,
+    PluginRoute,
+    PluginMenu,
+    PluginConfig,
+    PluginDependency,
 )
+
 
 class RestaurantManagementPlugin(BasePlugin):
     """레스토랑 관리 플러그인"""
-    
+
     def __init__(self):
         super().__init__()
-        self.blueprint = Blueprint('your_program_management', __name__)
+        self.blueprint = Blueprint("your_program_management", __name__)
         self._setup_routes()
         self._setup_menus()
         self._setup_config_schema()
         self._setup_dependencies()
-        
+
     def _setup_routes(self):
         """라우트 설정"""
         self.routes = [
@@ -31,7 +36,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 auth_required=True,
                 roles=["admin", "manager"],
                 description="메뉴 관리 API",
-                version="v1"
+                version="v1",
             ),
             PluginRoute(
                 path="/orders",
@@ -40,7 +45,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 auth_required=True,
                 roles=["admin", "manager", "employee"],
                 description="주문 관리 API",
-                version="v1"
+                version="v1",
             ),
             PluginRoute(
                 path="/inventory",
@@ -49,7 +54,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 auth_required=True,
                 roles=["admin", "manager"],
                 description="재고 관리 API",
-                version="v1"
+                version="v1",
             ),
             PluginRoute(
                 path="/analytics",
@@ -58,10 +63,10 @@ class RestaurantManagementPlugin(BasePlugin):
                 auth_required=True,
                 roles=["admin", "manager"],
                 description="레스토랑 분석 API",
-                version="v1"
-            )
+                version="v1",
+            ),
         ]
-    
+
     def _setup_menus(self):
         """메뉴 설정"""
         self.menus = [
@@ -71,7 +76,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 icon="utensils",
                 parent="restaurant",
                 roles=["admin", "manager"],
-                order=1
+                order=1,
             ),
             PluginMenu(
                 title="주문 관리",
@@ -80,7 +85,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 parent="restaurant",
                 roles=["admin", "manager", "employee"],
                 order=2,
-                badge="New"
+                badge="New",
             ),
             PluginMenu(
                 title="재고 관리",
@@ -88,7 +93,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 icon="package",
                 parent="restaurant",
                 roles=["admin", "manager"],
-                order=3
+                order=3,
             ),
             PluginMenu(
                 title="레스토랑 분석",
@@ -96,10 +101,10 @@ class RestaurantManagementPlugin(BasePlugin):
                 icon="chart-bar",
                 parent="restaurant",
                 roles=["admin", "manager"],
-                order=4
-            )
+                order=4,
+            ),
         ]
-    
+
     def _setup_config_schema(self):
         """설정 스키마 설정"""
         self.config_schema = [
@@ -108,7 +113,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 type="boolean",
                 default=True,
                 required=False,
-                description="자동 주문 처리 활성화"
+                description="자동 주문 처리 활성화",
             ),
             PluginConfig(
                 key="inventory_alert_threshold",
@@ -116,7 +121,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 default=10,
                 required=False,
                 description="재고 부족 알림 임계값",
-                validation={"min": 0, "max": 1000}
+                validation={"min": 0, "max": 1000},
             ),
             PluginConfig(
                 key="order_timeout",
@@ -124,7 +129,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 default=30,
                 required=False,
                 description="주문 타임아웃 시간(분)",
-                validation={"min": 5, "max": 120}
+                validation={"min": 5, "max": 120},
             ),
             PluginConfig(
                 key="payment_methods",
@@ -132,7 +137,7 @@ class RestaurantManagementPlugin(BasePlugin):
                 default="card",
                 required=False,
                 description="결제 방법",
-                options=["card", "cash", "mobile", "all"]
+                options=["card", "cash", "mobile", "all"],
             ),
             PluginConfig(
                 key="restaurant_name",
@@ -140,10 +145,10 @@ class RestaurantManagementPlugin(BasePlugin):
                 default="",
                 required=False,
                 description="레스토랑 이름",
-                validation={"min_length": 1, "max_length": 100}
-            )
+                validation={"min_length": 1, "max_length": 100},
+            ),
         ]
-    
+
     def _setup_dependencies(self):
         """의존성 설정"""
         self.dependencies = [
@@ -151,10 +156,10 @@ class RestaurantManagementPlugin(BasePlugin):
                 plugin_id="core_management",
                 version="1.0.0",
                 required=True,
-                description="핵심 관리 기능"
+                description="핵심 관리 기능",
             )
         ]
-    
+
     def initialize(self) -> bool:
         """플러그인 초기화"""
         try:
@@ -169,26 +174,27 @@ class RestaurantManagementPlugin(BasePlugin):
                 permissions=["your_program_management"],
                 enabled=True,
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
-            
+
             # 의존성 플러그인 알림 (플러그인 레지스트리가 있을 때만)
             try:
                 from core.backend.plugin_interface import plugin_registry
+
                 for dep in self.dependencies:
                     if dep.plugin_id in plugin_registry.plugins:
                         dep_plugin = plugin_registry.plugins[dep.plugin_id]
                         self.on_dependency_loaded(dep.plugin_id, dep_plugin)
             except ImportError:
                 pass  # 플러그인 레지스트리를 찾을 수 없는 경우 무시
-            
+
             self._initialized = True
             return True
-            
+
         except Exception as e:
             print(f"레스토랑 관리 플러그인 초기화 실패: {e}")
             return False
-    
+
     def cleanup(self) -> bool:
         """플러그인 정리"""
         try:
@@ -197,13 +203,13 @@ class RestaurantManagementPlugin(BasePlugin):
         except Exception as e:
             print(f"레스토랑 관리 플러그인 정리 실패: {e}")
             return False
-    
+
     def get_metadata(self) -> PluginMetadata:
         """메타데이터 반환"""
         if self.metadata is None:
             raise ValueError("플러그인 메타데이터가 설정되지 않았습니다")
         return self.metadata
-    
+
     # API 핸들러 메서드들
     def handle_menu(self):
         """메뉴 관리 핸들러"""
@@ -212,21 +218,33 @@ class RestaurantManagementPlugin(BasePlugin):
             menus = [
                 {"id": 1, "name": "김치찌개", "price": 8000, "category": "메인"},
                 {"id": 2, "name": "된장찌개", "price": 7000, "category": "메인"},
-                {"id": 3, "name": "비빔밥", "price": 9000, "category": "메인"}
+                {"id": 3, "name": "비빔밥", "price": 9000, "category": "메인"},
             ]
             return jsonify({"menus": menus})
         elif request.method == "POST":
             # 새 메뉴 추가
             data = request.get_json()
             return jsonify({"message": "메뉴가 추가되었습니다", "menu": data})
-    
+
     def handle_orders(self):
         """주문 관리 핸들러"""
         if request.method == "GET":
             # 주문 목록 조회
             orders = [
-                {"id": 1, "customer": "홍길동", "items": ["김치찌개"], "total": 8000, "status": "완료"},
-                {"id": 2, "customer": "김철수", "items": ["된장찌개", "비빔밥"], "total": 16000, "status": "조리중"}
+                {
+                    "id": 1,
+                    "customer": "홍길동",
+                    "items": ["김치찌개"],
+                    "total": 8000,
+                    "status": "완료",
+                },
+                {
+                    "id": 2,
+                    "customer": "김철수",
+                    "items": ["된장찌개", "비빔밥"],
+                    "total": 16000,
+                    "status": "조리중",
+                },
             ]
             return jsonify({"orders": orders})
         elif request.method == "POST":
@@ -237,15 +255,33 @@ class RestaurantManagementPlugin(BasePlugin):
             # 주문 상태 업데이트
             data = request.get_json()
             return jsonify({"message": "주문 상태가 업데이트되었습니다"})
-    
+
     def handle_inventory(self):
         """재고 관리 핸들러"""
         if request.method == "GET":
             # 재고 목록 조회
             inventory = [
-                {"id": 1, "item": "김치", "quantity": 50, "unit": "kg", "alert_threshold": 10},
-                {"id": 2, "item": "된장", "quantity": 30, "unit": "kg", "alert_threshold": 5},
-                {"id": 3, "item": "쌀", "quantity": 200, "unit": "kg", "alert_threshold": 20}
+                {
+                    "id": 1,
+                    "item": "김치",
+                    "quantity": 50,
+                    "unit": "kg",
+                    "alert_threshold": 10,
+                },
+                {
+                    "id": 2,
+                    "item": "된장",
+                    "quantity": 30,
+                    "unit": "kg",
+                    "alert_threshold": 5,
+                },
+                {
+                    "id": 3,
+                    "item": "쌀",
+                    "quantity": 200,
+                    "unit": "kg",
+                    "alert_threshold": 20,
+                },
             ]
             return jsonify({"inventory": inventory})
         elif request.method == "POST":
@@ -256,7 +292,7 @@ class RestaurantManagementPlugin(BasePlugin):
             # 재고 업데이트
             data = request.get_json()
             return jsonify({"message": "재고가 업데이트되었습니다"})
-    
+
     def handle_analytics(self):
         """레스토랑 분석 핸들러"""
         if request.method == "GET":
@@ -266,10 +302,11 @@ class RestaurantManagementPlugin(BasePlugin):
                 "monthly_sales": 4500000,
                 "popular_items": ["김치찌개", "된장찌개", "비빔밥"],
                 "customer_count": 45,
-                "average_order_value": 12000
+                "average_order_value": 12000,
             }
             return jsonify(analytics)
 
+
 def create_plugin() -> RestaurantManagementPlugin:
     """플러그인 인스턴스 생성"""
-    return RestaurantManagementPlugin() 
+    return RestaurantManagementPlugin()

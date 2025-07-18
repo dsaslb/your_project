@@ -1,19 +1,23 @@
+from models_main import Brand, BrandOnboarding, OnboardingTemplate, Branch, User, Industry
+from extensions import db, csrf
+from flask_login import login_required, current_user
+from flask import Blueprint, jsonify, request, current_app
+from datetime import datetime
+import json
+import logging
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 브랜드 온보딩 API
 신규 브랜드 생성 후 초기 설정을 위한 온보딩 프로세스 관리
 """
 
-import logging
-import json
-from datetime import datetime
-from flask import Blueprint, jsonify, request, current_app
-from flask_login import login_required, current_user
-from extensions import db, csrf
-from models import Brand, BrandOnboarding, OnboardingTemplate, Branch, User, Industry
 
 logger = logging.getLogger(__name__)
 
 brand_onboarding_bp = Blueprint('brand_onboarding', __name__)
+
 
 @brand_onboarding_bp.route('/api/brand-onboarding/start/<int:brand_id>', methods=['POST'])
 @csrf.exempt
@@ -23,17 +27,17 @@ def start_onboarding(brand_id):
     try:
         # 브랜드 확인
         brand = Brand.query.get_or_404(brand_id)
-        
+
         # 권한 확인
         if not current_user.has_permission('brand_management', 'manage') and current_user.brand_id != brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         # 기존 온보딩 확인
         existing_onboarding = BrandOnboarding.query.filter_by(
-            brand_id=brand_id, 
+            brand_id=brand_id,
             user_id=current_user.id
         ).first()
-        
+
         if existing_onboarding:
             return jsonify({
                 'success': True,
@@ -42,17 +46,17 @@ def start_onboarding(brand_id):
                 'current_step': existing_onboarding.current_step,
                 'progress': existing_onboarding.progress_percentage
             })
-        
+
         # 새 온보딩 생성
         onboarding = BrandOnboarding(
             brand_id=brand_id,
             user_id=current_user.id,
             onboarding_data={}
         )
-        
+
         db.session.add(onboarding)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '브랜드 온보딩이 시작되었습니다.',
@@ -60,10 +64,11 @@ def start_onboarding(brand_id):
             'current_step': onboarding.current_step,
             'progress': onboarding.progress_percentage
         })
-        
+
     except Exception as e:
         logger.error(f"온보딩 시작 실패: {e}")
         return jsonify({'error': '온보딩 시작 중 오류가 발생했습니다.'}), 500
+
 
 @brand_onboarding_bp.route('/api/brand-onboarding/<int:onboarding_id>/status', methods=['GET'])
 @csrf.exempt
@@ -72,11 +77,11 @@ def get_onboarding_status(onboarding_id):
     """온보딩 상태 조회"""
     try:
         onboarding = BrandOnboarding.query.get_or_404(onboarding_id)
-        
+
         # 권한 확인
         if not current_user.has_permission('brand_management', 'manage') and current_user.brand_id != onboarding.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -96,10 +101,11 @@ def get_onboarding_status(onboarding_id):
                 'last_activity': onboarding.last_activity.isoformat() if onboarding.last_activity else None
             }
         })
-        
+
     except Exception as e:
         logger.error(f"온보딩 상태 조회 실패: {e}")
         return jsonify({'error': '온보딩 상태 조회 중 오류가 발생했습니다.'}), 500
+
 
 @brand_onboarding_bp.route('/api/brand-onboarding/<int:onboarding_id>/store', methods=['POST'])
 @csrf.exempt
@@ -108,46 +114,46 @@ def complete_store_step(onboarding_id):
     """매장 추가 단계 완료"""
     try:
         onboarding = BrandOnboarding.query.get_or_404(onboarding_id)
-        
+
         # 권한 확인
         if not current_user.has_permission('brand_management', 'manage') and current_user.brand_id != onboarding.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         data = request.get_json()
-        
+
         # 매장 생성
         store_data = data.get('store', {})
         new_store = Branch(
-            name=store_data.get('name'),
-            address=store_data.get('address'),
-            phone=store_data.get('phone'),
-            store_code=store_data.get('store_code'),
-            store_type=store_data.get('store_type', 'franchise'),
+            name=store_data.get('name') if store_data else None,
+            address=store_data.get('address') if store_data else None,
+            phone=store_data.get('phone') if store_data else None,
+            store_code=store_data.get('store_code') if store_data else None,
+            store_type=store_data.get('store_type', 'franchise') if store_data else 'franchise',
             brand_id=onboarding.brand_id,
-            business_hours=store_data.get('business_hours'),
-            capacity=store_data.get('capacity'),
+            business_hours=store_data.get('business_hours') if store_data else None,
+            capacity=store_data.get('capacity') if store_data else None,
             status='active'
         )
-        
+
         db.session.add(new_store)
         db.session.flush()  # ID 생성
-        
+
         # 온보딩 데이터 업데이트
         if not onboarding.onboarding_data:
             onboarding.onboarding_data = {}
-        
+
         onboarding.onboarding_data['store'] = {
             'store_id': new_store.id,
             'store_name': new_store.name,
             'store_address': new_store.address,
             'created_at': datetime.utcnow().isoformat()
         }
-        
+
         onboarding.step_store = True
         onboarding.last_activity = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '매장이 성공적으로 추가되었습니다.',
@@ -155,11 +161,12 @@ def complete_store_step(onboarding_id):
             'current_step': onboarding.current_step,
             'progress': onboarding.progress_percentage
         })
-        
+
     except Exception as e:
         logger.error(f"매장 추가 실패: {e}")
         db.session.rollback()
         return jsonify({'error': '매장 추가 중 오류가 발생했습니다.'}), 500
+
 
 @brand_onboarding_bp.route('/api/brand-onboarding/<int:onboarding_id>/employee', methods=['POST'])
 @csrf.exempt
@@ -168,21 +175,21 @@ def complete_employee_step(onboarding_id):
     """직원 등록 단계 완료"""
     try:
         onboarding = BrandOnboarding.query.get_or_404(onboarding_id)
-        
+
         # 권한 확인
         if not current_user.has_permission('brand_management', 'manage') and current_user.brand_id != onboarding.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         data = request.get_json()
         employees_data = data.get('employees', [])
-        
+
         created_employees = []
-        
+
         for emp_data in employees_data:
             # 사용자명 중복 확인
             if User.query.filter_by(username=emp_data.get('username')).first():
                 continue  # 중복된 사용자명은 건너뛰기
-            
+
             # 새 직원 생성
             new_employee = User(
                 username=emp_data.get('username'),
@@ -194,7 +201,7 @@ def complete_employee_step(onboarding_id):
                 status='approved'
             )
             new_employee.set_password(emp_data.get('password', '123456'))
-            
+
             db.session.add(new_employee)
             created_employees.append({
                 'id': new_employee.id,
@@ -202,22 +209,22 @@ def complete_employee_step(onboarding_id):
                 'name': new_employee.name,
                 'role': new_employee.role
             })
-        
+
         # 온보딩 데이터 업데이트
         if not onboarding.onboarding_data:
             onboarding.onboarding_data = {}
-        
+
         onboarding.onboarding_data['employees'] = {
             'employees': created_employees,
             'count': len(created_employees),
             'created_at': datetime.utcnow().isoformat()
         }
-        
+
         onboarding.step_employee = True
         onboarding.last_activity = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': f'{len(created_employees)}명의 직원이 등록되었습니다.',
@@ -225,11 +232,12 @@ def complete_employee_step(onboarding_id):
             'current_step': onboarding.current_step,
             'progress': onboarding.progress_percentage
         })
-        
+
     except Exception as e:
         logger.error(f"직원 등록 실패: {e}")
         db.session.rollback()
         return jsonify({'error': '직원 등록 중 오류가 발생했습니다.'}), 500
+
 
 @brand_onboarding_bp.route('/api/brand-onboarding/<int:onboarding_id>/menu', methods=['POST'])
 @csrf.exempt
@@ -238,38 +246,39 @@ def complete_menu_step(onboarding_id):
     """메뉴 구성 단계 완료"""
     try:
         onboarding = BrandOnboarding.query.get_or_404(onboarding_id)
-        
+
         # 권한 확인
         if not current_user.has_permission('brand_management', 'manage') and current_user.brand_id != onboarding.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         data = request.get_json()
         menu_data = data.get('menu', {})
-        
+
         # 온보딩 데이터 업데이트
         if not onboarding.onboarding_data:
             onboarding.onboarding_data = {}
-        
+
         onboarding.onboarding_data['menu'] = {
             'menu_data': menu_data,
             'created_at': datetime.utcnow().isoformat()
         }
-        
+
         onboarding.step_menu = True
         onboarding.last_activity = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '메뉴 구성이 완료되었습니다.',
             'current_step': onboarding.current_step,
             'progress': onboarding.progress_percentage
         })
-        
+
     except Exception as e:
         logger.error(f"메뉴 구성 실패: {e}")
         return jsonify({'error': '메뉴 구성 중 오류가 발생했습니다.'}), 500
+
 
 @brand_onboarding_bp.route('/api/brand-onboarding/<int:onboarding_id>/settings', methods=['POST'])
 @csrf.exempt
@@ -278,40 +287,41 @@ def complete_settings_step(onboarding_id):
     """운영 설정 단계 완료"""
     try:
         onboarding = BrandOnboarding.query.get_or_404(onboarding_id)
-        
+
         # 권한 확인
         if not current_user.has_permission('brand_management', 'manage') and current_user.brand_id != onboarding.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         data = request.get_json()
         settings_data = data.get('settings', {})
-        
+
         # 온보딩 데이터 업데이트
         if not onboarding.onboarding_data:
             onboarding.onboarding_data = {}
-        
+
         onboarding.onboarding_data['settings'] = {
             'settings_data': settings_data,
             'created_at': datetime.utcnow().isoformat()
         }
-        
+
         onboarding.step_settings = True
         onboarding.step_completed = True
         onboarding.completed_at = datetime.utcnow()
         onboarding.last_activity = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '브랜드 온보딩이 완료되었습니다!',
             'current_step': onboarding.current_step,
             'progress': onboarding.progress_percentage
         })
-        
+
     except Exception as e:
         logger.error(f"운영 설정 실패: {e}")
         return jsonify({'error': '운영 설정 중 오류가 발생했습니다.'}), 500
+
 
 @brand_onboarding_bp.route('/api/brand-onboarding/<int:onboarding_id>/generate-sample-data', methods=['POST'])
 @csrf.exempt
@@ -320,13 +330,13 @@ def generate_sample_data(onboarding_id):
     """샘플 데이터 자동 생성"""
     try:
         onboarding = BrandOnboarding.query.get_or_404(onboarding_id)
-        
+
         # 권한 확인
         if not current_user.has_permission('brand_management', 'manage') and current_user.brand_id != onboarding.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         brand = onboarding.brand
-        
+
         # 샘플 매장 생성
         sample_store = Branch(
             name=f"{brand.name} 본점",
@@ -339,35 +349,35 @@ def generate_sample_data(onboarding_id):
             capacity=50,
             status='active'
         )
-        
+
         db.session.add(sample_store)
         db.session.flush()
-        
+
         # 샘플 직원 생성
         sample_employees = [
             {
-                'username': f'manager_{brand.code.lower()}',
+                'username': f'manager_{brand.code.lower() if brand.code else ""}',
                 'name': '매장 관리자',
-                'email': f'manager@{brand.code.lower()}.com',
+                'email': f'manager@{brand.code.lower() if brand.code else ""}.com',
                 'role': 'store_manager',
                 'password': '123456'
             },
             {
-                'username': f'employee1_{brand.code.lower()}',
+                'username': f'employee1_{brand.code.lower() if brand.code else ""}',
                 'name': '직원 1',
-                'email': f'emp1@{brand.code.lower()}.com',
+                'email': f'emp1@{brand.code.lower() if brand.code else ""}.com',
                 'role': 'employee',
                 'password': '123456'
             },
             {
-                'username': f'employee2_{brand.code.lower()}',
+                'username': f'employee2_{brand.code.lower() if brand.code else ""}',
                 'name': '직원 2',
-                'email': f'emp2@{brand.code.lower()}.com',
+                'email': f'emp2@{brand.code.lower() if brand.code else ""}.com',
                 'role': 'employee',
                 'password': '123456'
             }
         ]
-        
+
         created_employees = []
         for emp_data in sample_employees:
             new_employee = User(
@@ -380,7 +390,7 @@ def generate_sample_data(onboarding_id):
                 status='approved'
             )
             new_employee.set_password(emp_data['password'])
-            
+
             db.session.add(new_employee)
             created_employees.append({
                 'id': new_employee.id,
@@ -388,7 +398,7 @@ def generate_sample_data(onboarding_id):
                 'name': new_employee.name,
                 'role': new_employee.role
             })
-        
+
         # 샘플 메뉴 데이터
         sample_menu = {
             'categories': [
@@ -409,7 +419,7 @@ def generate_sample_data(onboarding_id):
                 }
             ]
         }
-        
+
         # 샘플 설정 데이터
         sample_settings = {
             'business_hours': {
@@ -433,7 +443,7 @@ def generate_sample_data(onboarding_id):
                 'overtime_allowed': True
             }
         }
-        
+
         # 온보딩 데이터 업데이트
         onboarding.onboarding_data = {
             'store': {
@@ -456,7 +466,7 @@ def generate_sample_data(onboarding_id):
                 'created_at': datetime.utcnow().isoformat()
             }
         }
-        
+
         # 모든 단계 완료
         onboarding.step_store = True
         onboarding.step_employee = True
@@ -465,9 +475,9 @@ def generate_sample_data(onboarding_id):
         onboarding.step_completed = True
         onboarding.completed_at = datetime.utcnow()
         onboarding.last_activity = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '샘플 데이터가 성공적으로 생성되었습니다!',
@@ -477,17 +487,18 @@ def generate_sample_data(onboarding_id):
                     'name': sample_store.name
                 },
                 'employees': created_employees,
-                'menu_categories': len(sample_menu['categories']),
+                'menu_categories': len(sample_menu['categories'] if sample_menu is not None else None),
                 'settings': '완료'
             },
             'current_step': onboarding.current_step,
             'progress': onboarding.progress_percentage
         })
-        
+
     except Exception as e:
         logger.error(f"샘플 데이터 생성 실패: {e}")
         db.session.rollback()
         return jsonify({'error': '샘플 데이터 생성 중 오류가 발생했습니다.'}), 500
+
 
 @brand_onboarding_bp.route('/api/brand-onboarding/templates', methods=['GET'])
 @csrf.exempt
@@ -496,13 +507,13 @@ def get_onboarding_templates():
     """온보딩 템플릿 목록 조회"""
     try:
         industry_id = request.args.get('industry_id', type=int)
-        
+
         query = OnboardingTemplate.query.filter_by(is_active=True)
         if industry_id:
             query = query.filter_by(industry_id=industry_id)
-        
+
         templates = query.all()
-        
+
         return jsonify({
             'success': True,
             'data': [
@@ -516,7 +527,7 @@ def get_onboarding_templates():
                 for template in templates
             ]
         })
-        
+
     except Exception as e:
         logger.error(f"온보딩 템플릿 조회 실패: {e}")
-        return jsonify({'error': '온보딩 템플릿 조회 중 오류가 발생했습니다.'}), 500 
+        return jsonify({'error': '온보딩 템플릿 조회 중 오류가 발생했습니다.'}), 500

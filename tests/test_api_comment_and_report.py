@@ -2,8 +2,8 @@ import time
 
 import pytest
 
-from models import Notice
-from models import NoticeComment as Comment
+from models_main import Notice
+from models_main import NoticeComment as Comment
 
 
 class TestAPIComment:

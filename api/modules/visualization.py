@@ -1,10 +1,13 @@
-from flask import Blueprint, request, jsonify, session
-from functools import wraps
-from models import User, Branch, Order, Schedule, Report
-from extensions import db
-from datetime import datetime, timedelta
-import logging
 import json
+import logging
+from datetime import datetime, timedelta
+from extensions import db
+from models_main import User, Branch, Order, Schedule, Report
+from functools import wraps
+from flask import Blueprint, request, jsonify, session
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -13,30 +16,33 @@ logger = logging.getLogger(__name__)
 visualization_bp = Blueprint('visualization', __name__)
 
 # 슈퍼 관리자 전용 데코레이터
+
+
 def super_admin_only(f):
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args,  **kwargs):
         if 'user_id' not in session:
             return jsonify({'error': '인증이 필요합니다.'}), 401
-        
-        user = User.query.get(session['user_id'])
+
+        user = User.query.get() if query else Nonesession['user_id'] if Nonesession is not None else None) if query else None
         if not user:
             return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
-        
+
         if user.role != 'super_admin':
             return jsonify({'error': '슈퍼 관리자 권한이 필요합니다.'}), 403
-        
+
         return f(*args, **kwargs)
     return decorated_function
+
 
 @visualization_bp.route('/api/visualization/sales-chart', methods=['GET'])
 @super_admin_only
 def sales_chart():
     """매출 차트 데이터"""
     try:
-        period = request.args.get('period', 'monthly')  # daily, weekly, monthly
-        branch_id = request.args.get('branch_id', type=int)
-        
+        period = request.args.get() if args else None'period', 'monthly') if args else None  # daily, weekly, monthly
+        branch_id = request.args.get() if args else None'branch_id', type=int) if args else None
+
         if period == 'daily':
             # 일별 매출 (최근 30일)
             start_date = datetime.now() - timedelta(days=30)
@@ -49,13 +55,13 @@ def sales_chart():
                 WHERE created_at >= :start_date
             """
             params = {'start_date': start_date}
-            
+
             if branch_id:
                 query += " AND branch_id = :branch_id"
-                params['branch_id'] = branch_id
-                
+                params['branch_id'] if params is not None else None = branch_id
+
             query += " GROUP BY DATE(created_at) ORDER BY date"
-            
+
         elif period == 'weekly':
             # 주별 매출 (최근 12주)
             start_date = datetime.now() - timedelta(weeks=12)
@@ -68,13 +74,13 @@ def sales_chart():
                 WHERE created_at >= :start_date
             """
             params = {'start_date': start_date}
-            
+
             if branch_id:
                 query += " AND branch_id = :branch_id"
-                params['branch_id'] = branch_id
-                
+                params['branch_id'] if params is not None else None = branch_id
+
             query += " GROUP BY strftime('%Y-W%W', created_at) ORDER BY week"
-            
+
         else:  # monthly
             # 월별 매출 (최근 12개월)
             start_date = datetime.now() - timedelta(days=365)
@@ -87,15 +93,15 @@ def sales_chart():
                 WHERE created_at >= :start_date
             """
             params = {'start_date': start_date}
-            
+
             if branch_id:
                 query += " AND branch_id = :branch_id"
-                params['branch_id'] = branch_id
-                
+                params['branch_id'] if params is not None else None = branch_id
+
             query += " GROUP BY strftime('%Y-%m', created_at) ORDER BY month"
-        
+
         results = db.session.execute(query, params).fetchall()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -103,9 +109,9 @@ def sales_chart():
                 'branch_id': branch_id,
                 'chart_data': [
                     {
-                        'period': result[0],
-                        'sales': float(result[1]) if result[1] else 0,
-                        'order_count': result[2] if result[2] else 0,
+                        'period': result[0] if result is not None else None,
+                        'sales': float(result[1] if result is not None else None) if result[1] if result is not None else None else 0,
+                        'order_count': result[2] if result is not None else None if result[2] if result is not None else None else 0,
                     }
                     for result in results
                 ]
@@ -115,13 +121,14 @@ def sales_chart():
         logger.error(f"Sales chart error: {e}")
         return jsonify({'error': '매출 차트 데이터를 불러올 수 없습니다.'}), 500
 
+
 @visualization_bp.route('/api/visualization/employee-performance', methods=['GET'])
 @super_admin_only
 def employee_performance():
     """직원 성과 차트"""
     try:
-        branch_id = request.args.get('branch_id', type=int)
-        
+        branch_id = request.args.get() if args else None'branch_id', type=int) if args else None
+
         # 직원별 주문 처리 성과
         employee_stats = db.session.execute("""
             SELECT 
@@ -138,7 +145,7 @@ def employee_performance():
             ORDER BY total_sales DESC
             LIMIT 20
         """, {'branch_id': branch_id} if branch_id else {}).fetchall()
-        
+
         # 직원별 근무 시간
         schedule_stats = db.session.execute("""
             SELECT 
@@ -154,7 +161,7 @@ def employee_performance():
             ORDER BY total_shifts DESC
             LIMIT 20
         """, {'branch_id': branch_id} if branch_id else {}).fetchall()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -185,6 +192,7 @@ def employee_performance():
         logger.error(f"Employee performance error: {e}")
         return jsonify({'error': '직원 성과 데이터를 불러올 수 없습니다.'}), 500
 
+
 @visualization_bp.route('/api/visualization/inventory-trends', methods=['GET'])
 @super_admin_only
 def inventory_trends():
@@ -202,7 +210,7 @@ def inventory_trends():
             GROUP BY category
             ORDER BY total_value DESC
         """).fetchall()
-        
+
         # 재고 상태별 분포
         status_stats = db.session.execute("""
             SELECT 
@@ -221,7 +229,7 @@ def inventory_trends():
                     ELSE 'normal'
                 END
         """).fetchall()
-        
+
         # 최근 재고 변동 (최근 30일)
         thirty_days_ago = datetime.now() - timedelta(days=30)
         recent_changes = db.session.execute("""
@@ -234,7 +242,7 @@ def inventory_trends():
             GROUP BY DATE(created_at)
             ORDER BY date
         """, {'start_date': thirty_days_ago}).fetchall()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -270,6 +278,7 @@ def inventory_trends():
         logger.error(f"Inventory trends error: {e}")
         return jsonify({'error': '재고 트렌드 데이터를 불러올 수 없습니다.'}), 500
 
+
 @visualization_bp.route('/api/visualization/real-time-metrics', methods=['GET'])
 @super_admin_only
 def real_time_metrics():
@@ -281,7 +290,7 @@ def real_time_metrics():
             FROM users 
             WHERE last_login >= datetime('now', '-1 hour')
         """).fetchone()
-        
+
         # 오늘의 주문 수
         today_orders = db.session.execute("""
             SELECT 
@@ -292,7 +301,7 @@ def real_time_metrics():
             FROM orders 
             WHERE DATE(created_at) = DATE('now')
         """).fetchone()
-        
+
         # 오늘의 근무 스케줄
         today_schedules = db.session.execute("""
             SELECT 
@@ -302,7 +311,7 @@ def real_time_metrics():
             FROM schedules 
             WHERE DATE(work_date) = DATE('now')
         """).fetchone()
-        
+
         # 시스템 상태
         system_status = {
             'database_connections': 10,  # 예시 값
@@ -310,7 +319,7 @@ def real_time_metrics():
             'memory_usage': 65,  # %
             'cpu_usage': 45,  # %
         }
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -334,16 +343,17 @@ def real_time_metrics():
         logger.error(f"Real-time metrics error: {e}")
         return jsonify({'error': '실시간 메트릭을 불러올 수 없습니다.'}), 500
 
+
 @visualization_bp.route('/api/visualization/custom-chart', methods=['POST'])
 @super_admin_only
 def custom_chart():
     """커스텀 차트 데이터"""
     try:
         data = request.get_json()
-        chart_type = data.get('chart_type')  # line, bar, pie, scatter
-        metrics = data.get('metrics', [])  # ['sales', 'orders', 'users']
-        filters = data.get('filters', {})  # {'branch_id': 1, 'date_range': '30d'}
-        
+        chart_type = data.get() if data else None'chart_type') if data else None  # line, bar, pie, scatter
+        metrics = data.get() if data else None'metrics', []) if data else None  # ['sales', 'orders', 'users']
+        filters = data.get() if data else None'filters', {}) if data else None  # {'branch_id': 1, 'date_range': '30d'}
+
         # 기본 쿼리 템플릿
         base_query = """
             SELECT 
@@ -353,24 +363,24 @@ def custom_chart():
             FROM orders 
             WHERE 1=1
         """
-        
+
         params = {}
-        
+
         # 필터 적용
-        if filters.get('branch_id'):
+        if filters.get() if filters else None'branch_id') if filters else None:
             base_query += " AND branch_id = :branch_id"
-            params['branch_id'] = filters['branch_id']
-        
-        if filters.get('date_range'):
-            days = int(filters['date_range'].replace('d', ''))
+            params['branch_id'] if params is not None else None = filters['branch_id'] if filters is not None else None
+
+        if filters.get() if filters else None'date_range') if filters else None:
+            days = int(filters['date_range'] if filters is not None else None.replace('d', ''))
             start_date = datetime.now() - timedelta(days=days)
             base_query += " AND created_at >= :start_date"
-            params['start_date'] = start_date
-        
+            params['start_date'] if params is not None else None = start_date
+
         base_query += " GROUP BY DATE(created_at) ORDER BY date"
-        
+
         results = db.session.execute(base_query, params).fetchall()
-        
+
         # 차트 타입별 데이터 포맷
         if chart_type == 'line':
             chart_data = [
@@ -398,10 +408,10 @@ def custom_chart():
                     SUM(total_amount) as total_sales
                 FROM orders 
                 WHERE 1=1
-            """ + (" AND branch_id = :branch_id" if filters.get('branch_id') else "") + """
+            """ + (" AND branch_id = :branch_id" if filters.get() if filters else None'branch_id') if filters else None else "") + """
                 GROUP BY status
-            """, {'branch_id': filters['branch_id']} if filters.get('branch_id') else {}).fetchall()
-            
+            """, {'branch_id': filters['branch_id'] if filters is not None else None} if filters.get() if filters else None'branch_id') if filters else None else {}).fetchall()
+
             chart_data = [
                 {
                     'category': stat.status,
@@ -418,7 +428,7 @@ def custom_chart():
                 }
                 for result in results
             ]
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -429,4 +439,4 @@ def custom_chart():
         })
     except Exception as e:
         logger.error(f"Custom chart error: {e}")
-        return jsonify({'error': '커스텀 차트 데이터를 불러올 수 없습니다.'}), 500 
+        return jsonify({'error': '커스텀 차트 데이터를 불러올 수 없습니다.'}), 500

@@ -1,20 +1,24 @@
+from collections import defaultdict
+import sqlite3
+from pathlib import Path
+from dataclasses import dataclass, field
+from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime, timedelta
+import shutil
+import os
+import json
+import logging
+from typing import Optional
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 고도화된 플러그인 마켓플레이스 시스템
 - 검색/필터/정렬, 상세 정보, 설치/업데이트/삭제, 리뷰/평점, 통계/추천
 """
 
-import logging
-import json
-import os
-import shutil
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, field
-from pathlib import Path
-import sqlite3
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PluginInfo:
@@ -25,20 +29,21 @@ class PluginInfo:
     version: str
     author: str
     category: str
-    tags: List[str] = field(default_factory=list)
+    tags: Optional[List[str]] = field(default_factory=list)
     price: float = 0.0
     download_count: int = 0
     rating: float = 0.0
     review_count: int = 0
     size: int = 0
-    dependencies: List[str] = field(default_factory=list)
-    compatibility: List[str] = field(default_factory=list)
+    dependencies: Optional[List[str]] = field(default_factory=list)
+    compatibility: Optional[List[str]] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
     status: str = "active"  # active, deprecated, beta
     license: str = "MIT"
     homepage: str = ""
     repository: str = ""
+
 
 @dataclass
 class PluginReview:
@@ -53,6 +58,7 @@ class PluginReview:
     helpful_count: int = 0
     reported: bool = False
 
+
 @dataclass
 class DownloadStats:
     """다운로드 통계"""
@@ -63,14 +69,15 @@ class DownloadStats:
     monthly_downloads: int = 0
     last_download: datetime = field(default_factory=datetime.utcnow)
 
+
 class EnhancedMarketplace:
     """고도화된 플러그인 마켓플레이스"""
-    
-    def __init__(self, db_path: str = "marketplace.db", plugins_dir: str = "marketplace/plugins"):
+
+    def __init__(self, db_path="marketplace.db", plugins_dir="marketplace/plugins"):
         self.db_path = db_path
         self.plugins_dir = Path(plugins_dir)
         self.plugins_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # 샘플 플러그인 데이터
         self.sample_plugins = [
             PluginInfo(
@@ -164,16 +171,16 @@ class EnhancedMarketplace:
                 homepage="https://example.com/ai-chatbot"
             )
         ]
-        
+
         self._init_database()
         self._load_sample_data()
-    
+
     def _init_database(self):
         """데이터베이스 초기화"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 플러그인 정보 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS plugins (
@@ -199,7 +206,7 @@ class EnhancedMarketplace:
                     repository TEXT
                 )
             ''')
-            
+
             # 리뷰 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS reviews (
@@ -215,7 +222,7 @@ class EnhancedMarketplace:
                     FOREIGN KEY (plugin_id) REFERENCES plugins (id)
                 )
             ''')
-            
+
             # 다운로드 통계 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS download_stats (
@@ -228,7 +235,7 @@ class EnhancedMarketplace:
                     FOREIGN KEY (plugin_id) REFERENCES plugins (id)
                 )
             ''')
-            
+
             # 다운로드 이력 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS download_history (
@@ -240,21 +247,21 @@ class EnhancedMarketplace:
                     FOREIGN KEY (plugin_id) REFERENCES plugins (id)
                 )
             ''')
-            
+
             # 인덱스 생성
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_plugins_category ON plugins(category)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_plugins_rating ON plugins(rating)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_plugins_downloads ON plugins(download_count)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_reviews_plugin ON reviews(plugin_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_downloads_plugin ON download_history(plugin_id)')
-            
+
             conn.commit()
             conn.close()
             logger.info("마켓플레이스 데이터베이스 초기화 완료")
-            
+
         except Exception as e:
             logger.error(f"데이터베이스 초기화 오류: {e}")
-    
+
     def _load_sample_data(self):
         """샘플 데이터 로드"""
         try:
@@ -263,13 +270,13 @@ class EnhancedMarketplace:
             logger.info("샘플 플러그인 데이터 로드 완료")
         except Exception as e:
             logger.error(f"샘플 데이터 로드 오류: {e}")
-    
+
     def add_plugin(self, plugin: PluginInfo) -> bool:
         """플러그인 추가"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 INSERT OR REPLACE INTO plugins 
                 (id, name, description, version, author, category, tags, price, 
@@ -284,7 +291,7 @@ class EnhancedMarketplace:
                 plugin.updated_at.isoformat(), plugin.status, plugin.license,
                 plugin.homepage, plugin.repository
             ))
-            
+
             # 다운로드 통계 초기화
             cursor.execute('''
                 INSERT OR REPLACE INTO download_stats 
@@ -293,45 +300,48 @@ class EnhancedMarketplace:
             ''', (
                 plugin.id, plugin.download_count, 0, 0, 0, datetime.utcnow().isoformat()
             ))
-            
+
             conn.commit()
             conn.close()
             return True
-            
+
         except Exception as e:
             logger.error(f"플러그인 추가 오류: {e}")
             return False
-    
-    def get_plugins(self, category: str = None, search: str = None, 
-                   sort_by: str = "name", sort_order: str = "asc",
-                   limit: int = 50, offset: int = 0) -> List[PluginInfo]:
+
+    def get_plugins(self, category: Optional[str] = None, search: str = None,
+                    sort_by: str = "name", sort_order: str = "asc",
+                    limit: int = 50, offset: int = 0) -> Optional[List[PluginInfo]]:
         """플러그인 목록 조회"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 쿼리 조건 구성
             conditions = []
             params = []
-            
+
             if category:
                 conditions.append("category = ?")
                 params.append(category)
-            
+
             if search:
                 conditions.append("(name LIKE ? OR description LIKE ? OR tags LIKE ?)")
                 search_term = f"%{search}%"
                 params.extend([search_term, search_term, search_term])
-            
+
             where_clause = " AND ".join(conditions) if conditions else "1=1"
-            
+
             # 정렬 조건
             valid_sort_fields = ["name", "rating", "download_count", "created_at", "price"]
             if sort_by not in valid_sort_fields:
                 sort_by = "name"
-            
-            sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
-            
+
+            if sort_order is not None and sort_order.lower() == "desc":
+                sort_direction = "DESC"
+            else:
+                sort_direction = "ASC"
+
             query = f'''
                 SELECT id, name, description, version, author, category, tags, price,
                        download_count, rating, review_count, size, dependencies,
@@ -341,79 +351,104 @@ class EnhancedMarketplace:
                 ORDER BY {sort_by} {sort_direction}
                 LIMIT ? OFFSET ?
             '''
-            
+
             cursor.execute(query, params + [limit, offset])
             rows = cursor.fetchall()
-            
+
             plugins = []
-            for row in rows:
-                plugin = PluginInfo(
-                    id=row[0], name=row[1], description=row[2], version=row[3],
-                    author=row[4], category=row[5], tags=json.loads(row[6]) if row[6] else [],
-                    price=row[7], download_count=row[8], rating=row[9], review_count=row[10],
-                    size=row[11], dependencies=json.loads(row[12]) if row[12] else [],
-                    compatibility=json.loads(row[13]) if row[13] else [],
-                    created_at=datetime.fromisoformat(row[14]),
-                    updated_at=datetime.fromisoformat(row[15]),
-                    status=row[16], license=row[17], homepage=row[18], repository=row[19]
-                )
-                plugins.append(plugin)
-            
+            if rows is not None:
+                for row in rows:
+                    plugin = PluginInfo(
+                        id=row[0] or "",
+                        name=row[1] or "",
+                        description=row[2] or "",
+                        version=row[3] or "",
+                        author=row[4] or "",
+                        category=row[5] or "",
+                        tags=json.loads(row[6]) if row[6] else [],
+                        price=row[7] if row[7] is not None else 0.0,
+                        download_count=row[8] if row[8] is not None else 0,
+                        rating=row[9] if row[9] is not None else 0.0,
+                        review_count=row[10] if row[10] is not None else 0,
+                        size=row[11] if row[11] is not None else 0,
+                        dependencies=json.loads(row[12]) if row[12] else [],
+                        compatibility=json.loads(row[13]) if row[13] else [],
+                        created_at=datetime.fromisoformat(row[14]) if row[14] else datetime.utcnow(),
+                        updated_at=datetime.fromisoformat(row[15]) if row[15] else datetime.utcnow(),
+                        status=row[16] or "active",
+                        license=row[17] or "MIT",
+                        homepage=row[18] or "",
+                        repository=row[19] or ""
+                    )
+                    plugins.append(plugin)
+
             conn.close()
             return plugins
-            
+
         except Exception as e:
             logger.error(f"플러그인 목록 조회 오류: {e}")
             return []
-    
+
     def get_plugin(self, plugin_id: str) -> Optional[PluginInfo]:
         """플러그인 상세 정보 조회"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT id, name, description, version, author, category, tags, price,
                        download_count, rating, review_count, size, dependencies,
                        compatibility, created_at, updated_at, status, license, homepage, repository
                 FROM plugins WHERE id = ?
             ''', (plugin_id,))
-            
+
             row = cursor.fetchone()
             if not row:
                 return None
-            
+
             plugin = PluginInfo(
-                id=row[0], name=row[1], description=row[2], version=row[3],
-                author=row[4], category=row[5], tags=json.loads(row[6]) if row[6] else [],
-                price=row[7], download_count=row[8], rating=row[9], review_count=row[10],
-                size=row[11], dependencies=json.loads(row[12]) if row[12] else [],
+                id=row[0] or "",
+                name=row[1] or "",
+                description=row[2] or "",
+                version=row[3] or "",
+                author=row[4] or "",
+                category=row[5] or "",
+                tags=json.loads(row[6]) if row[6] else [],
+                price=row[7] if row[7] is not None else 0.0,
+                download_count=row[8] if row[8] is not None else 0,
+                rating=row[9] if row[9] is not None else 0.0,
+                review_count=row[10] if row[10] is not None else 0,
+                size=row[11] if row[11] is not None else 0,
+                dependencies=json.loads(row[12]) if row[12] else [],
                 compatibility=json.loads(row[13]) if row[13] else [],
-                created_at=datetime.fromisoformat(row[14]),
-                updated_at=datetime.fromisoformat(row[15]),
-                status=row[16], license=row[17], homepage=row[18], repository=row[19]
+                created_at=datetime.fromisoformat(row[14]) if row[14] else datetime.utcnow(),
+                updated_at=datetime.fromisoformat(row[15]) if row[15] else datetime.utcnow(),
+                status=row[16] or "active",
+                license=row[17] or "MIT",
+                homepage=row[18] or "",
+                repository=row[19] or ""
             )
-            
+
             conn.close()
             return plugin
-            
+
         except Exception as e:
             logger.error(f"플러그인 상세 조회 오류: {e}")
             return None
-    
-    def add_review(self, plugin_id: str, user_id: str, rating: int, 
+
+    def add_review(self, plugin_id: str, user_id: str, rating: int,
                    title: str, content: str) -> bool:
         """리뷰 추가"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 리뷰 추가
             cursor.execute('''
                 INSERT INTO reviews (plugin_id, user_id, rating, title, content)
                 VALUES (?, ?, ?, ?, ?)
             ''', (plugin_id, user_id, rating, title, content))
-            
+
             # 플러그인 평점 업데이트
             cursor.execute('''
                 UPDATE plugins 
@@ -425,21 +460,21 @@ class EnhancedMarketplace:
                 )
                 WHERE id = ?
             ''', (plugin_id, plugin_id, plugin_id))
-            
+
             conn.commit()
             conn.close()
             return True
-            
+
         except Exception as e:
             logger.error(f"리뷰 추가 오류: {e}")
             return False
-    
-    def get_reviews(self, plugin_id: str, limit: int = 20, offset: int = 0) -> List[PluginReview]:
+
+    def get_reviews(self, plugin_id: str, limit: int = 20, offset: int = 0) -> Optional[List[PluginReview]]:
         """리뷰 목록 조회"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT id, plugin_id, user_id, rating, title, content, 
                        created_at, helpful_count, reported
@@ -448,36 +483,43 @@ class EnhancedMarketplace:
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
             ''', (plugin_id, limit, offset))
-            
+
             rows = cursor.fetchall()
             reviews = []
-            for row in rows:
-                review = PluginReview(
-                    id=row[0], plugin_id=row[1], user_id=row[2], rating=row[3],
-                    title=row[4], content=row[5], created_at=datetime.fromisoformat(row[6]),
-                    helpful_count=row[7], reported=row[8]
-                )
-                reviews.append(review)
-            
+            if rows is not None:
+                for row in rows:
+                    review = PluginReview(
+                        id=row[0] if row[0] is not None else 0,
+                        plugin_id=row[1] or "",
+                        user_id=row[2] or "",
+                        rating=row[3] if row[3] is not None else 0,
+                        title=row[4] or "",
+                        content=row[5] or "",
+                        created_at=datetime.fromisoformat(row[6]) if row[6] else datetime.utcnow(),
+                        helpful_count=row[7] if row[7] is not None else 0,
+                        reported=row[8] if row[8] is not None else False
+                    )
+                    reviews.append(review)
+
             conn.close()
             return reviews
-            
+
         except Exception as e:
             logger.error(f"리뷰 목록 조회 오류: {e}")
             return []
-    
-    def download_plugin(self, plugin_id: str, user_id: str = None, version: str = None) -> bool:
+
+    def download_plugin(self, plugin_id: str, user_id: Optional[str] = None, version: str = None) -> bool:
         """플러그인 다운로드"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 다운로드 이력 추가
             cursor.execute('''
                 INSERT INTO download_history (plugin_id, user_id, version)
                 VALUES (?, ?, ?)
             ''', (plugin_id, user_id, version))
-            
+
             # 다운로드 통계 업데이트
             cursor.execute('''
                 UPDATE download_stats 
@@ -486,75 +528,82 @@ class EnhancedMarketplace:
                     last_download = CURRENT_TIMESTAMP
                 WHERE plugin_id = ?
             ''', (plugin_id,))
-            
+
             # 플러그인 다운로드 수 업데이트
             cursor.execute('''
                 UPDATE plugins 
                 SET download_count = download_count + 1
                 WHERE id = ?
             ''', (plugin_id,))
-            
+
             conn.commit()
             conn.close()
             return True
-            
+
         except Exception as e:
             logger.error(f"플러그인 다운로드 오류: {e}")
             return False
-    
+
     def get_download_stats(self, plugin_id: str) -> Optional[DownloadStats]:
         """다운로드 통계 조회"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT plugin_id, total_downloads, daily_downloads, 
                        weekly_downloads, monthly_downloads, last_download
                 FROM download_stats WHERE plugin_id = ?
             ''', (plugin_id,))
-            
+
             row = cursor.fetchone()
             if not row:
                 return None
-            
+
             stats = DownloadStats(
-                plugin_id=row[0], total_downloads=row[1], daily_downloads=row[2],
-                weekly_downloads=row[3], monthly_downloads=row[4],
-                last_download=datetime.fromisoformat(row[5])
+                plugin_id=row[0] or "",
+                total_downloads=row[1] if row[1] is not None else 0,
+                daily_downloads=row[2] if row[2] is not None else 0,
+                weekly_downloads=row[3] if row[3] is not None else 0,
+                monthly_downloads=row[4] if row[4] is not None else 0,
+                last_download=datetime.fromisoformat(row[5]) if row[5] else datetime.utcnow()
             )
-            
+
             conn.close()
             return stats
-            
+
         except Exception as e:
             logger.error(f"다운로드 통계 조회 오류: {e}")
             return None
-    
-    def get_categories(self) -> List[str]:
+
+    def get_categories(self) -> Optional[List[str]]:
         """카테고리 목록 조회"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('SELECT DISTINCT category FROM plugins ORDER BY category')
-            categories = [row[0] for row in cursor.fetchall()]
-            
+            rows = cursor.fetchall()
+            if rows is not None:
+                categories = [row[0] for row in rows if row[0] is not None]
+            else:
+                categories = []
             conn.close()
             return categories
-            
+
         except Exception as e:
             logger.error(f"카테고리 목록 조회 오류: {e}")
             return []
-    
-    def get_popular_plugins(self, limit: int = 10) -> List[PluginInfo]:
+
+    def get_popular_plugins(self, limit: int = 10) -> Optional[List[PluginInfo]]:
         """인기 플러그인 조회"""
         return self.get_plugins(sort_by="download_count", sort_order="desc", limit=limit)
-    
-    def get_recommended_plugins(self, user_id: str = None, limit: int = 10) -> List[PluginInfo]:
+
+    def get_recommended_plugins(self, user_id: Optional[str] = None, limit: int = 10) -> Optional[List[PluginInfo]]:
         """추천 플러그인 조회 (간단한 구현)"""
         # 실제로는 사용자 기반 협업 필터링이나 콘텐츠 기반 필터링 사용
         return self.get_plugins(sort_by="rating", sort_order="desc", limit=limit)
 
+
 # 전역 인스턴스
-enhanced_marketplace = EnhancedMarketplace() 
+enhanced_marketplace = EnhancedMarketplace()

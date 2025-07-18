@@ -1,17 +1,18 @@
+from core.backend.plugin_ai_analytics import ai_analytics  # pyright: ignore
+import logging
+from typing import Dict, List, Any
+from datetime import datetime, timedelta
+import json
+import asyncio
+from flask_cors import cross_origin
+from flask import Blueprint, request, jsonify
+args = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 플러그인 AI 분석 및 예측 API
 AI 기반 성능 예측, 이상 탐지, 최적화 제안 API 엔드포인트
 """
 
-from flask import Blueprint, request, jsonify
-from flask_cors import cross_origin
-import asyncio
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
-import logging
-
-from core.backend.plugin_ai_analytics import ai_analytics
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 # 블루프린트 생성
 plugin_ai_analytics_bp = Blueprint('plugin_ai_analytics', __name__, url_prefix='/api/plugin-ai-analytics')
 
+
 @plugin_ai_analytics_bp.route('/collect-metrics/<plugin_id>', methods=['POST'])
 @cross_origin()
 async def collect_metrics(plugin_id: str):
@@ -27,7 +29,7 @@ async def collect_metrics(plugin_id: str):
     try:
         # 비동기 함수 실행
         metrics = await ai_analytics.collect_metrics(plugin_id)
-        
+
         return jsonify({
             "success": True,
             "message": "메트릭 수집 완료",
@@ -43,13 +45,14 @@ async def collect_metrics(plugin_id: str):
                 "uptime": metrics.uptime
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"메트릭 수집 API 오류: {e}")
         return jsonify({
             "success": False,
             "message": f"메트릭 수집 실패: {str(e)}"
         }), 500
+
 
 @plugin_ai_analytics_bp.route('/train-models/<plugin_id>', methods=['POST'])
 @cross_origin()
@@ -58,7 +61,7 @@ async def train_models(plugin_id: str):
     try:
         # 비동기 함수 실행
         success = await ai_analytics.train_models(plugin_id)
-        
+
         if success:
             return jsonify({
                 "success": True,
@@ -75,7 +78,7 @@ async def train_models(plugin_id: str):
                 "success": False,
                 "message": "학습 데이터 부족"
             }), 400
-            
+
     except Exception as e:
         logger.error(f"모델 학습 API 오류: {e}")
         return jsonify({
@@ -83,16 +86,17 @@ async def train_models(plugin_id: str):
             "message": f"모델 학습 실패: {str(e)}"
         }), 500
 
+
 @plugin_ai_analytics_bp.route('/predict/<plugin_id>', methods=['GET'])
 @cross_origin()
 async def predict_performance(plugin_id: str):
     """성능 예측"""
     try:
         hours_ahead = request.args.get('hours', 24, type=int)
-        
+
         # 비동기 함수 실행
-        predictions = await ai_analytics.predict_performance(plugin_id, hours_ahead)
-        
+        predictions = await ai_analytics.predict_performance(plugin_id,  hours_ahead)
+
         return jsonify({
             "success": True,
             "message": "성능 예측 완료",
@@ -111,13 +115,14 @@ async def predict_performance(plugin_id: str):
                 ]
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"성능 예측 API 오류: {e}")
         return jsonify({
             "success": False,
             "message": f"성능 예측 실패: {str(e)}"
         }), 500
+
 
 @plugin_ai_analytics_bp.route('/detect-anomalies/<plugin_id>', methods=['GET'])
 @cross_origin()
@@ -126,7 +131,7 @@ async def detect_anomalies(plugin_id: str):
     try:
         # 비동기 함수 실행
         anomalies = await ai_analytics.detect_anomalies(plugin_id)
-        
+
         return jsonify({
             "success": True,
             "message": "이상 탐지 완료",
@@ -145,13 +150,14 @@ async def detect_anomalies(plugin_id: str):
                 ]
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"이상 탐지 API 오류: {e}")
         return jsonify({
             "success": False,
             "message": f"이상 탐지 실패: {str(e)}"
         }), 500
+
 
 @plugin_ai_analytics_bp.route('/optimization-suggestions/<plugin_id>', methods=['GET'])
 @cross_origin()
@@ -160,7 +166,7 @@ async def get_optimization_suggestions(plugin_id: str):
     try:
         # 비동기 함수 실행
         suggestions = await ai_analytics.generate_optimization_suggestions(plugin_id)
-        
+
         return jsonify({
             "success": True,
             "message": "최적화 제안 생성 완료",
@@ -179,13 +185,14 @@ async def get_optimization_suggestions(plugin_id: str):
                 ]
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"최적화 제안 API 오류: {e}")
         return jsonify({
             "success": False,
             "message": f"최적화 제안 생성 실패: {str(e)}"
         }), 500
+
 
 @plugin_ai_analytics_bp.route('/analytics-summary/<plugin_id>', methods=['GET'])
 @cross_origin()
@@ -194,19 +201,19 @@ async def get_analytics_summary(plugin_id: str):
     try:
         # 비동기 함수 실행
         summary = await ai_analytics.get_analytics_summary(plugin_id)
-        
+
         if "error" in summary:
             return jsonify({
                 "success": False,
-                "message": summary["error"]
+                "message": summary["error"] if summary is not None else None
             }), 400
-        
+
         return jsonify({
             "success": True,
             "message": "분석 요약 조회 완료",
             "data": summary
         }), 200
-        
+
     except Exception as e:
         logger.error(f"분석 요약 API 오류: {e}")
         return jsonify({
@@ -214,16 +221,17 @@ async def get_analytics_summary(plugin_id: str):
             "message": f"분석 요약 조회 실패: {str(e)}"
         }), 500
 
+
 @plugin_ai_analytics_bp.route('/export-data/<plugin_id>', methods=['GET'])
 @cross_origin()
 async def export_analytics_data(plugin_id: str):
     """분석 데이터 내보내기"""
     try:
         format_type = request.args.get('format', 'json')
-        
+
         # 비동기 함수 실행
-        filepath = await ai_analytics.export_analytics_data(plugin_id, format_type)
-        
+        filepath = await ai_analytics.export_analytics_data(plugin_id,  format_type)
+
         if filepath and filepath != "지원하지 않는 형식입니다":
             return jsonify({
                 "success": True,
@@ -240,7 +248,7 @@ async def export_analytics_data(plugin_id: str):
                 "success": False,
                 "message": filepath or "내보내기 실패"
             }), 400
-            
+
     except Exception as e:
         logger.error(f"데이터 내보내기 API 오류: {e}")
         return jsonify({
@@ -248,56 +256,57 @@ async def export_analytics_data(plugin_id: str):
             "message": f"데이터 내보내기 실패: {str(e)}"
         }), 500
 
+
 @plugin_ai_analytics_bp.route('/batch-analysis', methods=['POST'])
 @cross_origin()
 async def batch_analysis():
     """배치 분석 실행"""
     try:
         data = request.get_json()
-        plugin_ids = data.get('plugin_ids', [])
-        
+        plugin_ids = data.get('plugin_ids', []) if data else []
+
         if not plugin_ids:
             return jsonify({
                 "success": False,
                 "message": "플러그인 ID 목록이 필요합니다"
             }), 400
-        
+
         results = {}
-        
-        for plugin_id in plugin_ids:
-            try:
-                # 메트릭 수집
-                await ai_analytics.collect_metrics(plugin_id)
-                
-                # 모델 학습 (필요시)
-                await ai_analytics.train_models(plugin_id)
-                
-                # 예측
-                predictions = await ai_analytics.predict_performance(plugin_id)
-                
-                # 이상 탐지
-                anomalies = await ai_analytics.detect_anomalies(plugin_id)
-                
-                # 최적화 제안
-                suggestions = await ai_analytics.generate_optimization_suggestions(plugin_id)
-                
-                # 요약
-                summary = await ai_analytics.get_analytics_summary(plugin_id)
-                
-                results[plugin_id] = {
-                    "success": True,
-                    "predictions_count": len(predictions),
-                    "anomalies_count": len(anomalies),
-                    "suggestions_count": len(suggestions),
-                    "summary": summary
-                }
-                
-            except Exception as e:
-                results[plugin_id] = {
-                    "success": False,
-                    "error": str(e)
-                }
-        
+        if plugin_ids is not None:
+            for plugin_id in plugin_ids:
+                try:
+                    # 메트릭 수집
+                    await ai_analytics.collect_metrics(plugin_id)
+
+                    # 모델 학습 (필요시)
+                    await ai_analytics.train_models(plugin_id)
+
+                    # 예측
+                    predictions = await ai_analytics.predict_performance(plugin_id)
+
+                    # 이상 탐지
+                    anomalies = await ai_analytics.detect_anomalies(plugin_id)
+
+                    # 최적화 제안
+                    suggestions = await ai_analytics.generate_optimization_suggestions(plugin_id)
+
+                    # 요약
+                    summary = await ai_analytics.get_analytics_summary(plugin_id)
+
+                    results[plugin_id] = {
+                        "success": True,
+                        "predictions_count": len(predictions),
+                        "anomalies_count": len(anomalies),
+                        "suggestions_count": len(suggestions),
+                        "summary": summary
+                    }
+
+                except Exception as e:
+                    results[plugin_id] = {
+                        "success": False,
+                        "error": str(e)
+                    }
+
         return jsonify({
             "success": True,
             "message": "배치 분석 완료",
@@ -306,7 +315,7 @@ async def batch_analysis():
                 "results": results
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"배치 분석 API 오류: {e}")
         return jsonify({
@@ -314,22 +323,23 @@ async def batch_analysis():
             "message": f"배치 분석 실패: {str(e)}"
         }), 500
 
+
 @plugin_ai_analytics_bp.route('/metrics-history/<plugin_id>', methods=['GET'])
 @cross_origin()
 async def get_metrics_history(plugin_id: str):
     """메트릭 히스토리 조회"""
     try:
         hours = request.args.get('hours', 168, type=int)  # 기본 7일
-        
+
         metrics = ai_analytics.metrics_history.get(plugin_id, [])
-        
+
         # 시간 필터링
         cutoff_time = datetime.now() - timedelta(hours=hours)
         filtered_metrics = [
             m for m in metrics
             if m.timestamp > cutoff_time
         ]
-        
+
         return jsonify({
             "success": True,
             "message": "메트릭 히스토리 조회 완료",
@@ -352,7 +362,7 @@ async def get_metrics_history(plugin_id: str):
                 ]
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"메트릭 히스토리 API 오류: {e}")
         return jsonify({
@@ -360,13 +370,14 @@ async def get_metrics_history(plugin_id: str):
             "message": f"메트릭 히스토리 조회 실패: {str(e)}"
         }), 500
 
+
 @plugin_ai_analytics_bp.route('/predictions-history/<plugin_id>', methods=['GET'])
 @cross_origin()
 async def get_predictions_history(plugin_id: str):
     """예측 히스토리 조회"""
     try:
         predictions = ai_analytics.predictions.get(plugin_id, [])
-        
+
         return jsonify({
             "success": True,
             "message": "예측 히스토리 조회 완료",
@@ -385,7 +396,7 @@ async def get_predictions_history(plugin_id: str):
                 ]
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"예측 히스토리 API 오류: {e}")
         return jsonify({
@@ -393,13 +404,14 @@ async def get_predictions_history(plugin_id: str):
             "message": f"예측 히스토리 조회 실패: {str(e)}"
         }), 500
 
+
 @plugin_ai_analytics_bp.route('/anomalies-history/<plugin_id>', methods=['GET'])
 @cross_origin()
 async def get_anomalies_history(plugin_id: str):
     """이상 탐지 히스토리 조회"""
     try:
         anomalies = ai_analytics.anomalies.get(plugin_id, [])
-        
+
         return jsonify({
             "success": True,
             "message": "이상 탐지 히스토리 조회 완료",
@@ -418,7 +430,7 @@ async def get_anomalies_history(plugin_id: str):
                 ]
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"이상 탐지 히스토리 API 오류: {e}")
         return jsonify({
@@ -426,13 +438,14 @@ async def get_anomalies_history(plugin_id: str):
             "message": f"이상 탐지 히스토리 조회 실패: {str(e)}"
         }), 500
 
+
 @plugin_ai_analytics_bp.route('/suggestions-history/<plugin_id>', methods=['GET'])
 @cross_origin()
 async def get_suggestions_history(plugin_id: str):
     """최적화 제안 히스토리 조회"""
     try:
         suggestions = ai_analytics.suggestions.get(plugin_id, [])
-        
+
         return jsonify({
             "success": True,
             "message": "최적화 제안 히스토리 조회 완료",
@@ -451,7 +464,7 @@ async def get_suggestions_history(plugin_id: str):
                 ]
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"최적화 제안 히스토리 API 오류: {e}")
         return jsonify({
@@ -459,17 +472,18 @@ async def get_suggestions_history(plugin_id: str):
             "message": f"최적화 제안 히스토리 조회 실패: {str(e)}"
         }), 500
 
+
 @plugin_ai_analytics_bp.route('/system-status', methods=['GET'])
 @cross_origin()
 async def get_system_status():
     """시스템 상태 조회"""
     try:
         total_plugins = len(ai_analytics.metrics_history)
-        total_metrics = sum(len(metrics) for metrics in ai_analytics.metrics_history.values())
-        total_predictions = sum(len(predictions) for predictions in ai_analytics.predictions.values())
-        total_anomalies = sum(len(anomalies) for anomalies in ai_analytics.anomalies.values())
-        total_suggestions = sum(len(suggestions) for suggestions in ai_analytics.suggestions.values())
-        
+        total_metrics = sum(len(metrics) for metrics in getattr(ai_analytics.metrics_history, 'value', []) if metrics is not None)
+        total_predictions = sum(len(predictions) for predictions in getattr(ai_analytics.predictions, 'value', []) if predictions is not None)
+        total_anomalies = sum(len(anomalies) for anomalies in getattr(ai_analytics.anomalies, 'value', []) if anomalies is not None)
+        total_suggestions = sum(len(suggestions) for suggestions in getattr(ai_analytics.suggestions, 'value', []) if suggestions is not None)
+
         return jsonify({
             "success": True,
             "message": "시스템 상태 조회 완료",
@@ -484,10 +498,10 @@ async def get_system_status():
                 "last_updated": datetime.now().isoformat()
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"시스템 상태 API 오류: {e}")
         return jsonify({
             "success": False,
             "message": f"시스템 상태 조회 실패: {str(e)}"
-        }), 500 
+        }), 500

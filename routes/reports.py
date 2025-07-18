@@ -1,20 +1,21 @@
-import base64
-import json
-import os
-from datetime import datetime, time, timedelta
-from io import BytesIO
-
+from utils.report import (generate_attendance_report_pdf,  # pyright: ignore
+                          generate_monthly_summary_pdf)
+from utils.logger import log_action, log_error  # pyright: ignore
+from utils.decorators import admin_required, team_lead_required  # pyright: ignore
+from models_main import Attendance, ReasonEditLog, ReasonTemplate, User
+from extensions import db
+from sqlalchemy import and_, extract, func, or_
+from flask_login import current_user, login_required
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, send_file, url_for)
-from flask_login import current_user, login_required
-from sqlalchemy import and_, extract, func, or_
+from io import BytesIO
+from datetime import datetime, time, timedelta
+import os
+import json
+import base64
+args = None  # pyright: ignore
+query = None  # pyright: ignore
 
-from extensions import db
-from models import Attendance, ReasonEditLog, ReasonTemplate, User
-from utils.decorators import admin_required, team_lead_required
-from utils.logger import log_action, log_error
-from utils.report import (generate_attendance_report_pdf,
-                          generate_monthly_summary_pdf)
 
 reports_bp = Blueprint("reports", __name__)
 
@@ -47,7 +48,7 @@ def attendance_report_pdf(user_id):
 
         # 통계 계산
         lateness = early_leave = night_work = 0
-        for att in attendances:
+        for att in attendances if attendances is not None:
             if att.clock_in and att.clock_in.time() > STANDARD_CLOCKIN:
                 lateness += 1
             if att.clock_out and att.clock_out.time() < STANDARD_CLOCKOUT:
@@ -99,7 +100,7 @@ def monthly_summary_pdf():
             User.status.in_(['approved', 'active'])
         ).order_by(User.name).all()
 
-        for user in users:
+        for user in users if users is not None:
             attendances = Attendance.query.filter(
                 Attendance.user_id == user.id,
                 extract("year", Attendance.clock_in) == year,
@@ -110,7 +111,7 @@ def monthly_summary_pdf():
             lateness = early_leave = night_work = 0
             total_hours = 0
 
-            for att in attendances:
+            for att in attendances if attendances is not None:
                 if att.clock_in and att.clock_in.time() > STANDARD_CLOCKIN:
                     lateness += 1
                 if att.clock_out and att.clock_out.time() < STANDARD_CLOCKOUT:
@@ -158,13 +159,13 @@ def attendance_stats():
     """고급 근태 통계 차트 - 실시간 필터/검색/정렬/Export"""
     try:
         # 필터/검색 파라미터
-        user_id = request.args.get("user_id", type=int)
-        category = request.args.get("category", "")
-        date_from = request.args.get("from", "")
-        date_to = request.args.get("to", "")
-        reason_filter = request.args.get("reason", "")
-        sort_by = request.args.get("sort", "date")
-        sort_order = request.args.get("order", "desc")
+        user_id = request.args.get() if args else None"user_id", type=int) if args else None
+        category = request.args.get() if args else None"category", "") if args else None
+        date_from = request.args.get() if args else None"from", "") if args else None
+        date_to = request.args.get() if args else None"to", "") if args else None
+        reason_filter = request.args.get() if args else None"reason", "") if args else None
+        sort_by = request.args.get() if args else None"sort", "date") if args else None
+        sort_order = request.args.get() if args else None"order", "desc") if args else None
 
         # 기본 쿼리
         query = db.session.query(Attendance).join(User)
@@ -205,18 +206,18 @@ def attendance_stats():
         user_stats = {}
         date_stats = {}
 
-        for att in attendances:
+        for att in attendances if attendances is not None:
             # 사유별 통계
             reason = att.reason or "사유없음"
-            reason_stats[reason] = reason_stats.get(reason, 0) + 1
+            reason_stats[reason] if reason_stats is not None else None = reason_stats.get() if reason_stats else Nonereason, 0) if reason_stats else None + 1
 
             # 사용자별 통계
             user_name = att.user.name if att.user else "알수없음"
-            user_stats[user_name] = user_stats.get(user_name, 0) + 1
+            user_stats[user_name] if user_stats is not None else None = user_stats.get() if user_stats else Noneuser_name, 0) if user_stats else None + 1
 
             # 날짜별 통계
             date_str = att.date.strftime("%Y-%m-%d") if att.date else "날짜없음"
-            date_stats[date_str] = date_stats.get(date_str, 0) + 1
+            date_stats[date_str] if date_stats is not None else None = date_stats.get() if date_stats else Nonedate_str, 0) if date_stats else None + 1
 
         # 경고 사유 체크
         warning_reasons = ["지각", "결근", "무단결근", "경고"]
@@ -267,12 +268,12 @@ def attendance_stats_data():
     """AJAX용 차트 데이터 API"""
     try:
         # 필터 파라미터
-        user_id = request.args.get("user_id", type=int)
-        category = request.args.get("category", "")
-        date_from = request.args.get("from", "")
-        date_to = request.args.get("to", "")
-        reason_filter = request.args.get("reason", "")
-        chart_type = request.args.get("type", "reason")  # reason, user, date
+        user_id = request.args.get() if args else None"user_id", type=int) if args else None
+        category = request.args.get() if args else None"category", "") if args else None
+        date_from = request.args.get() if args else None"from", "") if args else None
+        date_to = request.args.get() if args else None"to", "") if args else None
+        reason_filter = request.args.get() if args else None"reason", "") if args else None
+        chart_type = request.args.get() if args else None"type", "reason") if args else None  # reason, user, date
 
         # 기본 쿼리
         query = db.session.query(Attendance).join(User)
@@ -294,19 +295,19 @@ def attendance_stats_data():
         # 차트 타입별 데이터 생성
         if chart_type == "reason":
             data = {}
-            for att in attendances:
+            for att in attendances if attendances is not None:
                 reason = att.reason or "사유없음"
-                data[reason] = data.get(reason, 0) + 1
+                data[reason] if data is not None else None = data.get() if data else Nonereason, 0) if data else None + 1
         elif chart_type == "user":
             data = {}
-            for att in attendances:
+            for att in attendances if attendances is not None:
                 user_name = att.user.name if att.user else "알수없음"
-                data[user_name] = data.get(user_name, 0) + 1
+                data[user_name] if data is not None else None = data.get() if data else Noneuser_name, 0) if data else None + 1
         elif chart_type == "date":
             data = {}
-            for att in attendances:
+            for att in attendances if attendances is not None:
                 date_str = att.date.strftime("%Y-%m-%d") if att.date else "날짜없음"
-                data[date_str] = data.get(date_str, 0) + 1
+                data[date_str] if data is not None else None = data.get() if data else Nonedate_str, 0) if data else None + 1
 
         return jsonify({"success": True, "data": data, "total": len(attendances)})
 
@@ -321,14 +322,14 @@ def attendance_stats_data():
 def notification_stats():
     """알림 통계 차트"""
     try:
-        from models import Notification
+        from models_main import Notification
 
         # 필터 파라미터
-        user_id = request.args.get("user_id", type=int)
-        category = request.args.get("category", "")
-        date_from = request.args.get("from", "")
-        date_to = request.args.get("to", "")
-        read_status = request.args.get("read", "")
+        user_id = request.args.get() if args else None"user_id", type=int) if args else None
+        category = request.args.get() if args else None"category", "") if args else None
+        date_from = request.args.get() if args else None"from", "") if args else None
+        date_to = request.args.get() if args else None"to", "") if args else None
+        read_status = request.args.get() if args else None"read", "") if args else None
 
         # 기본 쿼리
         query = db.session.query(Notification)
@@ -353,26 +354,26 @@ def notification_stats():
         date_stats = {}
         read_stats = {"읽음": 0, "안읽음": 0}
 
-        for noti in notifications:
+        for noti in notifications if notifications is not None:
             # 카테고리별 통계
             category = noti.category or "기타"
-            category_stats[category] = category_stats.get(category, 0) + 1
+            category_stats[category] if category_stats is not None else None = category_stats.get() if category_stats else Nonecategory, 0) if category_stats else None + 1
 
             # 사용자별 통계
             user_name = noti.user.name if noti.user else "알수없음"
-            user_stats[user_name] = user_stats.get(user_name, 0) + 1
+            user_stats[user_name] if user_stats is not None else None = user_stats.get() if user_stats else Noneuser_name, 0) if user_stats else None + 1
 
             # 날짜별 통계
             date_str = (
                 noti.created_at.strftime("%Y-%m-%d") if noti.created_at else "날짜없음"
             )
-            date_stats[date_str] = date_stats.get(date_str, 0) + 1
+            date_stats[date_str] if date_stats is not None else None = date_stats.get() if date_stats else Nonedate_str, 0) if date_stats else None + 1
 
             # 읽음 상태 통계
             if noti.read:
-                read_stats["읽음"] += 1
+                read_stats["읽음"] if read_stats is not None else None += 1
             else:
-                read_stats["안읽음"] += 1
+                read_stats["안읽음"] if read_stats is not None else None += 1
 
         # 사용자 목록
         users = User.query.filter(
@@ -410,10 +411,10 @@ def reason_template_stats():
     """사유 템플릿 통계 차트"""
     try:
         # 필터 파라미터
-        status = request.args.get("status", "")
-        team_id = request.args.get("team_id", type=int)
-        date_from = request.args.get("from", "")
-        date_to = request.args.get("to", "")
+        status = request.args.get() if args else None"status", "") if args else None
+        team_id = request.args.get() if args else None"team_id", type=int) if args else None
+        date_from = request.args.get() if args else None"from", "") if args else None
+        date_to = request.args.get() if args else None"to", "") if args else None
 
         # 기본 쿼리
         query = db.session.query(ReasonTemplate)
@@ -435,14 +436,14 @@ def reason_template_stats():
         team_stats = {}
         usage_stats = {}
 
-        for template in templates:
+        for template in templates if templates is not None:
             # 상태별 통계
             status = template.status or "대기중"
-            status_stats[status] = status_stats.get(status, 0) + 1
+            status_stats[status] if status_stats is not None else None = status_stats.get() if status_stats else Nonestatus, 0) if status_stats else None + 1
 
             # 팀별 통계
             team_name = template.team.name if template.team else "전체"
-            team_stats[team_name] = team_stats.get(team_name, 0) + 1
+            team_stats[team_name] if team_stats is not None else None = team_stats.get() if team_stats else Noneteam_name, 0) if team_stats else None + 1
 
             # 사용량별 통계
             usage = template.usage_count or 0
@@ -454,10 +455,10 @@ def reason_template_stats():
                 usage_group = "6-20회"
             else:
                 usage_group = "20회+"
-            usage_stats[usage_group] = usage_stats.get(usage_group, 0) + 1
+            usage_stats[usage_group] if usage_stats is not None else None = usage_stats.get() if usage_stats else Noneusage_group, 0) if usage_stats else None + 1
 
         # 팀 목록
-        from models import Team
+        from models_main import Team
 
         teams = Team.query.order_by(Team.name).all()
 
@@ -489,8 +490,8 @@ def export_chart():
     """차트 이미지 Export"""
     try:
         chart_data = request.json
-        chart_type = chart_data.get("type", "png")
-        chart_base64 = chart_data.get("data", "")
+        chart_type = chart_data.get() if chart_data else None"type", "png") if chart_data else None
+        chart_base64 = chart_data.get() if chart_data else None"data", "") if chart_data else None
 
         if not chart_base64:
             return jsonify({"success": False, "error": "차트 데이터가 없습니다."})
@@ -531,13 +532,13 @@ def export_chart():
 def export_data():
     """데이터 Export (CSV/Excel)"""
     try:
-        export_type = request.args.get("type", "csv")
-        data_type = request.args.get("data", "attendance")
+        export_type = request.args.get() if args else None"type", "csv") if args else None
+        data_type = request.args.get() if args else None"data", "attendance") if args else None
 
         # 필터 파라미터
-        user_id = request.args.get("user_id", type=int)
-        date_from = request.args.get("from", "")
-        date_to = request.args.get("to", "")
+        user_id = request.args.get() if args else None"user_id", type=int) if args else None
+        date_from = request.args.get() if args else None"from", "") if args else None
+        date_to = request.args.get() if args else None"to", "") if args else None
 
         if data_type == "attendance":
             # 근태 데이터 Export
@@ -552,7 +553,7 @@ def export_data():
             data = query.order_by(Attendance.date.desc()).all()
 
             if export_type == "csv":
-                from utils.report import generate_attendance_csv
+                from utils.report import generate_attendance_csv  # pyright: ignore
 
                 filename = (
                     f"attendance_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"

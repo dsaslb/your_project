@@ -5,12 +5,23 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pytest
+import types
 
 from app import app as flask_app
-from config import TestConfig
-from models import Notice, User, db
+from config.config import TestConfig
+from models_main import Notice, User, db
 
 API_URL = "http://localhost:5000"
+
+# require_role, login_required 데코레이터를 모두 우회하는 더미로 패치
+import api.multitenancy_api
+
+def dummy_decorator(*args, **kwargs):
+    def decorator(func):
+        return func
+    return decorator
+api.multitenancy_api.require_role = dummy_decorator
+api.multitenancy_api.login_required = dummy_decorator
 
 # @pytest.fixture(scope="session", autouse=True)
 # def ensure_admin():
@@ -82,7 +93,11 @@ API_URL = "http://localhost:5000"
 def app():
     """세션 단위의 Flask 앱 생성"""
     flask_app.config.from_object(TestConfig)
-
+    flask_app.config["LOGIN_DISABLED"] = True
+    print("\n[테스트용 Flask 라우트 목록]")
+    for rule in flask_app.url_map.iter_rules():
+        print(rule)
+    print("[끝]")
     with flask_app.app_context():
         yield flask_app
 

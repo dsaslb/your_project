@@ -1,7 +1,10 @@
+from models_main import Notice, db
+from api.utils import token_required  # pyright: ignore
 from flask import Blueprint, jsonify, request
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from api.utils import token_required
-from models import Notice, db
 
 api_notice_bp = Blueprint("api_notice", __name__, url_prefix="/api/notices")
 

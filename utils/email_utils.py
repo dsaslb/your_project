@@ -1,29 +1,31 @@
-import logging
-import os
-import smtplib
-from datetime import datetime
-from email import encoders
-from email.mime.base import MIMEBase
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
-from flask import render_template_string, current_app
+from utils.logger import log_action, log_error  # pyright: ignore
+from models_main import Attendance, AttendanceReport, User
 from sqlalchemy import extract, func
+from flask import render_template_string, current_app
+from email.mime.text import MIMEText  # pyright: ignore
+from email.mime.multipart import MIMEMultipart  # pyright: ignore
+from email.mime.base import MIMEBase  # pyright: ignore
+from email import encoders
+from datetime import datetime
+import smtplib
+import os
+import logging
+from flask import url_for
+query = None  # pyright: ignore
+config = None  # pyright: ignore
 
-from models import Attendance, AttendanceReport, User
-from utils.logger import log_action, log_error
 
 logger = logging.getLogger(__name__)
 
 
-def send_email(to_addr, subject, body, html_body=None):
+def send_email(to_addr,  subject,  body, html_content=None):
     """이메일 발송 함수"""
     try:
         # SMTP 설정 확인
-        smtp_server = current_app.config.get("SMTP_SERVER")
-        smtp_port = current_app.config.get("SMTP_PORT", 587)
-        smtp_username = current_app.config.get("SMTP_USERNAME")
-        smtp_password = current_app.config.get("SMTP_PASSWORD")
+        smtp_server = current_app.config.get('SMTP_SERVER') if config else None
+        smtp_port = current_app.config.get('SMTP_PORT', 587) if config else None
+        smtp_username = current_app.config.get('SMTP_USERNAME') if config else None
+        smtp_password = current_app.config.get('SMTP_PASSWORD') if config else None
 
         if not all([smtp_server, smtp_username, smtp_password]):
             logger.warning("SMTP 설정이 완료되지 않았습니다.")
@@ -40,13 +42,13 @@ def send_email(to_addr, subject, body, html_body=None):
         msg.attach(text_part)
 
         # HTML 본문 (있는 경우)
-        if html_body:
-            html_part = MIMEText(html_body, "html", "utf-8")
+        if html_content:
+            html_part = MIMEText(html_content, "html", "utf-8")
             msg.attach(html_part)
 
         # SMTP 서버 연결 및 발송
         if smtp_server:
-            with smtplib.SMTP(smtp_server, smtp_port) as server:
+            with smtplib.SMTP(smtp_server, int(smtp_port) if smtp_port is not None else 587) as server:
                 server.starttls()
                 if smtp_username and smtp_password:
                     server.login(smtp_username, smtp_password)
@@ -63,7 +65,7 @@ def send_email(to_addr, subject, body, html_body=None):
         return False
 
 
-def generate_monthly_report(user, year, month):
+def generate_monthly_report(user,  year,  month):
     """
     사용자의 월별 근태/급여 리포트 생성
 
@@ -109,7 +111,7 @@ def generate_monthly_report(user, year, month):
         late_count = 0
         early_leave_count = 0
 
-        for record in records:
+        for record in records or []:
             if record.clock_in.time() > datetime.strptime("09:00", "%H:%M").time():
                 late_count += 1
             if (
@@ -163,14 +165,14 @@ def send_monthly_reports():
         success_count = 0
         fail_count = 0
 
-        for user in users:
+        for user in users or []:
             try:
                 if not user.email:
                     logger.warning(f"⚠️ 이메일 주소 없음: {user.username}")
                     continue
 
                 # 리포트 생성
-                report = generate_monthly_report(user, prev_year, prev_month)
+                report = generate_monthly_report(user,  prev_year,  prev_month)
                 if not report:
                     continue
 
@@ -181,16 +183,16 @@ def send_monthly_reports():
 {prev_year}년 {prev_month}월 근무/급여 리포트를 보내드립니다.
 
 📊 근무 통계
-• 근무일수: {report['work_days']}일
-• 총 근무시간: {report['total_hours']}시간
-• 초과근무: {report['overtime_hours']}시간
-• 지각: {report['late_count']}회
-• 조퇴: {report['early_leave_count']}회
+• 근무일수: {report['work_days'] if report is not None else None}일
+• 총 근무시간: {report['total_hours'] if report is not None else None}시간
+• 초과근무: {report['overtime_hours'] if report is not None else None}시간
+• 지각: {report['late_count'] if report is not None else None}회
+• 조퇴: {report['early_leave_count'] if report is not None else None}회
 
 💰 급여 내역
-• 기본급: {report['regular_wage']:,}원
-• 초과수당: {report['overtime_wage']:,}원
-• 총 급여: {report['total_wage']:,}원
+• 기본급: {report['regular_wage'] if report is not None else None:,}원
+• 초과수당: {report['overtime_wage'] if report is not None else None:,}원
+• 총 급여: {report['total_wage'] if report is not None else None:,}원
 
 📅 상세 근무 기록은 시스템에서 확인하실 수 있습니다.
 
@@ -200,7 +202,7 @@ def send_monthly_reports():
 
                 # 이메일 발송
                 subject = f"{prev_year}년 {prev_month}월 근무/급여 리포트"
-                send_email(user.email, subject, body)
+                send_email(user.email,  subject,  body)
 
                 success_count += 1
                 logger.info(f"✅ {user.username}에게 리포트 발송 완료")
@@ -232,7 +234,7 @@ def send_attendance_reminder():
         today = datetime.utcnow().date()
         users = User.query.filter_by(status="approved").all()
 
-        for user in users:
+        for user in users or []:
             try:
                 if not user.email:
                     continue
@@ -258,7 +260,7 @@ def send_attendance_reminder():
 식당 관리팀
                     """.strip()
 
-                    send_email(user.email, subject, body)
+                    send_email(user.email,  subject,  body)
                     logger.info(f"📧 {user.username}에게 출근 알림 발송")
 
             except Exception as e:
@@ -281,7 +283,7 @@ class EmailService:
             "use_tls": os.getenv("SMTP_USE_TLS", "True").lower() == "true",
         }
 
-        self.from_email = os.getenv("FROM_EMAIL", self.smtp_config["username"])
+        self.from_email = os.getenv("FROM_EMAIL", self.smtp_config["username"] if self.smtp_config is not None else None)
         self.from_name = os.getenv("FROM_NAME", "레스토랑 관리 시스템")
 
     def send_email(
@@ -305,7 +307,7 @@ class EmailService:
 
             # 첨부파일 (있는 경우)
             if attachments:
-                for filename, filepath in attachments.items():
+                for filename, filepath in attachments.items() if attachments is not None else []:
                     with open(filepath, "rb") as f:
                         part = MIMEBase("application", "octet-stream")
                         part.set_payload(f.read())
@@ -316,11 +318,11 @@ class EmailService:
                         msg.attach(part)
 
             # SMTP 서버 연결 및 발송
-            server = smtplib.SMTP(self.smtp_config["server"], self.smtp_config["port"])
-            if self.smtp_config["use_tls"]:
+            server = smtplib.SMTP(self.smtp_config["server"], self.smtp_config["port"])  # pyright: ignore
+            if self.smtp_config.get("use_tls"):
                 server.starttls()
 
-            server.login(self.smtp_config["username"], self.smtp_config["password"])
+            server.login(self.smtp_config["username"], self.smtp_config["password"])  # pyright: ignore
             server.send_message(msg)
             server.quit()
 
@@ -330,10 +332,10 @@ class EmailService:
             log_error(e, None, f"Email sending failed to {to_email}")
             return False, f"이메일 발송 실패: {str(e)}"
 
-    def send_dispute_notification(self, dispute_id, notification_type="created"):
+    def send_dispute_notification(self,  dispute_id, notification_type="created"):
         """신고/이의제기 알림 이메일 발송"""
         try:
-            dispute = AttendanceReport.query.get(dispute_id)
+            dispute = AttendanceReport.query.get(dispute_id) if query else None
             if not dispute:
                 return False, "신고/이의제기를 찾을 수 없습니다."
 
@@ -344,8 +346,8 @@ class EmailService:
                 # 신고 생성 시 담당자에게 알림
                 if assignee and assignee.email:
                     subject = f"[신고/이의제기 접수] 신고 #{dispute.id}"
-                    html_content = self._get_dispute_created_template(dispute, assignee)
-                    return self.send_email(assignee.email, subject, html_content)
+                    html_content = self._get_dispute_created_template(dispute,  assignee)
+                    return self.send_email(assignee.email,  subject,  html_content)
 
             elif notification_type == "assigned":
                 # 담당자 배정 시 알림
@@ -354,28 +356,28 @@ class EmailService:
                     html_content = self._get_dispute_assigned_template(
                         dispute, assignee
                     )
-                    return self.send_email(assignee.email, subject, html_content)
+                    return self.send_email(assignee.email,  subject,  html_content)
 
             elif notification_type == "replied":
                 # 답변 등록 시 신고자에게 알림
                 if user.email:
                     subject = f"[답변 등록] 신고 #{dispute.id}"
-                    html_content = self._get_dispute_replied_template(dispute, user)
-                    return self.send_email(user.email, subject, html_content)
+                    html_content = self._get_dispute_replied_template(dispute,  user)
+                    return self.send_email(user.email,  subject,  html_content)
 
             elif notification_type == "sla_warning":
                 # SLA 임박 경고
                 if assignee and assignee.email:
                     subject = f"[SLA 임박 경고] 신고 #{dispute.id}"
-                    html_content = self._get_sla_warning_template(dispute, assignee)
-                    return self.send_email(assignee.email, subject, html_content)
+                    html_content = self._get_sla_warning_template(dispute,  assignee)
+                    return self.send_email(assignee.email,  subject,  html_content)
 
             elif notification_type == "sla_overdue":
                 # SLA 초과 경고
                 if assignee and assignee.email:
                     subject = f"[SLA 초과 경고] 신고 #{dispute.id}"
-                    html_content = self._get_sla_overdue_template(dispute, assignee)
-                    return self.send_email(assignee.email, subject, html_content)
+                    html_content = self._get_sla_overdue_template(dispute,  assignee)
+                    return self.send_email(assignee.email,  subject,  html_content)
 
             return False, "지원하지 않는 알림 유형입니다."
 
@@ -383,7 +385,7 @@ class EmailService:
             log_error(e, None, f"Dispute email notification failed: {dispute_id}")
             return False, f"이메일 알림 발송 실패: {str(e)}"
 
-    def _get_dispute_created_template(self, dispute, assignee):
+    def _get_dispute_created_template(self,  dispute,  assignee):
         """신고 생성 알림 템플릿"""
         return render_template_string(
             """
@@ -415,7 +417,7 @@ class EmailService:
                         <p><strong>신고 ID:</strong> #{{ dispute.id }}</p>
                         <p><strong>신고자:</strong> {{ dispute.user.name or dispute.user.username }}</p>
                         <p><strong>유형:</strong> {{ '신고' if dispute.dispute_type == 'report' else '이의제기' }}</p>
-                        <p><strong>사유:</strong> {{ dispute.reason[:100] }}{% if dispute.reason|length > 100 %}...{% endif %}</p>
+                        <p><strong>사유:</strong> {{ dispute.reason[:100] if reason is not None else None }}{% if dispute.reason|length > 100 %}...{% endif %}</p>
                         <p><strong>접수일시:</strong> {{ dispute.created_at.strftime('%Y년 %m월 %d일 %H:%M') }}</p>
                         <p><strong>SLA 기한:</strong> {{ dispute.sla_due.strftime('%Y년 %m월 %d일 %H:%M') if dispute.sla_due else '미설정' }}</p>
                     </div>
@@ -436,7 +438,7 @@ class EmailService:
             assignee=assignee,
         )
 
-    def _get_dispute_assigned_template(self, dispute, assignee):
+    def _get_dispute_assigned_template(self,  dispute,  assignee):
         """담당자 배정 알림 템플릿"""
         return render_template_string(
             """
@@ -486,7 +488,7 @@ class EmailService:
             assignee=assignee,
         )
 
-    def _get_dispute_replied_template(self, dispute, user):
+    def _get_dispute_replied_template(self,  dispute,  user):
         """답변 등록 알림 템플릿"""
         return render_template_string(
             """
@@ -517,7 +519,7 @@ class EmailService:
                         <h3>답변 정보</h3>
                         <p><strong>신고 ID:</strong> #{{ dispute.id }}</p>
                         <p><strong>상태:</strong> {{ dispute.status }}</p>
-                        <p><strong>답변:</strong> {{ dispute.admin_reply[:200] }}{% if dispute.admin_reply|length > 200 %}...{% endif %}</p>
+                        <p><strong>답변:</strong> {{ dispute.admin_reply[:200] if admin_reply is not None else None }}{% if dispute.admin_reply|length > 200 %}...{% endif %}</p>
                         <p><strong>답변일시:</strong> {{ dispute.updated_at.strftime('%Y년 %m월 %d일 %H:%M') }}</p>
                     </div>
                     
@@ -536,7 +538,7 @@ class EmailService:
             user=user,
         )
 
-    def _get_sla_warning_template(self, dispute, assignee):
+    def _get_sla_warning_template(self,  dispute,  assignee):
         """SLA 임박 경고 템플릿"""
         return render_template_string(
             """
@@ -586,7 +588,7 @@ class EmailService:
             assignee=assignee,
         )
 
-    def _get_sla_overdue_template(self, dispute, assignee):
+    def _get_sla_overdue_template(self,  dispute,  assignee):
         """SLA 초과 경고 템플릿"""
         overdue_days = (
             (datetime.utcnow() - dispute.sla_due).days if dispute.sla_due else 0

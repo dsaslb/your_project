@@ -1,23 +1,27 @@
+from typing import Optional, Dict, List, Any
+from pathlib import Path
+import asyncio
+import psutil
+from collections import defaultdict, deque
+from enum import Enum
+from dataclasses import dataclass, asdict
+from datetime import datetime, timedelta
+import sqlite3
+import json
+import threading
+import time
+import logging
+from flask import request
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 플러그인별 상세 모니터링 고도화 시스템
 실시간 그래프/차트, 상세 로그/이벤트 추적, 드릴다운 보기
 """
 
-import logging
-import time
-import threading
-import json
-import sqlite3
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
-from enum import Enum
-from collections import defaultdict, deque
-import psutil
-import asyncio
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
 
 class MetricType(Enum):
     """메트릭 타입"""
@@ -31,6 +35,7 @@ class MetricType(Enum):
     NETWORK_IO = "network_io"
     CUSTOM = "custom"
 
+
 class LogLevel(Enum):
     """로그 레벨"""
     DEBUG = "debug"
@@ -39,6 +44,7 @@ class LogLevel(Enum):
     ERROR = "error"
     CRITICAL = "critical"
 
+
 @dataclass
 class DetailedMetric:
     """상세 메트릭 데이터"""
@@ -46,13 +52,14 @@ class DetailedMetric:
     metric_type: MetricType
     value: float
     timestamp: datetime
-    metadata: Dict[str, Any] = None
-    
+    metadata: Optional[Dict[str, Any]] = None
+
     def __post_init__(self):
         if self.metadata is None:
             self.metadata = {}
         if not isinstance(self.timestamp, datetime):
             self.timestamp = datetime.fromisoformat(self.timestamp) if isinstance(self.timestamp, str) else datetime.now()
+
 
 @dataclass
 class PluginLog:
@@ -61,14 +68,15 @@ class PluginLog:
     level: LogLevel
     message: str
     timestamp: datetime
-    context: Dict[str, Any] = None
-    traceback: str = None
-    
+    context: Optional[Dict[str, Any]] = None
+    traceback: Optional[str] = None
+
     def __post_init__(self):
         if self.context is None:
             self.context = {}
         if not isinstance(self.timestamp, datetime):
             self.timestamp = datetime.fromisoformat(self.timestamp) if isinstance(self.timestamp, str) else datetime.now()
+
 
 @dataclass
 class PluginEvent:
@@ -78,13 +86,14 @@ class PluginEvent:
     description: str
     timestamp: datetime
     severity: str
-    data: Dict[str, Any] = None
-    
+    data: Optional[Dict[str, Any]] = None
+
     def __post_init__(self):
         if self.data is None:
             self.data = {}
         if not isinstance(self.timestamp, datetime):
             self.timestamp = datetime.fromisoformat(self.timestamp) if isinstance(self.timestamp, str) else datetime.now()
+
 
 @dataclass
 class PerformanceSnapshot:
@@ -97,39 +106,40 @@ class PerformanceSnapshot:
     error_rate: float
     request_count: int
     throughput: float
-    disk_io: Dict[str, float]
-    network_io: Dict[str, float]
-    custom_metrics: Dict[str, float] = None
-    
+    disk_io: Optional[Dict[str, float]] = None
+    network_io: Optional[Dict[str, float]] = None
+    custom_metrics: Optional[Dict[str, float]] = None
+
     def __post_init__(self):
         if self.custom_metrics is None:
             self.custom_metrics = {}
         if not isinstance(self.timestamp, datetime):
             self.timestamp = datetime.fromisoformat(self.timestamp) if isinstance(self.timestamp, str) else datetime.now()
 
+
 class AdvancedPluginMonitor:
     """고도화된 플러그인 모니터링 시스템"""
-    
-    def __init__(self, db_path: str = "advanced_monitoring.db"):
+
+    def __init__(self, db_path="advanced_monitoring.db"):
         self.db_path = db_path
         self.monitoring_active = False
         self.monitor_thread = None
-        
+
         # 메트릭 저장소 (메모리 캐시)
-        self.metrics_cache: Dict[str, deque] = defaultdict(lambda: deque(maxlen=10000))
-        self.logs_cache: Dict[str, deque] = defaultdict(lambda: deque(maxlen=5000))
-        self.events_cache: Dict[str, deque] = defaultdict(lambda: deque(maxlen=2000))
-        self.snapshots_cache: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        
+        self.metrics_cache: Dict[str, deque[DetailedMetric]] = defaultdict(lambda: deque(maxlen=10000))
+        self.logs_cache: Dict[str, deque[PluginLog]] = defaultdict(lambda: deque(maxlen=5000))
+        self.events_cache: Dict[str, deque[PluginEvent]] = defaultdict(lambda: deque(maxlen=2000))
+        self.snapshots_cache: Dict[str, deque[PerformanceSnapshot]] = defaultdict(lambda: deque(maxlen=1000))
+
         # 실시간 통계
-        self.real_time_stats: Dict[str, Dict[str, Any]] = {}
-        
+        self.real_time_stats: Dict[str, Any] = {}
+
         # 알림 콜백
         self.alert_callbacks: List[Any] = []
-        
+
         # 데이터베이스 초기화
         self._init_database()
-        
+
         # 모니터링 설정
         self.monitoring_config = {
             'metrics_interval': 5,  # 5초
@@ -139,13 +149,13 @@ class AdvancedPluginMonitor:
             'max_logs_per_plugin': 5000,
             'max_events_per_plugin': 2000
         }
-    
+
     def _init_database(self):
         """데이터베이스 초기화"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 메트릭 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS plugin_metrics (
@@ -158,7 +168,7 @@ class AdvancedPluginMonitor:
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-            
+
             # 로그 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS plugin_logs (
@@ -172,7 +182,7 @@ class AdvancedPluginMonitor:
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-            
+
             # 이벤트 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS plugin_events (
@@ -186,7 +196,7 @@ class AdvancedPluginMonitor:
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-            
+
             # 성능 스냅샷 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS performance_snapshots (
@@ -205,57 +215,57 @@ class AdvancedPluginMonitor:
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-            
+
             # 인덱스 생성
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_metrics_plugin_time ON plugin_metrics(plugin_id, timestamp)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_logs_plugin_time ON plugin_logs(plugin_id, timestamp)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_plugin_time ON plugin_events(plugin_id, timestamp)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_plugin_time ON performance_snapshots(plugin_id, timestamp)')
-            
+
             conn.commit()
             conn.close()
             logger.info("고도화된 모니터링 데이터베이스 초기화 완료")
-            
+
         except Exception as e:
             logger.error(f"데이터베이스 초기화 오류: {e}")
-    
+
     def start_monitoring(self):
         """모니터링 시작"""
         if self.monitoring_active:
             return
-            
+
         self.monitoring_active = True
         self.monitor_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
         self.monitor_thread.start()
         logger.info("고도화된 플러그인 모니터링 시작")
-    
+
     def stop_monitoring(self):
         """모니터링 중지"""
         self.monitoring_active = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=5)
         logger.info("고도화된 플러그인 모니터링 중지")
-    
+
     def _monitoring_loop(self):
         """모니터링 루프"""
         while self.monitoring_active:
             try:
                 # 데이터 정리
                 self._cleanup_old_data()
-                
+
                 # 실시간 통계 업데이트
                 self._update_real_time_stats()
-                
+
                 # 데이터베이스 동기화
                 self._sync_to_database()
-                
-                time.sleep(self.monitoring_config['metrics_interval'])
-                
+
+                time.sleep(float(self.monitoring_config['metrics_interval']))
+
             except Exception as e:
                 logger.error(f"모니터링 루프 오류: {e}")
-                time.sleep(10)
-    
-    def record_metric(self, plugin_id: str, metric_type: MetricType, value: float, metadata: Dict[str, Any] = None):
+                time.sleep(10.0)
+
+    def record_metric(self, plugin_id: str, metric_type: MetricType, value: float, metadata: Optional[Dict[str, Any]] = None):
         """메트릭 기록"""
         try:
             metric = DetailedMetric(
@@ -265,18 +275,18 @@ class AdvancedPluginMonitor:
                 timestamp=datetime.utcnow(),
                 metadata=metadata or {}
             )
-            
+
             # 메모리 캐시에 저장
-            cache_key = f"{plugin_id}_{metric_type.value}"
+            cache_key = f"{plugin_id}_{metric_type.value if metric_type is not None else None}"
             self.metrics_cache[cache_key].append(metric)
-            
+
             # 실시간 통계 업데이트
-            self._update_plugin_stats(plugin_id, metric_type, value)
-            
+            self._update_plugin_stats(plugin_id,  metric_type,  value)
+
         except Exception as e:
             logger.error(f"메트릭 기록 오류: {e}")
-    
-    def record_log(self, plugin_id: str, level: LogLevel, message: str, context: Dict[str, Any] = None, traceback: str = None):
+
+    def record_log(self, plugin_id: str, level: LogLevel, message: str, context: Optional[Dict[str, Any]] = None, traceback=None):
         """로그 기록"""
         try:
             log = PluginLog(
@@ -287,24 +297,24 @@ class AdvancedPluginMonitor:
                 context=context or {},
                 traceback=traceback
             )
-            
+
             # 메모리 캐시에 저장
             self.logs_cache[plugin_id].append(log)
-            
+
             # 중요 로그는 이벤트로도 기록
             if level in [LogLevel.ERROR, LogLevel.CRITICAL]:
                 self.record_event(
                     plugin_id=plugin_id,
                     event_type="log_error",
                     description=f"로그 오류: {message}",
-                    severity=level.value,
+                    severity=level.value if level is not None else None,
                     data={"context": context, "traceback": traceback}
                 )
-            
+
         except Exception as e:
             logger.error(f"로그 기록 오류: {e}")
-    
-    def record_event(self, plugin_id: str, event_type: str, description: str, severity: str, data: Dict[str, Any] = None):
+
+    def record_event(self, plugin_id: str, event_type: str, description: str, severity: str, data: Optional[Dict[str, Any]] = None):
         """이벤트 기록"""
         try:
             event = PluginEvent(
@@ -312,43 +322,41 @@ class AdvancedPluginMonitor:
                 event_type=event_type,
                 description=description,
                 timestamp=datetime.utcnow(),
-                severity=severity,
+                severity=str(severity) if severity is not None else '',
                 data=data or {}
             )
-            
             # 메모리 캐시에 저장
             self.events_cache[plugin_id].append(event)
-            
             # 알림 콜백 실행
             self._trigger_alert_callbacks(event)
-            
         except Exception as e:
             logger.error(f"이벤트 기록 오류: {e}")
-    
-    def create_snapshot(self, plugin_id: str, metrics: Dict[str, Any]):
+
+    def create_snapshot(self, plugin_id: str, metrics: Optional[Dict[str, Any]] = None):
         """성능 스냅샷 생성"""
         try:
             snapshot = PerformanceSnapshot(
                 plugin_id=plugin_id,
                 timestamp=datetime.utcnow(),
-                cpu_usage=metrics.get('cpu_usage', 0.0),
-                memory_usage=metrics.get('memory_usage', 0.0),
-                response_time=metrics.get('response_time', 0.0),
-                error_rate=metrics.get('error_rate', 0.0),
-                request_count=metrics.get('request_count', 0),
-                throughput=metrics.get('throughput', 0.0),
-                disk_io=metrics.get('disk_io', {}),
-                network_io=metrics.get('network_io', {}),
-                custom_metrics=metrics.get('custom_metrics', {})
+                cpu_usage=metrics.get('cpu_usage', 0.0) if metrics else 0.0,
+                memory_usage=metrics.get('memory_usage', 0.0) if metrics else 0.0,
+                response_time=metrics.get('response_time', 0.0) if metrics else 0.0,
+                error_rate=metrics.get('error_rate', 0.0) if metrics else 0.0,
+                request_count=metrics.get('request_count', 0) if metrics else 0,
+                throughput=metrics.get('throughput', 0.0) if metrics else 0.0,
+                disk_io=metrics.get('disk_io', {}) if metrics else {},
+                network_io=metrics.get('network_io', {}) if metrics else {},
+                custom_metrics=metrics.get('custom_metrics', {}) if metrics else {}
             )
-            
-            # 메모리 캐시에 저장
-            self.snapshots_cache[plugin_id].append(snapshot)
-            
+            if self.snapshots_cache is not None:
+                if plugin_id in self.snapshots_cache:
+                    self.snapshots_cache[plugin_id].append(snapshot)
+                else:
+                    self.snapshots_cache[plugin_id] = deque([snapshot], maxlen=1000)
         except Exception as e:
             logger.error(f"스냅샷 생성 오류: {e}")
-    
-    def _update_plugin_stats(self, plugin_id: str, metric_type: MetricType, value: float):
+
+    def _update_plugin_stats(self,  plugin_id: str,  metric_type: MetricType,  value: float):
         """플러그인 통계 업데이트"""
         if plugin_id not in self.real_time_stats:
             self.real_time_stats[plugin_id] = {
@@ -358,10 +366,10 @@ class AdvancedPluginMonitor:
                 'total_errors': 0,
                 'avg_response_time': 0.0
             }
-        
+
         stats = self.real_time_stats[plugin_id]
-        metric_key = metric_type.value
-        
+        metric_key = metric_type.value if metric_type is not None else None
+
         if metric_key not in stats['metrics']:
             stats['metrics'][metric_key] = {
                 'current': value,
@@ -377,56 +385,56 @@ class AdvancedPluginMonitor:
             metric_stats['max'] = max(metric_stats['max'], value)
             metric_stats['count'] += 1
             metric_stats['avg'] = (metric_stats['avg'] * (metric_stats['count'] - 1) + value) / metric_stats['count']
-        
+
         stats['last_update'] = datetime.utcnow()
-    
+
     def _update_real_time_stats(self):
         """실시간 통계 업데이트"""
         current_time = datetime.utcnow()
-        
+
         for plugin_id, stats in self.real_time_stats.items():
             # 5분 이상 업데이트가 없으면 비활성으로 표시
             if (current_time - stats['last_update']).total_seconds() > 300:
                 stats['status'] = 'inactive'
             else:
                 stats['status'] = 'active'
-    
+
     def _cleanup_old_data(self):
         """오래된 데이터 정리"""
         cutoff_time = datetime.utcnow() - timedelta(days=self.monitoring_config['retention_days'])
-        
+
         # 메트릭 정리
         for cache_key, metrics in self.metrics_cache.items():
             while metrics and metrics[0].timestamp < cutoff_time:
                 metrics.popleft()
-        
+
         # 로그 정리
         for plugin_id, logs in self.logs_cache.items():
             while logs and logs[0].timestamp < cutoff_time:
                 logs.popleft()
-        
+
         # 이벤트 정리
         for plugin_id, events in self.events_cache.items():
             while events and events[0].timestamp < cutoff_time:
                 events.popleft()
-        
+
         # 스냅샷 정리
         for plugin_id, snapshots in self.snapshots_cache.items():
             while snapshots and snapshots[0].timestamp < cutoff_time:
                 snapshots.popleft()
-    
+
     def _sync_to_database(self):
         """데이터베이스 동기화"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 메트릭 동기화
             for cache_key, metrics in self.metrics_cache.items():
                 if metrics:
                     plugin_id, metric_type = cache_key.split('_', 1)
                     metric = metrics[-1]  # 최신 메트릭
-                    
+
                     cursor.execute('''
                         INSERT INTO plugin_metrics (plugin_id, metric_type, value, timestamp, metadata)
                         VALUES (?, ?, ?, ?, ?)
@@ -437,7 +445,7 @@ class AdvancedPluginMonitor:
                         metric.timestamp.isoformat(),
                         json.dumps(metric.metadata)
                     ))
-            
+
             # 로그 동기화 (최근 100개만)
             for plugin_id, logs in self.logs_cache.items():
                 recent_logs = list(logs)[-100:]
@@ -453,7 +461,7 @@ class AdvancedPluginMonitor:
                         json.dumps(log.context),
                         log.traceback
                     ))
-            
+
             # 이벤트 동기화 (최근 50개만)
             for plugin_id, events in self.events_cache.items():
                 recent_events = list(events)[-50:]
@@ -469,7 +477,7 @@ class AdvancedPluginMonitor:
                         event.severity,
                         json.dumps(event.data)
                     ))
-            
+
             # 스냅샷 동기화 (최근 10개만)
             for plugin_id, snapshots in self.snapshots_cache.items():
                 recent_snapshots = list(snapshots)[-10:]
@@ -492,34 +500,34 @@ class AdvancedPluginMonitor:
                         json.dumps(snapshot.network_io),
                         json.dumps(snapshot.custom_metrics)
                     ))
-            
+
             conn.commit()
             conn.close()
-            
+
         except Exception as e:
             logger.error(f"데이터베이스 동기화 오류: {e}")
-    
-    def _trigger_alert_callbacks(self, event: PluginEvent):
+
+    def _trigger_alert_callbacks(self,  event: PluginEvent):
         """알림 콜백 실행"""
         for callback in self.alert_callbacks:
             try:
                 callback(event)
             except Exception as e:
                 logger.error(f"알림 콜백 실행 오류: {e}")
-    
-    def add_alert_callback(self, callback):
+
+    def add_alert_callback(self,  callback):
         """알림 콜백 추가"""
         self.alert_callbacks.append(callback)
-    
+
     # 데이터 조회 메서드들
-    def get_plugin_metrics(self, plugin_id: str, metric_type: MetricType = None, 
-                          hours: int = 24) -> List[DetailedMetric]:
+    def get_plugin_metrics(self, plugin_id: str, metric_type: Optional[MetricType] = None,
+                           hours: int = 24) -> Optional[List[DetailedMetric]]:
         """플러그인 메트릭 조회"""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
         metrics = []
-        
+
         if metric_type:
-            cache_key = f"{plugin_id}_{metric_type.value}"
+            cache_key = f"{plugin_id}_{metric_type.value if metric_type is not None else None}"
             if cache_key in self.metrics_cache:
                 metrics = [m for m in self.metrics_cache[cache_key] if m.timestamp >= cutoff_time]
         else:
@@ -527,79 +535,77 @@ class AdvancedPluginMonitor:
             for cache_key, metric_list in self.metrics_cache.items():
                 if cache_key.startswith(f"{plugin_id}_"):
                     metrics.extend([m for m in metric_list if m.timestamp >= cutoff_time])
-        
+
         return sorted(metrics, key=lambda x: x.timestamp)
-    
-    def get_plugin_logs(self, plugin_id: str, level: LogLevel = None, 
-                       hours: int = 24) -> List[PluginLog]:
+
+    def get_plugin_logs(self, plugin_id: str, level: Optional[LogLevel] = None,
+                        hours: int = 24) -> Optional[List[PluginLog]]:
         """플러그인 로그 조회"""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         if plugin_id in self.logs_cache:
             logs = [log for log in self.logs_cache[plugin_id] if log.timestamp >= cutoff_time]
             if level:
                 logs = [log for log in logs if log.level == level]
             return sorted(logs, key=lambda x: x.timestamp)
-        
+
         return []
-    
-    def get_plugin_events(self, plugin_id: str, event_type: str = None, 
-                         hours: int = 24) -> List[PluginEvent]:
+
+    def get_plugin_events(self, plugin_id: str, event_type: Optional[str] = None,
+                          hours: int = 24) -> Optional[List[PluginEvent]]:
         """플러그인 이벤트 조회"""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         if plugin_id in self.events_cache:
             events = [event for event in self.events_cache[plugin_id] if event.timestamp >= cutoff_time]
             if event_type:
                 events = [event for event in events if event.event_type == event_type]
             return sorted(events, key=lambda x: x.timestamp)
-        
+
         return []
-    
-    def get_performance_snapshots(self, plugin_id: str, hours: int = 24) -> List[PerformanceSnapshot]:
+
+    def get_performance_snapshots(self, plugin_id: str, hours: int = 24) -> Optional[List[PerformanceSnapshot]]:
         """성능 스냅샷 조회"""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         if plugin_id in self.snapshots_cache:
             snapshots = [s for s in self.snapshots_cache[plugin_id] if s.timestamp >= cutoff_time]
             return sorted(snapshots, key=lambda x: x.timestamp)
-        
+
         return []
-    
-    def get_real_time_stats(self, plugin_id: str = None) -> Dict[str, Any]:
+
+    def get_real_time_stats(self, plugin_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """실시간 통계 조회"""
         if plugin_id:
             return self.real_time_stats.get(plugin_id, {})
         return self.real_time_stats
-    
-    def get_plugin_summary(self, plugin_id: str) -> Dict[str, Any]:
+
+    def get_plugin_summary(self, plugin_id: str) -> Optional[Dict[str, Any]]:
         """플러그인 요약 정보"""
         stats = self.real_time_stats.get(plugin_id, {})
-        metrics = self.get_plugin_metrics(plugin_id, hours=1)
-        logs = self.get_plugin_logs(plugin_id, hours=1)
-        events = self.get_plugin_events(plugin_id, hours=1)
-        
-        # 에러 로그 수 계산
-        error_logs = [log for log in logs if log.level in [LogLevel.ERROR, LogLevel.CRITICAL]]
-        
+        metrics = self.get_plugin_metrics(plugin_id)
+        logs = self.get_plugin_logs(plugin_id)
+        error_logs = [log for log in logs if getattr(log, 'level', None) == LogLevel.ERROR] if logs else []
+        events = self.get_plugin_events(plugin_id)
         return {
             'plugin_id': plugin_id,
             'status': stats.get('status', 'unknown'),
             'last_update': stats.get('last_update'),
-            'metrics_count': len(metrics),
-            'logs_count': len(logs),
+            'metrics_count': len(metrics) if metrics else 0,
+            'logs_count': len(logs) if logs else 0,
             'error_logs_count': len(error_logs),
-            'events_count': len(events),
+            'events_count': len(events) if events else 0,
             'current_metrics': stats.get('metrics', {}),
-            'recent_errors': [log.message for log in error_logs[-5:]]  # 최근 5개 에러
+            'recent_errors': [log.message for log in error_logs[-5:]] if error_logs else []
         }
-    
-    def get_all_plugins_summary(self) -> List[Dict[str, Any]]:
+
+    def get_all_plugins_summary(self) -> Optional[List[Dict[str, Any]]]:
         """모든 플러그인 요약 정보"""
         summaries = []
-        for plugin_id in self.real_time_stats.keys():
+        for plugin_id in self.real_time_stats:
             summaries.append(self.get_plugin_summary(plugin_id))
         return summaries
 
+
 # 전역 인스턴스
-advanced_plugin_monitor = AdvancedPluginMonitor() 
+advanced_plugin_monitor = AdvancedPluginMonitor()

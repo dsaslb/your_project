@@ -18,18 +18,20 @@ sys.path.insert(0, str(project_root))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def optimize_database_queries():
     """데이터베이스 쿼리 최적화"""
     logger.info("데이터베이스 쿼리 최적화 중...")
-    
+
     # SQLite 데이터베이스 최적화
     db_path = project_root / "instance" / "your_program.db"
     if db_path.exists():
         try:
             import sqlite3
+
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
-            
+
             # 인덱스 생성
             indexes = [
                 "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
@@ -41,48 +43,47 @@ def optimize_database_queries():
                 "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)",
                 "CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at)",
             ]
-            
+
             for index_sql in indexes:
                 cursor.execute(index_sql)
-            
+
             # 통계 업데이트
             cursor.execute("ANALYZE")
             conn.commit()
             conn.close()
-            
+
             logger.info("✅ 데이터베이스 인덱스 최적화 완료")
-            
+
         except Exception as e:
             logger.error(f"데이터베이스 최적화 실패: {e}")
+
 
 def optimize_cache_config():
     """캐시 설정 최적화"""
     logger.info("캐시 설정 최적화 중...")
-    
+
     # 캐시 설정 파일 생성
     cache_config = {
         "cache_type": "simple",  # Redis 대신 메모리 캐시 사용
         "cache_default_timeout": 300,
         "cache_threshold": 1000,
         "cache_key_prefix": "your_program_",
-        "cache_options": {
-            "maxsize": 1000,
-            "ttl": 300
-        }
+        "cache_options": {"maxsize": 1000, "ttl": 300},
     }
-    
+
     config_path = project_root / "cache_config.json"
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(cache_config, f, indent=2, ensure_ascii=False)
-    
+
     logger.info("✅ 캐시 설정 최적화 완료")
+
 
 def optimize_app_config():
     """앱 설정 최적화"""
     logger.info("앱 설정 최적화 중...")
-    
+
     # config.py 최적화
-    config_content = '''
+    config_content = """
 # -*- coding: utf-8 -*-
 import os
 from datetime import timedelta
@@ -141,18 +142,19 @@ config_by_name = {
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
-'''
-    
+"""
+
     config_path = project_root / "config.py"
     with open(config_path, "w", encoding="utf-8") as f:
         f.write(config_content)
-    
+
     logger.info("✅ 앱 설정 최적화 완료")
+
 
 def create_performance_monitor():
     """성능 모니터링 유틸리티 생성"""
     logger.info("성능 모니터링 유틸리티 생성 중...")
-    
+
     monitor_content = '''
 # -*- coding: utf-8 -*-
 """
@@ -322,43 +324,47 @@ def monitor_performance(f):
     
     return decorated_function
 '''
-    
+
     monitor_path = project_root / "utils" / "simple_performance_monitor.py"
     monitor_path.parent.mkdir(exist_ok=True)
-    
+
     with open(monitor_path, "w", encoding="utf-8") as f:
         f.write(monitor_content)
-    
+
     logger.info("✅ 성능 모니터링 유틸리티 생성 완료")
+
 
 def main():
     """메인 실행 함수"""
     logger.info("=== Your Program 성능 최적화 시작 ===")
-    
+
     try:
         # 1. 데이터베이스 쿼리 최적화
         optimize_database_queries()
-        
+
         # 2. 캐시 설정 최적화
         optimize_cache_config()
-        
+
         # 3. 앱 설정 최적화
         optimize_app_config()
-        
+
         # 4. 성능 모니터링 유틸리티 생성
         create_performance_monitor()
-        
+
         logger.info("=== 성능 최적화 완료 ===")
         logger.info("✅ 다음 단계:")
         logger.info("1. 서버를 재시작하세요: python app.py")
-        logger.info("2. 성능 테스트를 다시 실행하세요: python scripts/performance_test.py")
+        logger.info(
+            "2. 성능 테스트를 다시 실행하세요: python scripts/performance_test.py"
+        )
         logger.info("3. 응답 시간이 개선되었는지 확인하세요")
-        
+
     except Exception as e:
         logger.error(f"성능 최적화 중 오류 발생: {e}")
         return 1
-    
+
     return 0
 
+
 if __name__ == "__main__":
-    exit(main()) 
+    exit(main())

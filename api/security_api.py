@@ -1,9 +1,12 @@
-from flask import Blueprint, jsonify, request, current_app, g
-from functools import wraps
-import jwt
-import datetime
-import logging
 from typing import Dict, Any, Optional
+import logging
+import datetime
+import jwt
+from functools import wraps
+from flask import Blueprint, jsonify, request, current_app, g
+args = None  # pyright: ignore
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 
 security_bp = Blueprint('security', __name__)
 
@@ -12,37 +15,39 @@ security_logger = logging.getLogger('security')
 security_logger.setLevel(logging.INFO)
 
 # JWT 토큰 검증 데코레이터
+
+
 def require_auth(f):
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args,  **kwargs):
         token = None
-        
+
         # 헤더에서 토큰 추출
         if 'Authorization' in request.headers:
-            auth_header = request.headers['Authorization']
+            auth_header = request.headers['Authorization'] if headers is not None else None
             try:
                 token = auth_header.split(" ")[1]
             except IndexError:
                 return jsonify({'message': '토큰 형식이 잘못되었습니다'}), 401
-        
+
         if not token:
             return jsonify({'message': '토큰이 필요합니다'}), 401
-        
+
         try:
             # 토큰 검증
-            payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-            
+            payload = jwt.decode(token, current_app.config['SECRET_KEY'] if config is not None else None, algorithms=['HS256'])
+
             # Flask g 객체에 사용자 정보 저장 (요청별로 안전하게 관리)
-            g.user_id = payload['user_id']
-            g.user_role = payload['role']
-            
+            g.user_id = payload['user_id'] if payload is not None else None
+            g.user_role = payload['role'] if payload is not None else None
+
             # 보안 로그 기록
             log_security_event('token_validation', 'success', {
-                'user_id': payload['user_id'],
+                'user_id': payload['user_id'] if payload is not None else None,
                 'ip': request.remote_addr,
                 'endpoint': request.endpoint
             })
-            
+
         except jwt.ExpiredSignatureError:
             log_security_event('token_validation', 'expired', {
                 'ip': request.remote_addr,
@@ -55,18 +60,20 @@ def require_auth(f):
                 'endpoint': request.endpoint
             })
             return jsonify({'message': '유효하지 않은 토큰입니다'}), 401
-        
+
         return f(*args, **kwargs)
     return decorated
 
 # 권한 검증 데코레이터
+
+
 def require_role(required_role):
     def decorator(f):
         @wraps(f)
-        def decorated(*args, **kwargs):
+        def decorated(*args,  **kwargs):
             if not hasattr(g, 'user_role'):
                 return jsonify({'message': '인증이 필요합니다'}), 401
-            
+
             if g.user_role != required_role and g.user_role != 'admin':
                 log_security_event('permission_denied', 'insufficient_role', {
                     'user_id': getattr(g, 'user_id', 'unknown'),
@@ -76,27 +83,30 @@ def require_role(required_role):
                     'endpoint': request.endpoint
                 })
                 return jsonify({'message': '권한이 부족합니다'}), 403
-            
+
             return f(*args, **kwargs)
         return decorated
     return decorator
 
 # 보안 이벤트 로깅
-def log_security_event(event_type: str, status: str, details: Dict[str, Any]):
+
+
+def log_security_event(event_type: str,  status: str,  details: Dict[str,  Any] if Dict is not None else None):
     """보안 이벤트를 로그에 기록"""
     log_entry = {
         'timestamp': datetime.datetime.now().isoformat(),
         'event_type': event_type,
         'status': status,
         'ip_address': request.remote_addr,
-        'user_agent': request.headers.get('User-Agent', ''),
+        'user_agent': request.headers.get() if headers else None'User-Agent', '') if headers else None,
         'details': details
     }
-    
+
     security_logger.info(f"SECURITY_EVENT: {log_entry}")
-    
+
     # TODO: 데이터베이스에 보안 로그 저장
     # save_security_log_to_db(log_entry)
+
 
 @security_bp.route('/api/security/token/refresh', methods=['POST'])
 @require_auth
@@ -108,18 +118,18 @@ def refresh_token():
             'user_id': g.user_id,
             'role': g.user_role,
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-        }, current_app.config['SECRET_KEY'], algorithm='HS256')
-        
+        }, current_app.config['SECRET_KEY'] if config is not None else None, algorithm='HS256')
+
         log_security_event('token_refresh', 'success', {
             'user_id': g.user_id,
             'ip': request.remote_addr
         })
-        
+
         return jsonify({
             'token': new_token,
             'expires_in': 86400  # 24시간
         })
-        
+
     except Exception as e:
         log_security_event('token_refresh', 'error', {
             'user_id': getattr(g, 'user_id', 'unknown'),
@@ -127,6 +137,7 @@ def refresh_token():
             'ip': request.remote_addr
         })
         return jsonify({'message': '토큰 갱신 실패'}), 500
+
 
 @security_bp.route('/api/security/logs', methods=['GET'])
 @require_auth
@@ -155,11 +166,12 @@ def get_security_logs():
                 'details': {'required_role': 'admin'}
             }
         ]
-        
+
         return jsonify({'logs': logs})
-        
+
     except Exception as e:
         return jsonify({'message': '로그 조회 실패'}), 500
+
 
 @security_bp.route('/api/security/settings', methods=['GET'])
 @require_auth
@@ -178,8 +190,9 @@ def get_security_settings():
         'max_login_attempts': 5,
         'lockout_duration': 15,  # 분
     }
-    
+
     return jsonify(settings)
+
 
 @security_bp.route('/api/security/settings', methods=['PUT'])
 @require_auth
@@ -188,16 +201,16 @@ def update_security_settings():
     """보안 설정 업데이트 (관리자만)"""
     try:
         data = request.get_json()
-        
+
         # TODO: 실제 설정 저장 로직
         log_security_event('settings_update', 'success', {
             'user_id': g.user_id,
             'settings': data,
             'ip': request.remote_addr
         })
-        
+
         return jsonify({'message': '보안 설정이 업데이트되었습니다'})
-        
+
     except Exception as e:
         log_security_event('settings_update', 'error', {
             'user_id': getattr(g, 'user_id', 'unknown'),
@@ -205,6 +218,7 @@ def update_security_settings():
             'ip': request.remote_addr
         })
         return jsonify({'message': '설정 업데이트 실패'}), 500
+
 
 @security_bp.route('/api/security/audit', methods=['GET'])
 @require_auth
@@ -233,8 +247,8 @@ def get_audit_trail():
                 'details': {'target_user': 'user1', 'new_role': 'staff'}
             }
         ]
-        
+
         return jsonify({'audit_trail': audit_trail})
-        
+
     except Exception as e:
-        return jsonify({'message': '감사 추적 조회 실패'}), 500 
+        return jsonify({'message': '감사 추적 조회 실패'}), 500

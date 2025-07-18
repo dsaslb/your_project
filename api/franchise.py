@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, current_app
-from models.branch import Branch
+from models.branch import Branch  # pyright: ignore
 from datetime import datetime
 
 franchise_bp = Blueprint('franchise', __name__, url_prefix='/api/franchise')
@@ -11,6 +11,7 @@ branches = [
     Branch(3, '홍대지점', 1)
 ]
 
+
 @franchise_bp.route('/branches', methods=['GET'])
 def get_branches():
     try:
@@ -21,17 +22,19 @@ def get_branches():
         current_app.logger.error(f"지점 목록 오류: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @franchise_bp.route('/apply_policy', methods=['POST'])
 def apply_policy():
     try:
         data = request.get_json() or {}
-        policy = data.get('policy')
+        policy = data.get('policy') if data else None
         for b in branches:
             b.apply_policy(policy)
         return jsonify({'success': True, 'message': '정책 일괄 적용 완료'}), 200
     except Exception as e:
         current_app.logger.error(f"정책 적용 오류: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @franchise_bp.route('/collaboration', methods=['POST'])
 def collaboration():
@@ -41,4 +44,4 @@ def collaboration():
         return jsonify({'success': True, 'message': '이슈/질문이 공유되었습니다.'}), 200
     except Exception as e:
         current_app.logger.error(f"협업 오류: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500 
+        return jsonify({'success': False, 'error': str(e)}), 500

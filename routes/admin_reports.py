@@ -1,27 +1,28 @@
+from utils.notify import send_notification_enhanced  # pyright: ignore
+from utils.logger import log_action, log_error  # pyright: ignore
+from utils.decorators import admin_required, require_permission  # pyright: ignore
+from models_main import (Attendance, AttendanceReport, Notification, Order,
+                         SystemLog, User)
+from extensions import db
+from sqlalchemy import and_, func, or_
+from reportlab.pdfgen import canvas  # pyright: ignore
+from reportlab.lib.units import inch  # pyright: ignore
+from reportlab.lib.pagesizes import A4  # pyright: ignore
+from flask_login import current_user, login_required
+from flask import (Blueprint, flash, jsonify, redirect, render_template,
+                   request, send_file, url_for)
+import pandas as pd
+from datetime import datetime, timedelta
+from collections import Counter
+import json
+import io
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 신고/이의제기 관리 라우트
 """
 
-import io
-import json
-from collections import Counter
-from datetime import datetime, timedelta
-
-import pandas as pd
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
-                   request, send_file, url_for)
-from flask_login import current_user, login_required
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
-from sqlalchemy import and_, func, or_
-
-from extensions import db
-from models import (Attendance, AttendanceReport, Notification, Order,
-                    SystemLog, User)
-from utils.decorators import admin_required, require_permission
-from utils.logger import log_action, log_error
-from utils.notify import send_notification_enhanced
 
 admin_reports_bp = Blueprint("admin_reports", __name__)
 
@@ -33,11 +34,11 @@ def admin_reports():
     """신고/이의제기 관리 대시보드"""
     try:
         # 필터 파라미터
-        status = request.args.get("status", "")
-        user_id = request.args.get("user_id", "")
-        dispute_type = request.args.get("dispute_type", "")
-        date_from = request.args.get("date_from", "")
-        date_to = request.args.get("date_to", "")
+        status = request.args.get() if args else None"status", "") if args else None
+        user_id = request.args.get() if args else None"user_id", "") if args else None
+        dispute_type = request.args.get() if args else None"dispute_type", "") if args else None
+        date_from = request.args.get() if args else None"date_from", "") if args else None
+        date_to = request.args.get() if args else None"date_to", "") if args else None
 
         # 쿼리 구성
         query = AttendanceReport.query
@@ -109,11 +110,11 @@ def report_timeline():
     """신고/이의제기 타임라인 뷰"""
     try:
         # 필터 파라미터
-        user_id = request.args.get("user_id", "")
-        status = request.args.get("status", "")
-        date_from = request.args.get("from", "")
-        date_to = request.args.get("to", "")
-        keyword = request.args.get("q", "")
+        user_id = request.args.get() if args else None"user_id", "") if args else None
+        status = request.args.get() if args else None"status", "") if args else None
+        date_from = request.args.get() if args else None"from", "") if args else None
+        date_to = request.args.get() if args else None"to", "") if args else None
+        keyword = request.args.get() if args else None"q", "") if args else None
 
         # 쿼리 구성
         query = AttendanceReport.query
@@ -178,14 +179,14 @@ def ai_summarize_reports(reports):
 
         # 상태별 통계
         status_cnt = Counter([r.status for r in reports])
-        pending_count = status_cnt.get("pending", 0)
-        resolved_count = status_cnt.get("resolved", 0)
-        processing_count = status_cnt.get("processing", 0)
+        pending_count = status_cnt.get() if status_cnt else None"pending", 0) if status_cnt else None
+        resolved_count = status_cnt.get() if status_cnt else None"resolved", 0) if status_cnt else None
+        processing_count = status_cnt.get() if status_cnt else None"processing", 0) if status_cnt else None
 
         # 가장 많은 사유
         reason_counter = Counter([r.reason for r in reports if r.reason])
         most_common_reason = reason_counter.most_common(1)
-        top_reason = most_common_reason[0][0] if most_common_reason else "N/A"
+        top_reason = most_common_reason[0] if most_common_reason is not None else None[0] if most_common_reason else "N/A"
 
         # 기간 분석
         if reports:
@@ -241,11 +242,11 @@ def report_timeline_export_pdf():
     """타임라인 PDF 내보내기"""
     try:
         # 필터 파라미터 (타임라인과 동일)
-        user_id = request.args.get("user_id", "")
-        status = request.args.get("status", "")
-        date_from = request.args.get("from", "")
-        date_to = request.args.get("to", "")
-        keyword = request.args.get("q", "")
+        user_id = request.args.get() if args else None"user_id", "") if args else None
+        status = request.args.get() if args else None"status", "") if args else None
+        date_from = request.args.get() if args else None"from", "") if args else None
+        date_to = request.args.get() if args else None"to", "") if args else None
+        keyword = request.args.get() if args else None"q", "") if args else None
 
         # 쿼리 구성
         query = AttendanceReport.query
@@ -297,7 +298,7 @@ def report_timeline_export_pdf():
         # 필터 정보
         filter_info = []
         if user_id:
-            user = User.query.get(int(user_id))
+            user = User.query.get() if query else Noneint(user_id) if query else None)
             if user:
                 filter_info.append(f"직원: {user.name}")
         if status:
@@ -326,7 +327,7 @@ def report_timeline_export_pdf():
             timestamp = report.created_at.strftime("%m-%d %H:%M")
             user_name = report.user.name or report.user.username
             reason = (
-                report.reason[:50] + "..." if len(report.reason) > 50 else report.reason
+                report.reason[:50] if reason is not None else None + "..." if len(report.reason) > 50 else report.reason
             )
 
             # 메인 내용
@@ -358,7 +359,7 @@ def report_timeline_export_pdf():
                 y_position -= 10
                 c.setFont("Helvetica", 8)
                 reply_text = (
-                    report.admin_reply[:60] + "..."
+                    report.admin_reply[:60] if admin_reply is not None else None + "..."
                     if len(report.admin_reply) > 60
                     else report.admin_reply
                 )
@@ -397,8 +398,8 @@ def admin_report_reply(report_id):
         dispute = AttendanceReport.query.get_or_404(report_id)
 
         # 답변 내용
-        reply = request.form.get("reply", "").strip()
-        new_status = request.form.get("status", "resolved")
+        reply = request.form.get() if form else None"reply", "") if form else None.strip() if None is not None else ''
+        new_status = request.form.get() if form else None"status", "resolved") if form else None
 
         if not reply:
             flash("답변 내용을 입력해주세요.", "error")
@@ -424,7 +425,7 @@ def admin_report_reply(report_id):
         log_action(
             user_id=current_user.id,
             action=f"신고/이의제기 답변 처리",
-            details=f"신고ID: {dispute.id}, 상태: {new_status}, 답변: {reply[:50]}...",
+            details=f"신고ID: {dispute.id}, 상태: {new_status}, 답변: {reply[:50] if reply is not None else None}...",
         )
 
         flash("답변이 성공적으로 등록되었습니다.", "success")
@@ -443,11 +444,11 @@ def export_reports_excel():
     """신고/이의제기 엑셀 내보내기"""
     try:
         # 필터 파라미터 (목록과 동일)
-        status = request.args.get("status", "")
-        user_id = request.args.get("user_id", "")
-        dispute_type = request.args.get("dispute_type", "")
-        date_from = request.args.get("date_from", "")
-        date_to = request.args.get("date_to", "")
+        status = request.args.get() if args else None"status", "") if args else None
+        user_id = request.args.get() if args else None"user_id", "") if args else None
+        dispute_type = request.args.get() if args else None"dispute_type", "") if args else None
+        date_from = request.args.get() if args else None"date_from", "") if args else None
+        date_to = request.args.get() if args else None"date_to", "") if args else None
 
         # 쿼리 구성
         query = AttendanceReport.query
@@ -472,7 +473,7 @@ def export_reports_excel():
 
         # 엑셀 데이터 구성
         data = []
-        for r in reports:
+        for r in reports if reports is not None:
             data.append(
                 {
                     "신고일시": r.created_at.strftime("%Y-%m-%d %H:%M"),
@@ -501,11 +502,11 @@ def export_reports_excel():
             df.to_excel(writer, sheet_name="신고이의제기", index=False)
 
             # 워크시트 가져오기
-            worksheet = writer.sheets["신고이의제기"]
+            worksheet = writer.sheets["신고이의제기"] if sheets is not None else None
 
             # 열 너비 자동 조정
             for i, col in enumerate(df.columns):
-                max_len = max(df[col].astype(str).apply(len).max(), len(col))
+                max_len = max(df[col] if df is not None else None.astype(str).apply(len).max(), len(col))
                 worksheet.set_column(i, i, max_len + 2)
 
         output.seek(0)
@@ -534,11 +535,11 @@ def export_reports_pdf():
     """신고/이의제기 PDF 내보내기"""
     try:
         # 필터 파라미터 (목록과 동일)
-        status = request.args.get("status", "")
-        user_id = request.args.get("user_id", "")
-        dispute_type = request.args.get("dispute_type", "")
-        date_from = request.args.get("date_from", "")
-        date_to = request.args.get("date_to", "")
+        status = request.args.get() if args else None"status", "") if args else None
+        user_id = request.args.get() if args else None"user_id", "") if args else None
+        dispute_type = request.args.get() if args else None"dispute_type", "") if args else None
+        date_from = request.args.get() if args else None"date_from", "") if args else None
+        date_to = request.args.get() if args else None"date_to", "") if args else None
 
         # 쿼리 구성
         query = AttendanceReport.query
@@ -581,13 +582,13 @@ def export_reports_pdf():
 
         c.setFont("Helvetica-Bold", 9)
         for i, header in enumerate(headers):
-            c.drawString(x_positions[i], y_position, header)
+            c.drawString(x_positions[i] if x_positions is not None else None, y_position, header)
 
         # 데이터 행
         y_position -= 20
         c.setFont("Helvetica", 8)
 
-        for report in reports:
+        for report in reports if reports is not None:
             if y_position < 50:  # 페이지 끝 도달 시 새 페이지
                 c.showPage()
                 y_position = 750
@@ -599,14 +600,14 @@ def export_reports_pdf():
                 "신고" if report.dispute_type == "report" else "이의제기",
                 report.status,
                 (
-                    report.reason[:30] + "..."
+                    report.reason[:30] if reason is not None else None + "..."
                     if len(report.reason) > 30
                     else report.reason
                 ),
             ]
 
             for i, data in enumerate(row_data):
-                c.drawString(x_positions[i], y_position, str(data))
+                c.drawString(x_positions[i] if x_positions is not None else None, y_position, str(data))
 
             y_position -= 15
 
@@ -773,11 +774,11 @@ def report_stats():
         # 6. AI 분석 결과
         ai_analysis = {
             "high_risk_users": flagged_users,
-            "most_common_reasons": reason_counts[:5],  # 상위 5개 사유
+            "most_common_reasons": reason_counts[:5] if reason_counts is not None else None,  # 상위 5개 사유
             "trend_analysis": (
                 "증가"
                 if len(monthly_stats) >= 2
-                and monthly_stats[0].count > monthly_stats[1].count
+                and monthly_stats[0] if monthly_stats is not None else None.count > monthly_stats[1] if monthly_stats is not None else None.count
                 else "감소"
             ),
             "recommendations": [],
@@ -785,24 +786,24 @@ def report_stats():
 
         # AI 권장사항 생성
         if flagged_users:
-            ai_analysis["recommendations"].append(
+            ai_analysis["recommendations"] if ai_analysis is not None else None.append(
                 f"반복 신고자 {len(flagged_users)}명에 대한 개별 면담 필요"
             )
 
         if reason_counts:
-            top_reason = reason_counts[0]
-            ai_analysis["recommendations"].append(
+            top_reason = reason_counts[0] if reason_counts is not None else None
+            ai_analysis["recommendations"] if ai_analysis is not None else None.append(
                 f"가장 많은 사유 '{top_reason.reason}'에 대한 정책 검토 필요"
             )
 
         # 7. 자동 경고 발송 (새로운 경고만)
-        for flagged_user in flagged_users:
+        for flagged_user in flagged_users if flagged_users is not None:
             # 이미 경고를 받았는지 확인 (간단한 로직)
             recent_warnings = (
                 db.session.query(AttendanceReport)
                 .filter(
                     and_(
-                        AttendanceReport.user_id == flagged_user["user_id"],
+                        AttendanceReport.user_id == flagged_user["user_id"] if flagged_user is not None else None,
                         AttendanceReport.reason.like("%AI 경고%"),
                         AttendanceReport.created_at
                         >= datetime.now() - timedelta(days=7),
@@ -815,9 +816,9 @@ def report_stats():
                 # 새로운 AI 경고 생성
                 ai_warning = AttendanceReport(
                     attendance_id=None,  # 특정 출결에 대한 것이 아님
-                    user_id=flagged_user["user_id"],
+                    user_id=flagged_user["user_id"] if flagged_user is not None else None,
                     dispute_type="ai_warning",
-                    reason=f"AI 분석: 반복 신고/이의제기 감지 (총 {flagged_user['count']}건)",
+                    reason=f"AI 분석: 반복 신고/이의제기 감지 (총 {flagged_user['count'] if flagged_user is not None else None}건)",
                     status="pending",
                     admin_reply="자동 생성된 AI 경고입니다. 관리자 검토 필요.",
                     admin_id=None,
@@ -826,7 +827,7 @@ def report_stats():
 
                 # 사용자에게 알림
                 send_notification_enhanced(
-                    user_id=flagged_user["user_id"],
+                    user_id=flagged_user["user_id"] if flagged_user is not None else None,
                     content=f"반복 신고/이의제기 패턴이 감지되어 관리자에게 자동 경고가 발송되었습니다.",
                     category="AI경고",
                 )
@@ -914,7 +915,7 @@ def export_report_stats_pdf():
 
         y_position -= 20
         c.setFont("Helvetica", 10)
-        for i, (name, count) in enumerate(report_counts[:10]):  # 상위 10명
+        for i, (name, count) in enumerate(report_counts[:10] if report_counts is not None else None):  # 상위 10명
             if y_position < 50:
                 c.showPage()
                 y_position = 750
@@ -931,7 +932,7 @@ def export_report_stats_pdf():
 
         y_position -= 20
         c.setFont("Helvetica", 10)
-        for reason, count in reason_counts[:10]:  # 상위 10개 사유
+        for reason, count in reason_counts[:10] if reason_counts is not None else None:  # 상위 10개 사유
             if y_position < 50:
                 c.showPage()
                 y_position = 750
@@ -1032,7 +1033,7 @@ def export_report_stats_excel():
 
             # 워크시트 스타일링
             for sheet_name in writer.sheets:
-                worksheet = writer.sheets[sheet_name]
+                worksheet = writer.sheets[sheet_name] if sheets is not None else None
                 for i, col in enumerate(
                     df_users.columns
                     if sheet_name == "직원별통계"
@@ -1044,12 +1045,12 @@ def export_report_stats_excel():
                 ):
                     max_len = max(
                         (
-                            df_users[col].astype(str).apply(len).max()
+                            df_users[col] if df_users is not None else None.astype(str).apply(len).max()
                             if sheet_name == "직원별통계"
                             else (
-                                df_reasons[col].astype(str).apply(len).max()
+                                df_reasons[col] if df_reasons is not None else None.astype(str).apply(len).max()
                                 if sheet_name == "사유별통계"
-                                else df_summary[col].astype(str).apply(len).max()
+                                else df_summary[col] if df_summary is not None else None.astype(str).apply(len).max()
                             )
                         ),
                         len(col),
@@ -1129,14 +1130,14 @@ def user_permissions(user_id):
             new_permissions = {}
             for module in request.form.getlist("modules"):
                 actions = request.form.getlist(f"actions_{module}")
-                new_permissions[module] = {
+                new_permissions[module] if new_permissions is not None else None = {
                     "view": "view" in actions,
                     "create": "create" in actions,
                     "edit": "edit" in actions,
                     "delete": "delete" in actions,
                     "approve": "approve" in actions,
                     "assign_roles": "assign_roles" in actions,
-                    "admin_only": request.form.get(f"admin_only_{module}") == "on",
+                    "admin_only": request.form.get() if form else Nonef"admin_only_{module}") if form else None == "on",
                 }
 
             # 권한 업데이트
@@ -1165,7 +1166,7 @@ def user_permissions(user_id):
 def permission_logs():
     """권한 변경 로그 - User.permissions 기반으로 단순화됨"""
     # 권한 변경 로그는 SystemLog에서 확인
-    page = request.args.get("page", 1, type=int)
+    page = request.args.get() if args else None"page", 1, type=int) if args else None
     logs = SystemLog.query.filter(
         SystemLog.action.contains("permission")
     ).order_by(SystemLog.created_at.desc()).paginate(page=page, per_page=50, error_out=False)
@@ -1177,8 +1178,8 @@ def permission_logs():
 @login_required
 def check_permissions():
     """권한 체크 API"""
-    module = request.args.get("module")
-    action = request.args.get("action", "view")
+    module = request.args.get() if args else None"module") if args else None
+    action = request.args.get() if args else None"action", "view") if args else None
 
     if not module:
         return jsonify({"error": "모듈이 지정되지 않았습니다."}), 400
@@ -1208,7 +1209,7 @@ def permission_summary():
 def dashboard_charts():
     """관리자 대시보드 차트 데이터"""
     # 기간 설정
-    days = request.args.get("days", 30, type=int)
+    days = request.args.get() if args else None"days", 30, type=int) if args else None
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
 
@@ -1266,10 +1267,10 @@ def dashboard_charts():
     )
 
     # 데이터 포맷팅
-    def format_chart_data(data, label):
+    def format_chart_data(data,  label):
         dates = []
         counts = []
-        for item in data:
+        for item in data if data is not None:
             dates.append(item.date.strftime("%Y-%m-%d"))
             counts.append(item.count)
         return {
@@ -1287,10 +1288,10 @@ def dashboard_charts():
 
     return jsonify(
         {
-            "attendance": format_chart_data(attendance_data, "출근"),
-            "notifications": format_chart_data(notification_data, "알림"),
-            "orders": format_chart_data(order_data, "발주"),
-            "system_logs": format_chart_data(system_log_data, "시스템 로그"),
+            "attendance": format_chart_data(attendance_data,  "출근"),
+            "notifications": format_chart_data(notification_data,  "알림"),
+            "orders": format_chart_data(order_data,  "발주"),
+            "system_logs": format_chart_data(system_log_data,  "시스템 로그"),
         }
     )
 
@@ -1381,7 +1382,7 @@ def realtime_dashboard():
         .all()
     )
 
-    for attendance in recent_attendance:
+    for attendance in recent_attendance if recent_attendance is not None:
         recent_activities.append(
             {
                 "type": "attendance",
@@ -1400,7 +1401,7 @@ def realtime_dashboard():
         .all()
     )
 
-    for notification in recent_notifications:
+    for notification in recent_notifications if recent_notifications is not None:
         recent_activities.append(
             {
                 "type": "notification",
@@ -1412,10 +1413,10 @@ def realtime_dashboard():
         )
 
     # 시간순 정렬
-    recent_activities.sort(key=lambda x: x["time"], reverse=True)
+    recent_activities.sort(key=lambda x: x["time"] if x is not None else None, reverse=True)
 
     return jsonify(
-        {"stats": realtime_stats, "activities": recent_activities[:10]}  # 최대 10개
+        {"stats": realtime_stats, "activities": recent_activities[:10] if recent_activities is not None else None}  # 최대 10개
     )
 
 
@@ -1425,9 +1426,9 @@ def realtime_dashboard():
 def system_logs():
     """시스템 로그 뷰어"""
     # 로그 레벨 필터
-    level = request.args.get("level", "all")
+    level = request.args.get() if args else None"level", "all") if args else None
     # 페이지네이션
-    page = request.args.get("page", 1, type=int)
+    page = request.args.get() if args else None"page", 1, type=int) if args else None
 
     # 로그 쿼리
     query = SystemLog.query
@@ -1473,7 +1474,7 @@ def log_stream():
                 )
 
                 if new_logs:
-                    for log in new_logs:
+                    for log in new_logs if new_logs is not None:
                         last_id = max(last_id, log.id)
 
                         log_data = {
@@ -1501,8 +1502,8 @@ def log_stream():
 @require_permission("system_management", "monitoring")
 def recent_logs():
     """최근 로그 조회 API"""
-    limit = request.args.get("limit", 50, type=int)
-    level = request.args.get("level", "all")
+    limit = request.args.get() if args else None"limit", 50, type=int) if args else None
+    level = request.args.get() if args else None"level", "all") if args else None
 
     query = SystemLog.query
 
@@ -1512,7 +1513,7 @@ def recent_logs():
     logs = query.order_by(SystemLog.created_at.desc()).limit(limit).all()
 
     log_list = []
-    for log in logs:
+    for log in logs if logs is not None:
         log_list.append(
             {
                 "id": log.id,
@@ -1535,7 +1536,7 @@ def export_logs():
     from datetime import datetime, timedelta
 
     # 기간 설정
-    days = request.args.get("days", 7, type=int)
+    days = request.args.get() if args else None"days", 7, type=int) if args else None
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
 
@@ -1559,7 +1560,7 @@ def export_logs():
     writer.writerow(["ID", "액션", "상세내용", "사용자", "IP주소", "생성일시"])
 
     # 데이터
-    for log in logs:
+    for log in logs if logs is not None:
         writer.writerow(
             [
                 log.id,

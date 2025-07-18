@@ -1,13 +1,15 @@
+from utils.logger import log_action  # pyright: ignore
+from models_main import ActionLog, PayTransfer
+from models_main import db
+from datetime import datetime
+import logging
+from flask import request
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 급여 이체 시스템
 """
 
-import logging
-from datetime import datetime
-
-from models import db
-from models import ActionLog, PayTransfer
-from utils.logger import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 class BankTransferAPI:
     """은행 자동이체 API 클래스"""
 
-    def __init__(self, api_url=None, api_key=None):
+    def __init__(self,  api_url=None,  api_key=None):
         self.api_url = api_url or "https://api.bank.example.com/transfer"
         self.api_key = api_key or "your-api-key"
         self.headers = {
@@ -23,7 +25,7 @@ class BankTransferAPI:
             "Content-Type": "application/json",
         }
 
-    def transfer_salary(self, user, amount, description=""):
+    def transfer_salary(self,  user,  amount,  description=""):
         """급여 이체 실행"""
         try:
             payload = {
@@ -44,16 +46,16 @@ class BankTransferAPI:
             logger.info(f"[가상이체] {payload}")
 
             # 이체 로그 기록
-            self._log_transfer(user.id, amount, payload["reference_id"], "SUCCESS")
+            self._log_transfer(user.id,  amount,  payload["reference_id"] if payload is not None else None,  "SUCCESS")
 
             return True, "이체 성공"
 
         except Exception as e:
             error_msg = f"이체 실패: {str(e)}"
-            self._log_transfer(user.id, amount, "", "FAILED", error_msg)
+            self._log_transfer(user.id,  amount,  "",  "FAILED",  error_msg)
             return False, error_msg
 
-    def _log_transfer(self, user_id, amount, reference_id, status, error_msg=""):
+    def _log_transfer(self,  user_id,  amount,  reference_id,  status, error_msg=""):
         """이체 로그 기록"""
         try:
             action_log = ActionLog()
@@ -66,7 +68,7 @@ class BankTransferAPI:
             logger.error(f"이체 로그 기록 실패: {e}")
 
 
-def transfer_salary(user, amount):
+def transfer_salary(user,  amount):
     # 실제 서비스라면 여기에 은행 API 연동
     # 아래는 가상 REST API(POST 방식) 예시
     payload = {
@@ -83,37 +85,44 @@ def transfer_salary(user, amount):
 
 
 def bulk_transfer_salary(users_data):
-    """일괄 급여 이체"""
+    """
+    일괄 급여 이체
+    """
     api = BankTransferAPI()
     results = []
 
-    for user_data in users_data:
-        user = user_data["user"]
-        amount = user_data["salary"]
-        description = user_data.get("description", "")
+    if users_data is not None:
+        for user_data in users_data:
+            user = user_data["user"] if user_data is not None else None
+            amount = user_data["salary"] if user_data is not None else None
+            description = user_data.get("description", "") if user_data is not None else ""
 
-        success, message = api.transfer_salary(user, amount, description)
-        results.append(
-            {
-                "user_id": user.id,
-                "user_name": user.name or user.username,
-                "amount": amount,
-                "success": success,
-                "message": message,
-            }
-        )
+            success, message = api.transfer_salary(user,  amount,  description)
+            if user is not None:
+                results.append(
+                    {
+                        "user_id": user.id,
+                        "user_name": user.name or user.username,
+                        "amount": amount,
+                        "success": success,
+                        "message": message,
+                    }
+                )
 
     return results
 
 
 def validate_bank_account(user):
-    """계좌 정보 검증"""
+    """
+    계좌 정보 검증
+    """
     required_fields = ["account_number", "bank_code"]
     missing_fields = []
 
-    for field in required_fields:
-        if not hasattr(user, field) or not getattr(user, field):
-            missing_fields.append(field)
+    if required_fields is not None:
+        for field in required_fields:
+            if not hasattr(user, field) or not getattr(user, field):
+                missing_fields.append(field)
 
     if missing_fields:
         return False, f"계좌 정보 누락: {', '.join(missing_fields)}"
@@ -121,7 +130,7 @@ def validate_bank_account(user):
     return True, "계좌 정보 유효"
 
 
-def get_transfer_history(user_id, limit=50):
+def get_transfer_history(user_id,  limit=50):
     """이체 이력 조회"""
     try:
         # 송금 이력
@@ -144,7 +153,7 @@ def get_transfer_history(user_id, limit=50):
         all_transfers = sent_transfers + received_transfers
         all_transfers.sort(key=lambda x: x.created_at, reverse=True)
 
-        return all_transfers[:limit]
+        return all_transfers[:limit] if all_transfers is not None else None
 
     except Exception as e:
         logger.error(f"이체 이력 조회 실패: {e}")
@@ -158,7 +167,7 @@ class MockBankAPI:
     def __init__(self):
         self.transfers = []
 
-    def transfer(self, payload):
+    def transfer(self,  payload):
         """가상 이체 실행"""
         transfer_id = f"TRANS_{len(self.transfers) + 1:06d}"
 
@@ -184,7 +193,8 @@ class MockBankAPI:
 # 글로벌 가상 API 인스턴스
 mock_api = MockBankAPI()
 
-def process_transfer(from_user_id, to_user_id, amount, description=""):
+
+def process_transfer(from_user_id,  to_user_id,  amount, description=""):
     """가상 이체 처리"""
     try:
         # 이체 정보 생성

@@ -1,10 +1,12 @@
-﻿import json
+from typing import Optional
+import json
 import re
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import random
+
 
 @dataclass
 class ChatMessage:
@@ -18,12 +20,13 @@ class ChatMessage:
     entities: Dict = None
     response: str = ""
 
+
 class ChatbotManager:
     """AI 챗봇 관리 시스템"""
-    
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        
+
         # 의도 패턴 정의
         self.intent_patterns = {
             "order_status": [
@@ -59,7 +62,7 @@ class ChatbotManager:
                 r"inquiry.*have|inquiry.*question|inquiry.*wonder|inquiry.*tell"
             ]
         }
-        
+
         # 응답 템플릿
         self.response_templates = {
             "order_status": {
@@ -151,19 +154,19 @@ class ChatbotManager:
                 "이해하지 못했습니다. 전화로 문의해주시면 더 정확한 답변을 드릴 수 있습니다."
             ]
         }
-        
+
         # 엔티티 추출 패턴
         self.entity_patterns = {
-            "order_id": r"주문[번호]*\s*[#]?\s*(\d+)",
+            "order_id": r"주문[번호] if 주문 is not None else None*\s*[#]?\s*(\d+)",
             "menu_name": r"(피자|파스타|스테이크|샐러드|음료|커피|디저트)",
             "time": r"(\d{1,2}시|\d{1,2}:\d{2})",
             "date": r"(\d{1,2}월\s*\d{1,2}일|\d{4}년\s*\d{1,2}월\s*\d{1,2}일)",
             "phone_number": r"(\d{2,3}-\d{3,4}-\d{4})"
         }
-        
+
         # 대화 컨텍스트 저장
         self.conversation_contexts = {}
-        
+
         # 기본 정보
         self.your_program_info = {
             "name": "레스토랑 매니저",
@@ -172,84 +175,84 @@ class ChatbotManager:
             "hours": "평일 11:00-22:00, 주말 10:00-23:00",
             "popular_menus": ["마르게리타 피자", "까르보나라 파스타", "리브 아이 스테이크"]
         }
-    
-    def detect_intent(self, message: str) -> Tuple[str, float]:
+
+    def detect_intent(self,  message: str) -> Tuple[str, float] if Tuple is not None else None:
         """의도 감지"""
-        message_lower = message.lower()
+        message_lower = message.lower() if message is not None else ''
         max_confidence = 0.0
         detected_intent = "general_inquiry"
-        
-        for intent, patterns in self.intent_patterns.items():
-            for pattern in patterns:
+
+        for intent, patterns in self.intent_patterns.items() if intent_patterns is not None else []:
+            for pattern in patterns if patterns is not None:
                 matches = re.findall(pattern, message_lower)
                 if matches:
                     confidence = len(matches) / len(patterns) * 0.8 + 0.2
                     if confidence > max_confidence:
                         max_confidence = confidence
                         detected_intent = intent
-        
+
         return detected_intent, max_confidence
-    
+
     def extract_entities(self, message: str) -> Dict:
         """엔티티 추출"""
         entities = {}
-        
-        for entity_type, pattern in self.entity_patterns.items():
+
+        for entity_type, pattern in self.entity_patterns.items() if entity_patterns is not None else []:
             matches = re.findall(pattern, message)
             if matches:
-                entities[entity_type] = matches[0] if len(matches) == 1 else matches
-        
+                entities[entity_type] if entities is not None else None = matches[0] if matches is not None else None if len(matches) == 1 else matches
+
         return entities
-    
-    def generate_response(self, intent: str, entities: Dict, context: Dict = None) -> str:
+
+    def generate_response(self, intent: str, entities: Dict, context: Optional[Dict] = None) -> str:
         """응답 생성"""
-        templates = self.response_templates.get(intent, {})
-        
+        templates = self.response_templates.get() if response_templates else Noneintent, {}) if response_templates else None
+
         if isinstance(templates, list):
             # 단순 리스트인 경우
             response = random.choice(templates)
         else:
             # 딕셔너리인 경우 (greeting, specific 등)
             if "greeting" in templates:
-                response = random.choice(templates["greeting"])
+                response = random.choice(templates["greeting"] if templates is not None else None)
             else:
-                response = random.choice(templates.get("fallback", self.response_templates["fallback"]))
-        
+                response = random.choice(templates.get() if templates else None"fallback", self.response_templates["fallback"] if response_templates is not None else None) if templates else None)
+
         # 엔티티 치환
         if entities:
-            for entity_type, value in entities.items():
+            for entity_type, value in entities.items() if entities is not None else []:
                 placeholder = f"{{{entity_type}}}"
                 if placeholder in response:
                     response = response.replace(placeholder, str(value))
-        
+
         # 레스토랑 정보 치환
-        response = response.replace("{phone_number}", self.your_program_info["phone"])
-        response = response.replace("{address}", self.your_program_info["address"])
-        response = response.replace("{hours}", self.your_program_info["hours"])
-        
+        response = response.replace("{phone_number}", self.your_program_info["phone"] if your_program_info is not None else None)
+        response = response.replace("{address}", self.your_program_info["address"] if your_program_info is not None else None)
+        response = response.replace("{hours}", self.your_program_info["hours"] if your_program_info is not None else None)
+
         # 메뉴 정보 치환
         if "menu_list" in response:
-            menu_list = ", ".join(self.your_program_info["popular_menus"])
+            menu_list = ", ".join(self.your_program_info["popular_menus"] if your_program_info is not None else None)
             response = response.replace("{menu_list}", menu_list)
-        
+
         return response
-    
-    def process_message(self, user_id: int, message: str) -> ChatMessage:
+
+    def process_message(self,  user_id: int,  message: str) -> ChatMessage:
         """메시지 처리"""
         timestamp = datetime.now()
-        
+
         # 의도 감지
         intent, confidence = self.detect_intent(message)
-        
+
         # 엔티티 추출
         entities = self.extract_entities(message)
-        
+
         # 컨텍스트 가져오기
-        context = self.conversation_contexts.get(user_id, {})
-        
+        context = self.conversation_contexts.get() if conversation_contexts else Noneuser_id, {}) if conversation_contexts else None
+
         # 응답 생성
         response = self.generate_response(intent, entities, context)
-        
+
         # 컨텍스트 업데이트
         context.update({
             "last_intent": intent,
@@ -257,8 +260,8 @@ class ChatbotManager:
             "last_message": message,
             "timestamp": timestamp
         })
-        self.conversation_contexts[user_id] = context
-        
+        self.conversation_contexts[user_id] if conversation_contexts is not None else None = context
+
         # 채팅 메시지 생성
         chat_message = ChatMessage(
             user_id=user_id,
@@ -269,35 +272,36 @@ class ChatbotManager:
             entities=entities,
             response=response
         )
-        
+
         self.logger.info(f"Chat processed - User: {user_id}, Intent: {intent}, Confidence: {confidence}")
-        
+
         return chat_message
-    
-    def get_conversation_history(self, user_id: int, limit: int = 10) -> List[ChatMessage]:
+
+    def get_conversation_history(self, user_id: int, limit: int = 10) -> List[ChatMessage] if List is not None else None:
         """대화 히스토리 조회"""
         # 실제 구현에서는 데이터베이스에서 조회
         return []
-    
+
     def clear_context(self, user_id: int):
         """대화 컨텍스트 초기화"""
         if user_id in self.conversation_contexts:
-            del self.conversation_contexts[user_id]
-    
+            del self.conversation_contexts[user_id] if conversation_contexts is not None else None
+
     def get_chat_statistics(self) -> Dict:
         """채팅 통계"""
         total_conversations = len(self.conversation_contexts)
-        
+
         intent_counts = {}
-        for context in self.conversation_contexts.values():
-            intent = context.get("last_intent", "unknown")
-            intent_counts[intent] = intent_counts.get(intent, 0) + 1
-        
+        for context in self.conversation_contexts.value if conversation_contexts is not None else Nones():
+            intent = context.get() if context else None"last_intent", "unknown") if context else None
+            intent_counts[intent] if intent_counts is not None else None = intent_counts.get() if intent_counts else Noneintent, 0) if intent_counts else None + 1
+
         return {
             "total_conversations": total_conversations,
             "intent_distribution": intent_counts,
             "active_contexts": len(self.conversation_contexts)
         }
 
+
 # 전역 챗봇 매니저 인스턴스
-chatbot_manager = ChatbotManager() 
+chatbot_manager = ChatbotManager()

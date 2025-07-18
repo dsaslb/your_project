@@ -1,7 +1,8 @@
-﻿import logging
-import logging.handlers
-import os
 from datetime import datetime
+import os
+import logging.handlers
+form = None  # pyright: ignore
+﻿import logging
 
 
 def setup_logger(app=None):
@@ -19,7 +20,7 @@ def setup_logger(app=None):
     logger.setLevel(log_level)
 
     # 기존 핸들러 제거
-    for handler in logger.handlers[:]:
+    for handler in logger.handlers[:] if handlers is not None else None:
         logger.removeHandler(handler)
 
     # 파일 핸들러
@@ -46,7 +47,7 @@ def setup_logger(app=None):
     return logger
 
 
-def log_action(user_id, action, message=None, ip_address=None):
+def log_action(user_id,  action, message=None, ip_address=None):
     """사용자 액션 로깅"""
     logger = logging.getLogger("your_program")
     log_message = f"USER_ACTION: user_id={user_id}, action={action}"
@@ -68,7 +69,7 @@ def log_error(error, user_id=None, additional_info=None):
     logger.error(log_message, exc_info=True)
 
 
-def log_security_event(user_id, event_type, details=None, ip_address=None):
+def log_security_event(user_id,  event_type, details=None, ip_address=None):
     """보안 이벤트 로깅"""
     logger = logging.getLogger("your_program")
     log_message = f"SECURITY_EVENT: user_id={user_id}, event={event_type}"
@@ -77,4 +78,3 @@ def log_security_event(user_id, event_type, details=None, ip_address=None):
     if ip_address:
         log_message += f", ip={ip_address}"
     logger.warning(log_message)
-

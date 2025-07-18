@@ -1,10 +1,13 @@
-from flask import Blueprint, jsonify, request, current_app
-import random
 from datetime import datetime
+import random
+from flask import Blueprint, jsonify, request, current_app
+form = None  # pyright: ignore
 
 integration_external_bp = Blueprint('integration_external', __name__, url_prefix='/api/integration')
 
 # 1. POS 연동
+
+
 @integration_external_bp.route('/pos', methods=['POST'])
 def sync_pos():
     try:
@@ -21,6 +24,8 @@ def sync_pos():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # 2. 회계 연동
+
+
 @integration_external_bp.route('/accounting', methods=['POST'])
 def sync_accounting():
     try:
@@ -35,6 +40,8 @@ def sync_accounting():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # 3. 리뷰 플랫폼 연동 및 감성분석
+
+
 @integration_external_bp.route('/review', methods=['POST'])
 def sync_review():
     try:
@@ -45,10 +52,10 @@ def sync_review():
             {"platform": "배민", "content": "별로였어요...", "score": 2},
             {"platform": "쿠팡이츠", "content": "빠르고 친절", "score": 4}
         ]
-        positive = sum(1 for r in reviews if r["score"] >= 4)
-        negative = sum(1 for r in reviews if r["score"] <= 2)
+        positive = sum(1 for r in reviews if r and int(r.get("score", 0)) >= 4)
+        negative = sum(1 for r in reviews if r and int(r.get("score", 0)) <= 2)
         neutral = len(reviews) - positive - negative
-        avg_score = round(sum(r["score"] for r in reviews) / len(reviews), 2)
+        avg_score = round(sum(int(r.get("score", 0)) for r in reviews if r) / len(reviews), 2)
         return jsonify({
             'success': True,
             'reviews': reviews,
@@ -63,4 +70,4 @@ def sync_review():
     except Exception as e:
         current_app.logger.error(f"리뷰 연동 오류: {str(e)}")
         # TODO: 관리자 알림 연동
-        return jsonify({'success': False, 'error': str(e)}), 500 
+        return jsonify({'success': False, 'error': str(e)}), 500

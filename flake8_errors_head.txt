@@ -1,0 +1,100 @@
+[1m.\.venv\Lib\site-packages\PIL\BdfFontFile.py[m[36m:[m57[36m:[m47[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\BdfFontFile.py[m[36m:[m111[36m:[m51[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\BdfFontFile.py[m[36m:[m114[36m:[m44[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\BlpImagePlugin.py[m[36m:[m131[36m:[m25[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\BlpImagePlugin.py[m[36m:[m184[36m:[m25[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\BlpImagePlugin.py[m[36m:[m439[36m:[m39[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\BmpImagePlugin.py[m[36m:[m279[36m:[m48[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\EpsImagePlugin.py[m[36m:[m76[36m:[m5[36m:[m [1m[31mF824[m `global gs_binary` is unused: name is never assigned in scope
+[1m.\.venv\Lib\site-packages\PIL\FitsImagePlugin.py[m[36m:[m139[36m:[m59[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\GdImageFile.py[m[36m:[m71[36m:[m48[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\GifImagePlugin.py[m[36m:[m355[36m:[m64[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\GifImagePlugin.py[m[36m:[m578[36m:[m50[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\GifImagePlugin.py[m[36m:[m1013[36m:[m41[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\GifImagePlugin.py[m[36m:[m1098[36m:[m33[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImImagePlugin.py[m[36m:[m373[36m:[m45[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\Image.py[m[36m:[m1020[36m:[m58[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\Image.py[m[36m:[m2143[36m:[m36[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\Image.py[m[36m:[m4120[36m:[m62[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\Image.py[m[36m:[m4132[36m:[m60[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\Image.py[m[36m:[m4155[36m:[m62[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageDraw.py[m[36m:[m253[36m:[m57[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageFile.py[m[36m:[m580[36m:[m58[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageFilter.py[m[36m:[m512[36m:[m34[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageFilter.py[m[36m:[m563[36m:[m47[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageFilter.py[m[36m:[m573[36m:[m34[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageOps.py[m[36m:[m105[36m:[m28[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageOps.py[m[36m:[m469[36m:[m34[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImagePalette.py[m[36m:[m68[36m:[m45[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImagePalette.py[m[36m:[m175[36m:[m54[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageQt.py[m[36m:[m126[36m:[m33[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageQt.py[m[36m:[m157[36m:[m37[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\ImageStat.py[m[36m:[m94[36m:[m29[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\JpegImagePlugin.py[m[36m:[m128[36m:[m23[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\JpegImagePlugin.py[m[36m:[m142[36m:[m32[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\JpegImagePlugin.py[m[36m:[m228[36m:[m16[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\JpegImagePlugin.py[m[36m:[m731[36m:[m35[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\MspImagePlugin.py[m[36m:[m148[36m:[m42[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PalmImagePlugin.py[m[36m:[m199[36m:[m36[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PcfFontFile.py[m[36m:[m54[36m:[m15[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PcfFontFile.py[m[36m:[m221[36m:[m29[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PcxImagePlugin.py[m[36m:[m102[36m:[m35[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PdfParser.py[m[36m:[m67[36m:[m42[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PdfParser.py[m[36m:[m691[36m:[m36[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PdfParser.py[m[36m:[m890[36m:[m43[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PdfParser.py[m[36m:[m978[36m:[m38[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PngImagePlugin.py[m[36m:[m438[36m:[m56[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PpmImagePlugin.py[m[36m:[m185[36m:[m50[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\PpmImagePlugin.py[m[36m:[m203[36m:[m70[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\TiffImagePlugin.py[m[36m:[m1293[36m:[m37[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\TiffImagePlugin.py[m[36m:[m1294[36m:[m34[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\TiffImagePlugin.py[m[36m:[m1297[36m:[m61[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\TiffImagePlugin.py[m[36m:[m1847[36m:[m57[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\WalImageFile.py[m[36m:[m52[36m:[m30[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\WebPImagePlugin.py[m[36m:[m180[36m:[m49[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\XpmImagePlugin.py[m[36m:[m68[36m:[m23[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\XpmImagePlugin.py[m[36m:[m69[36m:[m29[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\XpmImagePlugin.py[m[36m:[m113[36m:[m34[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\PIL\XpmImagePlugin.py[m[36m:[m139[36m:[m29[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_code\code.py[m[36m:[m674[36m:[m49[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_code\code.py[m[36m:[m966[36m:[m52[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_code\source.py[m[36m:[m65[36m:[m51[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_code\source.py[m[36m:[m66[36m:[m59[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_io\pprint.py[m[36m:[m662[36m:[m24[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_io\saferepr.py[m[36m:[m32[36m:[m44[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_py\path.py[m[36m:[m445[36m:[m47[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_py\path.py[m[36m:[m447[36m:[m43[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\_py\path.py[m[36m:[m1294[36m:[m54[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\assertion\util.py[m[36m:[m390[36m:[m36[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\assertion\util.py[m[36m:[m391[36m:[m38[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\assertion\util.py[m[36m:[m602[36m:[m34[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\compat.py[m[36m:[m41[36m:[m1[36m:[m [1m[31mE305[m expected 2 blank lines after class or function definition, found 0
+[1m.\.venv\Lib\site-packages\_pytest\compat.py[m[36m:[m160[36m:[m60[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\doctest.py[m[36m:[m359[36m:[m57[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\doctest.py[m[36m:[m673[36m:[m85[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\mark\expression.py[m[36m:[m113[36m:[m34[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\mark\expression.py[m[36m:[m287[36m:[m83[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\outcomes.py[m[36m:[m295[36m:[m128[36m:[m [1m[31mE501[m line too long (137 > 127 characters)
+[1m.\.venv\Lib\site-packages\_pytest\pytester.py[m[36m:[m1613[36m:[m40[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\python.py[m[36m:[m328[36m:[m1[36m:[m [1m[31mE305[m expected 2 blank lines after class or function definition, found 0
+[1m.\.venv\Lib\site-packages\_pytest\raises.py[m[36m:[m1053[36m:[m5[36m:[m [1m[31mE301[m expected 1 blank line, found 0
+[1m.\.venv\Lib\site-packages\_pytest\raises.py[m[36m:[m1099[36m:[m5[36m:[m [1m[31mE301[m expected 1 blank line, found 0
+[1m.\.venv\Lib\site-packages\_pytest\raises.py[m[36m:[m1261[36m:[m5[36m:[m [1m[31mE301[m expected 1 blank line, found 0
+[1m.\.venv\Lib\site-packages\_pytest\runner.py[m[36m:[m509[36m:[m53[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\terminal.py[m[36m:[m919[36m:[m52[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\terminal.py[m[36m:[m1047[36m:[m80[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\terminal.py[m[36m:[m1296[36m:[m48[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\terminal.py[m[36m:[m1631[36m:[m44[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\_pytest\terminal.py[m[36m:[m1638[36m:[m45[36m:[m [1m[31mE203[m whitespace before ':'
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.DATETIME' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.NUMBER' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.DatabaseError' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.DataError' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.Error' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.FetchFailedError' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.IntegrityError' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.InterfaceError' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.InternalError' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.NotSupportedError' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.OperationalError' imported but unused
+[1m.\.venv\Lib\site-packages\adodbapi\__init__.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mF401[m '.apibase.ProgrammingError' imported but unused

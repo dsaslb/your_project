@@ -1,10 +1,10 @@
+from sqlalchemy import extract, func
+from datetime import time
+query = None  # pyright: ignore
 """
 출퇴근 분석 유틸리티
 """
 
-from datetime import time
-
-from sqlalchemy import extract, func
 
 # 기준 시간 설정
 STANDARD_CLOCKIN = time(9, 0, 0)  # 오전 9시
@@ -39,7 +39,7 @@ def analyze_attendance(attendance):
     return clock_in_late, clock_out_early, night_work
 
 
-def get_user_monthly_trend(user_id, year, db_session):
+def get_user_monthly_trend(user_id,  year,  db_session):
     """
     사용자의 월별 근무 트렌드 조회
 
@@ -51,7 +51,7 @@ def get_user_monthly_trend(user_id, year, db_session):
     Returns:
         tuple: (월별 라벨, 월별 근무시간)
     """
-    from models import Attendance
+    from models_main import Attendance
 
     monthly_hours = []
     labels = []
@@ -81,7 +81,7 @@ def get_user_monthly_trend(user_id, year, db_session):
     return labels, monthly_hours
 
 
-def get_attendance_summary(user_id, year, month, db_session):
+def get_attendance_summary(user_id,  year,  month,  db_session):
     """
     사용자의 월별 출퇴근 요약 정보
 
@@ -94,7 +94,7 @@ def get_attendance_summary(user_id, year, month, db_session):
     Returns:
         dict: 출퇴근 요약 정보
     """
-    from models import Attendance
+    from models_main import Attendance
 
     # 해당 월의 출퇴근 기록 조회
     attendances = (
@@ -114,7 +114,7 @@ def get_attendance_summary(user_id, year, month, db_session):
     night_work_count = 0
     total_hours = 0
 
-    for att in attendances:
+    for att in attendances if attendances is not None:
         late, early, night = analyze_attendance(att)
         if late:
             late_count += 1

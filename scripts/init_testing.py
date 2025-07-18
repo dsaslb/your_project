@@ -13,36 +13,38 @@ sys.path.insert(0, str(project_root))
 
 from core.backend.plugin_testing_system import PluginTestingSystem
 
+
 def init_testing_system():
     """테스트 시스템 초기화"""
     print("🔧 플러그인 테스트/모니터링/문서화 시스템 초기화 중...")
-    
+
     try:
         # 테스트 시스템 초기화
         testing_system = PluginTestingSystem()
         print("✅ 테스트 시스템이 초기화되었습니다")
-        
+
         # 샘플 테스트 데이터 생성
         create_sample_test_data(testing_system)
-        
+
         # 샘플 성능 데이터 생성
         create_sample_performance_data(testing_system)
-        
+
         # 샘플 문서 데이터 생성
         create_sample_documentation_data(testing_system)
-        
+
         print("✅ 모든 테스트 데이터가 생성되었습니다")
-        
+
     except Exception as e:
         print(f"❌ 테스트 시스템 초기화 실패: {e}")
         return False
-    
+
     return True
+
 
 def create_sample_test_data(testing_system):
     """샘플 테스트 데이터 생성"""
     print("📊 샘플 테스트 데이터 생성 중...")
-    
+
     sample_test_results = [
         {
             "plugin_id": "your_program_management",
@@ -64,9 +66,9 @@ def create_sample_test_data(testing_system):
                     "details": {
                         "stdout": "test_your_program_management.py::test_basic_functionality PASSED",
                         "stderr": "",
-                        "return_code": 0
+                        "return_code": 0,
                     },
-                    "created_at": "2024-01-15T10:00:30"
+                    "created_at": "2024-01-15T10:00:30",
                 },
                 {
                     "test_id": "your_program_management_integration_1705310400",
@@ -78,9 +80,9 @@ def create_sample_test_data(testing_system):
                     "details": {
                         "stdout": "test_integration.py::test_api_endpoints PASSED",
                         "stderr": "",
-                        "return_code": 0
+                        "return_code": 0,
                     },
-                    "created_at": "2024-01-15T10:01:00"
+                    "created_at": "2024-01-15T10:01:00",
                 },
                 {
                     "test_id": "your_program_management_performance_1705310400",
@@ -92,11 +94,11 @@ def create_sample_test_data(testing_system):
                     "details": {
                         "stdout": "test_performance.py::test_response_time FAILED",
                         "stderr": "AssertionError: Response time 1200ms exceeds limit of 1000ms",
-                        "return_code": 1
+                        "return_code": 1,
                     },
-                    "created_at": "2024-01-15T10:02:00"
-                }
-            ]
+                    "created_at": "2024-01-15T10:02:00",
+                },
+            ],
         },
         {
             "plugin_id": "inventory_management",
@@ -118,35 +120,36 @@ def create_sample_test_data(testing_system):
                     "details": {
                         "stdout": "test_inventory.py::test_stock_management PASSED",
                         "stderr": "",
-                        "return_code": 0
+                        "return_code": 0,
                     },
-                    "created_at": "2024-01-15T09:30:30"
+                    "created_at": "2024-01-15T09:30:30",
                 }
-            ]
-        }
+            ],
+        },
     ]
-    
+
     # 테스트 결과 저장
     for result in sample_test_results:
         testing_system._save_test_result(result)
-    
+
     print(f"✅ {len(sample_test_results)}개의 샘플 테스트 결과가 생성되었습니다")
+
 
 def create_sample_performance_data(testing_system):
     """샘플 성능 데이터 생성"""
     print("📈 샘플 성능 데이터 생성 중...")
-    
+
     import random
     from datetime import datetime, timedelta
-    
+
     sample_metrics = []
     base_time = datetime.now() - timedelta(hours=24)
-    
+
     plugin_ids = ["your_program_management", "inventory_management", "order_management"]
-    
+
     for i in range(24):  # 24시간 데이터
         timestamp = base_time + timedelta(hours=i)
-        
+
         for plugin_id in plugin_ids:
             metric = {
                 "plugin_id": plugin_id,
@@ -155,19 +158,20 @@ def create_sample_performance_data(testing_system):
                 "response_time": random.uniform(50.0, 300.0),
                 "throughput": random.uniform(80.0, 120.0),
                 "error_rate": random.uniform(0.0, 2.0),
-                "timestamp": timestamp.isoformat()
+                "timestamp": timestamp.isoformat(),
             }
             sample_metrics.append(metric)
-    
+
     # 성능 메트릭 저장
     testing_system._save_performance_metrics(sample_metrics)
-    
+
     print(f"✅ {len(sample_metrics)}개의 샘플 성능 메트릭이 생성되었습니다")
+
 
 def create_sample_documentation_data(testing_system):
     """샘플 문서 데이터 생성"""
     print("📚 샘플 문서 데이터 생성 중...")
-    
+
     sample_documentation = {
         "your_program_management": {
             "plugin_id": "your_program_management",
@@ -179,18 +183,18 @@ def create_sample_documentation_data(testing_system):
                             {
                                 "line": 15,
                                 "route": "@bp.route('/dashboard')",
-                                "method": "GET"
+                                "method": "GET",
                             },
                             {
                                 "line": 25,
                                 "route": "@bp.route('/orders', methods=['GET', 'POST'])",
-                                "method": "GET,POST"
-                            }
-                        ]
+                                "method": "GET,POST",
+                            },
+                        ],
                     }
                 ],
                 "models": [],
-                "examples": []
+                "examples": [],
             },
             "user_guide": """# 레스토랑 관리 플러그인 사용자 가이드
 
@@ -232,13 +236,17 @@ admin, manager, staff
                 {
                     "version": "1.0.0",
                     "date": "2024-01-15T00:00:00",
-                    "changes": ["초기 버전", "기본 레스토랑 관리 기능", "주문 관리 시스템"]
+                    "changes": [
+                        "초기 버전",
+                        "기본 레스토랑 관리 기능",
+                        "주문 관리 시스템",
+                    ],
                 },
                 {
                     "version": "1.1.0",
                     "date": "2024-01-20T00:00:00",
-                    "changes": ["성능 개선", "UI/UX 개선", "버그 수정"]
-                }
+                    "changes": ["성능 개선", "UI/UX 개선", "버그 수정"],
+                },
             ],
             "examples": [
                 {
@@ -258,10 +266,10 @@ order = manager.create_order({
 })
 
 print(f"주문이 생성되었습니다: {order.id}")
-"""
+""",
                 }
             ],
-            "last_updated": "2024-01-15T12:00:00"
+            "last_updated": "2024-01-15T12:00:00",
         },
         "inventory_management": {
             "plugin_id": "inventory_management",
@@ -273,13 +281,13 @@ print(f"주문이 생성되었습니다: {order.id}")
                             {
                                 "line": 10,
                                 "route": "@bp.route('/inventory')",
-                                "method": "GET"
+                                "method": "GET",
                             }
-                        ]
+                        ],
                     }
                 ],
                 "models": [],
-                "examples": []
+                "examples": [],
             },
             "user_guide": """# 재고 관리 플러그인 사용자 가이드
 
@@ -312,26 +320,27 @@ admin, manager
                 {
                     "version": "1.0.0",
                     "date": "2024-01-10T00:00:00",
-                    "changes": ["초기 버전", "기본 재고 관리 기능"]
+                    "changes": ["초기 버전", "기본 재고 관리 기능"],
                 }
             ],
             "examples": [],
-            "last_updated": "2024-01-10T12:00:00"
-        }
+            "last_updated": "2024-01-10T12:00:00",
+        },
     }
-    
+
     # 문서 저장
     for plugin_id, doc in sample_documentation.items():
         testing_system._save_documentation(plugin_id, doc)
-    
+
     print(f"✅ {len(sample_documentation)}개의 샘플 문서가 생성되었습니다")
+
 
 def main():
     """메인 함수"""
     print("🚀 플러그인 테스트/모니터링/문서화 시스템 초기화를 시작합니다...")
-    
+
     success = init_testing_system()
-    
+
     if success:
         print("\n🎉 플러그인 테스트/모니터링/문서화 시스템 초기화가 완료되었습니다!")
         print("\n📋 다음 기능들을 사용할 수 있습니다:")
@@ -351,5 +360,6 @@ def main():
         print("\n❌ 플러그인 테스트/모니터링/문서화 시스템 초기화에 실패했습니다.")
         sys.exit(1)
 
+
 if __name__ == "__main__":
-    main() 
+    main()

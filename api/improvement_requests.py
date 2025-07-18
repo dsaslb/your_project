@@ -1,11 +1,14 @@
-from flask import Blueprint, jsonify, request, current_app
-from sqlalchemy import and_, or_
-from datetime import datetime
-import json
-
+from utils.auth_decorators import jwt_required, role_required  # pyright: ignore
+from models_main import User, ImprovementRequest, Brand, Branch
 from extensions import db
-from models import User, ImprovementRequest, Brand, Branch
-from utils.auth_decorators import jwt_required, role_required
+import json
+from datetime import datetime
+from sqlalchemy import and_, or_
+from flask import Blueprint, jsonify, request, current_app
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
+
 
 improvement_requests_bp = Blueprint('improvement_requests', __name__)
 
@@ -21,7 +24,7 @@ def get_improvement_requests():
         category = request.args.get('category')
         brand_id = request.args.get('brand_id')
         store_id = request.args.get('store_id')
-        
+
         query = ImprovementRequest.query
         current_user = getattr(request, 'current_user', None)
         # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 요청만 조회
@@ -33,7 +36,7 @@ def get_improvement_requests():
         # 일반 사용자는 자신이 요청한 것만 조회
         elif current_user:
             query = query.filter_by(requester_id=current_user.id)
-        
+
         if status:
             query = query.filter_by(status=status)
         if priority:
@@ -44,9 +47,9 @@ def get_improvement_requests():
             query = query.filter_by(brand_id=brand_id)
         if store_id:
             query = query.filter_by(store_id=store_id)
-        
+
         requests = query.order_by(ImprovementRequest.created_at.desc()).all()
-        
+
         request_list = []
         for req in requests:
             request_data = {
@@ -65,13 +68,13 @@ def get_improvement_requests():
                 'reviewed_at': req.reviewed_at.isoformat() if req.reviewed_at else None
             }
             request_list.append(request_data)
-        
+
         return jsonify({
             'success': True,
             'requests': request_list,
             'total': len(request_list)
         })
-    
+
     except Exception as e:
         current_app.logger.error(f"개선 요청 조회 오류: {str(e)}")
         return jsonify({'error': '개선 요청을 불러오는 중 오류가 발생했습니다.'}), 500
@@ -83,13 +86,13 @@ def get_improvement_request(request_id):
     """특정 개선 요청 상세 조회"""
     try:
         req = ImprovementRequest.query.get_or_404(request_id)
-        
+
         # 권한 확인
         current_user = getattr(request, 'current_user', None)
         if current_user and current_user.role not in ['admin', 'super_admin']:
             if req.requester_id != current_user.id:
                 return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         request_data = {
             'id': req.id,
             'title': req.title,
@@ -106,12 +109,12 @@ def get_improvement_request(request_id):
             'reviewed_at': req.reviewed_at.isoformat() if req.reviewed_at else None,
             'admin_comment': req.admin_comment
         }
-        
+
         return jsonify({
             'success': True,
             'request': request_data
         })
-    
+
     except Exception as e:
         current_app.logger.error(f"개선 요청 상세 조회 오류: {str(e)}")
         return jsonify({'error': '개선 요청을 불러오는 중 오류가 발생했습니다.'}), 500
@@ -123,20 +126,20 @@ def create_improvement_request():
     """개선 요청 생성"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': '요청 데이터가 필요합니다.'}), 400
-        
+
         # 필수 필드 검증
         required_fields = ['title', 'description', 'category', 'priority']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'{field} 필드가 필요합니다.'}), 400
-        
+
         current_user = getattr(request, 'current_user', None)
         if not current_user:
             return jsonify({'error': '인증이 필요합니다.'}), 401
-        
+
         # 새 개선 요청 생성
         new_request = ImprovementRequest()
         new_request.title = data['title']
@@ -147,16 +150,16 @@ def create_improvement_request():
         new_request.store_id = data.get('store_id')
         new_request.requester_id = current_user.id
         new_request.status = 'pending'
-        
+
         db.session.add(new_request)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '개선 요청이 성공적으로 생성되었습니다.',
             'request_id': new_request.id
         }), 201
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"개선 요청 생성 오류: {str(e)}")
@@ -171,10 +174,10 @@ def update_improvement_request(request_id):
     try:
         req = ImprovementRequest.query.get_or_404(request_id)
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': '수정 데이터가 필요합니다.'}), 400
-        
+
         # 수정 가능한 필드들
         if 'title' in data:
             req.title = data['title']
@@ -188,20 +191,20 @@ def update_improvement_request(request_id):
             req.status = data['status']
         if 'review_comments' in data:
             req.review_comments = data['review_comments']
-        
+
         current_user = getattr(request, 'current_user', None)
         if current_user:
             req.reviewer_id = current_user.id
         req.reviewed_at = datetime.utcnow()
         req.updated_at = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '개선 요청이 성공적으로 수정되었습니다.'
         })
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"개선 요청 수정 오류: {str(e)}")
@@ -215,15 +218,15 @@ def delete_improvement_request(request_id):
     """개선 요청 삭제 (관리자만)"""
     try:
         req = ImprovementRequest.query.get_or_404(request_id)
-        
+
         db.session.delete(req)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '개선 요청이 성공적으로 삭제되었습니다.'
         })
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"개선 요청 삭제 오류: {str(e)}")
@@ -237,13 +240,13 @@ def approve_improvement_request(request_id):
     """개선 요청 승인"""
     try:
         req = ImprovementRequest.query.get_or_404(request_id)
-        
+
         if req.status != 'pending':
             return jsonify({'error': '이미 처리된 요청입니다.'}), 400
-        
+
         data = request.get_json()
         comments = data.get('comments', '')
-        
+
         current_user = getattr(request, 'current_user', None)
         req.status = 'approved'
         if current_user:
@@ -251,14 +254,14 @@ def approve_improvement_request(request_id):
         req.reviewed_at = datetime.utcnow()
         req.admin_comment = comments
         req.updated_at = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '개선 요청이 성공적으로 승인되었습니다.'
         })
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"개선 요청 승인 오류: {str(e)}")
@@ -272,13 +275,13 @@ def reject_improvement_request(request_id):
     """개선 요청 거절"""
     try:
         req = ImprovementRequest.query.get_or_404(request_id)
-        
+
         if req.status != 'pending':
             return jsonify({'error': '이미 처리된 요청입니다.'}), 400
-        
+
         data = request.get_json()
         comments = data.get('comments', '')
-        
+
         current_user = getattr(request, 'current_user', None)
         req.status = 'rejected'
         if current_user:
@@ -286,15 +289,15 @@ def reject_improvement_request(request_id):
         req.reviewed_at = datetime.utcnow()
         req.admin_comment = comments
         req.updated_at = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '개선 요청이 거절되었습니다.'
         })
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"개선 요청 거절 오류: {str(e)}")
-        return jsonify({'error': '개선 요청 거절 중 오류가 발생했습니다.'}), 500 
+        return jsonify({'error': '개선 요청 거절 중 오류가 발생했습니다.'}), 500

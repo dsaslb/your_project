@@ -1,18 +1,20 @@
+from .plugin_system_manager import plugin_system_manager  # pyright: ignore
+import logging
+from datetime import datetime
+from flask import Blueprint, jsonify, request
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 플러그인 시스템 통합 매니저 API
 플러그인 시스템 전체를 관리하는 API 엔드포인트
 """
 
-from flask import Blueprint, jsonify, request
-from datetime import datetime
-import logging
-
-from .plugin_system_manager import plugin_system_manager
 
 logger = logging.getLogger(__name__)
 
 # 블루프린트 생성
 plugin_system_manager_bp = Blueprint('plugin_system_manager', __name__, url_prefix='/api/plugin-system')
+
 
 @plugin_system_manager_bp.route('/status', methods=['GET'])
 def get_system_status():
@@ -32,6 +34,7 @@ def get_system_status():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @plugin_system_manager_bp.route('/info', methods=['GET'])
 def get_system_info():
     """플러그인 시스템 정보 조회"""
@@ -49,6 +52,7 @@ def get_system_info():
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
+
 
 @plugin_system_manager_bp.route('/initialize', methods=['POST'])
 def initialize_system():
@@ -68,6 +72,7 @@ def initialize_system():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @plugin_system_manager_bp.route('/start', methods=['POST'])
 def start_system():
     """플러그인 시스템 시작"""
@@ -85,6 +90,7 @@ def start_system():
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
+
 
 @plugin_system_manager_bp.route('/stop', methods=['POST'])
 def stop_system():
@@ -104,6 +110,7 @@ def stop_system():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @plugin_system_manager_bp.route('/health-check', methods=['POST'])
 def run_health_check():
     """헬스 체크 실행"""
@@ -122,20 +129,21 @@ def run_health_check():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @plugin_system_manager_bp.route('/restart', methods=['POST'])
 def restart_system():
     """플러그인 시스템 재시작"""
     try:
         # 시스템 중지
         stop_result = plugin_system_manager.stop_system()
-        
+
         # 잠시 대기
         import time
         time.sleep(2)
-        
+
         # 시스템 재시작
         start_result = plugin_system_manager.start_system()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -153,6 +161,7 @@ def restart_system():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @plugin_system_manager_bp.route('/logs', methods=['GET'])
 def get_system_logs():
     """시스템 로그 조회"""
@@ -169,7 +178,7 @@ def get_system_logs():
             'log_levels': ['DEBUG', 'INFO', 'WARNING', 'ERROR'],
             'log_file_path': 'logs/plugin_system.log'
         }
-        
+
         return jsonify({
             'success': True,
             'data': logs,
@@ -183,6 +192,7 @@ def get_system_logs():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @plugin_system_manager_bp.route('/metrics', methods=['GET'])
 def get_system_metrics():
     """시스템 메트릭 조회"""
@@ -192,29 +202,29 @@ def get_system_metrics():
             'performance': {
                 'cpu_usage': 0,
                 'memory_usage': 0,
-                'active_plugins': plugin_system_manager.system_status['active_plugins'],
-                'total_plugins': plugin_system_manager.system_status['total_plugins']
+                'active_plugins': plugin_system_manager.system_status['active_plugins'] if system_status is not None else None,
+                'total_plugins': plugin_system_manager.system_status['total_plugins'] if system_status is not None else None
             },
             'health': {
-                'status': plugin_system_manager.system_status['health_status'],
-                'last_check': plugin_system_manager.system_status['last_check'].isoformat() if plugin_system_manager.system_status['last_check'] else None
+                'status': plugin_system_manager.system_status['health_status'] if system_status is not None else None,
+                'last_check': plugin_system_manager.system_status['last_check'] if system_status is not None else None.isoformat() if plugin_system_manager.system_status['last_check'] if system_status is not None else None else None
             },
             'components': {}
         }
-        
+
         # 컴포넌트별 메트릭
-        for name, component in plugin_system_manager.components.items():
+        for name, component in plugin_system_manager.components.items() if components is not None else []:
             if component:
                 try:
                     if hasattr(component, 'get_metrics'):
-                        metrics['components'][name] = component.get_metrics()
+                        metrics['components'] if metrics is not None else None[name] = component.get_metrics()
                     else:
-                        metrics['components'][name] = {'status': 'available'}
+                        metrics['components'] if metrics is not None else None[name] = {'status': 'available'}
                 except Exception:
-                    metrics['components'][name] = {'status': 'error'}
+                    metrics['components'] if metrics is not None else None[name] = {'status': 'error'}
             else:
-                metrics['components'][name] = {'status': 'unavailable'}
-        
+                metrics['components'] if metrics is not None else None[name] = {'status': 'unavailable'}
+
         return jsonify({
             'success': True,
             'data': metrics,
@@ -228,6 +238,7 @@ def get_system_metrics():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @plugin_system_manager_bp.route('/config', methods=['GET'])
 def get_system_config():
     """시스템 설정 조회"""
@@ -240,7 +251,7 @@ def get_system_config():
             'max_plugins': 100,
             'plugin_timeout': 30
         }
-        
+
         return jsonify({
             'success': True,
             'data': config,
@@ -254,16 +265,17 @@ def get_system_config():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+
 @plugin_system_manager_bp.route('/config', methods=['PUT'])
 def update_system_config():
     """시스템 설정 업데이트"""
     try:
         data = request.get_json()
-        
+
         # 설정 업데이트
         if 'health_check_interval' in data:
-            plugin_system_manager.health_check_interval = data['health_check_interval']
-        
+            plugin_system_manager.health_check_interval = data['health_check_interval'] if data is not None else None
+
         return jsonify({
             'success': True,
             'message': '시스템 설정이 업데이트되었습니다',
@@ -275,4 +287,4 @@ def update_system_config():
             'success': False,
             'error': str(e),
             'timestamp': datetime.now().isoformat()
-        }), 500 
+        }), 500

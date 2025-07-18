@@ -1,8 +1,10 @@
-from flask import Blueprint, jsonify
+from models_main import Report, db
+from api.utils import admin_required  # pyright: ignore
 from sqlalchemy import func
+from flask import Blueprint, jsonify
 
-from api.utils import admin_required
-from models import Report, db
+query = None  # pyright: ignore
+
 
 admin_report_stat_bp = Blueprint(
     "admin_report_stat", __name__, url_prefix="/api/admin/report-stats"

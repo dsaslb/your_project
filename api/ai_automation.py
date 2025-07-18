@@ -1,10 +1,13 @@
-from flask import Blueprint, jsonify, request, current_app
-import random
 from datetime import datetime
+import random
+from flask import Blueprint, jsonify, request, current_app
+form = None  # pyright: ignore
 
 ai_automation_bp = Blueprint('ai_automation', __name__, url_prefix='/api/ai/automation')
 
 # 1. 통합 데이터 대시보드
+
+
 @ai_automation_bp.route('/dashboard', methods=['GET'])
 def get_advanced_dashboard():
     try:
@@ -26,6 +29,8 @@ def get_advanced_dashboard():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # 2. GPT 기반 자동 리포트/경보/개선점 추천
+
+
 @ai_automation_bp.route('/gpt_report', methods=['POST'])
 def gpt_report():
     try:
@@ -43,6 +48,8 @@ def gpt_report():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # 3. KPI 실시간 모니터링/알림
+
+
 @ai_automation_bp.route('/kpi_monitor', methods=['GET'])
 def kpi_monitor():
     try:
@@ -55,4 +62,4 @@ def kpi_monitor():
         return jsonify({'success': True, 'kpi': kpi, 'checked_at': datetime.now().isoformat()}), 200
     except Exception as e:
         current_app.logger.error(f"KPI 모니터 오류: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500 
+        return jsonify({'success': False, 'error': str(e)}), 500

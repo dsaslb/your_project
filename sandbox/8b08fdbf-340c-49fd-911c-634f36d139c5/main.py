@@ -10,13 +10,16 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-@app.route('/')
+
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/api/data')
+
+@app.route("/api/data")
 def api_data():
-    return jsonify({'message': 'Hello from 재고 관리 대시보드!'})
+    return jsonify({"message": "Hello from 재고 관리 대시보드!"})
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.run(debug=True, port=5002)

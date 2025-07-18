@@ -1,14 +1,14 @@
-from datetime import datetime
-
-from flask import Blueprint, flash, redirect, render_template, url_for
-from flask_login import current_user, login_required
+from utils.pay_transfer import transfer_salary, validate_bank_account  # pyright: ignore
+from utils.notify import notify_salary_payment  # pyright: ignore
+from utils.logger import log_action, log_error  # pyright: ignore
+from utils.decorators import admin_required  # pyright: ignore
+from models_main import db, User, Attendance, ActionLog
 from sqlalchemy import extract, func
+from flask_login import current_user, login_required
+from flask import Blueprint, flash, redirect, render_template, url_for
+from datetime import datetime
+query = None  # pyright: ignore
 
-from models import db, User, Attendance, ActionLog
-from utils.decorators import admin_required
-from utils.logger import log_action, log_error
-from utils.notify import notify_salary_payment
-from utils.pay_transfer import transfer_salary, validate_bank_account
 
 payroll_bp = Blueprint("payroll", __name__)
 
@@ -27,7 +27,7 @@ def bulk_transfer():
 
         transfer_results = []
 
-        for user in users:
+        for user in users if users is not None:
             # 해당 월 근무시간 계산
             total_seconds = (
                 db.session.query(
@@ -85,7 +85,7 @@ def bulk_transfer():
                 notify_salary_payment(user, wage, year, month)
 
         # 결과 요약
-        success_count = sum(1 for r in transfer_results if r["success"])
+        success_count = sum(1 for r in transfer_results if r["success"] if r is not None else None)
         total_count = len(transfer_results)
 
         log_action(

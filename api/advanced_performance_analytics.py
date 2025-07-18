@@ -1,29 +1,33 @@
+import os
+import sqlite3
+from collections import deque
+from typing import Dict, List, Any, Optional
+import psutil
+import json
+import time
+import threading
+import logging
+from datetime import datetime, timedelta
+from flask import Blueprint, jsonify, request, current_app
+from typing import Optional
+args = None  # pyright: ignore
+form = None  # pyright: ignore
 #!/usr/bin/env python3
 """
 고도화된 성능 분석 API
 실시간 성능 모니터링, 이력 분석, 예측, 알림, 자동 튜닝 등의 고급 기능을 제공
 """
 
-from flask import Blueprint, jsonify, request, current_app
-from datetime import datetime, timedelta
-import logging
-import threading
-import time
-import json
-import psutil
-from typing import Dict, List, Any, Optional
-from collections import deque
-import sqlite3
-import os
 
 logger = logging.getLogger(__name__)
 
 # 블루프린트 생성
 advanced_performance_bp = Blueprint('advanced_performance', __name__, url_prefix='/api/advanced-performance')
 
+
 class AdvancedPerformanceAnalytics:
     """고도화된 성능 분석 시스템"""
-    
+
     def __init__(self):
         self.metrics_history = deque(maxlen=10000)  # 최근 10000개 메트릭 저장
         self.alerts = deque(maxlen=1000)  # 최근 1000개 알림 저장
@@ -39,13 +43,13 @@ class AdvancedPerformanceAnalytics:
         self.monitoring_thread = None
         self.db_path = 'performance_analytics.db'
         self._init_database()
-        
+
     def _init_database(self):
         """성능 분석 데이터베이스 초기화"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 성능 메트릭 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS performance_metrics (
@@ -66,7 +70,7 @@ class AdvancedPerformanceAnalytics:
                     system_load REAL
                 )
             ''')
-            
+
             # 성능 알림 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS performance_alerts (
@@ -82,7 +86,7 @@ class AdvancedPerformanceAnalytics:
                     resolved_at TEXT
                 )
             ''')
-            
+
             # 성능 예측 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS performance_predictions (
@@ -95,7 +99,7 @@ class AdvancedPerformanceAnalytics:
                     factors TEXT
                 )
             ''')
-            
+
             # 성능 튜닝 이력 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS performance_tuning_history (
@@ -109,35 +113,35 @@ class AdvancedPerformanceAnalytics:
                     applied BOOLEAN DEFAULT FALSE
                 )
             ''')
-            
+
             conn.commit()
             conn.close()
             logger.info("성능 분석 데이터베이스 초기화 완료")
-            
+
         except Exception as e:
             logger.error(f"데이터베이스 초기화 실패: {e}")
-    
+
     def start_monitoring(self):
         """실시간 모니터링 시작"""
         if self.monitoring_active:
             return {"status": "already_running"}
-            
+
         self.monitoring_active = True
         self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
         self.monitoring_thread.start()
-        
+
         logger.info("고도화된 성능 분석 모니터링 시작")
         return {"status": "started"}
-    
+
     def stop_monitoring(self):
         """실시간 모니터링 중지"""
         self.monitoring_active = False
         if self.monitoring_thread:
             self.monitoring_thread.join(timeout=5)
-            
+
         logger.info("고도화된 성능 분석 모니터링 중지")
         return {"status": "stopped"}
-    
+
     def _monitoring_loop(self):
         """실시간 모니터링 루프"""
         while self.monitoring_active:
@@ -145,26 +149,26 @@ class AdvancedPerformanceAnalytics:
                 # 성능 메트릭 수집
                 metrics = self._collect_performance_metrics()
                 self.metrics_history.append(metrics)
-                
+
                 # 데이터베이스에 저장
                 self._save_metrics_to_db(metrics)
-                
+
                 # 알림 체크
                 self._check_alerts(metrics)
-                
+
                 # 성능 예측
                 self._generate_predictions()
-                
+
                 # 자동 튜닝 체크
                 self._check_auto_tuning(metrics)
-                
+
                 time.sleep(30)  # 30초마다 업데이트
-                
+
             except Exception as e:
                 logger.error(f"모니터링 루프 오류: {e}")
                 time.sleep(60)
-    
-    def _collect_performance_metrics(self) -> Dict[str, Any]:
+
+    def _collect_performance_metrics(self) -> Dict[str, Any] if Dict is not None else None:
         """성능 메트릭 수집"""
         try:
             # 시스템 메트릭
@@ -172,19 +176,19 @@ class AdvancedPerformanceAnalytics:
             memory = psutil.virtual_memory()
             disk = psutil.disk_usage('/')
             network = psutil.net_io_counters()
-            
+
             # 네트워크 연결 수
             connections = len(psutil.net_connections())
-            
+
             # 프로세스 수
             process_count = len(psutil.pids())
-            
+
             # 시스템 로드 (Unix/Linux에서만 사용 가능)
             try:
                 system_load = os.getloadavg()[0] if hasattr(os, 'getloadavg') else 0
             except:
                 system_load = 0
-            
+
             metrics = {
                 'timestamp': datetime.now().isoformat(),
                 'cpu_usage': cpu_usage,
@@ -201,16 +205,16 @@ class AdvancedPerformanceAnalytics:
                 'plugin_count': self._get_plugin_count(),
                 'system_load': system_load
             }
-            
+
             return metrics
-            
+
         except Exception as e:
             logger.error(f"성능 메트릭 수집 실패: {e}")
             return {
                 'timestamp': datetime.now().isoformat(),
                 'error': str(e)
             }
-    
+
     def _get_avg_response_time(self) -> float:
         """평균 응답 시간 계산"""
         try:
@@ -220,7 +224,7 @@ class AdvancedPerformanceAnalytics:
             return random.uniform(50, 500)
         except:
             return 0.0
-    
+
     def _get_error_rate(self) -> float:
         """오류율 계산"""
         try:
@@ -229,7 +233,7 @@ class AdvancedPerformanceAnalytics:
             return random.uniform(0, 2)
         except:
             return 0.0
-    
+
     def _get_active_requests(self) -> int:
         """활성 요청 수"""
         try:
@@ -238,7 +242,7 @@ class AdvancedPerformanceAnalytics:
             return random.randint(0, 100)
         except:
             return 0
-    
+
     def _get_cache_hit_rate(self) -> float:
         """캐시 히트율"""
         try:
@@ -247,7 +251,7 @@ class AdvancedPerformanceAnalytics:
             return random.uniform(60, 95)
         except:
             return 0.0
-    
+
     def _get_db_connections(self) -> int:
         """데이터베이스 연결 수"""
         try:
@@ -256,7 +260,7 @@ class AdvancedPerformanceAnalytics:
             return random.randint(5, 20)
         except:
             return 0
-    
+
     def _get_plugin_count(self) -> int:
         """플러그인 수"""
         try:
@@ -264,13 +268,13 @@ class AdvancedPerformanceAnalytics:
             return 3  # 현재 테스트 환경의 플러그인 수
         except:
             return 0
-    
-    def _save_metrics_to_db(self, metrics: Dict[str, Any]):
+
+    def _save_metrics_to_db(self, metrics: Dict[str, Any] if Dict is not None else None):
         """메트릭을 데이터베이스에 저장"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 INSERT INTO performance_metrics (
                     timestamp, cpu_usage, memory_usage, disk_usage,
@@ -279,33 +283,33 @@ class AdvancedPerformanceAnalytics:
                     cache_hit_rate, database_connections, plugin_count, system_load
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                metrics.get('timestamp'),
-                metrics.get('cpu_usage'),
-                metrics.get('memory_usage'),
-                metrics.get('disk_usage'),
-                metrics.get('network_io_sent'),
-                metrics.get('network_io_recv'),
-                metrics.get('active_connections'),
-                metrics.get('response_time'),
-                metrics.get('error_rate'),
-                metrics.get('active_requests'),
-                metrics.get('cache_hit_rate'),
-                metrics.get('database_connections'),
-                metrics.get('plugin_count'),
-                metrics.get('system_load')
+                metrics.get('timestamp') if metrics else None,
+                metrics.get('cpu_usage') if metrics else None,
+                metrics.get('memory_usage') if metrics else None,
+                metrics.get('disk_usage') if metrics else None,
+                metrics.get('network_io_sent') if metrics else None,
+                metrics.get('network_io_recv') if metrics else None,
+                metrics.get('active_connections') if metrics else None,
+                metrics.get('response_time') if metrics else None,
+                metrics.get('error_rate') if metrics else None,
+                metrics.get('active_requests') if metrics else None,
+                metrics.get('cache_hit_rate') if metrics else None,
+                metrics.get('database_connections') if metrics else None,
+                metrics.get('plugin_count') if metrics else None,
+                metrics.get('system_load') if metrics else None
             ))
-            
+
             conn.commit()
             conn.close()
-            
+
         except Exception as e:
             logger.error(f"메트릭 저장 실패: {e}")
-    
-    def _check_alerts(self, metrics: Dict[str, Any]):
+
+    def _check_alerts(self,  metrics: Dict[str,  Any] if Dict is not None else None):
         """성능 알림 체크"""
         try:
             alerts = []
-            
+
             # CPU 사용률 체크
             if metrics.get('cpu_usage', 0) > self.performance_thresholds['cpu_usage']:
                 alerts.append({
@@ -316,7 +320,7 @@ class AdvancedPerformanceAnalytics:
                     'metric_value': metrics['cpu_usage'],
                     'threshold_value': self.performance_thresholds['cpu_usage']
                 })
-            
+
             # 메모리 사용률 체크
             if metrics.get('memory_usage', 0) > self.performance_thresholds['memory_usage']:
                 alerts.append({
@@ -327,7 +331,7 @@ class AdvancedPerformanceAnalytics:
                     'metric_value': metrics['memory_usage'],
                     'threshold_value': self.performance_thresholds['memory_usage']
                 })
-            
+
             # 디스크 사용률 체크
             if metrics.get('disk_usage', 0) > self.performance_thresholds['disk_usage']:
                 alerts.append({
@@ -338,7 +342,7 @@ class AdvancedPerformanceAnalytics:
                     'metric_value': metrics['disk_usage'],
                     'threshold_value': self.performance_thresholds['disk_usage']
                 })
-            
+
             # 응답 시간 체크
             if metrics.get('response_time', 0) > self.performance_thresholds['response_time']:
                 alerts.append({
@@ -349,7 +353,7 @@ class AdvancedPerformanceAnalytics:
                     'metric_value': metrics['response_time'],
                     'threshold_value': self.performance_thresholds['response_time']
                 })
-            
+
             # 오류율 체크
             if metrics.get('error_rate', 0) > self.performance_thresholds['error_rate']:
                 alerts.append({
@@ -360,62 +364,62 @@ class AdvancedPerformanceAnalytics:
                     'metric_value': metrics['error_rate'],
                     'threshold_value': self.performance_thresholds['error_rate']
                 })
-            
+
             # 알림 저장
             for alert in alerts:
                 alert['timestamp'] = datetime.now().isoformat()
                 self.alerts.append(alert)
                 self._save_alert_to_db(alert)
-            
+
         except Exception as e:
             logger.error(f"알림 체크 실패: {e}")
-    
-    def _save_alert_to_db(self, alert: Dict[str, Any]):
+
+    def _save_alert_to_db(self,  alert: Dict[str,  Any] if Dict is not None else None):
         """알림을 데이터베이스에 저장"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 INSERT INTO performance_alerts (
                     timestamp, alert_type, severity, message,
                     metric_name, metric_value, threshold_value
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
-                alert['timestamp'],
-                alert['type'],
-                alert['severity'],
-                alert['message'],
-                alert.get('metric_name'),
-                alert.get('metric_value'),
-                alert.get('threshold_value')
+                alert['timestamp'] if alert else None,
+                alert['type'] if alert else None,
+                alert['severity'] if alert else None,
+                alert['message'] if alert else None,
+                alert.get('metric_name') if alert else None,
+                alert.get('metric_value') if alert else None,
+                alert.get('threshold_value') if alert else None
             ))
-            
+
             conn.commit()
             conn.close()
-            
+
         except Exception as e:
             logger.error(f"알림 저장 실패: {e}")
-    
+
     def _generate_predictions(self):
         """성능 예측 생성"""
         try:
             if len(self.metrics_history) < 10:
                 return
-            
+
             # 최근 메트릭 데이터로 예측
             recent_metrics = list(self.metrics_history)[-10:]
-            
+
             # CPU 사용률 예측
             cpu_values = [m.get('cpu_usage', 0) for m in recent_metrics]
             cpu_trend = self._calculate_trend(cpu_values)
             cpu_prediction = self._predict_next_value(cpu_values, cpu_trend)
-            
+
             # 메모리 사용률 예측
             memory_values = [m.get('memory_usage', 0) for m in recent_metrics]
             memory_trend = self._calculate_trend(memory_values)
             memory_prediction = self._predict_next_value(memory_values, memory_trend)
-            
+
             predictions = [
                 {
                     'timestamp': datetime.now().isoformat(),
@@ -434,79 +438,79 @@ class AdvancedPerformanceAnalytics:
                     'factors': json.dumps({'trend': memory_trend, 'recent_values': memory_values[-5:]})
                 }
             ]
-            
+
             # 예측 결과 저장
             for prediction in predictions:
                 self._save_prediction_to_db(prediction)
-            
+
         except Exception as e:
             logger.error(f"성능 예측 생성 실패: {e}")
-    
-    def _calculate_trend(self, values: List[float]) -> float:
+
+    def _calculate_trend(self,  values: List[float] if List is not None else None) -> float:
         """트렌드 계산 (선형 회귀)"""
         try:
             if len(values) < 2:
                 return 0.0
-            
+
             n = len(values)
             x_sum = sum(range(n))
             y_sum = sum(values)
             xy_sum = sum(i * val for i, val in enumerate(values))
             x2_sum = sum(i * i for i in range(n))
-            
+
             slope = (n * xy_sum - x_sum * y_sum) / (n * x2_sum - x_sum * x_sum)
             return slope
-            
+
         except:
             return 0.0
-    
-    def _predict_next_value(self, values: List[float], trend: float) -> float:
+
+    def _predict_next_value(self, values: List[float] if List is not None else None, trend: float) -> float:
         """다음 값 예측"""
         try:
             if not values:
                 return 0.0
-            
-            last_value = values[-1]
+
+            last_value = values[-1] if values is not None else None
             predicted = last_value + trend
-            
+
             # 예측값이 현실적인 범위 내에 있도록 제한
             if predicted < 0:
                 predicted = 0
             elif predicted > 100:
                 predicted = 100
-            
+
             return predicted
-            
+
         except:
             return 0.0
-    
-    def _save_prediction_to_db(self, prediction: Dict[str, Any]):
+
+    def _save_prediction_to_db(self, prediction: Dict[str, Any] if Dict is not None else None):
         """예측 결과를 데이터베이스에 저장"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 INSERT INTO performance_predictions (
                     timestamp, prediction_type, predicted_value,
                     confidence, time_horizon, factors
                 ) VALUES (?, ?, ?, ?, ?, ?)
             ''', (
-                prediction['timestamp'],
-                prediction['prediction_type'],
-                prediction['predicted_value'],
-                prediction['confidence'],
-                prediction['time_horizon'],
-                prediction['factors']
+                prediction['timestamp'] if prediction else None,
+                prediction['prediction_type'] if prediction else None,
+                prediction['predicted_value'] if prediction else None,
+                prediction['confidence'] if prediction else None,
+                prediction['time_horizon'] if prediction else None,
+                prediction['factors'] if prediction else None
             ))
-            
+
             conn.commit()
             conn.close()
-            
+
         except Exception as e:
             logger.error(f"예측 결과 저장 실패: {e}")
-    
-    def _check_auto_tuning(self, metrics: Dict[str, Any]):
+
+    def _check_auto_tuning(self,  metrics: Dict[str,  Any] if Dict is not None else None):
         """자동 튜닝 체크"""
         try:
             # CPU 사용률이 지속적으로 높은 경우
@@ -521,7 +525,7 @@ class AdvancedPerformanceAnalytics:
                     'applied': False
                 }
                 self._save_tuning_suggestion(tuning_suggestion)
-            
+
             # 메모리 사용률이 높은 경우
             if metrics.get('memory_usage', 0) > 85:
                 tuning_suggestion = {
@@ -534,7 +538,7 @@ class AdvancedPerformanceAnalytics:
                     'applied': False
                 }
                 self._save_tuning_suggestion(tuning_suggestion)
-            
+
             # 응답 시간이 느린 경우
             if metrics.get('response_time', 0) > 1000:
                 tuning_suggestion = {
@@ -547,79 +551,79 @@ class AdvancedPerformanceAnalytics:
                     'applied': False
                 }
                 self._save_tuning_suggestion(tuning_suggestion)
-            
+
         except Exception as e:
             logger.error(f"자동 튜닝 체크 실패: {e}")
-    
-    def _save_tuning_suggestion(self, suggestion: Dict[str, Any]):
+
+    def _save_tuning_suggestion(self,  suggestion: Dict[str,  Any] if Dict is not None else None):
         """튜닝 제안을 데이터베이스에 저장"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 INSERT INTO performance_tuning_history (
                     timestamp, tuning_type, before_value, after_value,
                     improvement, description, applied
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
-                suggestion['timestamp'],
-                suggestion['tuning_type'],
-                suggestion['before_value'],
-                suggestion['after_value'],
-                suggestion['improvement'],
-                suggestion['description'],
-                suggestion['applied']
+                suggestion['timestamp'] if suggestion else None,
+                suggestion['tuning_type'] if suggestion else None,
+                suggestion['before_value'] if suggestion else None,
+                suggestion['after_value'] if suggestion else None,
+                suggestion['improvement'] if suggestion else None,
+                suggestion['description'] if suggestion else None,
+                suggestion['applied'] if suggestion else None
             ))
-            
+
             conn.commit()
             conn.close()
-            
+
         except Exception as e:
             logger.error(f"튜닝 제안 저장 실패: {e}")
-    
-    def get_current_metrics(self) -> Dict[str, Any]:
+
+    def get_current_metrics(self) -> Dict[str, Any] if Dict is not None else None:
         """현재 성능 메트릭 조회"""
         if self.metrics_history:
-            return self.metrics_history[-1]
+            return self.metrics_history[-1] if metrics_history is not None else None
         return {}
-    
-    def get_metrics_history(self, hours: int = 24) -> List[Dict[str, Any]]:
+
+    def get_metrics_history(self,  hours: int = 24) -> List[Dict[str, Any] if List is not None else None]:
         """성능 메트릭 이력 조회"""
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             history = []
-            
+
             for metrics in self.metrics_history:
-                if datetime.fromisoformat(metrics['timestamp']) >= cutoff_time:
+                if datetime.fromisoformat(metrics['timestamp'] if metrics is not None else None) >= cutoff_time:
                     history.append(metrics)
-            
+
             return history
-            
+
         except Exception as e:
             logger.error(f"메트릭 이력 조회 실패: {e}")
             return []
-    
-    def get_alerts(self, severity: Optional[str] = None) -> List[Dict[str, Any]]:
+
+    def get_alerts(self,  severity: Optional[str] if Optional is not None else None = None) -> List[Dict[str, Any] if List is not None else None]:
         """알림 조회"""
         try:
             alerts = list(self.alerts)
-            
+
             if severity:
                 alerts = [alert for alert in alerts if alert.get('severity') == severity]
-            
+
             return alerts
-            
+
         except Exception as e:
             logger.error(f"알림 조회 실패: {e}")
             return []
-    
-    def get_predictions(self, prediction_type: Optional[str] = None) -> List[Dict[str, Any]]:
+
+    def get_predictions(self,  prediction_type: Optional[str] if Optional is not None else None = None) -> List[Dict[str, Any] if List is not None else None]:
         """예측 결과 조회"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             if prediction_type:
                 cursor.execute('''
                     SELECT * FROM performance_predictions 
@@ -631,77 +635,80 @@ class AdvancedPerformanceAnalytics:
                     SELECT * FROM performance_predictions 
                     ORDER BY timestamp DESC LIMIT 20
                 ''')
-            
+
             rows = cursor.fetchall()
             conn.close()
-            
+
             predictions = []
             for row in rows:
                 predictions.append({
-                    'id': row[0],
-                    'timestamp': row[1],
-                    'prediction_type': row[2],
-                    'predicted_value': row[3],
-                    'confidence': row[4],
-                    'time_horizon': row[5],
-                    'factors': json.loads(row[6]) if row[6] else {}
+                    'id': row[0] if row else None,
+                    'timestamp': row[1] if row else None,
+                    'prediction_type': row[2] if row else None,
+                    'predicted_value': row[3] if row else None,
+                    'confidence': row[4] if row else None,
+                    'time_horizon': row[5] if row else None,
+                    'factors': json.loads(row[6] if row else None) if row[6] else {}
                 })
-            
+
             return predictions
-            
+
         except Exception as e:
             logger.error(f"예측 결과 조회 실패: {e}")
             return []
-    
-    def get_tuning_suggestions(self) -> List[Dict[str, Any]]:
+
+    def get_tuning_suggestions(self) -> List[Dict[str, Any] if List is not None else None]:
         """튜닝 제안 조회"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT * FROM performance_tuning_history 
                 WHERE applied = FALSE 
                 ORDER BY timestamp DESC LIMIT 10
             ''')
-            
+
             rows = cursor.fetchall()
             conn.close()
-            
+
             suggestions = []
             for row in rows:
                 suggestions.append({
-                    'id': row[0],
-                    'timestamp': row[1],
-                    'tuning_type': row[2],
-                    'before_value': row[3],
-                    'after_value': row[4],
-                    'improvement': row[5],
-                    'description': row[6],
-                    'applied': bool(row[7])
+                    'id': row[0] if row else None,
+                    'timestamp': row[1] if row else None,
+                    'tuning_type': row[2] if row else None,
+                    'before_value': row[3] if row else None,
+                    'after_value': row[4] if row else None,
+                    'improvement': row[5] if row else None,
+                    'description': row[6] if row else None,
+                    'applied': bool(row[7] if row else None)
                 })
-            
+
             return suggestions
-            
+
         except Exception as e:
             logger.error(f"튜닝 제안 조회 실패: {e}")
             return []
-    
-    def update_thresholds(self, thresholds: Dict[str, float]):
+
+    def update_thresholds(self, thresholds: Dict[str, float] if Dict is not None else None):
         """성능 임계치 업데이트"""
         try:
             self.performance_thresholds.update(thresholds)
             logger.info(f"성능 임계치 업데이트: {thresholds}")
             return {"success": True, "message": "임계치가 업데이트되었습니다"}
-            
+
         except Exception as e:
             logger.error(f"임계치 업데이트 실패: {e}")
             return {"success": False, "error": str(e)}
+
 
 # 전역 인스턴스 생성
 advanced_performance_analytics = AdvancedPerformanceAnalytics()
 
 # API 엔드포인트들
+
+
 @advanced_performance_bp.route('/start', methods=['POST'])
 def start_analytics():
     """성능 분석 시작"""
@@ -717,6 +724,7 @@ def start_analytics():
             'success': False,
             'error': str(e)
         }), 500
+
 
 @advanced_performance_bp.route('/stop', methods=['POST'])
 def stop_analytics():
@@ -734,6 +742,7 @@ def stop_analytics():
             'error': str(e)
         }), 500
 
+
 @advanced_performance_bp.route('/metrics/current', methods=['GET'])
 def get_current_metrics():
     """현재 성능 메트릭 조회"""
@@ -749,6 +758,7 @@ def get_current_metrics():
             'success': False,
             'error': str(e)
         }), 500
+
 
 @advanced_performance_bp.route('/metrics/history', methods=['GET'])
 def get_metrics_history():
@@ -770,6 +780,7 @@ def get_metrics_history():
             'success': False,
             'error': str(e)
         }), 500
+
 
 @advanced_performance_bp.route('/alerts', methods=['GET'])
 def get_alerts():
@@ -793,6 +804,7 @@ def get_alerts():
             'error': str(e)
         }), 500
 
+
 @advanced_performance_bp.route('/predictions', methods=['GET'])
 def get_predictions():
     """성능 예측 조회"""
@@ -813,6 +825,7 @@ def get_predictions():
             'error': str(e)
         }), 500
 
+
 @advanced_performance_bp.route('/tuning/suggestions', methods=['GET'])
 def get_tuning_suggestions():
     """튜닝 제안 조회"""
@@ -832,6 +845,7 @@ def get_tuning_suggestions():
             'error': str(e)
         }), 500
 
+
 @advanced_performance_bp.route('/thresholds', methods=['GET', 'PUT'])
 def manage_thresholds():
     """성능 임계치 관리"""
@@ -845,13 +859,14 @@ def manage_thresholds():
             thresholds = request.get_json()
             result = advanced_performance_analytics.update_thresholds(thresholds)
             return jsonify(result)
-            
+
     except Exception as e:
         logger.error(f"임계치 관리 실패: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
+
 
 @advanced_performance_bp.route('/dashboard', methods=['GET'])
 def get_analytics_dashboard():
@@ -861,7 +876,7 @@ def get_analytics_dashboard():
         recent_alerts = advanced_performance_analytics.get_alerts()
         recent_predictions = advanced_performance_analytics.get_predictions()
         tuning_suggestions = advanced_performance_analytics.get_tuning_suggestions()
-        
+
         dashboard_data = {
             'current_metrics': current_metrics,
             'alerts_summary': {
@@ -884,15 +899,15 @@ def get_analytics_dashboard():
                 'last_update': datetime.now().isoformat()
             }
         }
-        
+
         return jsonify({
             'success': True,
             'data': dashboard_data
         })
-        
+
     except Exception as e:
         logger.error(f"대시보드 데이터 조회 실패: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
-        }), 500 
+        }), 500

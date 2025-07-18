@@ -1,6 +1,6 @@
 import pytest
 
-from models import Notice, NoticeHistory
+from models_main import Notice, NoticeHistory
 
 
 @pytest.mark.skip(reason="No route for editing notices in the web app yet.")

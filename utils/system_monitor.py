@@ -1,7 +1,8 @@
 import logging
 from datetime import datetime
 
-logging.basicConfig(filename='system_monitor.log', level=logging.INFO)
+logging.basicConfig(filename="system_monitor.log", level=logging.INFO)
+
 
 class SystemMonitor:
     def __init__(self):
@@ -9,14 +10,18 @@ class SystemMonitor:
         self.event_history = []
 
     def log_event(self, event):
-        entry = {'type': 'event', 'event': event, 'timestamp': datetime.now()}
+        entry = {"type": "event", "event": event, "timestamp": datetime.now()}
         self.event_history.append(entry)
-        logging.info(f"EVENT: {event} at {entry['timestamp']}")
+        logging.info(
+            f"EVENT: {event} at {entry['timestamp'] if entry is not None else None}"
+        )
 
     def log_error(self, error):
-        entry = {'type': 'error', 'error': error, 'timestamp': datetime.now()}
+        entry = {"type": "error", "error": error, "timestamp": datetime.now()}
         self.error_history.append(entry)
-        logging.error(f"ERROR: {error} at {entry['timestamp']}")
+        logging.error(
+            f"ERROR: {error} at {entry['timestamp'] if entry is not None else None}"
+        )
         self.send_alert(error)
 
     def send_alert(self, message):
@@ -27,4 +32,4 @@ class SystemMonitor:
         return self.error_history
 
     def get_event_history(self):
-        return self.event_history 
+        return self.event_history

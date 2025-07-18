@@ -1,5 +1,7 @@
-from models import Notice, db
 from datetime import datetime
+from models_main import Notice, db
+
+query = None  # pyright: ignore
 
 
 def update_notice(notice_id, title, content, category=None):
@@ -15,7 +17,10 @@ def update_notice(notice_id, title, content, category=None):
         return notice
     return None
 
-def create_notice_for_event(title, content, type, priority, author_id, target_audience=None, category=None):
+
+def create_notice_for_event(
+    title, content, type, priority, author_id, target_audience=None, category=None
+):
     """
     타 업무(스케줄/발주/재고 등)에서 호출하는 공통 알림/공지 등록 함수
     :param title: 알림/공지 제목

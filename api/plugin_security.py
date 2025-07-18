@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify
-from core.backend.plugin_security_system import PluginSecuritySystem, PermissionType, SecurityLevel
-from utils.auth_decorators import admin_required, login_required
-import logging
 from typing import Optional
+import logging
+from utils.auth_decorators import admin_required, login_required  # pyright: ignore
+from core.backend.plugin_security_system import PluginSecuritySystem, PermissionType, SecurityLevel  # pyright: ignore
+from flask import Blueprint, request, jsonify
+args = None  # pyright: ignore
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -14,16 +15,19 @@ plugin_security_bp = Blueprint('plugin_security', __name__, url_prefix='/api/plu
 # 보안 시스템 인스턴스
 security_system = PluginSecuritySystem()
 
+
 def safe_str(val: Optional[str]) -> str:
-    return val if val is not None else ''
+    """안전한 문자열 변환"""
+    return str(val) if val is not None else ""
+
 
 @plugin_security_bp.route('/policies', methods=['GET'])
 @admin_required
 def get_security_policies():
     """보안 정책 목록 조회"""
     try:
-        plugin_id = request.args.get('plugin_id')
-        
+        plugin_id = request.args.get('plugin_id') if request.args else None
+
         if plugin_id:
             policy = security_system.get_security_policy(plugin_id)
             if policy:
@@ -42,7 +46,7 @@ def get_security_policies():
                 'success': True,
                 'data': []
             })
-            
+
     except Exception as e:
         logger.error(f"보안 정책 조회 실패: {e}")
         return jsonify({
@@ -50,19 +54,20 @@ def get_security_policies():
             'message': '보안 정책 조회 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/policies', methods=['POST'])
 @admin_required
 def create_security_policy():
     """보안 정책 생성"""
     try:
         data = request.get_json()
-        
+
         if not data or 'plugin_id' not in data:
             return jsonify({
                 'success': False,
                 'message': '필수 필드가 누락되었습니다'
             }), 400
-        
+
         plugin_id = data['plugin_id']
         policy_data = {
             'security_level': data.get('security_level', 'medium'),
@@ -73,9 +78,9 @@ def create_security_policy():
             'require_authorization': data.get('require_authorization', True),
             'allowed_permissions': data.get('allowed_permissions', ['read'])
         }
-        
+
         success = security_system.create_security_policy(plugin_id, policy_data)
-        
+
         if success:
             return jsonify({
                 'success': True,
@@ -86,7 +91,7 @@ def create_security_policy():
                 'success': False,
                 'message': '보안 정책 생성에 실패했습니다'
             }), 400
-            
+
     except Exception as e:
         logger.error(f"보안 정책 생성 실패: {e}")
         return jsonify({
@@ -94,21 +99,22 @@ def create_security_policy():
             'message': '보안 정책 생성 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/policies/<plugin_id>', methods=['PUT'])
 @admin_required
 def update_security_policy(plugin_id):
     """보안 정책 업데이트"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({
                 'success': False,
                 'message': '업데이트할 데이터가 없습니다'
             }), 400
-        
+
         success = security_system.update_security_policy(plugin_id, data)
-        
+
         if success:
             return jsonify({
                 'success': True,
@@ -119,7 +125,7 @@ def update_security_policy(plugin_id):
                 'success': False,
                 'message': '보안 정책 업데이트에 실패했습니다'
             }), 400
-            
+
     except Exception as e:
         logger.error(f"보안 정책 업데이트 실패: {e}")
         return jsonify({
@@ -127,13 +133,14 @@ def update_security_policy(plugin_id):
             'message': '보안 정책 업데이트 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/policies/<plugin_id>', methods=['DELETE'])
 @admin_required
 def delete_security_policy(plugin_id):
     """보안 정책 삭제"""
     try:
         success = security_system.delete_security_policy(plugin_id)
-        
+
         if success:
             return jsonify({
                 'success': True,
@@ -144,7 +151,7 @@ def delete_security_policy(plugin_id):
                 'success': False,
                 'message': '보안 정책 삭제에 실패했습니다'
             }), 400
-            
+
     except Exception as e:
         logger.error(f"보안 정책 삭제 실패: {e}")
         return jsonify({
@@ -152,19 +159,20 @@ def delete_security_policy(plugin_id):
             'message': '보안 정책 삭제 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/api-keys', methods=['GET'])
 @admin_required
 def get_api_keys():
     """API 키 목록 조회"""
     try:
-        plugin_id = request.args.get('plugin_id')
+        plugin_id = request.args.get('plugin_id') if request.args else None
         api_keys = security_system.get_api_keys(safe_str(plugin_id))
-        
+
         return jsonify({
             'success': True,
             'data': api_keys
         })
-        
+
     except Exception as e:
         logger.error(f"API 키 조회 실패: {e}")
         return jsonify({
@@ -172,26 +180,33 @@ def get_api_keys():
             'message': 'API 키 조회 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/api-keys', methods=['POST'])
 @admin_required
 def generate_api_key():
     """API 키 생성"""
     try:
         data = request.get_json()
-        
+
         if not data or 'plugin_id' not in data or 'name' not in data:
             return jsonify({
                 'success': False,
                 'message': '필수 필드가 누락되었습니다'
             }), 400
-        
-        plugin_id = data['plugin_id']
-        name = data['name']
-        permissions = data.get('permissions', ['read'])
-        expires_in_days = data.get('expires_in_days')
-        
+
+        plugin_id = str(data['plugin_id']) if data and data.get('plugin_id') else None
+        name = str(data['name']) if data and data.get('name') else None
+        permissions = data.get('permissions', ['read']) if data else ['read']
+        expires_in_days = data.get('expires_in_days') if data else None
+
+        if not plugin_id or not name:
+            return jsonify({
+                'success': False,
+                'message': 'plugin_id와 name은 필수입니다'
+            }), 400
+
         api_key = security_system.generate_api_key(plugin_id, name, permissions, expires_in_days)
-        
+
         if api_key:
             return jsonify({
                 'success': True,
@@ -208,7 +223,7 @@ def generate_api_key():
                 'success': False,
                 'message': 'API 키 생성에 실패했습니다'
             }), 400
-            
+
     except Exception as e:
         logger.error(f"API 키 생성 실패: {e}")
         return jsonify({
@@ -216,13 +231,14 @@ def generate_api_key():
             'message': 'API 키 생성 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/api-keys/<key_id>/revoke', methods=['POST'])
 @admin_required
 def revoke_api_key(key_id):
     """API 키 폐기"""
     try:
         success = security_system.revoke_api_key(key_id)
-        
+
         if success:
             return jsonify({
                 'success': True,
@@ -233,7 +249,7 @@ def revoke_api_key(key_id):
                 'success': False,
                 'message': 'API 키 폐기에 실패했습니다'
             }), 400
-            
+
     except Exception as e:
         logger.error(f"API 키 폐기 실패: {e}")
         return jsonify({
@@ -241,24 +257,31 @@ def revoke_api_key(key_id):
             'message': 'API 키 폐기 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/validate-api-key', methods=['POST'])
 def validate_api_key():
     """API 키 검증"""
     try:
         data = request.get_json()
-        
+
         if not data or 'api_key' not in data or 'plugin_id' not in data:
             return jsonify({
                 'success': False,
                 'message': '필수 필드가 누락되었습니다'
             }), 400
-        
-        api_key = data['api_key']
-        plugin_id = data['plugin_id']
-        required_permission = PermissionType(data.get('permission', 'read'))
-        
+
+        api_key = str(data['api_key']) if data and data.get('api_key') else None
+        plugin_id = str(data['plugin_id']) if data and data.get('plugin_id') else None
+        required_permission = PermissionType(data.get('permission', 'read') if data else 'read')
+
+        if not api_key or not plugin_id:
+            return jsonify({
+                'success': False,
+                'message': 'api_key와 plugin_id는 필수입니다'
+            }), 400
+
         validation_result = security_system.validate_api_key(api_key, plugin_id, required_permission)
-        
+
         if validation_result:
             return jsonify({
                 'success': True,
@@ -270,7 +293,7 @@ def validate_api_key():
                 'success': False,
                 'message': 'API 키가 유효하지 않습니다'
             }), 401
-            
+
     except Exception as e:
         logger.error(f"API 키 검증 실패: {e}")
         return jsonify({
@@ -278,17 +301,18 @@ def validate_api_key():
             'message': 'API 키 검증 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/audit-logs', methods=['GET'])
 @admin_required
 def get_audit_logs():
     """감사 로그 조회"""
     try:
-        plugin_id = request.args.get('plugin_id')
-        user_id = request.args.get('user_id')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        limit = int(request.args.get('limit', 100))
-        
+        plugin_id = request.args.get('plugin_id') if request.args else None
+        user_id = request.args.get('user_id') if request.args else None
+        start_date = request.args.get('start_date') if request.args else None
+        end_date = request.args.get('end_date') if request.args else None
+        limit = int(request.args.get('limit', 100)) if request.args else 100
+
         audit_logs = security_system.get_audit_logs(
             plugin_id=safe_str(plugin_id),
             user_id=safe_str(user_id),
@@ -296,12 +320,12 @@ def get_audit_logs():
             end_date=safe_str(end_date),
             limit=limit
         )
-        
+
         return jsonify({
             'success': True,
             'data': audit_logs
         })
-        
+
     except Exception as e:
         logger.error(f"감사 로그 조회 실패: {e}")
         return jsonify({
@@ -309,26 +333,27 @@ def get_audit_logs():
             'message': '감사 로그 조회 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/vulnerabilities', methods=['GET'])
 @admin_required
 def get_vulnerabilities():
     """취약점 보고서 조회"""
     try:
-        plugin_id = request.args.get('plugin_id')
-        severity = request.args.get('severity')
-        status = request.args.get('status')
-        
+        plugin_id = request.args.get('plugin_id') if request.args else None
+        severity = request.args.get('severity') if request.args else None
+        status = request.args.get('status') if request.args else None
+
         vulnerabilities = security_system.get_vulnerabilities(
             plugin_id=safe_str(plugin_id),
             severity=safe_str(severity),
             status=safe_str(status)
         )
-        
+
         return jsonify({
             'success': True,
             'data': vulnerabilities
         })
-        
+
     except Exception as e:
         logger.error(f"취약점 보고서 조회 실패: {e}")
         return jsonify({
@@ -336,13 +361,14 @@ def get_vulnerabilities():
             'message': '취약점 보고서 조회 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/vulnerabilities/scan/<plugin_id>', methods=['POST'])
 @admin_required
 def scan_vulnerabilities(plugin_id):
     """플러그인 취약점 스캔"""
     try:
         vulnerabilities = security_system.scan_plugin_vulnerabilities(plugin_id)
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -356,7 +382,7 @@ def scan_vulnerabilities(plugin_id):
             },
             'message': f'{len(vulnerabilities)}개의 취약점이 발견되었습니다'
         })
-        
+
     except Exception as e:
         logger.error(f"취약점 스캔 실패: {e}")
         return jsonify({
@@ -364,22 +390,30 @@ def scan_vulnerabilities(plugin_id):
             'message': '취약점 스캔 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/vulnerabilities/<report_id>/status', methods=['PUT'])
 @admin_required
 def update_vulnerability_status(report_id):
     """취약점 상태 업데이트"""
     try:
         data = request.get_json()
-        
+
         if not data or 'status' not in data:
             return jsonify({
                 'success': False,
                 'message': '상태 정보가 누락되었습니다'
             }), 400
+
+        status = str(data['status']) if data and data.get('status') else None
         
-        status = data['status']
+        if not status:
+            return jsonify({
+                'success': False,
+                'message': '유효한 상태 값이 필요합니다'
+            }), 400
+
         success = security_system.update_vulnerability_status(report_id, status)
-        
+
         if success:
             return jsonify({
                 'success': True,
@@ -390,7 +424,7 @@ def update_vulnerability_status(report_id):
                 'success': False,
                 'message': '취약점 상태 업데이트에 실패했습니다'
             }), 400
-            
+
     except Exception as e:
         logger.error(f"취약점 상태 업데이트 실패: {e}")
         return jsonify({
@@ -398,37 +432,44 @@ def update_vulnerability_status(report_id):
             'message': '취약점 상태 업데이트 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/permissions/check', methods=['POST'])
 @login_required
 def check_permission():
     """권한 확인"""
     try:
         data = request.get_json()
-        
+
         if not data or 'plugin_id' not in data or 'permission' not in data:
             return jsonify({
                 'success': False,
                 'message': '필수 필드가 누락되었습니다'
             }), 400
-        
-        plugin_id = data['plugin_id']
-        permission = PermissionType(data['permission'])
+
+        plugin_id = str(data['plugin_id']) if data and data.get('plugin_id') else None
+        permission = PermissionType(data['permission'] if data and data.get('permission') else 'read')
         user_id = getattr(request, 'user_id', None)
         if not user_id:
-            user_id = data.get('user_id', '')
-        
+            user_id = str(data.get('user_id', '')) if data and data.get('user_id') else ''
+
+        if not plugin_id:
+            return jsonify({
+                'success': False,
+                'message': 'plugin_id는 필수입니다'
+            }), 400
+
         has_permission = security_system.check_permission(plugin_id, user_id, permission)
-        
+
         return jsonify({
             'success': True,
             'data': {
                 'has_permission': has_permission,
                 'plugin_id': plugin_id,
-                'permission': permission.value,
+                'permission': permission.value if permission else 'read',
                 'user_id': user_id
             }
         })
-        
+
     except Exception as e:
         logger.error(f"권한 확인 실패: {e}")
         return jsonify({
@@ -436,17 +477,18 @@ def check_permission():
             'message': '권한 확인 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/security-levels', methods=['GET'])
 def get_security_levels():
     """보안 레벨 목록 조회"""
     try:
         security_levels = [level.value for level in SecurityLevel]
-        
+
         return jsonify({
             'success': True,
             'data': security_levels
         })
-        
+
     except Exception as e:
         logger.error(f"보안 레벨 조회 실패: {e}")
         return jsonify({
@@ -454,20 +496,21 @@ def get_security_levels():
             'message': '보안 레벨 조회 중 오류가 발생했습니다'
         }), 500
 
+
 @plugin_security_bp.route('/permission-types', methods=['GET'])
 def get_permission_types():
     """권한 유형 목록 조회"""
     try:
         permission_types = [perm.value for perm in PermissionType]
-        
+
         return jsonify({
             'success': True,
             'data': permission_types
         })
-        
+
     except Exception as e:
         logger.error(f"권한 유형 조회 실패: {e}")
         return jsonify({
             'success': False,
             'message': '권한 유형 조회 중 오류가 발생했습니다'
-        }), 500 
+        }), 500

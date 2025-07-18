@@ -15,27 +15,28 @@ import requests
 import yaml
 import subprocess
 
+
 class PluginTemplate:
     """플러그인 템플릿 생성기"""
-    
+
     def __init__(self, plugin_name: str, plugin_type: str = "basic"):
         self.plugin_name = plugin_name
         self.plugin_type = plugin_type
         self.template_dir = Path(__file__).parent / "templates"
         self.output_dir = Path(f"plugins/{plugin_name}")
-        
+
     def create_template(self) -> bool:
         """플러그인 템플릿 생성"""
         try:
             # 기본 디렉토리 구조 생성
             self._create_directory_structure()
-            
+
             # 플러그인 매니페스트 생성
             self._create_manifest()
-            
+
             # 기본 파일들 생성
             self._create_basic_files()
-            
+
             # 타입별 추가 파일 생성
             if self.plugin_type == "api":
                 self._create_api_template()
@@ -43,18 +44,18 @@ class PluginTemplate:
                 self._create_ui_template()
             elif self.plugin_type == "ai":
                 self._create_ai_template()
-            
+
             # 개발 가이드 생성
             self._create_development_guide()
-            
+
             print(f"✅ 플러그인 템플릿 '{self.plugin_name}' 생성 완료!")
             print(f"📁 위치: {self.output_dir}")
             return True
-            
+
         except Exception as e:
             print(f"❌ 템플릿 생성 실패: {e}")
             return False
-    
+
     def _create_directory_structure(self):
         """기본 디렉토리 구조 생성"""
         directories = [
@@ -64,12 +65,12 @@ class PluginTemplate:
             "tests",
             "docs",
             "assets",
-            "scripts"
+            "scripts",
         ]
-        
+
         for dir_name in directories:
             (self.output_dir / dir_name).mkdir(parents=True, exist_ok=True)
-    
+
     def _create_manifest(self):
         """플러그인 매니페스트 생성"""
         manifest = {
@@ -84,7 +85,7 @@ class PluginTemplate:
             "compatibility": {
                 "min_version": "1.0.0",
                 "max_version": "2.0.0",
-                "python_version": ">=3.8"
+                "python_version": ">=3.8",
             },
             "dependencies": [],
             "permissions": [],
@@ -93,12 +94,14 @@ class PluginTemplate:
             "settings": {},
             "hooks": [],
             "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
         }
-        
-        with open(self.output_dir / "config" / "plugin.json", "w", encoding="utf-8") as f:
+
+        with open(
+            self.output_dir / "config" / "plugin.json", "w", encoding="utf-8"
+        ) as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
-    
+
     def _create_basic_files(self):
         """기본 파일들 생성"""
         # README.md
@@ -124,20 +127,16 @@ class PluginTemplate:
 ## 라이선스
 MIT License
 """
-        
+
         with open(self.output_dir / "README.md", "w", encoding="utf-8") as f:
             f.write(readme_content)
-        
+
         # requirements.txt
-        requirements = [
-            "flask>=2.0.0",
-            "requests>=2.25.0",
-            "python-dotenv>=0.19.0"
-        ]
-        
+        requirements = ["flask>=2.0.0", "requests>=2.25.0", "python-dotenv>=0.19.0"]
+
         with open(self.output_dir / "requirements.txt", "w") as f:
             f.write("\n".join(requirements))
-        
+
         # .gitignore
         gitignore = """
 # Python
@@ -184,10 +183,10 @@ Thumbs.db
 .env
 config/local.json
 """
-        
+
         with open(self.output_dir / ".gitignore", "w") as f:
             f.write(gitignore)
-    
+
     def _create_api_template(self):
         """API 플러그인 템플릿 생성"""
         # main.py
@@ -233,14 +232,14 @@ def init_plugin(app):
     app.register_blueprint(plugin_bp, url_prefix=f'/{self.plugin_name}')
     logger.info(f'{self.plugin_name} 플러그인이 초기화되었습니다.')
 '''
-        
+
         with open(self.output_dir / "backend" / "main.py", "w", encoding="utf-8") as f:
             f.write(main_content)
-    
+
     def _create_ui_template(self):
         """UI 플러그인 템플릿 생성"""
         # frontend/index.html
-        ui_content = '''<!DOCTYPE html>
+        ui_content = """<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -264,11 +263,13 @@ def init_plugin(app):
         console.log('{{ self.plugin_name }} 플러그인이 로드되었습니다.');
     </script>
 </body>
-</html>'''
-        
-        with open(self.output_dir / "frontend" / "index.html", "w", encoding="utf-8") as f:
+</html>"""
+
+        with open(
+            self.output_dir / "frontend" / "index.html", "w", encoding="utf-8"
+        ) as f:
             f.write(ui_content)
-    
+
     def _create_ai_template(self):
         """AI 플러그인 템플릿 생성"""
         # ai_model.py
@@ -329,10 +330,12 @@ def init_ai_plugin(config: Dict[str, Any]):
     """AI 플러그인 초기화"""
     model = AIModel(config)
     return model'''
-        
-        with open(self.output_dir / "backend" / "ai_model.py", "w", encoding="utf-8") as f:
+
+        with open(
+            self.output_dir / "backend" / "ai_model.py", "w", encoding="utf-8"
+        ) as f:
             f.write(ai_content)
-    
+
     def _create_development_guide(self):
         """개발 가이드 생성"""
         guide_content = f"""# {self.plugin_name} 개발 가이드
@@ -436,74 +439,76 @@ python scripts/package.py
 - 문서: docs/ 폴더
 - 예제: examples/ 폴더
 """
-        
-        with open(self.output_dir / "docs" / "DEVELOPMENT.md", "w", encoding="utf-8") as f:
+
+        with open(
+            self.output_dir / "docs" / "DEVELOPMENT.md", "w", encoding="utf-8"
+        ) as f:
             f.write(guide_content)
 
 
 class PluginPackager:
     """플러그인 패키징 도구"""
-    
+
     def __init__(self, plugin_path: str):
         self.plugin_path = Path(plugin_path)
         self.manifest_path = self.plugin_path / "config" / "plugin.json"
-    
+
     def package(self, output_path: Optional[str] = None) -> str:
         """플러그인 패키징"""
         try:
             # 매니페스트 로드
-            with open(self.manifest_path, 'r', encoding='utf-8') as f:
+            with open(self.manifest_path, "r", encoding="utf-8") as f:
                 manifest = json.load(f)
-            
+
             # 출력 파일명 생성
             if not output_path:
-                version = manifest.get('version', '1.0.0')
+                version = manifest.get("version", "1.0.0")
                 output_path = f"{manifest['name']}_v{version}.zip"
-            
+
             # ZIP 파일 생성
-            with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for file_path in self.plugin_path.rglob('*'):
+            with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+                for file_path in self.plugin_path.rglob("*"):
                     if file_path.is_file() and not self._should_exclude(file_path):
                         arcname = file_path.relative_to(self.plugin_path)
                         zipf.write(file_path, arcname)
-            
+
             print(f"✅ 플러그인 패키징 완료: {output_path}")
             return output_path
-            
+
         except Exception as e:
             print(f"❌ 패키징 실패: {e}")
             return ""  # 빈 문자열 반환
-    
+
     def _should_exclude(self, file_path: Path) -> bool:
         """제외할 파일 확인"""
         exclude_patterns = [
-            '__pycache__',
-            '.git',
-            '.vscode',
-            '.idea',
-            '*.pyc',
-            '*.pyo',
-            '*.pyd',
-            '.DS_Store',
-            'Thumbs.db',
-            '*.log',
-            'venv',
-            'env',
-            'node_modules'
+            "__pycache__",
+            ".git",
+            ".vscode",
+            ".idea",
+            "*.pyc",
+            "*.pyo",
+            "*.pyd",
+            ".DS_Store",
+            "Thumbs.db",
+            "*.log",
+            "venv",
+            "env",
+            "node_modules",
         ]
-        
+
         file_str = str(file_path)
         return any(pattern in file_str for pattern in exclude_patterns)
 
 
 class PluginValidator:
     """플러그인 검증 도구"""
-    
+
     def __init__(self, plugin_path: str):
         self.plugin_path = Path(plugin_path)
         self.errors = []
         self.warnings = []
-    
+
     def validate(self, run_pytest: bool = False) -> bool:
         """플러그인 검증 및 테스트 자동화"""
         try:
@@ -513,11 +518,23 @@ class PluginValidator:
             self._validate_security()
             test_result = None
             if run_pytest:
-                test_path = self.plugin_path / 'tests'
+                test_path = self.plugin_path / "tests"
                 if test_path.exists():
                     print("🧪 pytest로 테스트 자동 실행 중...")
                     try:
-                        completed = subprocess.run(['pytest', str(test_path), '--maxfail=1', '--disable-warnings', '-q', '--tb=short', '--json-report'], capture_output=True, text=True)
+                        completed = subprocess.run(
+                            [
+                                "pytest",
+                                str(test_path),
+                                "--maxfail=1",
+                                "--disable-warnings",
+                                "-q",
+                                "--tb=short",
+                                "--json-report",
+                            ],
+                            capture_output=True,
+                            text=True,
+                        )
                         print(completed.stdout)
                         if completed.returncode != 0:
                             self.errors.append("pytest 테스트 실패")
@@ -525,12 +542,17 @@ class PluginValidator:
                         else:
                             test_result = True
                         # pytest 결과 파일 저장
-                        report_path = test_path / '.report.json'
+                        report_path = test_path / ".report.json"
                         if report_path.exists():
-                            with open(report_path, 'r', encoding='utf-8') as f:
+                            with open(report_path, "r", encoding="utf-8") as f:
                                 import json
+
                                 result_json = json.load(f)
-                            with open(self.plugin_path / 'test_result.json', 'w', encoding='utf-8') as f:
+                            with open(
+                                self.plugin_path / "test_result.json",
+                                "w",
+                                encoding="utf-8",
+                            ) as f:
                                 json.dump(result_json, f, indent=2, ensure_ascii=False)
                     except Exception as e:
                         self.errors.append(f"pytest 실행 오류: {e}")
@@ -542,88 +564,89 @@ class PluginValidator:
         except Exception as e:
             print(f"❌ 검증 실패: {e}")
             return False
-    
+
     def _validate_structure(self):
         """구조 검증"""
-        required_dirs = ['backend', 'config']
-        required_files = ['config/plugin.json', 'README.md']
-        
+        required_dirs = ["backend", "config"]
+        required_files = ["config/plugin.json", "README.md"]
+
         for dir_name in required_dirs:
             if not (self.plugin_path / dir_name).exists():
                 self.errors.append(f"필수 디렉토리 누락: {dir_name}")
-        
+
         for file_name in required_files:
             if not (self.plugin_path / file_name).exists():
                 self.errors.append(f"필수 파일 누락: {file_name}")
-    
+
     def _validate_manifest(self):
         """매니페스트 검증"""
         manifest_path = self.plugin_path / "config" / "plugin.json"
-        
+
         try:
-            with open(manifest_path, 'r', encoding='utf-8') as f:
+            with open(manifest_path, "r", encoding="utf-8") as f:
                 manifest = json.load(f)
-            
-            required_fields = ['name', 'version', 'description', 'author']
+
+            required_fields = ["name", "version", "description", "author"]
             for field in required_fields:
                 if field not in manifest:
                     self.errors.append(f"매니페스트 필수 필드 누락: {field}")
-            
+
             # 버전 형식 검증
-            version = manifest.get('version', '')
+            version = manifest.get("version", "")
             if not self._is_valid_version(version):
                 self.errors.append(f"잘못된 버전 형식: {version}")
-                
+
         except json.JSONDecodeError:
             self.errors.append("매니페스트 JSON 형식 오류")
         except Exception as e:
             self.errors.append(f"매니페스트 검증 실패: {e}")
-    
+
     def _validate_code(self):
         """코드 검증"""
         # Python 파일 검증
-        for py_file in self.plugin_path.rglob('*.py'):
+        for py_file in self.plugin_path.rglob("*.py"):
             self._validate_python_file(py_file)
-    
+
     def _validate_python_file(self, file_path: Path):
         """Python 파일 검증"""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
-            
+
             # 기본 검증
-            if 'import os' in content and 'os.system' in content:
+            if "import os" in content and "os.system" in content:
                 self.warnings.append(f"잠재적 보안 위험: {file_path}")
-            
-            if 'eval(' in content:
+
+            if "eval(" in content:
                 self.errors.append(f"보안 위험 함수 사용: {file_path}")
-                
+
         except Exception as e:
             self.warnings.append(f"파일 읽기 실패: {file_path} - {e}")
-    
+
     def _validate_security(self):
         """보안 검증"""
         # 기본 보안 검증 로직
         pass
-    
+
     def _is_valid_version(self, version: str) -> bool:
         """버전 형식 검증"""
         import re
-        pattern = r'^\d+\.\d+\.\d+$'
+
+        pattern = r"^\d+\.\d+\.\d+$"
         return bool(re.match(pattern, version))
-    
+
     def _print_results(self):
         """검증 결과 출력"""
         if self.errors:
             print("❌ 검증 오류:")
             for error in self.errors:
                 print(f"  - {error}")
-        
+
         if self.warnings:
             print("⚠️ 검증 경고:")
             for warning in self.warnings:
                 print(f"  - {warning}")
-        
+
         if not self.errors and not self.warnings:
             print("✅ 검증 통과!")
 
@@ -633,11 +656,11 @@ if __name__ == "__main__":
     # 플러그인 템플릿 생성
     template = PluginTemplate("my_plugin", "api")
     template.create_template()
-    
+
     # 플러그인 검증
     validator = PluginValidator("plugins/my_plugin")
     validator.validate()
-    
+
     # 플러그인 패키징
     packager = PluginPackager("plugins/my_plugin")
-    packager.package() 
+    packager.package()

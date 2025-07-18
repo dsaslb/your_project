@@ -12,6 +12,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 // Main Screens
 import DashboardScreen from '../screens/main/DashboardScreen';
+import IntegratedDashboardScreen from '../screens/IntegratedDashboardScreen';
 import ScheduleScreen from '../screens/main/ScheduleScreen';
 import AttendanceScreen from '../screens/main/AttendanceScreen';
 import OrdersScreen from '../screens/main/OrdersScreen';
@@ -60,6 +61,9 @@ const EmployeeTabNavigator = () => (
           case 'Dashboard':
             iconName = 'dashboard';
             break;
+          case 'IntegratedDashboard':
+            iconName = 'analytics';
+            break;
           case 'Schedule':
             iconName = 'schedule';
             break;
@@ -83,6 +87,7 @@ const EmployeeTabNavigator = () => (
     })}
   >
     <Tab.Screen name="Dashboard" component={DashboardScreen} />
+    <Tab.Screen name="IntegratedDashboard" component={IntegratedDashboardScreen} options={{ title: '통합 대시보드' }} />
     <Tab.Screen name="Schedule" component={ScheduleScreen} />
     <Tab.Screen name="Attendance" component={AttendanceScreen} />
     <Tab.Screen name="Orders" component={OrdersScreen} />

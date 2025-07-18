@@ -1,14 +1,15 @@
-from datetime import datetime, timedelta
-from dateutil import parser as date_parser
-
-from flask import Blueprint, flash, jsonify, render_template, request, redirect, url_for
-from flask_login import current_user, login_required
-from sqlalchemy import and_
-
+from services.notice_service import create_notice_for_event  # pyright: ignore
+from utils.logger import log_action, log_error  # pyright: ignore
+from models_main import Schedule, User
 from extensions import db
-from models import Schedule, User
-from utils.logger import log_action, log_error
-from services.notice_service import create_notice_for_event
+from sqlalchemy import and_
+from flask_login import current_user, login_required
+from flask import Blueprint, flash, jsonify, render_template, request, redirect, url_for
+from dateutil import parser as date_parser
+from datetime import datetime, timedelta
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+
 
 schedule_bp = Blueprint("schedule", __name__)
 
@@ -16,8 +17,8 @@ schedule_bp = Blueprint("schedule", __name__)
 @schedule_bp.route("/schedule", methods=["GET"])
 @login_required
 def schedule_view():
-    from_date_str = request.args.get("from", datetime.now().strftime("%Y-%m-%d"))
-    to_date_str = request.args.get("to", datetime.now().strftime("%Y-%m-%d"))
+    from_date_str = request.args.get() if args else None"from", datetime.now() if args else None.strftime("%Y-%m-%d"))
+    to_date_str = request.args.get() if args else None"to", datetime.now() if args else None.strftime("%Y-%m-%d"))
 
     try:
         from_dt = date_parser.parse(from_date_str).date()
@@ -37,13 +38,13 @@ def schedule_view():
         to_dt = from_dt + timedelta(days=90)
 
     days = [(from_dt + timedelta(days=i)) for i in range(days_diff + 1)]
-    
+
     # 통합된 Schedule 모델에서 근무와 청소 스케줄 분리
     all_schedules = Schedule.query.filter(
         Schedule.date >= from_dt,
         Schedule.date <= to_dt
     ).all()
-    
+
     work_schedules = [s for s in all_schedules if s.type == 'work']
     clean_schedules = [s for s in all_schedules if s.type == 'clean']
 
@@ -75,12 +76,12 @@ def clean_manage():
             User.role.in_(['employee', 'manager']),
             User.status.in_(['approved', 'active'])
         ).order_by(User.name).all()
-        
+
         # 청소 스케줄 조회
         cleanings = Schedule.query.filter_by(type='clean').order_by(Schedule.date.desc()).all()
-        
+
         return render_template("clean_manage.html", employees=employees, cleanings=cleanings)
-        
+
     except Exception as e:
         flash("청소 관리 페이지 로딩 중 오류가 발생했습니다.", "error")
         return redirect(url_for("dashboard"))
@@ -98,28 +99,28 @@ def api_add_schedule():
     """스케줄 추가 API"""
     try:
         data = request.json
-        
+
         # 더미 응답 데이터
         dummy_response = {
             "success": True,
             "message": "스케줄이 성공적으로 추가되었습니다.",
             "schedule": {
                 "id": 999,
-                "user_id": data.get("user_id"),
-                "date": data.get("date"),
-                "start_time": data.get("start_time"),
-                "end_time": data.get("end_time"),
-                "type": data.get("type", "work"),
-                "category": data.get("category", "근무"),
-                "memo": data.get("memo"),
-                "team": data.get("team"),
-                "branch_id": data.get("branch_id", 1),
-                "manager_id": data.get("manager_id", 1)
+                "user_id": data.get() if data else None"user_id") if data else None,
+                "date": data.get() if data else None"date") if data else None,
+                "start_time": data.get() if data else None"start_time") if data else None,
+                "end_time": data.get() if data else None"end_time") if data else None,
+                "type": data.get() if data else None"type", "work") if data else None,
+                "category": data.get() if data else None"category", "근무") if data else None,
+                "memo": data.get() if data else None"memo") if data else None,
+                "team": data.get() if data else None"team") if data else None,
+                "branch_id": data.get() if data else None"branch_id", 1) if data else None,
+                "manager_id": data.get() if data else None"manager_id", 1) if data else None
             }
         }
-        
+
         return jsonify(dummy_response)
-        
+
     except Exception as e:
         return jsonify({"success": False, "message": "스케줄 추가 중 오류가 발생했습니다."})
 
@@ -131,19 +132,19 @@ def api_update_schedule(schedule_id):
     try:
         schedule = Schedule.query.get_or_404(schedule_id)
         data = request.json
-        
-        schedule.date = datetime.strptime(data["date"], "%Y-%m-%d").date()
-        schedule.start_time = datetime.strptime(data["start_time"], "%H:%M").time()
-        schedule.end_time = datetime.strptime(data["end_time"], "%H:%M").time()
-        schedule.type = data.get("type", "work")
-        schedule.category = data.get("category", "근무")
-        schedule.memo = data.get("memo")
-        schedule.team = data.get("team")
-        schedule.plan = data.get("plan")
-        schedule.manager_id = data.get("manager_id")
-        
+
+        schedule.date = datetime.strptime(data["date"] if data is not None else None, "%Y-%m-%d").date()
+        schedule.start_time = datetime.strptime(data["start_time"] if data is not None else None, "%H:%M").time()
+        schedule.end_time = datetime.strptime(data["end_time"] if data is not None else None, "%H:%M").time()
+        schedule.type = data.get() if data else None"type", "work") if data else None
+        schedule.category = data.get() if data else None"category", "근무") if data else None
+        schedule.memo = data.get() if data else None"memo") if data else None
+        schedule.team = data.get() if data else None"team") if data else None
+        schedule.plan = data.get() if data else None"plan") if data else None
+        schedule.manager_id = data.get() if data else None"manager_id") if data else None
+
         db.session.commit()
-        
+
         log_action(current_user.id, "schedule_update", f"스케줄 수정: {schedule_id}")
         return jsonify({"success": True, "message": "스케줄이 수정되었습니다."})
     except Exception as e:
@@ -159,7 +160,7 @@ def api_delete_schedule(schedule_id):
         schedule = Schedule.query.get_or_404(schedule_id)
         db.session.delete(schedule)
         db.session.commit()
-        
+
         log_action(current_user.id, "schedule_delete", f"스케줄 삭제: {schedule_id}")
         return jsonify({"success": True, "message": "스케줄이 삭제되었습니다."})
     except Exception as e:
@@ -196,8 +197,8 @@ def api_get_schedule(schedule_id):
 @login_required
 def get_schedules():
     """스케줄 목록 조회 API"""
-    schedule_type = request.args.get('type', 'work')
-    
+    schedule_type = request.args.get() if args else None'type', 'work') if args else None
+
     # 더미 스케줄 데이터
     schedules = [
         {
@@ -231,7 +232,7 @@ def get_schedules():
             "type": schedule_type
         }
     ]
-    
+
     return jsonify({"success": True, "data": schedules})
 
 
@@ -240,19 +241,19 @@ def get_schedules():
 def create_schedule():
     """스케줄 생성 API"""
     data = request.get_json()
-    
+
     # 더미 응답
     new_schedule = {
         "id": 999,
-        "staff": data.get('staff', '새 직원'),
-        "date": data.get('date', '2024-01-15'),
-        "shift": data.get('shift', '오전'),
+        "staff": data.get() if data else None'staff', '새 직원') if data else None,
+        "date": data.get() if data else None'date', '2024-01-15') if data else None,
+        "shift": data.get() if data else None'shift', '오전') if data else None,
         "status": "pending",
-        "start_time": data.get('start_time', '09:00'),
-        "end_time": data.get('end_time', '17:00'),
-        "type": data.get('type', 'work')
+        "start_time": data.get() if data else None'start_time', '09:00') if data else None,
+        "end_time": data.get() if data else None'end_time', '17:00') if data else None,
+        "type": data.get() if data else None'type', 'work') if data else None
     }
-    
+
     return jsonify({"success": True, "data": new_schedule, "message": "스케줄이 생성되었습니다."})
 
 
@@ -261,19 +262,19 @@ def create_schedule():
 def update_schedule(schedule_id):
     """스케줄 수정 API"""
     data = request.get_json()
-    
+
     # 더미 응답
     updated_schedule = {
         "id": schedule_id,
-        "staff": data.get('staff', '수정된 직원'),
-        "date": data.get('date', '2024-01-15'),
-        "shift": data.get('shift', '오전'),
-        "status": data.get('status', 'confirmed'),
-        "start_time": data.get('start_time', '09:00'),
-        "end_time": data.get('end_time', '17:00'),
-        "type": data.get('type', 'work')
+        "staff": data.get() if data else None'staff', '수정된 직원') if data else None,
+        "date": data.get() if data else None'date', '2024-01-15') if data else None,
+        "shift": data.get() if data else None'shift', '오전') if data else None,
+        "status": data.get() if data else None'status', 'confirmed') if data else None,
+        "start_time": data.get() if data else None'start_time', '09:00') if data else None,
+        "end_time": data.get() if data else None'end_time', '17:00') if data else None,
+        "type": data.get() if data else None'type', 'work') if data else None
     }
-    
+
     return jsonify({"success": True, "data": updated_schedule, "message": "스케줄이 수정되었습니다."})
 
 
@@ -302,7 +303,7 @@ def get_schedule_detail(schedule_id):
         "created_at": "2024-01-10T10:00:00Z",
         "updated_at": "2024-01-12T15:30:00Z"
     }
-    
+
     return jsonify({"success": True, "data": schedule_detail})
 
 
@@ -331,5 +332,5 @@ def get_calendar_data():
             }
         ]
     }
-    
-    return jsonify({"success": True, "data": calendar_data}) 
+
+    return jsonify({"success": True, "data": calendar_data})

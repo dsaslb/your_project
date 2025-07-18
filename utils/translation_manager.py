@@ -1,8 +1,11 @@
-import logging
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
-from datetime import datetime
 import re
+from datetime import datetime
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+import logging
+from typing import Optional
+form = None  # pyright: ignore
+
 
 @dataclass
 class TranslationRequest:
@@ -12,7 +15,8 @@ class TranslationRequest:
     source_language: str
     target_language: str
     timestamp: datetime
-    user_id: Optional[int] = None
+    user_id: Optional[int] if Optional is not None else None = None
+
 
 @dataclass
 class TranslationResult:
@@ -25,12 +29,13 @@ class TranslationResult:
     timestamp: datetime
     processing_time: float
 
+
 class TranslationManager:
     """실시간 번역 시스템"""
-    
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        
+
         # 지원 언어
         self.supported_languages = {
             "ko": "한국어",
@@ -42,7 +47,7 @@ class TranslationManager:
             "de": "Deutsch",
             "ru": "Русский"
         }
-        
+
         # 언어 감지 패턴
         self.language_patterns = {
             "ko": r"[가-힣]",
@@ -54,13 +59,13 @@ class TranslationManager:
             "de": r"[äöüß]",
             "ru": r"[а-яё]"
         }
-        
+
         # 번역 캐시
         self.translation_cache = {}
-        
+
         # 번역 히스토리
         self.translation_history = []
-        
+
         # 메뉴 번역 데이터베이스
         self.menu_translations = {
             "ko": {
@@ -100,7 +105,7 @@ class TranslationManager:
                 "디저트": "甜点"
             }
         }
-        
+
         # 일반적인 번역 데이터베이스
         self.common_translations = {
             "ko-en": {
@@ -128,58 +133,58 @@ class TranslationManager:
                 "Welcome": "환영합니다"
             }
         }
-    
-    def detect_language(self, text: str) -> Tuple[str, float]:
+
+    def detect_language(self,  text: str) -> Tuple[str, float] if Tuple is not None else None:
         """언어 감지"""
         if not text:
             return "ko", 0.0
-        
+
         language_scores = {}
-        
-        for lang_code, pattern in self.language_patterns.items():
+
+        for lang_code, pattern in self.language_patterns.items() if language_patterns is not None else []:
             matches = re.findall(pattern, text)
             score = len(matches) / len(text) if text else 0.0
-            language_scores[lang_code] = score
-        
+            language_scores[lang_code] if language_scores is not None else None = score
+
         # 가장 높은 점수의 언어 반환
         if language_scores:
             try:
-                detected_lang = max(language_scores.keys(), key=lambda k: language_scores[k])
-                confidence = language_scores[detected_lang]
+                detected_lang = max(language_scores.keys(), key=lambda k: language_scores[k] if language_scores is not None else None)
+                confidence = language_scores[detected_lang] if language_scores is not None else None
                 return detected_lang, confidence
             except (ValueError, KeyError):
                 return "ko", 0.0
-        
+
         return "ko", 0.0
-    
-    def translate_text(self, text: str, target_language: str, source_language: Optional[str] = None) -> TranslationResult:
+
+    def translate_text(self,  text: str,  target_language: str, source_language=None) -> TranslationResult:
         """텍스트 번역"""
         try:
             start_time = datetime.now()
-            
+
             # 언어 감지 (소스 언어가 지정되지 않은 경우)
             if not source_language:
                 source_language, confidence = self.detect_language(text)
             else:
                 confidence = 0.9
-            
+
             # 지원 언어 확인
             if target_language not in self.supported_languages:
                 raise ValueError(f"Unsupported target language: {target_language}")
-            
+
             # 캐시 확인
             cache_key = f"{text}_{source_language}_{target_language}"
             if cache_key in self.translation_cache:
-                cached_result = self.translation_cache[cache_key]
+                cached_result = self.translation_cache[cache_key] if translation_cache is not None else None
                 cached_result.timestamp = datetime.now()
                 return cached_result
-            
+
             # 번역 수행
             translated_text = self._perform_translation(text, source_language, target_language)
-            
+
             # 처리 시간 계산
             processing_time = (datetime.now() - start_time).total_seconds()
-            
+
             # 번역 결과 생성
             result = TranslationResult(
                 request_id=self._generate_request_id(),
@@ -190,38 +195,38 @@ class TranslationManager:
                 timestamp=datetime.now(),
                 processing_time=processing_time
             )
-            
+
             # 캐시에 저장
-            self.translation_cache[cache_key] = result
-            
+            self.translation_cache[cache_key] if translation_cache is not None else None = result
+
             # 히스토리에 추가
             self.translation_history.append(result)
-            
-            self.logger.info(f"Translation completed - {source_language} -> {target_language}: {text[:50]}...")
-            
+
+            self.logger.info(f"Translation completed - {source_language} -> {target_language}: {text[:50] if text is not None else None}...")
+
             return result
-            
+
         except Exception as e:
             self.logger.error(f"Error in translation: {str(e)}")
             raise
-    
+
     def _perform_translation(self, text: str, source_lang: str, target_lang: str) -> str:
         """실제 번역 수행 (더미 구현)"""
         # 실제 구현에서는 Google Translate, Azure Translator, AWS Translate 등 사용
-        
+
         # 메뉴 번역 확인
         if source_lang in self.menu_translations and target_lang in self.menu_translations:
-            for ko_word, target_word in self.menu_translations[target_lang].items():
+            for ko_word, target_word in self.menu_translations[target_lang] if menu_translations is not None else None.items() if None is not None else []:
                 if ko_word in text:
                     text = text.replace(ko_word, target_word)
-        
+
         # 일반 번역 확인
         translation_key = f"{source_lang}-{target_lang}"
         if translation_key in self.common_translations:
-            for source_word, target_word in self.common_translations[translation_key].items():
-                if source_word.lower() in text.lower():
+            for source_word, target_word in self.common_translations[translation_key] if common_translations is not None else None.items() if None is not None else []:
+                if source_word.lower() if source_word is not None else '' in text.lower() if text is not None else '':
                     text = text.replace(source_word, target_word)
-        
+
         # 더미 번역 (실제로는 외부 API 사용)
         dummy_translations = {
             "ko-en": {
@@ -239,109 +244,111 @@ class TranslationManager:
                 "Thank you": "감사합니다"
             }
         }
-        
+
         translation_key = f"{source_lang}-{target_lang}"
         if translation_key in dummy_translations:
-            for source_word, target_word in dummy_translations[translation_key].items():
-                if source_word.lower() in text.lower():
+            for source_word, target_word in dummy_translations[translation_key] if dummy_translations is not None else None.items() if None is not None else []:
+                if source_word.lower() if source_word is not None else '' in text.lower() if text is not None else '':
                     text = text.replace(source_word, target_word)
-        
+
         return text
-    
-    def translate_menu(self, menu_items: List[Dict], target_language: str) -> List[Dict]:
+
+    def translate_menu(self, menu_items: List[Dict] if List is not None else None, target_language: str) -> List[Dict] if List is not None else None:
         """메뉴 번역"""
         try:
             translated_menu = []
-            
-            for item in menu_items:
+
+            for item in menu_items if menu_items is not None:
                 translated_item = item.copy()
-                
+
                 # 메뉴 이름 번역
                 if "name" in item and target_language in self.menu_translations:
-                    ko_name = item["name"]
-                    if ko_name in self.menu_translations[target_language]:
-                        translated_item["name"] = self.menu_translations[target_language][ko_name]
-                
+                    ko_name = item["name"] if item is not None else None
+                    if ko_name in self.menu_translations[target_language] if menu_translations is not None else None:
+                        translated_item["name"] if translated_item is not None else None = self.menu_translations[target_language] if menu_translations is not None else None[ko_name]
+
                 # 설명 번역
                 if "description" in item:
-                    translated_item["description"] = self.translate_text(
-                        item["description"], target_language, "ko"
+                    translated_item["description"] if translated_item is not None else None = self.translate_text(
+                        item["description"] if item is not None else None, target_language, "ko"
                     ).translated_text
-                
+
                 translated_menu.append(translated_item)
-            
+
             return translated_menu
-            
+
         except Exception as e:
             self.logger.error(f"Error translating menu: {str(e)}")
             return menu_items
-    
+
     def translate_notification(self, notification: Dict, target_language: str) -> Dict:
         """알림 번역"""
         try:
             translated_notification = notification.copy()
-            
+
             # 제목 번역
             if "title" in notification:
-                translated_notification["title"] = self.translate_text(
-                    notification["title"], target_language, "ko"
+                translated_notification["title"] if translated_notification is not None else None = self.translate_text(
+                    notification["title"] if notification is not None else None, target_language, "ko"
                 ).translated_text
-            
+
             # 내용 번역
             if "content" in notification:
-                translated_notification["content"] = self.translate_text(
-                    notification["content"], target_language, "ko"
+                translated_notification["content"] if translated_notification is not None else None = self.translate_text(
+                    notification["content"] if notification is not None else None, target_language, "ko"
                 ).translated_text
-            
+
             return translated_notification
-            
+
         except Exception as e:
             self.logger.error(f"Error translating notification: {str(e)}")
             return notification
-    
-    def batch_translate(self, texts: List[str], target_language: str, source_language: Optional[str] = None) -> List[TranslationResult]:
+
+    def batch_translate(self, texts: List[str] if List is not None else None, target_language: str, source_language: Optional[str] if Optional is not None else None = None) -> List[TranslationResult] if List is not None else None:
         """배치 번역"""
         results = []
-        
-        for text in texts:
+
+        for text in texts if texts is not None:
             try:
-                result = self.translate_text(text, target_language, source_language)
+                result = self.translate_text(text,  target_language,  source_language)
                 results.append(result)
             except Exception as e:
                 self.logger.error(f"Error in batch translation: {str(e)}")
                 # 에러가 발생해도 계속 진행
                 continue
-        
+
         return results
-    
+
     def _generate_request_id(self) -> str:
         """요청 ID 생성"""
         return f"TR{datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]}"
-    
+
     def get_translation_statistics(self) -> Dict:
         """번역 통계"""
         if not self.translation_history:
             return {"total_translations": 0, "language_pairs": {}}
-        
+
         language_pairs = {}
         for result in self.translation_history:
             pair = f"{result.source_language}-{result.target_language}"
-            language_pairs[pair] = language_pairs.get(pair, 0) + 1
-        
+            if language_pairs is not None:
+                language_pairs[pair] = language_pairs.get(pair, 0) + 1
+
         return {
             "total_translations": len(self.translation_history),
             "language_pairs": language_pairs,
             "average_confidence": sum(r.confidence for r in self.translation_history) / len(self.translation_history),
             "average_processing_time": sum(r.processing_time for r in self.translation_history) / len(self.translation_history)
         }
-    
+
     def clear_cache(self):
         """번역 캐시 정리"""
         self.translation_cache.clear()
-    
+
     def clear_history(self):
         """번역 히스토리 정리"""
         self.translation_history.clear()
 
+
 # 전역 번역 매니저 인스턴스
-translation_manager = TranslationManager() 
+translation_manager = TranslationManager()

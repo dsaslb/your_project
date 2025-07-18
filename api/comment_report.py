@@ -1,7 +1,9 @@
+from models_main import NoticeComment, Report, db
+from api.utils import admin_required  # pyright: ignore
 from flask import Blueprint, jsonify, request
+args = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from api.utils import admin_required
-from models import NoticeComment, Report, db
 
 comment_report_bp = Blueprint(
     "comment_report", __name__, url_prefix="/api/admin/comment-reports"

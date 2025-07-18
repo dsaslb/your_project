@@ -1,6 +1,6 @@
 # import pytest  # 사용되지 않으므로 삭제
 
-# from models import Notice, NoticeHistory, User, db  # 사용되지 않으므로 삭제
+# from models_main import Notice, NoticeHistory, User, db  # 사용되지 않으므로 삭제
 from services.notice_service import update_notice
 
 

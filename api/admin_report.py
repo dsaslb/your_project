@@ -1,7 +1,10 @@
+from models_main import Notice, NoticeComment, Report, SystemLog, User, db
+from api.utils import admin_required  # pyright: ignore
 from flask import Blueprint, jsonify, request
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from api.utils import admin_required
-from models import Notice, NoticeComment, Report, SystemLog, User, db
 
 admin_report_bp = Blueprint("admin_report", __name__, url_prefix="/api/admin/reports")
 
@@ -167,7 +170,7 @@ def resolve_report(current_admin, report_id):
         description: 신고를 찾을 수 없음
     """
     data = request.json
-    action = data.get("action")
+    action = data.get("action") if data else None
     if action not in ["delete", "hide", "dismiss"]:
         return jsonify({"msg": "Invalid action specified"}), 400
 

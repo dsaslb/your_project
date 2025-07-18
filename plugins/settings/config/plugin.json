@@ -1,0 +1,8 @@
+{
+  "name": "settings",
+  "version": "1.0.0",
+  "description": "설정 플러그인",
+  "main": "backend/__init__.py",
+  "author": "your_program",
+  "license": "MIT"
+} 

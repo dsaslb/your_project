@@ -9,78 +9,96 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
+
 class PluginTemplateGenerator:
     """플러그인 템플릿 생성기"""
-    
+
     def __init__(self, plugins_dir: str = "plugins"):
         self.plugins_dir = Path(plugins_dir)
         self.plugins_dir.mkdir(exist_ok=True)
-    
-    def create_plugin(self, plugin_id: str, name: str, description: str, 
-                     category: str, author: str = "Your Program Team") -> bool:
+
+    def create_plugin(
+        self,
+        plugin_id: str,
+        name: str,
+        description: str,
+        category: str,
+        author: str = "Your Program Team",
+    ) -> bool:
         """새 플러그인 생성"""
         try:
             plugin_dir = self.plugins_dir / plugin_id
-            
+
             if plugin_dir.exists():
                 print(f"플러그인 디렉토리가 이미 존재합니다: {plugin_dir}")
                 return False
-            
+
             # 플러그인 디렉토리 구조 생성
             self._create_directory_structure(plugin_dir)
-            
+
             # 플러그인 설정 파일 생성
-            self._create_plugin_config(plugin_dir, plugin_id, name, description, category, author)
-            
+            self._create_plugin_config(
+                plugin_dir, plugin_id, name, description, category, author
+            )
+
             # 백엔드 메인 파일 생성
-            self._create_backend_main(plugin_dir, plugin_id, name, description, category, author)
-            
+            self._create_backend_main(
+                plugin_dir, plugin_id, name, description, category, author
+            )
+
             # 프론트엔드 컴포넌트 생성
             self._create_frontend_components(plugin_dir, plugin_id, name)
-            
+
             # README 파일 생성
             self._create_readme(plugin_dir, plugin_id, name, description)
-            
+
             print(f"플러그인 '{name}' ({plugin_id}) 생성 완료!")
             print(f"위치: {plugin_dir}")
             print("\n다음 단계:")
             print("1. 플러그인 코드 수정")
             print("2. 설정 파일 확인")
             print("3. 서버 재시작")
-            
+
             return True
-            
+
         except Exception as e:
             print(f"플러그인 생성 실패: {e}")
             return False
-    
+
     def _create_directory_structure(self, plugin_dir: Path):
         """플러그인 디렉토리 구조 생성"""
         # 백엔드 디렉토리
         (plugin_dir / "backend").mkdir(parents=True)
-        
+
         # 프론트엔드 디렉토리
         (plugin_dir / "frontend").mkdir()
         (plugin_dir / "frontend" / "components").mkdir()
         (plugin_dir / "frontend" / "pages").mkdir()
-        
+
         # 설정 디렉토리
         (plugin_dir / "config").mkdir()
-        
+
         # DB 마이그레이션 디렉토리
         (plugin_dir / "migrations").mkdir()
-        
+
         # 정적 파일 디렉토리
         (plugin_dir / "static").mkdir()
         (plugin_dir / "static" / "css").mkdir()
         (plugin_dir / "static" / "js").mkdir()
         (plugin_dir / "static" / "images").mkdir()
-        
+
         # 테스트 디렉토리
         (plugin_dir / "tests").mkdir()
-    
-    def _create_plugin_config(self, plugin_dir: Path, plugin_id: str, name: str, 
-                             description: str, category: str, author: str):
+
+    def _create_plugin_config(
+        self,
+        plugin_dir: Path,
+        plugin_id: str,
+        name: str,
+        description: str,
+        category: str,
+        author: str,
+    ):
         """플러그인 설정 파일 생성"""
         config = {
             "name": name,
@@ -93,10 +111,7 @@ class PluginTemplateGenerator:
             "enabled": True,
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat(),
-            "config": {
-                "auto_enable": True,
-                "debug_mode": False
-            },
+            "config": {"auto_enable": True, "debug_mode": False},
             "routes": [
                 {
                     "path": "/main",
@@ -104,7 +119,7 @@ class PluginTemplateGenerator:
                     "handler": "handle_main",
                     "auth_required": True,
                     "roles": ["admin", "manager"],
-                    "description": "메인 기능 API"
+                    "description": "메인 기능 API",
                 }
             ],
             "menus": [
@@ -114,7 +129,7 @@ class PluginTemplateGenerator:
                     "icon": "puzzle-piece",
                     "parent": category,
                     "roles": ["admin", "manager"],
-                    "order": 1
+                    "order": 1,
                 }
             ],
             "config_schema": [
@@ -123,27 +138,32 @@ class PluginTemplateGenerator:
                     "type": "boolean",
                     "default": True,
                     "required": False,
-                    "description": "자동 활성화"
+                    "description": "자동 활성화",
                 },
                 {
                     "key": "debug_mode",
                     "type": "boolean",
                     "default": False,
                     "required": False,
-                    "description": "디버그 모드"
-                }
+                    "description": "디버그 모드",
+                },
             ],
-            "db_migrations": [
-                f"001_create_{plugin_id}_table.sql"
-            ]
+            "db_migrations": [f"001_create_{plugin_id}_table.sql"],
         }
-        
+
         config_file = plugin_dir / "config" / "plugin.json"
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
-    
-    def _create_backend_main(self, plugin_dir: Path, plugin_id: str, name: str, 
-                            description: str, category: str, author: str):
+
+    def _create_backend_main(
+        self,
+        plugin_dir: Path,
+        plugin_id: str,
+        name: str,
+        description: str,
+        category: str,
+        author: str,
+    ):
         """백엔드 메인 파일 생성"""
         main_content = f'''"""
 {name} 플러그인
@@ -288,15 +308,15 @@ def create_plugin() -> {plugin_id.replace('_', '').title()}Plugin:
     """플러그인 인스턴스 생성"""
     return {plugin_id.replace('_', '').title()}Plugin()
 '''
-        
+
         main_file = plugin_dir / "backend" / "main.py"
-        with open(main_file, 'w', encoding='utf-8') as f:
+        with open(main_file, "w", encoding="utf-8") as f:
             f.write(main_content)
-    
+
     def _create_frontend_components(self, plugin_dir: Path, plugin_id: str, name: str):
         """프론트엔드 컴포넌트 생성"""
         # 메인 페이지 컴포넌트
-        page_content = f'''import React from 'react';
+        page_content = f"""import React from 'react';
 import {{ Card, CardContent, CardHeader, CardTitle }} from '@/components/ui/card';
 import {{ Button }} from '@/components/ui/button';
 
@@ -321,15 +341,17 @@ export default function {plugin_id.replace('_', '').title()}Page() {{
     </div>
   );
 }}
-'''
-        
+"""
+
         page_file = plugin_dir / "frontend" / "pages" / f"{plugin_id}.tsx"
-        with open(page_file, 'w', encoding='utf-8') as f:
+        with open(page_file, "w", encoding="utf-8") as f:
             f.write(page_content)
-    
-    def _create_readme(self, plugin_dir: Path, plugin_id: str, name: str, description: str):
+
+    def _create_readme(
+        self, plugin_dir: Path, plugin_id: str, name: str, description: str
+    ):
         """README 파일 생성"""
-        readme_content = f'''# {name} 플러그인
+        readme_content = f"""# {name} 플러그인
 
 {description}
 
@@ -363,11 +385,12 @@ export default function {plugin_id.replace('_', '').title()}Page() {{
 ## 라이센스
 
 MIT License
-'''
-        
+"""
+
         readme_file = plugin_dir / "README.md"
-        with open(readme_file, 'w', encoding='utf-8') as f:
+        with open(readme_file, "w", encoding="utf-8") as f:
             f.write(readme_content)
+
 
 def main():
     """메인 함수"""
@@ -375,26 +398,35 @@ def main():
     parser.add_argument("plugin_id", help="플러그인 ID (예: my_plugin)")
     parser.add_argument("name", help="플러그인 이름 (예: 내 플러그인)")
     parser.add_argument("description", help="플러그인 설명")
-    parser.add_argument("--category", default="general", help="플러그인 카테고리 (기본값: general)")
-    parser.add_argument("--author", default="Your Program Team", help="작성자 (기본값: Your Program Team)")
-    parser.add_argument("--plugins-dir", default="plugins", help="플러그인 디렉토리 (기본값: plugins)")
-    
+    parser.add_argument(
+        "--category", default="general", help="플러그인 카테고리 (기본값: general)"
+    )
+    parser.add_argument(
+        "--author",
+        default="Your Program Team",
+        help="작성자 (기본값: Your Program Team)",
+    )
+    parser.add_argument(
+        "--plugins-dir", default="plugins", help="플러그인 디렉토리 (기본값: plugins)"
+    )
+
     args = parser.parse_args()
-    
+
     generator = PluginTemplateGenerator(args.plugins_dir)
     success = generator.create_plugin(
         plugin_id=args.plugin_id,
         name=args.name,
         description=args.description,
         category=args.category,
-        author=args.author
+        author=args.author,
     )
-    
+
     if success:
         print("✅ 플러그인 생성 완료!")
     else:
         print("❌ 플러그인 생성 실패!")
         exit(1)
 
+
 if __name__ == "__main__":
-    main() 
+    main()

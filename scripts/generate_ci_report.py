@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 import jinja2
 
+
 class CIReportGenerator:
     def __init__(self, artifacts_dir: str = "artifacts"):
         self.artifacts_dir = Path(artifacts_dir)
@@ -25,68 +26,69 @@ class CIReportGenerator:
             "performance": {},
             "security": {},
             "plugins": {},
-            "deployment": {}
+            "deployment": {},
         }
-        
+
     def load_artifacts(self):
         """아티팩트 로드"""
         if not self.artifacts_dir.exists():
             print(f"아티팩트 디렉토리가 없습니다: {self.artifacts_dir}")
             return
-        
+
         # 코드 품질 리포트 로드
         self.load_code_quality_reports()
-        
+
         # 테스트 리포트 로드
         self.load_test_reports()
-        
+
         # 성능 리포트 로드
         self.load_performance_reports()
-        
+
         # 보안 리포트 로드
         self.load_security_reports()
-        
+
         # 플러그인 리포트 로드
         self.load_plugin_reports()
-        
+
         # 배포 리포트 로드
         self.load_deployment_reports()
-        
+
         # 전체 요약 생성
         self.generate_summary()
-    
+
     def load_code_quality_reports(self):
         """코드 품질 리포트 로드"""
         code_quality_dir = self.artifacts_dir / "code-quality-reports"
         if not code_quality_dir.exists():
             return
-        
+
         # Bandit 보안 리포트
         bandit_file = code_quality_dir / "bandit-report.json"
         if bandit_file.exists():
             try:
-                with open(bandit_file, 'r') as f:
+                with open(bandit_file, "r") as f:
                     self.report_data["code_quality"]["bandit"] = json.load(f)
             except Exception as e:
                 print(f"Bandit 리포트 로드 실패: {e}")
-        
+
         # Safety 취약점 리포트
         safety_file = code_quality_dir / "safety-report.json"
         if safety_file.exists():
             try:
-                with open(safety_file, 'r') as f:
+                with open(safety_file, "r") as f:
                     self.report_data["code_quality"]["safety"] = json.load(f)
             except Exception as e:
                 print(f"Safety 리포트 로드 실패: {e}")
-        
+
         # 커버리지 리포트
         coverage_files = list(code_quality_dir.glob("coverage.xml"))
         if coverage_files:
             try:
                 import xml.etree.ElementTree as ET
+
                 tree = ET.parse(coverage_files[0])
                 root = tree.getroot()
-                
+
                 coverage_data = {}
                 for package in root.findall(".//package"):
                     package_name = package.get("name", "unknown")
@@ -94,71 +96,74 @@ class CIReportGenerator:
                     branch_rate = float(package.get("branch-rate", 0))
                     coverage_data[package_name] = {
                         "line_rate": line_rate * 100,
-                        "branch_rate": branch_rate * 100
+                        "branch_rate": branch_rate * 100,
                     }
-                
+
                 self.report_data["code_quality"]["coverage"] = coverage_data
             except Exception as e:
                 print(f"커버리지 리포트 로드 실패: {e}")
-    
+
     def load_test_reports(self):
         """테스트 리포트 로드"""
         test_dirs = list(self.artifacts_dir.glob("test-coverage-*"))
         if not test_dirs:
             return
-        
+
         test_data = {}
         for test_dir in test_dirs:
             python_version = test_dir.name.replace("test-coverage-", "")
-            
+
             # 커버리지 데이터
             coverage_file = test_dir / "coverage.xml"
             if coverage_file.exists():
                 try:
                     import xml.etree.ElementTree as ET
+
                     tree = ET.parse(coverage_file)
                     root = tree.getroot()
-                    
+
                     total_lines = 0
                     covered_lines = 0
-                    
+
                     for line in root.findall(".//line"):
                         total_lines += 1
                         if line.get("hits", "0") != "0":
                             covered_lines += 1
-                    
-                    coverage_rate = (covered_lines / total_lines * 100) if total_lines > 0 else 0
-                    
+
+                    coverage_rate = (
+                        (covered_lines / total_lines * 100) if total_lines > 0 else 0
+                    )
+
                     test_data[python_version] = {
                         "total_lines": total_lines,
                         "covered_lines": covered_lines,
-                        "coverage_rate": coverage_rate
+                        "coverage_rate": coverage_rate,
                     }
                 except Exception as e:
                     print(f"테스트 커버리지 로드 실패 ({python_version}): {e}")
-        
+
         self.report_data["tests"]["coverage"] = test_data
-    
+
     def load_performance_reports(self):
         """성능 리포트 로드"""
         performance_dir = self.artifacts_dir / "performance-reports"
         if not performance_dir.exists():
             return
-        
+
         # Locust 리포트
         locust_file = performance_dir / "locust-report.html"
         if locust_file.exists():
             self.report_data["performance"]["locust_report"] = str(locust_file)
-        
+
         # 벤치마크 리포트
         benchmark_dir = performance_dir / ".benchmarks"
         if benchmark_dir.exists():
             benchmark_files = list(benchmark_dir.glob("*.json"))
             if benchmark_files:
                 try:
-                    with open(benchmark_files[0], 'r') as f:
+                    with open(benchmark_files[0], "r") as f:
                         benchmark_data = json.load(f)
-                    
+
                     # 벤치마크 결과 정리
                     benchmarks = {}
                     for benchmark in benchmark_data.get("benchmarks", []):
@@ -168,46 +173,46 @@ class CIReportGenerator:
                             "mean": stats.get("mean", 0),
                             "stddev": stats.get("stddev", 0),
                             "min": stats.get("min", 0),
-                            "max": stats.get("max", 0)
+                            "max": stats.get("max", 0),
                         }
-                    
+
                     self.report_data["performance"]["benchmarks"] = benchmarks
                 except Exception as e:
                     print(f"벤치마크 리포트 로드 실패: {e}")
-    
+
     def load_security_reports(self):
         """보안 리포트 로드"""
         security_dir = self.artifacts_dir / "security-reports"
         if not security_dir.exists():
             return
-        
+
         # Bandit 리포트
         bandit_file = security_dir / "bandit-report.json"
         if bandit_file.exists():
             try:
-                with open(bandit_file, 'r') as f:
+                with open(bandit_file, "r") as f:
                     self.report_data["security"]["bandit"] = json.load(f)
             except Exception as e:
                 print(f"보안 Bandit 리포트 로드 실패: {e}")
-        
+
         # Safety 리포트
         safety_file = security_dir / "safety-report.json"
         if safety_file.exists():
             try:
-                with open(safety_file, 'r') as f:
+                with open(safety_file, "r") as f:
                     self.report_data["security"]["safety"] = json.load(f)
             except Exception as e:
                 print(f"보안 Safety 리포트 로드 실패: {e}")
-        
+
         # Semgrep 리포트
         semgrep_file = security_dir / "semgrep-report.json"
         if semgrep_file.exists():
             try:
-                with open(semgrep_file, 'r') as f:
+                with open(semgrep_file, "r") as f:
                     self.report_data["security"]["semgrep"] = json.load(f)
             except Exception as e:
                 print(f"보안 Semgrep 리포트 로드 실패: {e}")
-    
+
     def load_plugin_reports(self):
         """플러그인 리포트 로드"""
         # 플러그인 검증 리포트
@@ -215,21 +220,21 @@ class CIReportGenerator:
         if plugin_validation_files:
             latest_file = max(plugin_validation_files, key=os.path.getctime)
             try:
-                with open(latest_file, 'r') as f:
+                with open(latest_file, "r") as f:
                     self.report_data["plugins"]["validation"] = json.load(f)
             except Exception as e:
                 print(f"플러그인 검증 리포트 로드 실패: {e}")
-        
+
         # 플러그인 테스트 리포트
         plugin_test_files = glob.glob("plugin_test_report_*.json")
         if plugin_test_files:
             latest_file = max(plugin_test_files, key=os.path.getctime)
             try:
-                with open(latest_file, 'r') as f:
+                with open(latest_file, "r") as f:
                     self.report_data["plugins"]["tests"] = json.load(f)
             except Exception as e:
                 print(f"플러그인 테스트 리포트 로드 실패: {e}")
-    
+
     def load_deployment_reports(self):
         """배포 리포트 로드"""
         # 배포 로그
@@ -237,11 +242,11 @@ class CIReportGenerator:
         if deployment_log_files:
             latest_file = max(deployment_log_files, key=os.path.getctime)
             try:
-                with open(latest_file, 'r') as f:
+                with open(latest_file, "r") as f:
                     self.report_data["deployment"]["log"] = json.load(f)
             except Exception as e:
                 print(f"배포 로그 로드 실패: {e}")
-    
+
     def generate_summary(self):
         """전체 요약 생성"""
         summary = {
@@ -250,15 +255,19 @@ class CIReportGenerator:
             "test_coverage": 0,
             "security_issues": 0,
             "performance_score": 0,
-            "deployment_status": "unknown"
+            "deployment_status": "unknown",
         }
-        
+
         # 플러그인 요약
         if "validation" in self.report_data["plugins"]:
             validation_data = self.report_data["plugins"]["validation"]
-            summary["total_plugins"] = validation_data.get("summary", {}).get("total_plugins", 0)
-            summary["valid_plugins"] = validation_data.get("summary", {}).get("valid_plugins", 0)
-        
+            summary["total_plugins"] = validation_data.get("summary", {}).get(
+                "total_plugins", 0
+            )
+            summary["valid_plugins"] = validation_data.get("summary", {}).get(
+                "valid_plugins", 0
+            )
+
         # 테스트 커버리지 요약
         if "coverage" in self.report_data["tests"]:
             coverage_data = self.report_data["tests"]["coverage"]
@@ -266,19 +275,19 @@ class CIReportGenerator:
                 # Python 3.11 기준으로 사용
                 py311_data = coverage_data.get("3.11", {})
                 summary["test_coverage"] = py311_data.get("coverage_rate", 0)
-        
+
         # 보안 이슈 요약
         security_issues = 0
         if "bandit" in self.report_data["security"]:
             bandit_data = self.report_data["security"]["bandit"]
             security_issues += len(bandit_data.get("results", []))
-        
+
         if "safety" in self.report_data["security"]:
             safety_data = self.report_data["security"]["safety"]
             security_issues += len(safety_data.get("vulnerabilities", []))
-        
+
         summary["security_issues"] = security_issues
-        
+
         # 성능 점수 계산
         if "benchmarks" in self.report_data["performance"]:
             benchmarks = self.report_data["performance"]["benchmarks"]
@@ -289,16 +298,16 @@ class CIReportGenerator:
                     avg_time = sum(avg_response_times) / len(avg_response_times)
                     # 100ms 이하를 100점으로 하는 기준
                     summary["performance_score"] = max(0, 100 - (avg_time / 100 * 100))
-        
+
         # 배포 상태
         if "log" in self.report_data["deployment"]:
             deployment_log = self.report_data["deployment"]["log"]
             if deployment_log:
                 last_entry = deployment_log[-1]
                 summary["deployment_status"] = last_entry.get("status", "unknown")
-        
+
         self.report_data["summary"] = summary
-    
+
     def generate_html_report(self) -> str:
         """HTML 리포트 생성"""
         template_str = """
@@ -781,32 +790,33 @@ class CIReportGenerator:
 </body>
 </html>
         """
-        
+
         template = jinja2.Template(template_str)
         return template.render(report_data=self.report_data)
-    
+
     def save_report(self, output_file: str = "ci-report.html"):
         """리포트 저장"""
         html_content = self.generate_html_report()
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
+
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(html_content)
-        
+
         print(f"CI/CD 리포트가 생성되었습니다: {output_file}")
         return output_file
+
 
 def main():
     """메인 함수"""
     generator = CIReportGenerator()
-    
+
     print("CI/CD 리포트 생성 중...")
     generator.load_artifacts()
-    
+
     output_file = generator.save_report()
-    
+
     print(f"✅ 리포트 생성 완료: {output_file}")
     print(f"📊 요약:")
-    
+
     summary = generator.report_data["summary"]
     print(f"  - 플러그인: {summary['valid_plugins']}/{summary['total_plugins']} 유효")
     print(f"  - 테스트 커버리지: {summary['test_coverage']:.1f}%")
@@ -814,5 +824,6 @@ def main():
     print(f"  - 성능 점수: {summary['performance_score']:.0f}점")
     print(f"  - 배포 상태: {summary['deployment_status']}")
 
+
 if __name__ == "__main__":
-    main() 
+    main()

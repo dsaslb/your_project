@@ -1,14 +1,18 @@
+from email.mime.text import MIMEText  # pyright: ignore
 import smtplib
-from email.mime.text import MIMEText
+from flask import request
+config = None  # pyright: ignore
 
 # 이메일 알림 발송 유틸리티
-# 사용 예시: send_email('admin@example.com', '제목', '내용')
+# 사용 예시: send_email('admin@example.com',  '제목',  '내용')
 # 실제 SMTP 서버/외부 푸시 서비스 연동 예시 (초보자용)
-def send_email(to, subject, body):
+
+
+def send_email(to,  subject,  body):
     msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = 'noreply@example.com'
-    msg['To'] = to
+    msg['Subject'] if msg is not None else None = subject
+    msg['From'] if msg is not None else None = 'noreply@example.com'
+    msg['To'] if msg is not None else None = to
     try:
         # 실제 SMTP 서버 주소/포트로 변경 필요
         with smtplib.SMTP('smtp.example.com', 587) as server:
@@ -25,7 +29,9 @@ def send_email(to, subject, body):
 
 # 푸시 알림 발송 유틸리티 (예시)
 # 외부 푸시 서비스 연동 예시 (초보자용)
-def send_push(user_id, title, message):
+
+
+def send_push(user_id,  title,  message):
     try:
         # 실제 푸시 서비스 연동 코드 필요
         print(f'[푸시] {user_id}에게 "{title}" 알림: {message}')
@@ -37,7 +43,9 @@ def send_push(user_id, title, message):
         # audit_log('알림실패', 'Notification', user_id, str(e))
 
 # 슬랙 알림 연동 예시 (초보자용)
-def slack_notify(channel, message):
+
+
+def slack_notify(channel,  message):
     # 실제 슬랙 Webhook URL 필요
     import requests
     webhook_url = 'https://hooks.slack.com/services/your/webhook/url'
@@ -49,7 +57,9 @@ def slack_notify(channel, message):
         print(f'[슬랙] 전송 실패: {e}')
 
 # SMS 알림 연동 예시 (초보자용)
-def send_sms(phone, message):
+
+
+def send_sms(phone,  message):
     # 실제 SMS API 연동 필요
     print(f'[SMS] {phone} 번호로 메시지 전송: {message}')
 
@@ -59,4 +69,4 @@ def send_sms(phone, message):
 # SMTP_SERVER = os.getenv('SMTP_SERVER')
 # SMTP_USER = os.getenv('SMTP_USER')
 # SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
-# PUSH_API_KEY = os.getenv('PUSH_API_KEY') 
+# PUSH_API_KEY = os.getenv('PUSH_API_KEY')

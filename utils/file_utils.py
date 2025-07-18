@@ -6,8 +6,8 @@ from datetime import datetime
 import logging
 from typing import Optional
 
-from werkzeug.utils import secure_filename
-from utils.logger import log_action
+from werkzeug.utils import secure_filename  # pyright: ignore
+from utils.logger import log_action  # pyright: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -160,10 +160,10 @@ def upload_to_s3(file_path: str, bucket_name: str, object_name: str) -> bool:
     try:
         # S3 업로드 로직 구현
         # boto3 등을 사용하여 실제 S3 업로드 수행
-        
+
         logger.info(f"S3 업로드 성공: {object_name}")
         return True
-        
+
     except Exception as e:
         logger.error(f"S3 업로드 실패: {e}")
         return False

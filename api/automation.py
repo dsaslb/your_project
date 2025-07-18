@@ -1,8 +1,12 @@
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from datetime import datetime, timedelta
-import random
 import json
+import random
+from datetime import datetime, timedelta
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 
 automation_bp = Blueprint('automation', __name__)
 
@@ -17,13 +21,15 @@ AUTOMATION_TYPES = {
 }
 
 # 자동화 규칙 데이터 생성 (실제 데이터베이스 기반)
+
+
 def generate_automation_rules():
     """실제 자동화 규칙 데이터 생성"""
-    from models import AutomationRule
-    
+    from models_main import AutomationRule
+
     # 실제 데이터베이스에서 자동화 규칙 조회
     rules = AutomationRule.query.filter_by(is_active=True).all()
-    
+
     return [
         {
             'id': rule.id,
@@ -40,13 +46,15 @@ def generate_automation_rules():
     ]
 
 # 알림 데이터 생성 (실제 데이터베이스 기반)
+
+
 def generate_notifications():
     """실제 알림 데이터 생성"""
-    from models import Notification
-    
+    from models_main import Notification
+
     # 실제 데이터베이스에서 알림 조회
     notifications = Notification.query.order_by(Notification.created_at.desc()).limit(10).all()
-    
+
     return [
         {
             'id': notification.id,
@@ -62,20 +70,21 @@ def generate_notifications():
         for notification in notifications
     ]
 
+
 @automation_bp.route('/api/automation/rules', methods=['GET'])
 @jwt_required()
 def get_automation_rules():
     """자동화 규칙 목록 조회"""
     try:
         rules = generate_automation_rules()
-        
+
         return jsonify({
             'success': True,
             'data': {
                 'rules': rules,
                 'summary': {
                     'total_rules': len(rules),
-                    'active_rules': len([r for r in rules if r['is_active']]),
+                    'active_rules': len([r for r in rules if r['is_active'] if r is not None else None]),
                     'types': list(AUTOMATION_TYPES.keys())
                 }
             }
@@ -83,32 +92,33 @@ def get_automation_rules():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @automation_bp.route('/api/automation/rules', methods=['POST'])
 @jwt_required()
 def create_automation_rule():
     """새 자동화 규칙 생성"""
     try:
         data = request.get_json()
-        
+
         # 필수 필드 검증
         required_fields = ['name', 'type', 'description', 'conditions', 'actions']
-        for field in required_fields:
+        for field in required_fields if required_fields is not None:
             if field not in data:
                 return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
-        
+
         # 새 규칙 생성 (실제로는 데이터베이스에 저장)
         new_rule = {
             'id': random.randint(1000, 9999),
-            'name': data['name'],
-            'type': data['type'],
-            'description': data['description'],
-            'conditions': data['conditions'],
-            'actions': data['actions'],
-            'is_active': data.get('is_active', True),
+            'name': data['name'] if data is not None else None,
+            'type': data['type'] if data is not None else None,
+            'description': data['description'] if data is not None else None,
+            'conditions': data['conditions'] if data is not None else None,
+            'actions': data['actions'] if data is not None else None,
+            'is_active': data.get() if data else None'is_active', True) if data else None,
             'created_at': datetime.now().isoformat(),
             'last_triggered': None
         }
-        
+
         return jsonify({
             'success': True,
             'data': new_rule,
@@ -117,6 +127,7 @@ def create_automation_rule():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @automation_bp.route('/api/automation/rules/<int:rule_id>', methods=['PUT'])
 @jwt_required()
 def update_automation_rule(rule_id):
@@ -124,17 +135,17 @@ def update_automation_rule(rule_id):
     try:
         data = request.get_json()
         rules = generate_automation_rules()
-        
+
         # 규칙 찾기
-        rule = next((r for r in rules if r['id'] == rule_id), None)
+        rule = next((r for r in rules if r['id'] if r is not None else None == rule_id), None)
         if not rule:
             return jsonify({'success': False, 'error': 'Rule not found'}), 404
-        
+
         # 규칙 업데이트
-        for key, value in data.items():
+        for key, value in data.items() if data is not None else []:
             if key in rule:
-                rule[key] = value
-        
+                rule[key] if rule is not None else None = value
+
         return jsonify({
             'success': True,
             'data': rule,
@@ -143,18 +154,19 @@ def update_automation_rule(rule_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @automation_bp.route('/api/automation/rules/<int:rule_id>', methods=['DELETE'])
 @jwt_required()
 def delete_automation_rule(rule_id):
     """자동화 규칙 삭제"""
     try:
         rules = generate_automation_rules()
-        
+
         # 규칙 찾기
-        rule = next((r for r in rules if r['id'] == rule_id), None)
+        rule = next((r for r in rules if r['id'] if r is not None else None == rule_id), None)
         if not rule:
             return jsonify({'success': False, 'error': 'Rule not found'}), 404
-        
+
         return jsonify({
             'success': True,
             'message': '자동화 규칙이 성공적으로 삭제되었습니다.'
@@ -162,31 +174,33 @@ def delete_automation_rule(rule_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @automation_bp.route('/api/automation/rules/<int:rule_id>/toggle', methods=['POST'])
 @jwt_required()
 def toggle_automation_rule(rule_id):
     """자동화 규칙 활성화/비활성화 토글"""
     try:
         rules = generate_automation_rules()
-        
+
         # 규칙 찾기
-        rule = next((r for r in rules if r['id'] == rule_id), None)
+        rule = next((r for r in rules if r['id'] if r is not None else None == rule_id), None)
         if not rule:
             return jsonify({'success': False, 'error': 'Rule not found'}), 404
-        
+
         # 토글
-        rule['is_active'] = not rule['is_active']
-        
+        rule['is_active'] if rule is not None else None = not rule['is_active'] if rule is not None else None
+
         return jsonify({
             'success': True,
             'data': {
                 'id': rule_id,
-                'is_active': rule['is_active']
+                'is_active': rule['is_active'] if rule is not None else None
             },
-            'message': f'규칙이 {"활성화" if rule["is_active"] else "비활성화"}되었습니다.'
+            'message': f'규칙이 {"활성화" if rule["is_active"] if rule is not None else None else "비활성화"}되었습니다.'
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @automation_bp.route('/api/automation/notifications', methods=['GET'])
 @jwt_required()
@@ -194,22 +208,22 @@ def get_notifications():
     """알림 목록 조회"""
     try:
         notifications = generate_notifications()
-        
+
         # 필터링 옵션
-        status = request.args.get('status')
-        priority = request.args.get('priority')
-        type_filter = request.args.get('type')
-        
+        status = request.args.get() if args else None'status') if args else None
+        priority = request.args.get() if args else None'priority') if args else None
+        type_filter = request.args.get() if args else None'type') if args else None
+
         if status:
-            notifications = [n for n in notifications if n['status'] == status]
+            notifications = [n for n in notifications if n['status'] if n is not None else None == status]
         if priority:
-            notifications = [n for n in notifications if n['priority'] == priority]
+            notifications = [n for n in notifications if n['priority'] if n is not None else None == priority]
         if type_filter:
-            notifications = [n for n in notifications if n['type'] == type_filter]
-        
+            notifications = [n for n in notifications if n['type'] if n is not None else None == type_filter]
+
         # 읽지 않은 알림 수
-        unread_count = len([n for n in notifications if n['status'] == 'unread'])
-        
+        unread_count = len([n for n in notifications if n['status'] if n is not None else None == 'unread'])
+
         return jsonify({
             'success': True,
             'data': {
@@ -217,12 +231,13 @@ def get_notifications():
                 'summary': {
                     'total': len(notifications),
                     'unread': unread_count,
-                    'high_priority': len([n for n in notifications if n['priority'] == 'high'])
+                    'high_priority': len([n for n in notifications if n['priority'] if n is not None else None == 'high'])
                 }
             }
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @automation_bp.route('/api/automation/notifications/<int:notification_id>/read', methods=['POST'])
 @jwt_required()
@@ -230,15 +245,15 @@ def mark_notification_read(notification_id):
     """알림 읽음 처리"""
     try:
         notifications = generate_notifications()
-        
+
         # 알림 찾기
-        notification = next((n for n in notifications if n['id'] == notification_id), None)
+        notification = next((n for n in notifications if n['id'] if n is not None else None == notification_id), None)
         if not notification:
             return jsonify({'success': False, 'error': 'Notification not found'}), 404
-        
+
         # 읽음 처리
-        notification['status'] = 'read'
-        
+        notification['status'] if notification is not None else None = 'read'
+
         return jsonify({
             'success': True,
             'message': '알림이 읽음 처리되었습니다.'
@@ -246,18 +261,19 @@ def mark_notification_read(notification_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @automation_bp.route('/api/automation/notifications/read-all', methods=['POST'])
 @jwt_required()
 def mark_all_notifications_read():
     """모든 알림 읽음 처리"""
     try:
         notifications = generate_notifications()
-        
+
         # 모든 읽지 않은 알림을 읽음 처리
-        for notification in notifications:
-            if notification['status'] == 'unread':
-                notification['status'] = 'read'
-        
+        for notification in notifications if notifications is not None:
+            if notification['status'] if notification is not None else None == 'unread':
+                notification['status'] if notification is not None else None = 'read'
+
         return jsonify({
             'success': True,
             'message': '모든 알림이 읽음 처리되었습니다.'
@@ -265,18 +281,19 @@ def mark_all_notifications_read():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @automation_bp.route('/api/automation/notifications/<int:notification_id>', methods=['DELETE'])
 @jwt_required()
 def delete_notification(notification_id):
     """알림 삭제"""
     try:
         notifications = generate_notifications()
-        
+
         # 알림 찾기
-        notification = next((n for n in notifications if n['id'] == notification_id), None)
+        notification = next((n for n in notifications if n['id'] if n is not None else None == notification_id), None)
         if not notification:
             return jsonify({'success': False, 'error': 'Notification not found'}), 404
-        
+
         return jsonify({
             'success': True,
             'message': '알림이 삭제되었습니다.'
@@ -284,35 +301,36 @@ def delete_notification(notification_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @automation_bp.route('/api/automation/execute', methods=['POST'])
 @jwt_required()
 def execute_automation():
     """자동화 규칙 실행 (테스트용)"""
     try:
         data = request.get_json()
-        rule_id = data.get('rule_id')
-        
+        rule_id = data.get() if data else None'rule_id') if data else None
+
         if not rule_id:
             return jsonify({'success': False, 'error': 'Rule ID is required'}), 400
-        
+
         rules = generate_automation_rules()
-        rule = next((r for r in rules if r['id'] == rule_id), None)
-        
+        rule = next((r for r in rules if r['id'] if r is not None else None == rule_id), None)
+
         if not rule:
             return jsonify({'success': False, 'error': 'Rule not found'}), 404
-        
-        if not rule['is_active']:
+
+        if not rule['is_active'] if rule is not None else None:
             return jsonify({'success': False, 'error': 'Rule is not active'}), 400
-        
+
         # 규칙 실행 시뮬레이션
         execution_result = {
             'rule_id': rule_id,
-            'rule_name': rule['name'],
+            'rule_name': rule['name'] if rule is not None else None,
             'executed_at': datetime.now().isoformat(),
-            'actions_executed': rule['actions'],
+            'actions_executed': rule['actions'] if rule is not None else None,
             'status': 'success'
         }
-        
+
         return jsonify({
             'success': True,
             'data': execution_result,
@@ -321,6 +339,7 @@ def execute_automation():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @automation_bp.route('/api/automation/statistics', methods=['GET'])
 @jwt_required()
 def get_automation_statistics():
@@ -328,32 +347,32 @@ def get_automation_statistics():
     try:
         rules = generate_automation_rules()
         notifications = generate_notifications()
-        
+
         # 통계 계산
         total_rules = len(rules)
-        active_rules = len([r for r in rules if r['is_active']])
-        
+        active_rules = len([r for r in rules if r['is_active'] if r is not None else None])
+
         # 타입별 규칙 수
         type_counts = {}
-        for rule in rules:
-            rule_type = rule['type']
-            type_counts[rule_type] = type_counts.get(rule_type, 0) + 1
-        
+        for rule in rules if rules is not None:
+            rule_type = rule['type'] if rule is not None else None
+            type_counts[rule_type] if type_counts is not None else None = type_counts.get() if type_counts else Nonerule_type, 0) if type_counts else None + 1
+
         # 알림 통계
         total_notifications = len(notifications)
-        unread_notifications = len([n for n in notifications if n['status'] == 'unread'])
-        high_priority_notifications = len([n for n in notifications if n['priority'] == 'high'])
-        
+        unread_notifications = len([n for n in notifications if n['status'] if n is not None else None == 'unread'])
+        high_priority_notifications = len([n for n in notifications if n['priority'] if n is not None else None == 'high'])
+
         # 최근 실행된 규칙
         recent_executions = [
             {
-                'rule_name': rule['name'],
-                'last_triggered': rule['last_triggered'],
-                'type': rule['type']
+                'rule_name': rule['name'] if rule is not None else None,
+                'last_triggered': rule['last_triggered'] if rule is not None else None,
+                'type': rule['type'] if rule is not None else None
             }
-            for rule in rules if rule['last_triggered']
+            for rule in rules if rule['last_triggered'] if rule is not None else None
         ]
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -372,4 +391,4 @@ def get_automation_statistics():
             }
         })
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500 
+        return jsonify({'success': False, 'error': str(e)}), 500

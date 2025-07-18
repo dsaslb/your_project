@@ -1,11 +1,14 @@
-from flask import Blueprint, jsonify, request, current_app
-from flask_login import login_required, current_user
-from sqlalchemy import and_, or_
-from datetime import datetime, timedelta
-import json
-
+from models_main import Brand, Branch, User, AIDiagnosis, ImprovementRequest, AIImprovementSuggestion, SystemHealth, ApprovalWorkflow
 from extensions import db
-from models import Brand, Branch, User, AIDiagnosis, ImprovementRequest, AIImprovementSuggestion, SystemHealth, ApprovalWorkflow
+import json
+from datetime import datetime, timedelta
+from sqlalchemy import and_, or_
+from flask_login import login_required, current_user
+from flask import Blueprint, jsonify, request, current_app
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
+
 
 ai_management_bp = Blueprint('ai_management', __name__)
 
@@ -18,16 +21,16 @@ def get_diagnoses():
         # 권한 확인
         if not current_user.has_permission('ai_management', 'view'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         # 필터링 옵션
         brand_id = request.args.get('brand_id')
         store_id = request.args.get('store_id')
         status = request.args.get('status')
         diagnosis_type = request.args.get('type')
         severity = request.args.get('severity')
-        
+
         query = AIDiagnosis.query
-        
+
         # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 진단만 조회
         if current_user.role == 'brand_manager':
             query = query.filter_by(brand_id=current_user.brand_id)
@@ -35,10 +38,10 @@ def get_diagnoses():
             pass
         else:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         if brand_id:
             query = query.filter_by(brand_id=brand_id)
-        
+
         if store_id:
             query = query.filter_by(store_id=store_id)
         if status:
@@ -47,9 +50,9 @@ def get_diagnoses():
             query = query.filter_by(diagnosis_type=diagnosis_type)
         if severity:
             query = query.filter_by(severity=severity)
-        
+
         diagnoses = query.order_by(AIDiagnosis.created_at.desc()).all()
-        
+
         diagnosis_list = []
         for diagnosis in diagnoses:
             diagnosis_data = {
@@ -68,13 +71,13 @@ def get_diagnoses():
                 'reviewed_at': diagnosis.reviewed_at.isoformat() if diagnosis.reviewed_at else None
             }
             diagnosis_list.append(diagnosis_data)
-        
+
         return jsonify({
             'success': True,
             'diagnoses': diagnosis_list,
             'total': len(diagnosis_list)
         })
-    
+
     except Exception as e:
         current_app.logger.error(f"AI 진단 결과 조회 오류: {str(e)}")
         return jsonify({'error': '진단 결과를 불러오는 중 오류가 발생했습니다.'}), 500
@@ -88,13 +91,13 @@ def get_diagnosis(diagnosis_id):
         # 권한 확인
         if not current_user.has_permission('ai_management', 'view'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         diagnosis = AIDiagnosis.query.get_or_404(diagnosis_id)
-        
+
         # 브랜드 매니저인 경우 자신이 관리하는 브랜드의 진단 결과만 조회 가능
         if current_user.role == 'brand_manager' and diagnosis.brand_id != current_user.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         diagnosis_data = {
             'id': diagnosis.id,
             'title': diagnosis.title,
@@ -116,12 +119,12 @@ def get_diagnosis(diagnosis_id):
             'reviewer_name': diagnosis.reviewer.name if diagnosis.reviewer else None,
             'implementer_name': diagnosis.implementer.name if diagnosis.implementer else None
         }
-        
+
         return jsonify({
             'success': True,
             'diagnosis': diagnosis_data
         })
-    
+
     except Exception as e:
         current_app.logger.error(f"AI 진단 결과 상세 조회 오류: {str(e)}")
         return jsonify({'error': '진단 결과를 불러오는 중 오류가 발생했습니다.'}), 500
@@ -135,15 +138,15 @@ def update_diagnosis(diagnosis_id):
         # 권한 확인
         if not current_user.has_permission('ai_management', 'edit'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         diagnosis = AIDiagnosis.query.get_or_404(diagnosis_id)
-        
+
         # 브랜드 매니저인 경우 자신이 관리하는 브랜드의 진단 결과만 수정 가능
         if current_user.role == 'brand_manager' and diagnosis.brand_id != current_user.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         data = request.get_json()
-        
+
         # 업데이트 가능한 필드들
         if 'status' in data:
             diagnosis.status = data['status']
@@ -153,18 +156,18 @@ def update_diagnosis(diagnosis_id):
             elif data['status'] == 'implemented':
                 diagnosis.implemented_at = datetime.utcnow()
                 diagnosis.implemented_by = current_user.id
-        
+
         if 'priority' in data:
             diagnosis.priority = data['priority']
-        
+
         diagnosis.updated_at = datetime.utcnow()
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '진단 결과가 성공적으로 업데이트되었습니다.'
         })
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"AI 진단 결과 업데이트 오류: {str(e)}")
@@ -179,16 +182,16 @@ def get_improvements():
         # 권한 확인
         if not current_user.has_permission('ai_management', 'view'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         # 필터링 옵션
         brand_id = request.args.get('brand_id')
         store_id = request.args.get('store_id')
         status = request.args.get('status')
         category = request.args.get('category')
         priority = request.args.get('priority')
-        
+
         query = ImprovementRequest.query
-        
+
         # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 개선 요청만 조회
         if current_user.role == 'brand_manager':
             query = query.filter_by(brand_id=current_user.brand_id)
@@ -196,10 +199,10 @@ def get_improvements():
             pass
         else:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         if brand_id:
             query = query.filter_by(brand_id=brand_id)
-        
+
         if store_id:
             query = query.filter_by(store_id=store_id)
         if status:
@@ -208,9 +211,9 @@ def get_improvements():
             query = query.filter_by(category=category)
         if priority:
             query = query.filter_by(priority=priority)
-        
+
         improvements = query.order_by(ImprovementRequest.created_at.desc()).all()
-        
+
         improvement_list = []
         for improvement in improvements:
             improvement_data = {
@@ -229,13 +232,13 @@ def get_improvements():
                 'created_at': improvement.created_at.isoformat() if improvement.created_at else None
             }
             improvement_list.append(improvement_data)
-        
+
         return jsonify({
             'success': True,
             'improvements': improvement_list,
             'total': len(improvement_list)
         })
-    
+
     except Exception as e:
         current_app.logger.error(f"개선 요청 조회 오류: {str(e)}")
         return jsonify({'error': '개선 요청을 불러오는 중 오류가 발생했습니다.'}), 500
@@ -249,20 +252,20 @@ def create_improvement():
         # 권한 확인
         if not current_user.has_permission('ai_management', 'create'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         data = request.get_json()
-        
+
         # 필수 필드 검증
         required_fields = ['title', 'description', 'category']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'{field} 필드는 필수입니다.'}), 400
-        
+
         # 브랜드 매니저인 경우 자신이 관리하는 브랜드에만 개선 요청 생성 가능
         if current_user.role == 'brand_manager':
             if not data.get('brand_id') or data['brand_id'] != current_user.brand_id:
                 return jsonify({'error': '자신이 관리하는 브랜드에만 개선 요청을 생성할 수 있습니다.'}), 403
-        
+
         # 새 개선 요청 생성
         new_improvement = ImprovementRequest()
         new_improvement.brand_id = data.get('brand_id')
@@ -277,16 +280,16 @@ def create_improvement():
         new_improvement.priority = data.get('priority', 'normal')
         new_improvement.estimated_cost = data.get('estimated_cost')
         new_improvement.estimated_time = data.get('estimated_time')
-        
+
         db.session.add(new_improvement)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '개선 요청이 성공적으로 생성되었습니다.',
             'improvement_id': new_improvement.id
         }), 201
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"개선 요청 생성 오류: {str(e)}")
@@ -301,13 +304,13 @@ def get_improvement(improvement_id):
         # 권한 확인
         if not current_user.has_permission('ai_management', 'view'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         improvement = ImprovementRequest.query.get_or_404(improvement_id)
-        
+
         # 브랜드 매니저인 경우 자신이 관리하는 브랜드의 개선 요청만 조회 가능
         if current_user.role == 'brand_manager' and improvement.brand_id != current_user.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         improvement_data = {
             'id': improvement.id,
             'title': improvement.title,
@@ -331,12 +334,12 @@ def get_improvement(improvement_id):
             'admin_comment': improvement.admin_comment,
             'reviewer_name': improvement.reviewer.name if improvement.reviewer else None
         }
-        
+
         return jsonify({
             'success': True,
             'improvement': improvement_data
         })
-    
+
     except Exception as e:
         current_app.logger.error(f"개선 요청 상세 조회 오류: {str(e)}")
         return jsonify({'error': '개선 요청을 불러오는 중 오류가 발생했습니다.'}), 500
@@ -350,36 +353,36 @@ def update_improvement(improvement_id):
         # 권한 확인
         if not current_user.has_permission('ai_management', 'edit'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         improvement = ImprovementRequest.query.get_or_404(improvement_id)
-        
+
         # 브랜드 매니저인 경우 자신이 관리하는 브랜드의 개선 요청만 수정 가능
         if current_user.role == 'brand_manager' and improvement.brand_id != current_user.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         data = request.get_json()
-        
+
         # 업데이트 가능한 필드들
         if 'status' in data:
             improvement.status = data['status']
             if data['status'] in ['under_review', 'approved', 'rejected']:
                 improvement.reviewed_at = datetime.utcnow()
                 improvement.reviewed_by = current_user.id
-        
+
         if 'admin_comment' in data:
             improvement.admin_comment = data['admin_comment']
-        
+
         if 'priority' in data:
             improvement.priority = data['priority']
-        
+
         improvement.updated_at = datetime.utcnow()
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '개선 요청이 성공적으로 업데이트되었습니다.'
         })
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"개선 요청 업데이트 오류: {str(e)}")
@@ -394,15 +397,15 @@ def get_ai_suggestions():
         # 권한 확인
         if not current_user.has_permission('ai_management', 'view'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         # 필터링 옵션
         brand_id = request.args.get('brand_id')
         store_id = request.args.get('store_id')
         status = request.args.get('status')
         suggestion_type = request.args.get('type')
-        
+
         query = AIImprovementSuggestion.query
-        
+
         # [브랜드별 필터링] 브랜드 관리자는 자신의 브랜드 제안만 조회
         if current_user.role == 'brand_manager':
             query = query.filter_by(brand_id=current_user.brand_id)
@@ -410,19 +413,19 @@ def get_ai_suggestions():
             pass
         else:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         if brand_id:
             query = query.filter_by(brand_id=brand_id)
-        
+
         if store_id:
             query = query.filter_by(store_id=store_id)
         if status:
             query = query.filter_by(status=status)
         if suggestion_type:
             query = query.filter_by(suggestion_type=suggestion_type)
-        
+
         suggestions = query.order_by(AIImprovementSuggestion.created_at.desc()).all()
-        
+
         suggestion_list = []
         for suggestion in suggestions:
             suggestion_data = {
@@ -440,13 +443,13 @@ def get_ai_suggestions():
                 'created_at': suggestion.created_at.isoformat() if suggestion.created_at else None
             }
             suggestion_list.append(suggestion_data)
-        
+
         return jsonify({
             'success': True,
             'suggestions': suggestion_list,
             'total': len(suggestion_list)
         })
-    
+
     except Exception as e:
         current_app.logger.error(f"AI 개선 제안 조회 오류: {str(e)}")
         return jsonify({'error': 'AI 개선 제안을 불러오는 중 오류가 발생했습니다.'}), 500
@@ -460,34 +463,34 @@ def update_ai_suggestion(suggestion_id):
         # 권한 확인
         if not current_user.has_permission('ai_management', 'edit'):
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         suggestion = AIImprovementSuggestion.query.get_or_404(suggestion_id)
-        
+
         # 브랜드 매니저인 경우 자신이 관리하는 브랜드의 제안만 수정 가능
         if current_user.role == 'brand_manager' and suggestion.brand_id != current_user.brand_id:
             return jsonify({'error': '권한이 없습니다.'}), 403
-        
+
         data = request.get_json()
-        
+
         # 업데이트 가능한 필드들
         if 'status' in data:
             suggestion.status = data['status']
             if data['status'] in ['approved', 'rejected']:
                 suggestion.reviewed_at = datetime.utcnow()
                 suggestion.reviewed_by = current_user.id
-        
+
         if 'admin_comment' in data:
             suggestion.admin_comment = data['admin_comment']
-        
+
         suggestion.updated_at = datetime.utcnow()
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'AI 개선 제안이 성공적으로 업데이트되었습니다.'
         })
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"AI 개선 제안 업데이트 오류: {str(e)}")
-        return jsonify({'error': 'AI 개선 제안 업데이트 중 오류가 발생했습니다.'}), 500 
+        return jsonify({'error': 'AI 개선 제안 업데이트 중 오류가 발생했습니다.'}), 500

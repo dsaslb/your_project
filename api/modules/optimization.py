@@ -1,30 +1,37 @@
-﻿from flask import Blueprint, request, jsonify, current_app
-from functools import wraps
-from models import db, User, Order, Schedule, Attendance, your_programOrder
-from api.gateway import token_required, role_required
-from datetime import datetime, timedelta
-from sqlalchemy import func, and_, or_, text
 import time
+from sqlalchemy import func, and_, or_, text
+from datetime import datetime, timedelta
+from api.gateway import token_required, role_required  # pyright: ignore
+from models_main import db, User, Order, Schedule, Attendance, your_programOrder
+from functools import wraps
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
+﻿from flask import Blueprint, request, jsonify, current_app
 
 optimization = Blueprint('optimization', __name__)
 
 # 쿼리 최적화 데코레이터
+
+
 def optimize_query(f):
     """쿼리 성능 모니터링 데코레이터"""
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args,  **kwargs):
         start_time = time.time()
         result = f(*args, **kwargs)
         execution_time = time.time() - start_time
-        
+
         # 실행 시간이 1초 이상이면 로그 기록
         if execution_time > 1.0:
             current_app.logger.warning(f"Slow query detected: {f.__name__} took {execution_time:.2f}s")
-        
+
         return result
     return decorated
 
 # 페이지네이션 헬퍼
+
+
 def paginate_query(query, page=1, per_page=20):
     """쿼리 페이지네이션"""
     return query.paginate(
@@ -34,6 +41,8 @@ def paginate_query(query, page=1, per_page=20):
     )
 
 # 최적화된 사용자 목록 조회
+
+
 @optimization.route('/users/optimized', methods=['GET'])
 @token_required
 @role_required(['super_admin', 'brand_manager'])
@@ -41,18 +50,18 @@ def paginate_query(query, page=1, per_page=20):
 def get_users_optimized(current_user):
     """최적화된 사용자 목록 조회 (select_related, prefetch_related 적용)"""
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        role_filter = request.args.get('role')
-        search = request.args.get('search')
-        
+        page = request.args.get() if args else None'page', 1, type=int) if args else None
+        per_page = request.args.get() if args else None'per_page', 20, type=int) if args else None
+        role_filter = request.args.get() if args else None'role') if args else None
+        search = request.args.get() if args else None'search') if args else None
+
         # 기본 쿼리 (필요한 컬럼만 선택)
         query = db.session.query(User)
-        
+
         # 필터 적용
         if role_filter:
             query = query.filter(User.role == role_filter)
-        
+
         if search:
             search_term = f"%{search}%"
             query = query.filter(
@@ -62,18 +71,18 @@ def get_users_optimized(current_user):
                     User.email.like(search_term)
                 )
             )
-        
+
         # 권한별 필터
         if current_user.role != 'super_admin':
             if current_user.role == 'brand_manager':
                 query = query.filter(User.branch_id == current_user.branch_id)
             elif current_user.role == 'store_manager':
                 query = query.filter(User.branch_id == current_user.branch_id)
-        
+
         # 정렬 및 페이지네이션
         query = query.order_by(User.created_at.desc())
-        pagination = paginate_query(query, page, per_page)
-        
+        pagination = paginate_query(query,  page,  per_page)
+
         users = []
         for user in pagination.items:
             users.append({
@@ -86,7 +95,7 @@ def get_users_optimized(current_user):
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None
             })
-        
+
         return jsonify({
             'users': users,
             'pagination': {
@@ -98,12 +107,14 @@ def get_users_optimized(current_user):
                 'has_prev': pagination.has_prev
             }
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"Optimized users query error: {str(e)}")
         return jsonify({'message': '사용자 목록 조회 중 오류가 발생했습니다'}), 500
 
 # 최적화된 주문 통계
+
+
 @optimization.route('/orders/stats/optimized', methods=['GET'])
 @token_required
 @optimize_query
@@ -118,29 +129,29 @@ def get_orders_stats_optimized(current_user):
             func.avg(your_programOrder.total_amount).label('avg_amount'),
             func.sum(your_programOrder.total_amount).label('total_amount')
         )
-        
+
         # 권한별 필터
         if current_user.role == 'store_manager':
             stats_query = stats_query.filter(your_programOrder.store_id == current_user.branch_id)
         elif current_user.role == 'brand_manager':
             stats_query = stats_query.filter(your_programOrder.store_id == current_user.branch_id)
-        
+
         stats = stats_query.first()
-        
+
         # 최근 7일 통계
         week_ago = datetime.utcnow() - timedelta(days=7)
         recent_stats = db.session.query(
             func.count(your_programOrder.id).label('recent_orders'),
             func.sum(your_programOrder.total_amount).label('recent_amount')
         ).filter(your_programOrder.created_at >= week_ago)
-        
+
         if current_user.role == 'store_manager':
             recent_stats = recent_stats.filter(your_programOrder.store_id == current_user.branch_id)
         elif current_user.role == 'brand_manager':
             recent_stats = recent_stats.filter(your_programOrder.store_id == current_user.branch_id)
-        
+
         recent = recent_stats.first()
-        
+
         # None 체크를 위한 안전한 접근
         total_orders = getattr(stats, 'total_orders', 0) or 0
         completed_orders = getattr(stats, 'completed_orders', 0) or 0
@@ -149,7 +160,7 @@ def get_orders_stats_optimized(current_user):
         total_amount = float(getattr(stats, 'total_amount', 0)) if getattr(stats, 'total_amount', 0) else 0
         recent_orders = getattr(recent, 'recent_orders', 0) or 0
         recent_amount = float(getattr(recent, 'recent_amount', 0)) if getattr(recent, 'recent_amount', 0) else 0
-        
+
         return jsonify({
             'total_orders': total_orders,
             'completed_orders': completed_orders,
@@ -160,12 +171,14 @@ def get_orders_stats_optimized(current_user):
             'recent_orders': recent_orders,
             'recent_amount': recent_amount
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"Optimized orders stats error: {str(e)}")
         return jsonify({'message': '주문 통계 조회 중 오류가 발생했습니다'}), 500
 
 # 지연 로딩 (Lazy Loading) 최적화
+
+
 @optimization.route('/dashboard/lazy', methods=['GET'])
 @token_required
 @optimize_query
@@ -178,66 +191,73 @@ def get_dashboard_lazy(current_user):
             'order_count': your_programOrder.query.count(),
             'schedule_count': Schedule.query.count()
         }
-        
+
         # 권한별 필터 적용
         if current_user.role == 'store_manager':
-            basic_stats['user_count'] = User.query.filter_by(branch_id=current_user.branch_id).count()
-            basic_stats['order_count'] = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
-            basic_stats['schedule_count'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
+            basic_stats['user_count'] if basic_stats is not None else None = User.query.filter_by(branch_id=current_user.branch_id).count()
+            basic_stats['order_count'] if basic_stats is not None else None = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
+            basic_stats['schedule_count'] if basic_stats is not None else None = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
         elif current_user.role == 'brand_manager':
-            basic_stats['user_count'] = User.query.filter_by(branch_id=current_user.branch_id).count()
-            basic_stats['order_count'] = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
-            basic_stats['schedule_count'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
-        
+            basic_stats['user_count'] if basic_stats is not None else None = User.query.filter_by(branch_id=current_user.branch_id).count()
+            basic_stats['order_count'] if basic_stats is not None else None = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
+            basic_stats['schedule_count'] if basic_stats is not None else None = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
+
         return jsonify({
             'basic_stats': basic_stats,
             'lazy_loaded': False,
             'message': '기본 통계만 로드되었습니다. 상세 데이터는 별도 API로 요청하세요.'
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"Lazy dashboard error: {str(e)}")
         return jsonify({'message': '대시보드 데이터 조회 중 오류가 발생했습니다'}), 500
 
 # 캐시 헬퍼 함수
-def get_cache_key(prefix, *args):
+
+
+def get_cache_key(prefix,  *args):
     """캐시 키 생성"""
     return f"{prefix}:{':'.join(str(arg) for arg in args)}"
+
 
 # 메모리 캐시 (실제 운영에서는 Redis 사용 권장)
 _cache = {}
 
+
 def get_cached_data(key, ttl_seconds=300):
     """캐시된 데이터 조회"""
     if key in _cache:
-        data, timestamp = _cache[key]
+        data, timestamp = _cache[key] if _cache is not None else None
         if datetime.utcnow().timestamp() - timestamp < ttl_seconds:
             return data
         else:
-            del _cache[key]
+            del _cache[key] if _cache is not None else None
     return None
 
-def set_cached_data(key, data):
+
+def set_cached_data(key,  data):
     """데이터 캐시 저장"""
-    _cache[key] = (data, datetime.utcnow().timestamp())
+    _cache[key] if _cache is not None else None = (data, datetime.utcnow().timestamp())
 
 # 캐시를 적용한 통계 조회
+
+
 @optimization.route('/stats/cached', methods=['GET'])
 @token_required
 @optimize_query
 def get_cached_stats(current_user):
     """캐시를 적용한 통계 조회"""
     try:
-        cache_key = get_cache_key('stats', current_user.id, current_user.role)
-        cached_data = get_cached_data(cache_key, 300)  # 5분 캐시
-        
+        cache_key = get_cache_key('stats',  current_user.id,  current_user.role)
+        cached_data = get_cached_data(cache_key,  300)  # 5분 캐시
+
         if cached_data:
             return jsonify({
                 'data': cached_data,
                 'cached': True,
                 'cache_time': datetime.utcnow().isoformat()
             }), 200
-        
+
         # 캐시가 없으면 새로 계산
         stats = {
             'total_users': User.query.count(),
@@ -245,33 +265,35 @@ def get_cached_stats(current_user):
             'total_schedules': Schedule.query.count(),
             'total_attendance': Attendance.query.count()
         }
-        
+
         # 권한별 필터 적용
         if current_user.role == 'store_manager':
-            stats['total_users'] = User.query.filter_by(branch_id=current_user.branch_id).count()
-            stats['total_orders'] = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
-            stats['total_schedules'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
-            stats['total_attendance'] = Attendance.query.filter_by(user_id=current_user.id).count()
+            stats['total_users'] if stats is not None else None = User.query.filter_by(branch_id=current_user.branch_id).count()
+            stats['total_orders'] if stats is not None else None = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
+            stats['total_schedules'] if stats is not None else None = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
+            stats['total_attendance'] if stats is not None else None = Attendance.query.filter_by(user_id=current_user.id).count()
         elif current_user.role == 'brand_manager':
-            stats['total_users'] = User.query.filter_by(branch_id=current_user.branch_id).count()
-            stats['total_orders'] = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
-            stats['total_schedules'] = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
-            stats['total_attendance'] = Attendance.query.filter_by(user_id=current_user.id).count()
-        
+            stats['total_users'] if stats is not None else None = User.query.filter_by(branch_id=current_user.branch_id).count()
+            stats['total_orders'] if stats is not None else None = your_programOrder.query.filter_by(store_id=current_user.branch_id).count()
+            stats['total_schedules'] if stats is not None else None = Schedule.query.filter_by(branch_id=current_user.branch_id).count()
+            stats['total_attendance'] if stats is not None else None = Attendance.query.filter_by(user_id=current_user.id).count()
+
         # 캐시에 저장
-        set_cached_data(cache_key, stats)
-        
+        set_cached_data(cache_key,  stats)
+
         return jsonify({
             'data': stats,
             'cached': False,
             'cache_time': datetime.utcnow().isoformat()
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"Cached stats error: {str(e)}")
         return jsonify({'message': '통계 조회 중 오류가 발생했습니다'}), 500
 
 # 성능 모니터링
+
+
 @optimization.route('/performance/monitor', methods=['GET'])
 @token_required
 @role_required(['super_admin'])
@@ -284,13 +306,13 @@ def get_performance_monitor(current_user):
             db.session.execute(text("SELECT 1"))
         except Exception:
             db_status = "error"
-        
+
         # 캐시 상태
         cache_status = "healthy" if len(_cache) < 1000 else "warning"
-        
+
         # 메모리 사용량 (간단한 추정)
         memory_usage = len(_cache) * 100  # KB 단위 추정
-        
+
         return jsonify({
             'database': {
                 'status': db_status,
@@ -306,7 +328,7 @@ def get_performance_monitor(current_user):
                 'uptime': 'running'  # 실제로는 서버 시작 시간 계산 필요
             }
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"Performance monitor error: {str(e)}")
-        return jsonify({'message': '성능 모니터링 데이터 조회 중 오류가 발생했습니다'}), 500 
+        return jsonify({'message': '성능 모니터링 데이터 조회 중 오류가 발생했습니다'}), 500

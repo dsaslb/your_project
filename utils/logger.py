@@ -1,11 +1,9 @@
-﻿import logging
-import logging.handlers
 import os
-from datetime import datetime
-
+import logging
+import logging.handlers
 
 def setup_logger(app=None):
-    """간소화된 로거 설정"""
+    """간단한 로거 설정"""
     log_level = logging.INFO
     log_file = "logs/your_program.log"
 
@@ -14,7 +12,6 @@ def setup_logger(app=None):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    # 로거 설정
     logger = logging.getLogger("your_program")
     logger.setLevel(log_level)
 
@@ -24,7 +21,7 @@ def setup_logger(app=None):
 
     # 파일 핸들러
     file_handler = logging.handlers.RotatingFileHandler(
-        log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"  # 10MB
+        log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
     )
     file_handler.setLevel(log_level)
 
@@ -39,7 +36,6 @@ def setup_logger(app=None):
     file_handler.setFormatter(formatter)
     console_handler.setFormatter(formatter)
 
-    # 핸들러 추가
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
@@ -47,7 +43,6 @@ def setup_logger(app=None):
 
 
 def log_action(user_id, action, message=None, ip_address=None):
-    """사용자 액션 로깅"""
     logger = logging.getLogger("your_program")
     log_message = f"USER_ACTION: user_id={user_id}, action={action}"
     if message:
@@ -58,7 +53,6 @@ def log_action(user_id, action, message=None, ip_address=None):
 
 
 def log_error(error, user_id=None, additional_info=None):
-    """에러 로깅"""
     logger = logging.getLogger("your_program")
     log_message = f"ERROR: {str(error)}"
     if user_id:
@@ -69,7 +63,6 @@ def log_error(error, user_id=None, additional_info=None):
 
 
 def log_security_event(user_id, event_type, details=None, ip_address=None):
-    """보안 이벤트 로깅"""
     logger = logging.getLogger("your_program")
     log_message = f"SECURITY_EVENT: user_id={user_id}, event={event_type}"
     if details:
@@ -77,21 +70,3 @@ def log_security_event(user_id, event_type, details=None, ip_address=None):
     if ip_address:
         log_message += f", ip={ip_address}"
     logger.warning(log_message)
-
-
-def send_slack_alert_if_prod(message, level="INFO"):
-    """운영 환경일 경우에만 Slack 알림을 전송합니다."""
-    # FLASK_ENV 환경 변수를 확인하여 'production'일 때만 실행
-    if os.getenv("FLASK_ENV") == "production":
-        try:
-            # send_slack_alert 함수가 있는지 확인하고 호출
-            # 이 함수는 utils.slack_alert 모듈에 있을 것으로 예상됩니다.
-            from .slack_alert import send_slack_alert
-
-            send_slack_alert(message, level)
-        except ImportError:
-            # send_slack_alert 함수가 없어도 오류를 발생시키지 않음
-            log_error("Slack alert function not found, but it's okay.")
-        except Exception as e:
-            log_error(f"Failed to send Slack alert: {e}")
-

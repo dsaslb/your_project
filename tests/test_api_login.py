@@ -1,6 +1,6 @@
 import time
 
-# from models import User  # 사용되지 않으므로 삭제
+# from models_main import User  # 사용되지 않으므로 삭제
 
 
 class TestAPILogin:

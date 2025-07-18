@@ -1,16 +1,15 @@
+from utils.notify import send_notification_enhanced  # pyright: ignore
+from utils.logger import log_action, log_error  # pyright: ignore
+from utils.email_utils import email_service  # pyright: ignore
+from models_main import db, Attendance, User, AttendanceReport
+from sqlalchemy import and_, func
+import logging
+from datetime import datetime, timedelta
+query = None  # pyright: ignore
 """
 자동 담당자 배정 및 SLA 관리 시스템
 """
 
-from datetime import datetime, timedelta
-import logging
-
-from sqlalchemy import and_, func
-
-from models import db, Attendance, User, AttendanceReport
-from utils.email_utils import email_service
-from utils.logger import log_action, log_error
-from utils.notify import send_notification_enhanced
 
 logger = logging.getLogger(__name__)
 
@@ -36,43 +35,43 @@ class AssigneeManager:
 
             # 담당자별 업무량 계산
             assignee_workloads = []
-            for assignee in assignees:
+            for assignee in assignees if assignees is not None:
                 workload = AssigneeManager.get_assignee_workload(assignee.id)
                 assignee_workloads.append(
                     {
                         "assignee_id": assignee.id,
-                        "total_active": workload["total_active"],
-                        "sla_overdue": workload["sla_overdue"],
+                        "total_active": workload["total_active"] if workload is not None else None,
+                        "sla_overdue": workload["sla_overdue"] if workload is not None else None,
                     }
                 )
 
             # SLA 초과가 없는 담당자 중에서 업무량이 가장 적은 담당자 선택
             available_assignees = [
-                a for a in assignee_workloads if a["sla_overdue"] == 0
+                a for a in assignee_workloads if a["sla_overdue"] if a is not None else None == 0
             ]
 
             if available_assignees:
                 # 업무량이 가장 적은 담당자 선택
-                selected = min(available_assignees, key=lambda x: x["total_active"])
-                return selected["assignee_id"]
+                selected = min(available_assignees, key=lambda x: x["total_active"] if x is not None else None)
+                return selected["assignee_id"] if selected is not None else None
             else:
                 # 모든 담당자가 SLA 초과인 경우, 업무량이 가장 적은 담당자 선택
-                selected = min(assignee_workloads, key=lambda x: x["total_active"])
-                return selected["assignee_id"]
+                selected = min(assignee_workloads, key=lambda x: x["total_active"] if x is not None else None)
+                return selected["assignee_id"] if selected is not None else None
 
         except Exception as e:
             log_error(e, None, "Auto assign dispute failed")
             return None
 
     @staticmethod
-    def reassign_dispute(dispute_id, new_assignee_id, reason=""):
+    def reassign_dispute(dispute_id,  new_assignee_id, reason=""):
         """담당자 재배정"""
         try:
-            dispute = AttendanceReport.query.get(dispute_id)
+            dispute = AttendanceReport.query.get() if query else Nonedispute_id) if query else None
             if not dispute:
                 return False, "신고/이의제기를 찾을 수 없습니다."
 
-            new_assignee = User.query.get(new_assignee_id)
+            new_assignee = User.query.get() if query else Nonenew_assignee_id) if query else None
             if not new_assignee:
                 return False, "새 담당자를 찾을 수 없습니다."
 
@@ -124,7 +123,7 @@ class AssigneeManager:
                 )
             ).all()
 
-            for dispute in overdue_disputes:
+            for dispute in overdue_disputes if overdue_disputes is not None:
                 # 담당자에게 SLA 초과 알림
                 send_notification_enhanced(
                     user_id=dispute.assignee_id,
@@ -134,7 +133,7 @@ class AssigneeManager:
 
                 # 관리자에게도 알림
                 admin_users = User.query.filter(User.role == "admin").all()
-                for admin in admin_users:
+                for admin in admin_users if admin_users is not None:
                     if admin.id != dispute.assignee_id:  # 담당자 본인 제외
                         send_notification_enhanced(
                             user_id=admin.id,
@@ -269,7 +268,7 @@ class AssigneeManager:
 def assign_dispute(dispute_id, assignee_id=None, reason=None):
     """신고/이의제기 담당자 배정"""
     try:
-        dispute = AttendanceReport.query.get(dispute_id)
+        dispute = AttendanceReport.query.get() if query else Nonedispute_id) if query else None
         if not dispute:
             return False, "신고/이의제기를 찾을 수 없습니다."
 
@@ -330,7 +329,7 @@ def assign_cleaning_tasks():
     """청소 업무 자동 배정"""
     try:
         today = datetime.now().date()
-        
+
         # 오늘 청소 업무가 배정되지 않은 직원들 찾기
         available_staff = (
             db.session.query(User)
@@ -349,7 +348,7 @@ def assign_cleaning_tasks():
         # 청소 업무 배정
         cleaning_tasks = [
             "주방 청소",
-            "매장 청소", 
+            "매장 청소",
             "화장실 청소",
             "테이블 정리"
         ]
@@ -360,15 +359,15 @@ def assign_cleaning_tasks():
                 attendance = Attendance.query.filter_by(
                     user_id=user.id, date=today
                 ).first()
-                
+
                 if attendance:
                     attendance.cleaning_assigned = True
-                    attendance.cleaning_task = cleaning_tasks[i]
-                    
+                    attendance.cleaning_task = cleaning_tasks[i] if cleaning_tasks is not None else None
+
                     log_action(
                         user.id,
                         "CLEANING_ASSIGNED",
-                        f"청소 업무 배정: {cleaning_tasks[i]}"
+                        f"청소 업무 배정: {cleaning_tasks[i] if cleaning_tasks is not None else None}"
                     )
 
         db.session.commit()
@@ -383,7 +382,7 @@ def assign_inventory_check():
     """재고 점검 업무 자동 배정"""
     try:
         today = datetime.now().date()
-        
+
         # 매니저 중 오늘 재고 점검이 배정되지 않은 사람 찾기
         available_managers = (
             db.session.query(User)
@@ -404,15 +403,15 @@ def assign_inventory_check():
         )
 
         # 재고 점검 업무 배정
-        for user in available_managers:
+        for user in available_managers if available_managers is not None:
             attendance = Attendance.query.filter_by(
                 user_id=user.id, date=today
             ).first()
-            
+
             if attendance:
                 attendance.inventory_check_assigned = True
                 attendance.inventory_check_task = "전체 재고 점검"
-                
+
                 log_action(
                     user.id,
                     "INVENTORY_CHECK_ASSIGNED",
@@ -431,7 +430,7 @@ def assign_quality_control():
     """품질 관리 업무 자동 배정"""
     try:
         today = datetime.now().date()
-        
+
         # 품질 관리 담당자 찾기
         quality_staff = (
             db.session.query(User)
@@ -454,21 +453,21 @@ def assign_quality_control():
 
         # 품질 관리 업무 배정
         quality_tasks = ["음식 품질 점검", "서비스 품질 점검"]
-        
+
         for i, user in enumerate(quality_staff):
             if i < len(quality_tasks):
                 attendance = Attendance.query.filter_by(
                     user_id=user.id, date=today
                 ).first()
-                
+
                 if attendance:
                     attendance.quality_check_assigned = True
-                    attendance.quality_check_task = quality_tasks[i]
-                    
+                    attendance.quality_check_task = quality_tasks[i] if quality_tasks is not None else None
+
                     log_action(
                         user.id,
                         "QUALITY_CHECK_ASSIGNED",
-                        f"품질 관리 업무 배정: {quality_tasks[i]}"
+                        f"품질 관리 업무 배정: {quality_tasks[i] if quality_tasks is not None else None}"
                     )
 
         db.session.commit()

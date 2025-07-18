@@ -15,4 +15,4 @@ while True:
             monitor.log_error(error)
     except Exception as e:
         monitor.log_error(f"시스템 모니터 스케줄러 오류: {str(e)}")
-    time.sleep(600)  # 10분마다 실행 
+    time.sleep(600)  # 10분마다 실행

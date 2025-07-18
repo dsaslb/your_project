@@ -3,8 +3,9 @@ from datetime import datetime
 import requests
 from utils.email_utils import send_email
 
-ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@example.com')
-API_URL = 'http://localhost:5000/api/ai/assistant/report'
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@example.com")
+API_URL = "http://localhost:5000/api/ai/assistant/report"
+
 
 # AI 경영 어시스턴트 자동화 스케줄러 (초보자용 설명)
 def send_ai_assistant_report():
@@ -23,7 +24,8 @@ def send_ai_assistant_report():
 (이 리포트가 도움이 되었나요? 피드백 환영)
 """
     send_email(ADMIN_EMAIL, subject, body)
-    print('✅ AI 경영 어시스턴트 리포트 이메일 발송 완료')
+    print("✅ AI 경영 어시스턴트 리포트 이메일 발송 완료")
 
-if __name__ == '__main__':
-    send_ai_assistant_report() 
+
+if __name__ == "__main__":
+    send_ai_assistant_report()

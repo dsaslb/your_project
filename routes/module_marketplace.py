@@ -1,20 +1,22 @@
+from utils.auth_decorators import admin_required, manager_required  # pyright: ignore
+import logging
+from typing import Dict, List, Any
+import shutil
+import os
+import json
+from datetime import datetime
+from flask_login import login_required, current_user
+from flask import Blueprint, jsonify, request, current_app
+args = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 모듈 마켓플레이스 API
 사용자가 모듈을 검색, 구매, 다운로드할 수 있는 마켓플레이스
 """
 
 # type: ignore
-from flask import Blueprint, jsonify, request, current_app
-from flask_login import login_required, current_user
-from datetime import datetime
-import json
-import os
-import shutil
-from typing import Dict, List, Any
-import logging
 
 # 데코레이터 import
-from utils.auth_decorators import admin_required, manager_required
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +252,7 @@ marketplace_modules = {
 # 사용자별 설치된 모듈 (실제로는 데이터베이스에서 관리)
 user_installed_modules = {}
 
+
 @module_marketplace_bp.route('/modules', methods=['GET'])
 def get_marketplace_modules():
     """마켓플레이스 모듈 목록 조회"""
@@ -259,46 +262,49 @@ def get_marketplace_modules():
         search = request.args.get('search')
         sort_by = request.args.get('sort_by', 'downloads')  # downloads, rating, name, price
         order = request.args.get('order', 'desc')  # asc, desc
-        
+
         # 기본 모듈 목록
-        modules = list(marketplace_modules.values())
-        
+        modules = [m for m in (marketplace_modules.values() if marketplace_modules else []) if isinstance(m, dict)]
+
         # 카테고리 필터링
         if category:
-            modules = [m for m in modules if m['category'] == category]
-        
+            modules = [m for m in modules if isinstance(m, dict) and m.get('category') == category]
+
         # 검색 필터링
         if search:
             search_lower = search.lower()
             modules = [
-                m for m in modules 
-                if search_lower in str(m['name']).lower() or 
-                   search_lower in str(m['description']).lower() or
-                   any(search_lower in str(tag).lower() for tag in (m.get('tags', []) if isinstance(m.get('tags'), list) else []))  # type: ignore
+                m for m in modules if isinstance(m, dict) and (
+                    search_lower in str(m.get('name', '')).lower() or
+                    search_lower in str(m.get('description', '')).lower() or
+                    any(search_lower in str(tag).lower() for tag in m.get('tags', []))
+                )
             ]
-        
+
+        # 정렬 전 dict 타입만 남김
+        modules = [m for m in modules if isinstance(m, dict)]
         # 정렬
         reverse_order = order == 'desc'
         if sort_by == 'downloads':
-            modules.sort(key=lambda x: int(x.get('downloads', 0)), reverse=reverse_order)  # type: ignore
+            modules.sort(key=lambda x: int(x.get('downloads', 0)), reverse=reverse_order)
         elif sort_by == 'rating':
-            modules.sort(key=lambda x: float(x.get('rating', 0.0)), reverse=reverse_order)  # type: ignore
+            modules.sort(key=lambda x: float(x.get('rating', 0.0)), reverse=reverse_order)
         elif sort_by == 'name':
-            modules.sort(key=lambda x: str(x.get('name', '')).lower(), reverse=reverse_order)  # type: ignore
+            modules.sort(key=lambda x: str(x.get('name', '')).lower(), reverse=reverse_order)
         elif sort_by == 'price':
-            modules.sort(key=lambda x: float(x.get('price', 0.0)), reverse=reverse_order)  # type: ignore
-        
+            modules.sort(key=lambda x: float(x.get('price', 0.0)), reverse=reverse_order)
+
         # 페이지네이션
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 12, type=int)
-        
+
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
-        paginated_modules = modules[start_idx:end_idx]
-        
+        paginated_modules = modules[start_idx:end_idx] if modules is not None else None
+
         # 카테고리 목록
-        categories = list(set(m['category'] for m in marketplace_modules.values()))
-        
+        categories = list(set(m.get('category') for m in modules if isinstance(m, dict) and 'category' in m))
+
         return jsonify({
             'success': True,
             'modules': paginated_modules,
@@ -311,10 +317,11 @@ def get_marketplace_modules():
             'categories': categories,
             'total_modules': len(marketplace_modules)
         })
-        
+
     except Exception as e:
         logger.error(f"마켓플레이스 모듈 목록 조회 실패: {e}")
         return jsonify({'error': '마켓플레이스 모듈 목록 조회에 실패했습니다.'}), 500
+
 
 @module_marketplace_bp.route('/modules/<module_id>', methods=['GET'])
 def get_module_detail(module_id: str):
@@ -322,13 +329,13 @@ def get_module_detail(module_id: str):
     try:
         if module_id not in marketplace_modules:
             return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
-        module = marketplace_modules[module_id]
-        
+
+        module = marketplace_modules[module_id] if marketplace_modules is not None else None
+
         # 사용자의 설치 여부 확인
-        user_modules = user_installed_modules.get(current_user.id, [])
+        user_modules = user_installed_modules.get(current_user.id, []) if user_installed_modules else []
         is_installed = module_id in user_modules
-        
+
         # 리뷰 정보 (실제로는 데이터베이스에서 조회)
         reviews = [
             {
@@ -346,7 +353,7 @@ def get_module_detail(module_id: str):
                 'created_at': '2024-01-08T12:15:00Z'
             }
         ]
-        
+
         return jsonify({
             'success': True,
             'module': module,
@@ -357,10 +364,11 @@ def get_module_detail(module_id: str):
                 if m['category'] == module['category'] and m['id'] != module_id
             ][:4]  # 같은 카테고리의 다른 모듈 4개
         })
-        
+
     except Exception as e:
         logger.error(f"모듈 상세 정보 조회 실패: {e}")
         return jsonify({'error': '모듈 상세 정보 조회에 실패했습니다.'}), 500
+
 
 @module_marketplace_bp.route('/modules/<module_id>/install', methods=['POST'])
 def install_module(module_id: str):
@@ -368,41 +376,44 @@ def install_module(module_id: str):
     try:
         if module_id not in marketplace_modules:
             return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
-        module = marketplace_modules[module_id]
-        
+
+        module = marketplace_modules[module_id] if marketplace_modules is not None else None
+
         # 이미 설치된 모듈인지 확인
-        user_modules = user_installed_modules.get(current_user.id, [])
+        user_modules = user_installed_modules.get(current_user.id, []) if user_installed_modules else []
         if module_id in user_modules:
             return jsonify({'error': '이미 설치된 모듈입니다.'}), 400
-        
+
         # 권한 확인
-        required_permissions = module['requirements'].get('permissions', [])
-        for permission in required_permissions:
-            if not current_user.has_permission(permission, 'view'):
-                return jsonify({'error': f'모듈 설치 권한이 없습니다: {permission}'}), 403
-        
+        required_permissions = module['requirements'].get('permissions', []) if module and 'requirements' in module else []
+        if required_permissions is not None:
+            for permission in required_permissions:
+                if not current_user.has_permission(permission, 'view'):
+                    return jsonify({'error': f'모듈 설치 권한이 없습니다: {permission}'}), 403
+
         # 모듈 설치 (실제로는 파일 복사, 데이터베이스 설정 등)
         if current_user.id not in user_installed_modules:
             user_installed_modules[current_user.id] = []
-        
+
         user_installed_modules[current_user.id].append(module_id)
-        
+
         # 다운로드 수 증가
-        marketplace_modules[module_id]['downloads'] += 1
-        
+        if marketplace_modules is not None and module_id in marketplace_modules:
+            marketplace_modules[module_id]['downloads'] += 1
+
         # 설치 로그 기록
         logger.info(f"모듈 설치: {current_user.username} -> {module_id}")
-        
+
         return jsonify({
             'success': True,
-            'message': f"{module['name']}이(가) 성공적으로 설치되었습니다.",
+            'message': f"{module['name'] if module is not None else None}이(가) 성공적으로 설치되었습니다.",
             'module': module
         })
-        
+
     except Exception as e:
         logger.error(f"모듈 설치 실패: {e}")
         return jsonify({'error': '모듈 설치에 실패했습니다.'}), 500
+
 
 @module_marketplace_bp.route('/modules/<module_id>/uninstall', methods=['POST'])
 def uninstall_module(module_id: str):
@@ -410,28 +421,29 @@ def uninstall_module(module_id: str):
     try:
         if module_id not in marketplace_modules:
             return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
-        module = marketplace_modules[module_id]
-        
+
+        module = marketplace_modules[module_id] if marketplace_modules is not None else None
+
         # 설치된 모듈인지 확인
-        user_modules = user_installed_modules.get(current_user.id, [])
+        user_modules = user_installed_modules.get(current_user.id, []) if user_installed_modules else []
         if module_id not in user_modules:
             return jsonify({'error': '설치되지 않은 모듈입니다.'}), 400
-        
+
         # 모듈 제거
         user_installed_modules[current_user.id].remove(module_id)
-        
+
         # 제거 로그 기록
         logger.info(f"모듈 제거: {current_user.username} -> {module_id}")
-        
+
         return jsonify({
             'success': True,
-            'message': f"{module['name']}이(가) 성공적으로 제거되었습니다."
+            'message': f"{module['name'] if module is not None else None}이(가) 성공적으로 제거되었습니다."
         })
-        
+
     except Exception as e:
         logger.error(f"모듈 제거 실패: {e}")
         return jsonify({'error': '모듈 제거에 실패했습니다.'}), 500
+
 
 @module_marketplace_bp.route('/modules/<module_id>/review', methods=['POST'])
 def add_module_review(module_id: str):
@@ -439,52 +451,53 @@ def add_module_review(module_id: str):
     try:
         if module_id not in marketplace_modules:
             return jsonify({'error': '모듈을 찾을 수 없습니다.'}), 404
-        
+
         data = request.get_json()
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
-        
+
         rating = data.get('rating')
         comment = data.get('comment', '')
-        
+
         if not rating or not isinstance(rating, int) or rating < 1 or rating > 5:
             return jsonify({'error': '유효하지 않은 평점입니다.'}), 400
-        
+
         # 리뷰 저장 (실제로는 데이터베이스에 저장)
         review = {
-            'id': len(marketplace_modules[module_id].get('reviews', [])) + 1,
+            'id': len(marketplace_modules[module_id]['reviews']) + 1 if 'reviews' in marketplace_modules[module_id] else 1,
             'user_name': current_user.username,
             'rating': rating,
             'comment': comment,
             'created_at': datetime.now().isoformat()
         }
-        
+
         # 모듈의 평균 평점 업데이트
         if 'reviews' not in marketplace_modules[module_id]:
             marketplace_modules[module_id]['reviews'] = []
-        
+
         marketplace_modules[module_id]['reviews'].append(review)
-        
+
         # 평균 평점 계산
         ratings = [r['rating'] for r in marketplace_modules[module_id]['reviews']]
         marketplace_modules[module_id]['rating'] = sum(ratings) / len(ratings)
-        
+
         return jsonify({
             'success': True,
             'message': '리뷰가 성공적으로 등록되었습니다.',
             'review': review
         })
-        
+
     except Exception as e:
         logger.error(f"모듈 리뷰 작성 실패: {e}")
         return jsonify({'error': '모듈 리뷰 작성에 실패했습니다.'}), 500
+
 
 @module_marketplace_bp.route('/categories', methods=['GET'])
 def get_marketplace_categories():
     """마켓플레이스 카테고리 목록"""
     try:
         categories = {}
-        
+
         for module in marketplace_modules.values():
             category = module['category']
             if category not in categories:
@@ -493,7 +506,7 @@ def get_marketplace_categories():
                     'count': 0,
                     'modules': []
                 }
-            
+
             categories[category]['count'] += 1
             categories[category]['modules'].append({
                 'id': module['id'],
@@ -501,38 +514,40 @@ def get_marketplace_categories():
                 'rating': module['rating'],
                 'downloads': module['downloads']
             })
-        
+
         return jsonify({
             'success': True,
             'categories': list(categories.values())
         })
-        
+
     except Exception as e:
         logger.error(f"마켓플레이스 카테고리 조회 실패: {e}")
         return jsonify({'error': '마켓플레이스 카테고리 조회에 실패했습니다.'}), 500
+
 
 @module_marketplace_bp.route('/installed', methods=['GET'])
 def get_installed_modules():
     """사용자가 설치한 모듈 목록"""
     try:
-        user_modules = user_installed_modules.get(current_user.id, [])
+        user_modules = user_installed_modules.get(current_user.id, []) if user_installed_modules else []
         installed_modules = []
-        
+
         for module_id in user_modules:
             if module_id in marketplace_modules:
                 module = marketplace_modules[module_id].copy()
                 module['installed_at'] = datetime.now().isoformat()  # 실제로는 설치 시간 저장
                 installed_modules.append(module)
-        
+
         return jsonify({
             'success': True,
             'modules': installed_modules,
             'total_installed': len(installed_modules)
         })
-        
+
     except Exception as e:
         logger.error(f"설치된 모듈 목록 조회 실패: {e}")
         return jsonify({'error': '설치된 모듈 목록 조회에 실패했습니다.'}), 500
+
 
 @module_marketplace_bp.route('/trending', methods=['GET'])
 def get_trending_modules():
@@ -544,12 +559,12 @@ def get_trending_modules():
             key=lambda x: x['downloads'],
             reverse=True
         )[:8]  # 상위 8개
-        
+
         return jsonify({
             'success': True,
             'modules': trending_modules
         })
-        
+
     except Exception as e:
         logger.error(f"인기 모듈 목록 조회 실패: {e}")
-        return jsonify({'error': '인기 모듈 목록 조회에 실패했습니다.'}), 500 
+        return jsonify({'error': '인기 모듈 목록 조회에 실패했습니다.'}), 500

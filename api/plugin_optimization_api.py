@@ -1,11 +1,13 @@
+import logging
+from flask_login import login_required
+from flask import Blueprint, request, jsonify
+args = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 플러그인 성능 최적화 자동화 API
 - 최적화 제안 조회, 실행, 이력 조회
 """
 
-from flask import Blueprint, request, jsonify
-from flask_login import login_required
-import logging
 
 try:
     from core.backend.plugin_optimization_engine import plugin_optimization_engine
@@ -15,6 +17,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 plugin_optimization_bp = Blueprint('plugin_optimization', __name__, url_prefix='/api/plugin-optimization')
+
 
 @plugin_optimization_bp.route('/suggestions', methods=['GET'])
 @login_required
@@ -40,6 +43,7 @@ def get_suggestions():
     ]
     return jsonify({'success': True, 'data': data})
 
+
 @plugin_optimization_bp.route('/execute/<int:suggestion_id>', methods=['POST'])
 @login_required
 def execute_suggestion(suggestion_id):
@@ -51,6 +55,7 @@ def execute_suggestion(suggestion_id):
         return jsonify({'success': True, 'message': '최적화 제안이 실행되었습니다.'})
     else:
         return jsonify({'success': False, 'message': '최적화 제안 실행에 실패했습니다.'}), 500
+
 
 @plugin_optimization_bp.route('/history', methods=['GET'])
 @login_required
@@ -70,4 +75,4 @@ def get_history():
         }
         for h in history
     ]
-    return jsonify({'success': True, 'data': data}) 
+    return jsonify({'success': True, 'data': data})

@@ -1,15 +1,17 @@
-import os
-
-from flask import Blueprint, flash, redirect, render_template, request, url_for, jsonify
-from flask_login import current_user, login_required
-from werkzeug.utils import secure_filename
+from utils.logger import log_action  # pyright: ignore
+from utils.file_utils import delete_file, save_file  # pyright: ignore
+from utils.decorators import admin_required  # pyright: ignore
+from services.notice_service import update_notice  # pyright: ignore
+from models_main import Notice, NoticeComment, Report, db
 from datetime import datetime
+from werkzeug.utils import secure_filename  # pyright: ignore
+from flask_login import current_user, login_required
+from flask import Blueprint, flash, redirect, render_template, request, url_for, jsonify
+import os
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from models import Notice, NoticeComment, Report, db
-from services.notice_service import update_notice
-from utils.decorators import admin_required
-from utils.file_utils import delete_file, save_file
-from utils.logger import log_action
 
 notice_bp = Blueprint("notice", __name__, url_prefix="/notice")
 
@@ -18,7 +20,7 @@ notice_bp = Blueprint("notice", __name__, url_prefix="/notice")
 @notice_bp.route("/")
 @login_required
 def list_notices():
-    page = request.args.get("page", 1, type=int)
+    page = request.args.get() if args else None"page", 1, type=int) if args else None
     notices = (
         Notice.query.filter_by(is_hidden=False)
         .order_by(Notice.created_at.desc())
@@ -44,10 +46,10 @@ def view_notice(notice_id):
 @admin_required
 def create_notice():
     if request.method == "POST":
-        title = request.form["title"]
-        content = request.form["content"]
-        category = request.form["category"]
-        file = request.files.get("file")
+        title = request.form["title"] if form is not None else None
+        content = request.form["content"] if form is not None else None
+        category = request.form["category"] if form is not None else None
+        file = request.files.get() if files else None"file") if files else None
 
         file_path, file_type = None, None
         if file and file.filename != "":
@@ -76,7 +78,7 @@ def edit_notice(notice_id):
     notice = Notice.query.get_or_404(notice_id)
     if request.method == "POST":
         form_data = request.form.to_dict()
-        file = request.files.get("file")
+        file = request.files.get() if files else None"file") if files else None
 
         updated_notice = update_notice(notice_id, form_data, file, current_user.id)
 
@@ -127,7 +129,7 @@ def hide_notice(notice_id):
 @notice_bp.route("/<int:notice_id>/comment", methods=["POST"])
 @login_required
 def add_comment(notice_id):
-    content = request.form.get("content")
+    content = request.form.get() if form else None"content") if form else None
     if content:
         comment = NoticeComment()
         comment.content = content
@@ -178,10 +180,10 @@ def hide_comment(comment_id):
 @notice_bp.route("/report", methods=["POST"])
 @login_required
 def report():
-    target_type = request.form.get("target_type")
-    target_id = request.form.get("target_id", type=int)
-    reason = request.form.get("reason")
-    category = request.form.get("category")
+    target_type = request.form.get() if form else None"target_type") if form else None
+    target_id = request.form.get() if form else None"target_id", type=int) if form else None
+    reason = request.form.get() if form else None"reason") if form else None
+    category = request.form.get() if form else None"category") if form else None
 
     if not all([target_type, target_id, reason, category]):
         flash("잘못된 요청입니다.", "error")

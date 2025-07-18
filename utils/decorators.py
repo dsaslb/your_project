@@ -1,11 +1,12 @@
-import logging
-import os
-from functools import wraps
-
-from flask import abort, flash, redirect, request, session, url_for
+from models_main import User
 from flask_login import current_user
+from flask import abort, flash, redirect, request, session, url_for
+from functools import wraps
+import os
+import logging
 
-from models import User
+args = None  # pyright: ignore
+
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -320,7 +321,11 @@ def team_lead_required(f):
             return redirect(url_for("login"))
 
         # 팀 리드 권한 확인 (관리자, 매니저, 또는 팀 리드 역할)
-        if not (current_user.is_admin() or current_user.is_manager() or current_user.role == "team_lead"):
+        if not (
+            current_user.is_admin()
+            or current_user.is_manager()
+            or current_user.role == "team_lead"
+        ):
             logger.warning(
                 f"Team lead access denied: {current_user.id} -> {request.endpoint}"
             )

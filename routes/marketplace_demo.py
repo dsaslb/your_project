@@ -1,9 +1,11 @@
-from flask import Blueprint, render_template, jsonify, request
-import json
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
+import json
+from flask import Blueprint, render_template, jsonify, request
+form = None  # pyright: ignore
 
 marketplace_demo_bp = Blueprint('marketplace_demo', __name__)
+
 
 @marketplace_demo_bp.route('/marketplace/demo/<module_id>')
 def demo_module(module_id):
@@ -12,15 +14,16 @@ def demo_module(module_id):
         # 플러그인 정보 로드
         with open('marketplace/plugins.json', 'r', encoding='utf-8') as f:
             plugins = json.load(f)
-        
-        plugin = next((p for p in plugins if p['id'] == module_id), None)
+
+        plugin = next((p for p in plugins if (p is not None and p.get('id') == module_id)), None)
         if not plugin:
             return render_template('errors/404.html'), 404
-        
+
         return render_template('marketplace/demo.html', plugin=plugin)
-        
+
     except Exception as e:
         return render_template('errors/500.html'), 500
+
 
 @marketplace_demo_bp.route('/api/marketplace/demo/<module_id>/data')
 def get_demo_data(module_id):
@@ -38,14 +41,15 @@ def get_demo_data(module_id):
             return get_scheduling_demo_data()
         else:
             return jsonify({'error': '지원하지 않는 모듈입니다.'}), 404
-            
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 def get_attendance_demo_data():
     """출퇴근 관리 데모 데이터"""
     today = datetime.now().strftime('%Y-%m-%d')
-    
+
     # 실시간 데이터 시뮬레이션
     current_time = datetime.now()
     demo_data = {
@@ -145,8 +149,9 @@ def get_attendance_demo_data():
             }
         ]
     }
-    
+
     return jsonify(demo_data)
+
 
 def get_analytics_demo_data():
     """레스토랑 분석 데모 데이터"""
@@ -188,8 +193,9 @@ def get_analytics_demo_data():
             "average_rating": 4.7
         }
     }
-    
+
     return jsonify(demo_data)
+
 
 def get_inventory_demo_data():
     """재고 관리 데모 데이터"""
@@ -235,8 +241,9 @@ def get_inventory_demo_data():
             }
         ]
     }
-    
+
     return jsonify(demo_data)
+
 
 def get_loyalty_demo_data():
     """고객 충성도 데모 데이터"""
@@ -293,8 +300,9 @@ def get_loyalty_demo_data():
             }
         ]
     }
-    
+
     return jsonify(demo_data)
+
 
 def get_scheduling_demo_data():
     """직원 스케줄링 데모 데이터"""
@@ -345,35 +353,37 @@ def get_scheduling_demo_data():
             "overtime_pay": 0
         }
     }
-    
+
     return jsonify(demo_data)
+
 
 @marketplace_demo_bp.route('/api/marketplace/demo/<module_id>/interact', methods=['POST'])
 def interact_with_demo(module_id):
     """데모 상호작용 API"""
     try:
         data = request.get_json()
-        action = data.get('action')
-        
+        action = data.get('action') if data else None
+
         if module_id == 'attendance_management':
-            return handle_attendance_interaction(action, data)
+            return handle_attendance_interaction(action,  data)
         elif module_id == 'inventory_management':
-            return handle_inventory_interaction(action, data)
+            return handle_inventory_interaction(action,  data)
         else:
             return jsonify({'error': '지원하지 않는 상호작용입니다.'}), 400
-            
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def handle_attendance_interaction(action, data):
+
+def handle_attendance_interaction(action,  data):
     """출퇴근 관리 상호작용 처리"""
     if action == 'check_in':
-        employee_id = data.get('employee_id')
+        employee_id = data.get('employee_id') if data else None
         current_time = datetime.now()
-        
+
         # 지각 여부 확인
         is_late = current_time.time() > datetime.strptime('09:00', '%H:%M').time()
-        
+
         result = {
             'success': True,
             'message': '출근이 기록되었습니다.',
@@ -384,13 +394,13 @@ def handle_attendance_interaction(action, data):
                 'status': 'checked_in'
             }
         }
-        
+
         return jsonify(result)
-        
+
     elif action == 'check_out':
-        employee_id = data.get('employee_id')
+        employee_id = data.get('employee_id') if data else None
         current_time = datetime.now()
-        
+
         result = {
             'success': True,
             'message': '퇴근이 기록되었습니다.',
@@ -401,17 +411,18 @@ def handle_attendance_interaction(action, data):
                 'status': 'checked_out'
             }
         }
-        
+
         return jsonify(result)
-    
+
     return jsonify({'error': '지원하지 않는 액션입니다.'}), 400
 
-def handle_inventory_interaction(action, data):
+
+def handle_inventory_interaction(action,  data):
     """재고 관리 상호작용 처리"""
     if action == 'add_item':
-        item_name = data.get('name')
-        quantity = data.get('quantity', 1)
-        
+        item_name = data.get('name') if data else None
+        quantity = data.get('quantity', 1) if data else None
+
         result = {
             'success': True,
             'message': f'{item_name}이(가) 재고에 추가되었습니다.',
@@ -423,7 +434,7 @@ def handle_inventory_interaction(action, data):
                 'unit_price': 1000
             }
         }
-        
+
         return jsonify(result)
-    
-    return jsonify({'error': '지원하지 않는 액션입니다.'}), 400 
+
+    return jsonify({'error': '지원하지 않는 액션입니다.'}), 400

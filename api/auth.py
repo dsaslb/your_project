@@ -1,16 +1,23 @@
-import datetime
-
-import jwt
+from models_main import User, db
 from flask import (Blueprint, current_app, flash, jsonify, redirect,
                    render_template, request, url_for)
+import jwt
+import datetime
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from models import User, db
+from extensions import csrf
+
 
 api_auth_bp = Blueprint("api_auth", __name__, url_prefix="/api/auth")
+security_auth_bp = Blueprint("security_auth", __name__, url_prefix="/api/security/auth")
 auth_bp = Blueprint("auth", __name__)
 
 
 @api_auth_bp.route("/login", methods=["POST"])
+@csrf.exempt
 def api_login():
     """
     사용자 로그인 API
@@ -24,7 +31,7 @@ def api_login():
     secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
     print(f"DEBUG: JWT_SECRET_KEY = {secret_key}")
     print(f"DEBUG: current_app.config keys = {list(current_app.config.keys())}")
-    
+
     data = request.json
     if not data or "username" not in data or "password" not in data:
         return jsonify({"message": "사용자명과 비밀번호를 입력해주세요."}), 400
@@ -40,7 +47,7 @@ def api_login():
 
     # JWT 토큰 생성
     secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
-    
+
     # 액세스 토큰 (1시간)
     access_token = jwt.encode(
         {
@@ -52,7 +59,7 @@ def api_login():
         secret_key,
         algorithm='HS256'
     )
-    
+
     # 리프레시 토큰 (7일)
     refresh_token = jwt.encode(
         {
@@ -98,6 +105,14 @@ def api_login():
     }), 200
 
 
+@security_auth_bp.route("/login", methods=["POST"])
+def security_api_login():
+    """
+    보안 로그인 API (호환성을 위한 별칭)
+    """
+    return api_login()
+
+
 @api_auth_bp.route("/refresh", methods=["POST"])
 def api_refresh():
     """JWT 토큰 리프레시 API"""
@@ -108,7 +123,6 @@ def api_refresh():
     try:
         secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
         payload = jwt.decode(data["refresh_token"], secret_key, algorithms=['HS256'])
-        
         user = User.query.get(payload['user_id'])
         if not user:
             return jsonify({"message": "유효하지 않은 토큰입니다."}), 401
@@ -137,13 +151,14 @@ def api_refresh():
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@csrf.exempt
 def login():
     """웹 로그인 페이지"""
     if request.method == "POST":
         # JSON 요청인 경우 API 로그인으로 처리
         if request.is_json:
             return api_login()
-        
+
         username = request.form.get("username")
         password = request.form.get("password")
 
@@ -237,10 +252,10 @@ def api_quick_admin_login():
             admin.set_password("admin123")
             db.session.add(admin)
             db.session.commit()
-        
+
         # JWT 토큰 생성
         secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
-        
+
         # 액세스 토큰 (1시간)
         access_token = jwt.encode(
             {
@@ -252,7 +267,7 @@ def api_quick_admin_login():
             secret_key,
             algorithm='HS256'
         )
-        
+
         # 리프레시 토큰 (7일)
         refresh_token = jwt.encode(
             {
@@ -280,7 +295,7 @@ def api_quick_admin_login():
             "user": user_data,
             "redirect_to": "/admin-dashboard"
         }), 200
-        
+
     except Exception:
         return jsonify({"message": "로그인 실패가 발생했습니다."}), 500
 
@@ -289,7 +304,7 @@ def api_quick_admin_login():
 def quick_admin_login():
     """관리자(admin) 계정으로 바로 로그인 (테스트/개발용)"""
     from flask_login import login_user
-    from models import User, db
+    from models_main import User, db
     admin = User.query.filter_by(username="admin").first()
     if not admin:
         admin = User()
@@ -311,10 +326,10 @@ def api_profile():
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({"message": "인증 토큰이 필요합니다."}), 401
-        
+
         token = auth_header.split(' ')[1]
         secret_key = current_app.config.get('SECRET_KEY', 'default-secret-key')
-        
+
         try:
             payload = jwt.decode(token, secret_key, algorithms=['HS256'])
             user_id = payload.get('user_id')
@@ -322,12 +337,12 @@ def api_profile():
             return jsonify({"message": "토큰이 만료되었습니다."}), 401
         except jwt.InvalidTokenError:
             return jsonify({"message": "유효하지 않은 토큰입니다."}), 401
-        
+
         # 사용자 정보 조회
         user = User.query.get(user_id)
         if not user:
             return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
-        
+
         # 사용자 정보 반환 (비밀번호 제외)
         user_data = {
             "id": user.id,
@@ -338,8 +353,8 @@ def api_profile():
             "branch_id": user.branch_id,
             "created_at": user.created_at.isoformat() if user.created_at else None,
         }
-        
+
         return jsonify(user_data), 200
-        
+
     except Exception:
         return jsonify({"message": "프로필 조회 중 오류가 발생했습니다."}), 500

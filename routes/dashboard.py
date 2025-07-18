@@ -1,15 +1,16 @@
-from datetime import date, datetime, timedelta
-
+from utils.logger import log_action, log_error  # pyright: ignore
+from utils.decorators import admin_required  # pyright: ignore
+from models_main import (Attendance, CleaningPlan, Notification, Order, Schedule,
+                         ShiftRequest, User)
+from extensions import db
+from sqlalchemy import and_, extract, func, or_
+from flask_login import current_user, login_required
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, url_for)
-from flask_login import current_user, login_required
-from sqlalchemy import and_, extract, func, or_
+from datetime import date, datetime, timedelta
+args = None  # pyright: ignore
+query = None  # pyright: ignore
 
-from extensions import db
-from models import (Attendance, CleaningPlan, Notification, Order, Schedule,
-                    ShiftRequest, User)
-from utils.decorators import admin_required
-from utils.logger import log_action, log_error
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -72,7 +73,7 @@ def employee_dashboard():
         today = now.date()
 
         # 개인 통계
-        personal_stats = get_employee_stats(current_user.id, today)
+        personal_stats = get_employee_stats(current_user.id,  today)
 
         # 개인 근무 일정
         my_schedule = get_my_schedule(current_user.id)
@@ -81,7 +82,7 @@ def employee_dashboard():
         my_notifications = get_my_notifications(current_user.id)
 
         # 개인 근태 현황
-        attendance_status = get_attendance_status(current_user.id, today)
+        attendance_status = get_attendance_status(current_user.id,  today)
 
         return render_template(
             "dashboard.html",
@@ -305,7 +306,7 @@ def get_system_status():
         }
 
 
-def get_employee_stats(user_id, today):
+def get_employee_stats(user_id,  today):
     """직원용 개인 통계"""
     try:
         # 이번 달 출근 일수
@@ -412,7 +413,7 @@ def get_my_notifications(user_id):
         return []
 
 
-def get_attendance_status(user_id, today):
+def get_attendance_status(user_id,  today):
     """개인 근태 현황"""
     try:
         # 오늘 출근 기록
@@ -449,7 +450,7 @@ def api_dashboard_stats():
         if current_user.is_admin():
             stats = get_admin_stats(today)
         else:
-            stats = get_employee_stats(current_user.id, today)
+            stats = get_employee_stats(current_user.id,  today)
 
         return jsonify({"success": True, "stats": stats})
 
@@ -463,7 +464,7 @@ def api_dashboard_stats():
 def api_dashboard_trends():
     """대시보드 추이 API"""
     try:
-        period = request.args.get("period", "weekly")
+        period = request.args.get() if args else None"period", "weekly") if args else None
 
         if period == "weekly":
             trends = get_weekly_trends()

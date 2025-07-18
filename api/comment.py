@@ -1,14 +1,15 @@
+from models_main import NoticeComment, db
+from api.utils import token_required  # pyright: ignore
 from flask import Blueprint, jsonify, request
+query = None  # pyright: ignore
 
-from api.utils import token_required
-from models import NoticeComment, db
 
 api_comment_bp = Blueprint("api_comment", __name__, url_prefix="/api")
 
 
 @api_comment_bp.route("/notices/<int:notice_id>/comments", methods=["POST"])
 @token_required
-def post_comment(current_user, notice_id):
+def post_comment(current_user,  notice_id):
     """Creates a new comment on a notice. Auth required."""
     data = request.json
     content = data.get("content", "").strip()
@@ -29,7 +30,7 @@ def post_comment(current_user, notice_id):
 
 @api_comment_bp.route("/comments/<int:comment_id>", methods=["DELETE"])
 @token_required
-def delete_comment(current_user, comment_id):
+def delete_comment(current_user,  comment_id):
     """Deletes a comment. Auth required, user must be owner or admin."""
     comment = NoticeComment.query.get_or_404(comment_id)
 

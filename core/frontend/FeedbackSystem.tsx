@@ -59,6 +59,7 @@ interface FeedbackSystemProps {
   isAdmin?: boolean;
   onFeedbackSubmit?: (feedbackId: string) => void;
   onFeedbackUpdate?: (feedbackId: string, status: FeedbackStatus) => void;
+  onFeedbackClick?: (feedback: FeedbackData) => void; // 상세 모달 콜백
 }
 
 // 플로팅 피드백 버튼 Props
@@ -349,6 +350,7 @@ interface FeedbackListProps {
   onStatusUpdate?: (feedbackId: string, status: FeedbackStatus) => void;
   onCommentAdd?: (feedbackId: string, comment: string) => void;
   isAdmin?: boolean;
+  onFeedbackClick?: (feedback: FeedbackData) => void; // 상세 모달 콜백
 }
 
 // 피드백 목록
@@ -356,7 +358,8 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({
   feedbacks,
   onStatusUpdate,
   onCommentAdd,
-  isAdmin = false
+  isAdmin = false,
+  onFeedbackClick
 }) => {
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const [commentText, setCommentText] = useState<Record<string, string>>({});
@@ -397,7 +400,9 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({
       {feedbacks.map((feedback: FeedbackData) => (
         <div
           key={feedback.id}
-          className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+          className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+          onClick={() => onFeedbackClick && onFeedbackClick(feedback)}
+          aria-label="피드백 상세 보기"
         >
           <div className="flex justify-between items-start mb-2">
             <div className="flex-1">
@@ -508,7 +513,8 @@ export const FeedbackSystem: React.FC<FeedbackSystemProps> = ({
   userId,
   isAdmin = false,
   onFeedbackSubmit,
-  onFeedbackUpdate
+  onFeedbackUpdate,
+  onFeedbackClick
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [feedbacks, setFeedbacks] = useState<FeedbackData[]>([]);
@@ -625,10 +631,13 @@ export const FeedbackSystem: React.FC<FeedbackSystemProps> = ({
               onStatusUpdate={handleStatusUpdate}
               onCommentAdd={handleCommentAdd}
               isAdmin={isAdmin}
+              onFeedbackClick={onFeedbackClick}
             />
           )}
         </div>
       )}
     </>
   );
-}; 
+};
+
+export default FeedbackSystem; 

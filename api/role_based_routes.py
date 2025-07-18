@@ -1,10 +1,14 @@
-from flask import Blueprint, request, jsonify, session, g
-from functools import wraps
-from models import User, UserRole, Staff, Order, Schedule, Attendance, db
-from extensions import db
-import logging
+from api.gateway import token_required, role_required, admin_required, manager_required, employee_required, log_request  # pyright: ignore
 from datetime import datetime, timedelta
-from api.gateway import token_required, role_required, admin_required, manager_required, employee_required, log_request
+import logging
+from extensions import db
+from models_main import User, UserRole, Staff, Order, Schedule, Attendance, db
+from functools import wraps
+from flask import Blueprint, request, jsonify, session, g
+from flask_login import login_required
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -12,25 +16,27 @@ logger = logging.getLogger(__name__)
 # 역할별 라우팅 블루프린트
 role_routes = Blueprint('role_routes', __name__)
 
+
 def role_required(allowed_roles):
     """역할 기반 접근 제어 데코레이터"""
     def decorator(f):
         @wraps(f)
-        def decorated_function(*args, **kwargs):
+        def decorated_function(*args,  **kwargs):
             user = getattr(g, 'current_user', None)
             if not user:
                 return jsonify({'error': '인증이 필요합니다'}), 401
-            
+
             # 최고 관리자는 모든 권한 허용
             if user.role == 'super_admin':
                 return f(*args, **kwargs)
-            
+
             if user.role not in allowed_roles:
                 return jsonify({'error': '접근 권한이 없습니다'}), 403
-            
+
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
 
 # 역할 기반 라우팅 - 권한별 API 엔드포인트 분리
 super_admin_routes = Blueprint('super_admin', __name__, url_prefix='/api/super-admin')
@@ -39,6 +45,7 @@ manager_routes = Blueprint('manager', __name__, url_prefix='/api/manager')
 employee_routes = Blueprint('employee', __name__, url_prefix='/api/employee')
 
 # ==================== 최고 관리자 (Super Admin) 라우트 ====================
+
 
 @super_admin_routes.route('/dashboard', methods=['GET'])
 @token_required
@@ -51,11 +58,11 @@ def super_admin_dashboard_api():
         total_users = User.query.count()
         total_staff = Staff.query.count()
         total_orders = Order.query.count()
-        
+
         # 최근 활동
         recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
         recent_orders = Order.query.order_by(Order.created_at.desc()).limit(5).all()
-        
+
         return jsonify({
             'stats': {
                 'total_users': total_users,
@@ -80,6 +87,7 @@ def super_admin_dashboard_api():
         logger.error(f"Super admin dashboard error: {str(e)}")
         return jsonify({'error': 'Dashboard data fetch failed'}), 500
 
+
 @super_admin_routes.route('/users', methods=['GET'])
 @token_required
 @role_required(['super_admin'])
@@ -87,17 +95,17 @@ def super_admin_dashboard_api():
 def get_all_users():
     """전체 사용자 목록 조회"""
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        role_filter = request.args.get('role')
-        
+        page = request.args.get() if args else None'page', 1, type=int) if args else None
+        per_page = request.args.get() if args else None'per_page', 20, type=int) if args else None
+        role_filter = request.args.get() if args else None'role') if args else None
+
         query = User.query
-        
+
         if role_filter:
             query = query.filter(User.role == role_filter)
-        
+
         users = query.paginate(page=page, per_page=per_page, error_out=False)
-        
+
         return jsonify({
             'users': [{
                 'id': user.id,
@@ -119,6 +127,7 @@ def get_all_users():
         logger.error(f"Get all users error: {str(e)}")
         return jsonify({'error': 'Failed to fetch users'}), 500
 
+
 @super_admin_routes.route('/users/<int:user_id>', methods=['PUT'])
 @token_required
 @role_required(['super_admin'])
@@ -128,18 +137,18 @@ def update_user(user_id):
     try:
         user = User.query.get_or_404(user_id)
         data = request.get_json()
-        
+
         if 'role' in data:
-            user.role = data['role']
+            user.role = data['role'] if data is not None else None
         if 'is_active' in data:
-            user.is_active = data['is_active']
+            user.is_active = data['is_active'] if data is not None else None
         if 'name' in data:
-            user.name = data['name']
+            user.name = data['name'] if data is not None else None
         if 'email' in data:
-            user.email = data['email']
-        
+            user.email = data['email'] if data is not None else None
+
         db.session.commit()
-        
+
         return jsonify({
             'message': 'User updated successfully',
             'user': {
@@ -156,6 +165,7 @@ def update_user(user_id):
         logger.error(f"Update user error: {str(e)}")
         return jsonify({'error': 'Failed to update user'}), 500
 
+
 @super_admin_routes.route('/system/stats', methods=['GET'])
 @token_required
 @role_required(['super_admin'])
@@ -165,17 +175,17 @@ def system_stats():
     try:
         # 역할별 사용자 수
         role_stats = db.session.query(User.role, db.func.count(User.id)).group_by(User.role).all()
-        
+
         # 최근 7일 주문 통계
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
         recent_orders = Order.query.filter(Order.created_at >= seven_days_ago).all()
-        
+
         # 일별 주문 수
         daily_orders = {}
-        for order in recent_orders:
+        for order in recent_orders if recent_orders is not None:
             date = order.created_at.date().isoformat()
-            daily_orders[date] = daily_orders.get(date, 0) + 1
-        
+            daily_orders[date] if daily_orders is not None else None = daily_orders.get() if daily_orders else Nonedate, 0) if daily_orders else None + 1
+
         return jsonify({
             'role_distribution': dict(role_stats),
             'daily_orders': daily_orders,
@@ -188,15 +198,16 @@ def system_stats():
 
 # ==================== 관리자 (Admin) 라우트 ====================
 
+
 @admin_routes.route('/dashboard', methods=['GET'])
 @token_required
-@role_required(['admin', 'super_admin'])
+@role_required(['admin',  'super_admin'])
 @log_request
 def admin_dashboard_api():
     """관리자 대시보드"""
     try:
         user = g.current_user
-        
+
         # 관리자 소속 매장 정보
         if user.role == 'admin':
             # 특정 매장 관리자인 경우 해당 매장 데이터만
@@ -211,7 +222,7 @@ def admin_dashboard_api():
             # 최고 관리자인 경우 전체 데이터
             orders = Order.query.all()
             staff_list = Staff.query.all()
-        
+
         return jsonify({
             'stats': {
                 'total_orders': len(orders),
@@ -224,23 +235,24 @@ def admin_dashboard_api():
                 'status': order.status,
                 'total_amount': order.total_amount,
                 'created_at': order.created_at.isoformat()
-            } for order in orders[-5:]]
+            } for order in orders[-5:] if orders is not None else None]
         })
     except Exception as e:
         logger.error(f"Admin dashboard error: {str(e)}")
         return jsonify({'error': 'Dashboard data fetch failed'}), 500
 
+
 @admin_routes.route('/staff', methods=['GET'])
 @token_required
-@role_required(['admin', 'super_admin'])
+@role_required(['admin',  'super_admin'])
 @log_request
 def get_staff_list():
     """직원 목록 조회"""
     try:
         user = g.current_user
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        
+        page = request.args.get() if args else None'page', 1, type=int) if args else None
+        per_page = request.args.get() if args else None'per_page', 20, type=int) if args else None
+
         if user.role == 'admin':
             # 특정 매장 관리자인 경우 해당 매장 직원만
             staff = Staff.query.filter_by(user_id=user.id).first()
@@ -251,9 +263,9 @@ def get_staff_list():
         else:
             # 최고 관리자인 경우 전체 직원
             query = Staff.query
-        
+
         staff_list = query.paginate(page=page, per_page=per_page, error_out=False)
-        
+
         return jsonify({
             'staff': [{
                 'id': s.id,
@@ -275,18 +287,19 @@ def get_staff_list():
         logger.error(f"Get staff list error: {str(e)}")
         return jsonify({'error': 'Failed to fetch staff list'}), 500
 
+
 @admin_routes.route('/orders', methods=['GET'])
 @token_required
-@role_required(['admin', 'super_admin'])
+@role_required(['admin',  'super_admin'])
 @log_request
 def get_orders():
     """주문 목록 조회"""
     try:
         user = g.current_user
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        status_filter = request.args.get('status')
-        
+        page = request.args.get() if args else None'page', 1, type=int) if args else None
+        per_page = request.args.get() if args else None'per_page', 20, type=int) if args else None
+        status_filter = request.args.get() if args else None'status') if args else None
+
         if user.role == 'admin':
             # 특정 매장 관리자인 경우 해당 매장 주문만
             staff = Staff.query.filter_by(user_id=user.id).first()
@@ -297,12 +310,12 @@ def get_orders():
         else:
             # 최고 관리자인 경우 전체 주문
             query = Order.query
-        
+
         if status_filter:
             query = query.filter(Order.status == status_filter)
-        
+
         orders = query.order_by(Order.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
-        
+
         return jsonify({
             'orders': [{
                 'id': order.id,
@@ -325,20 +338,21 @@ def get_orders():
 
 # ==================== 매니저 (Manager) 라우트 ====================
 
+
 @manager_routes.route('/dashboard', methods=['GET'])
 @token_required
-@role_required(['manager', 'admin', 'super_admin'])
+@role_required(['manager',  'admin',  'super_admin'])
 @log_request
 def manager_dashboard_api():
     """매니저 대시보드"""
     try:
         user = g.current_user
-        
+
         # 매니저 소속 매장 정보
         staff = Staff.query.filter_by(user_id=user.id).first()
         if not staff or not hasattr(staff, 'branch_id') or not staff.branch_id:
             return jsonify({'error': 'Branch not assigned'}), 400
-        
+
         # 간단한 대시보드 데이터
         return jsonify({
             'message': 'Manager dashboard data',
@@ -349,19 +363,20 @@ def manager_dashboard_api():
         logger.error(f"Manager dashboard error: {str(e)}")
         return jsonify({'error': 'Dashboard data fetch failed'}), 500
 
+
 @manager_routes.route('/schedule', methods=['GET'])
 @token_required
-@role_required(['manager', 'admin', 'super_admin'])
+@role_required(['manager',  'admin',  'super_admin'])
 @log_request
 def get_schedule():
     """근무 일정 조회"""
     try:
         user = g.current_user
         staff = Staff.query.filter_by(user_id=user.id).first()
-        
+
         if not staff:
             return jsonify({'error': 'Staff not found'}), 404
-        
+
         # 간단한 일정 데이터
         return jsonify({
             'message': 'Schedule data',
@@ -373,22 +388,23 @@ def get_schedule():
 
 # ==================== 직원 (Employee) 라우트 ====================
 
+
 @employee_routes.route('/dashboard', methods=['GET'])
 @token_required
-@role_required(['employee', 'manager', 'admin', 'super_admin'])
+@role_required(['employee',  'manager',  'admin',  'super_admin'])
 @log_request
 def employee_dashboard_api():
     """직원 대시보드"""
     try:
         user = g.current_user
         staff = Staff.query.filter_by(user_id=user.id).first()
-        
+
         if not staff:
             return jsonify({'error': 'Staff not found'}), 404
-        
+
         # 최근 주문 (직원이 처리한)
         recent_orders = Order.query.filter_by(staff_id=staff.id).order_by(Order.created_at.desc()).limit(5).all()
-        
+
         return jsonify({
             'message': 'Employee dashboard data',
             'staff_id': staff.id,
@@ -403,19 +419,20 @@ def employee_dashboard_api():
         logger.error(f"Employee dashboard error: {str(e)}")
         return jsonify({'error': 'Dashboard data fetch failed'}), 500
 
+
 @employee_routes.route('/attendance/check-in', methods=['POST'])
 @token_required
-@role_required(['employee', 'manager', 'admin', 'super_admin'])
+@role_required(['employee',  'manager',  'admin',  'super_admin'])
 @log_request
 def check_in():
     """출근 체크"""
     try:
         user = g.current_user
         staff = Staff.query.filter_by(user_id=user.id).first()
-        
+
         if not staff:
             return jsonify({'error': 'Staff not found'}), 404
-        
+
         return jsonify({
             'message': 'Checked in successfully',
             'check_in_time': datetime.utcnow().isoformat(),
@@ -425,19 +442,20 @@ def check_in():
         logger.error(f"Check in error: {str(e)}")
         return jsonify({'error': 'Failed to check in'}), 500
 
+
 @employee_routes.route('/attendance/check-out', methods=['POST'])
 @token_required
-@role_required(['employee', 'manager', 'admin', 'super_admin'])
+@role_required(['employee',  'manager',  'admin',  'super_admin'])
 @log_request
 def check_out():
     """퇴근 체크"""
     try:
         user = g.current_user
         staff = Staff.query.filter_by(user_id=user.id).first()
-        
+
         if not staff:
             return jsonify({'error': 'Staff not found'}), 404
-        
+
         return jsonify({
             'message': 'Checked out successfully',
             'check_out_time': datetime.utcnow().isoformat(),
@@ -447,30 +465,31 @@ def check_out():
         logger.error(f"Check out error: {str(e)}")
         return jsonify({'error': 'Failed to check out'}), 500
 
+
 @employee_routes.route('/orders/my', methods=['GET'])
 @token_required
-@role_required(['employee', 'manager', 'admin', 'super_admin'])
+@role_required(['employee',  'manager',  'admin',  'super_admin'])
 @log_request
 def get_my_orders():
     """내가 처리한 주문 목록"""
     try:
         user = g.current_user
         staff = Staff.query.filter_by(user_id=user.id).first()
-        
+
         if not staff:
             return jsonify({'error': 'Staff not found'}), 404
-        
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        status_filter = request.args.get('status')
-        
+
+        page = request.args.get() if args else None'page', 1, type=int) if args else None
+        per_page = request.args.get() if args else None'per_page', 20, type=int) if args else None
+        status_filter = request.args.get() if args else None'status') if args else None
+
         query = Order.query.filter_by(staff_id=staff.id)
-        
+
         if status_filter:
             query = query.filter(Order.status == status_filter)
-        
+
         orders = query.order_by(Order.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
-        
+
         return jsonify({
             'orders': [{
                 'id': order.id,
@@ -494,6 +513,7 @@ def get_my_orders():
 # 슈퍼 관리자 전용 API
 # ============================================================================
 
+
 @role_routes.route('/api/super-admin/dashboard', methods=['GET'])
 @role_required(['super_admin'])
 def super_admin_dashboard():
@@ -504,15 +524,15 @@ def super_admin_dashboard():
         total_branches = db.session.execute(
             'SELECT COUNT(DISTINCT branch_id) FROM users WHERE branch_id IS NOT NULL'
         ).scalar()
-        
+
         # 최근 가입자
         recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
-        
+
         # 시스템 로그 (최근 10개)
         system_logs = db.session.execute(
             'SELECT * FROM system_logs ORDER BY created_at DESC LIMIT 10'
         ).fetchall()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -547,30 +567,31 @@ def super_admin_dashboard():
         logger.error(f"Super admin dashboard error: {e}")
         return jsonify({'error': '대시보드 데이터를 불러올 수 없습니다.'}), 500
 
+
 @role_routes.route('/api/super-admin/users', methods=['GET'])
 @role_required(['super_admin'])
 def super_admin_users():
     """전체 사용자 목록 (슈퍼 관리자만)"""
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        role_filter = request.args.get('role')
-        branch_filter = request.args.get('branch_id', type=int)
-        
+        page = request.args.get() if args else None'page', 1, type=int) if args else None
+        per_page = request.args.get() if args else None'per_page', 20, type=int) if args else None
+        role_filter = request.args.get() if args else None'role') if args else None
+        branch_filter = request.args.get() if args else None'branch_id', type=int) if args else None
+
         query = User.query
-        
+
         if role_filter:
             query = query.filter(User.role == role_filter)
-        
+
         if branch_filter:
             query = query.filter(User.branch_id == branch_filter)
-        
+
         users = query.paginate(
-            page=page, 
-            per_page=per_page, 
+            page=page,
+            per_page=per_page,
             error_out=False
         )
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -600,18 +621,19 @@ def super_admin_users():
         logger.error(f"Super admin users error: {e}")
         return jsonify({'error': '사용자 목록을 불러올 수 없습니다.'}), 500
 
+
 @role_routes.route('/api/super-admin/users/<int:user_id>/status', methods=['PUT'])
 @role_required(['super_admin'])
 def update_user_status(user_id):
     """사용자 상태 변경 (승인/차단)"""
     try:
         data = request.get_json()
-        action = data.get('action')  # 'approve' or 'block'
-        
-        user = User.query.get(user_id)
+        action = data.get() if data else None'action') if data else None  # 'approve' or 'block'
+
+        user = User.query.get() if query else Noneuser_id) if query else None
         if not user:
             return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
-        
+
         if action == 'approve':
             user.is_active = True
             user.is_approved = True
@@ -619,12 +641,12 @@ def update_user_status(user_id):
             user.is_active = False
         else:
             return jsonify({'error': '잘못된 액션입니다.'}), 400
-        
+
         db.session.commit()
-        
+
         # 시스템 로그 기록
         logger.info(f"User {user_id} status changed to {action} by super admin")
-        
+
         return jsonify({
             'success': True,
             'message': f'사용자 상태가 {action}되었습니다.'
@@ -638,13 +660,14 @@ def update_user_status(user_id):
 # 브랜드 관리자 전용 API
 # ============================================================================
 
+
 @role_routes.route('/api/brand-manager/dashboard', methods=['GET'])
 @role_required([UserRole.BRAND_MANAGER])
 def brand_manager_dashboard():
     """브랜드 관리자 대시보드 데이터"""
     try:
-        user = User.query.get(session['user_id'])
-        
+        user = User.query.get() if query else Nonesession['user_id'] if Nonesession is not None else None) if query else None
+
         # 브랜드별 통계
         branch_stats = db.session.execute("""
             SELECT 
@@ -656,13 +679,13 @@ def brand_manager_dashboard():
             WHERE role IN ('store_manager', 'employee')
             GROUP BY branch_id
         """).fetchall()
-        
+
         # 승인 대기 중인 사용자
         pending_users = User.query.filter_by(
             is_approved=False,
             role=UserRole.STORE_MANAGER
         ).limit(10).all()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -692,22 +715,23 @@ def brand_manager_dashboard():
         logger.error(f"Brand manager dashboard error: {e}")
         return jsonify({'error': '대시보드 데이터를 불러올 수 없습니다.'}), 500
 
+
 @role_routes.route('/api/brand-manager/users/<int:user_id>/approve', methods=['PUT'])
 @role_required([UserRole.BRAND_MANAGER])
 def approve_store_manager(user_id):
     """매장 관리자 승인"""
     try:
-        user = User.query.get(user_id)
+        user = User.query.get() if query else Noneuser_id) if query else None
         if not user:
             return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
-        
+
         if user.role != UserRole.STORE_MANAGER:
             return jsonify({'error': '매장 관리자만 승인할 수 있습니다.'}), 400
-        
+
         user.is_approved = True
         user.is_active = True
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '매장 관리자가 승인되었습니다.'
@@ -721,13 +745,14 @@ def approve_store_manager(user_id):
 # 매장 관리자 전용 API
 # ============================================================================
 
+
 @role_routes.route('/api/store-manager/dashboard', methods=['GET'])
 @role_required([UserRole.STORE_MANAGER])
 def store_manager_dashboard():
     """매장 관리자 대시보드 데이터"""
     try:
-        user = User.query.get(session['user_id'])
-        
+        user = User.query.get() if query else Nonesession['user_id'] if Nonesession is not None else None) if query else None
+
         # 매장 내 직원 통계
         employee_stats = db.session.execute("""
             SELECT 
@@ -737,14 +762,14 @@ def store_manager_dashboard():
             FROM users 
             WHERE branch_id = :branch_id AND role = 'employee'
         """, {'branch_id': user.branch_id}).fetchone()
-        
+
         # 오늘의 스케줄
         today_schedules = db.session.execute("""
             SELECT * FROM schedules 
             WHERE branch_id = :branch_id 
             AND DATE(work_date) = CURDATE()
         """, {'branch_id': user.branch_id}).fetchall()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -773,27 +798,28 @@ def store_manager_dashboard():
 # 직원 전용 API
 # ============================================================================
 
+
 @role_routes.route('/api/employee/dashboard', methods=['GET'])
 @role_required([UserRole.EMPLOYEE])
 def employee_dashboard():
     """직원 대시보드 데이터"""
     try:
-        user = User.query.get(session['user_id'])
-        
+        user = User.query.get() if query else Nonesession['user_id'] if Nonesession is not None else None) if query else None
+
         # 오늘의 스케줄
         today_schedule = db.session.execute("""
             SELECT * FROM schedules 
             WHERE user_id = :user_id 
             AND DATE(work_date) = CURDATE()
         """, {'user_id': user.id}).fetchone()
-        
+
         # 최근 출퇴근 기록
         recent_attendance = db.session.execute("""
             SELECT * FROM attendance 
             WHERE user_id = :user_id 
             ORDER BY date DESC LIMIT 5
         """, {'user_id': user.id}).fetchall()
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -823,17 +849,16 @@ def employee_dashboard():
 # 공통 API (모든 역할 접근 가능)
 # ============================================================================
 
+
 @role_routes.route('/api/common/profile', methods=['GET'])
+@login_required
 def get_profile():
     """현재 사용자 프로필 정보"""
     try:
-        if 'user_id' not in session:
+        user = getattr(g, 'current_user', None) or current_user
+        if not user or not user.is_authenticated:
             return jsonify({'error': '인증이 필요합니다.'}), 401
-        
-        user = User.query.get(session['user_id'])
-        if not user:
-            return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -843,9 +868,9 @@ def get_profile():
                 'email': user.email,
                 'role': user.role,
                 'branch_id': user.branch_id,
-                'is_active': user.is_active,
-                'is_approved': user.is_approved,
-                'created_at': user.created_at.isoformat(),
+                'is_active': getattr(user, 'is_active', True),
+                'is_approved': getattr(user, 'is_approved', True),
+                'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None,
             }
         })
@@ -853,32 +878,22 @@ def get_profile():
         logger.error(f"Get profile error: {e}")
         return jsonify({'error': '프로필 정보를 불러올 수 없습니다.'}), 500
 
+
 @role_routes.route('/api/common/profile', methods=['PUT'])
+@login_required
 def update_profile():
     """프로필 정보 수정"""
     try:
-        if 'user_id' not in session:
+        user = getattr(g, 'current_user', None) or current_user
+        if not user or not user.is_authenticated:
             return jsonify({'error': '인증이 필요합니다.'}), 401
-        
-        user = User.query.get(session['user_id'])
-        if not user:
-            return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
-        
         data = request.get_json()
-        
-        # 수정 가능한 필드들
         if 'name' in data:
             user.name = data['name']
         if 'email' in data:
             user.email = data['email']
-        
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': '프로필이 업데이트되었습니다.'
-        })
+        return jsonify({'success': True, 'message': '프로필이 수정되었습니다.'})
     except Exception as e:
         logger.error(f"Update profile error: {e}")
-        db.session.rollback()
-        return jsonify({'error': '프로필 업데이트에 실패했습니다.'}), 500 
+        return jsonify({'error': '프로필 정보 수정에 실패했습니다.'}), 500

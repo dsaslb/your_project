@@ -1,967 +1,794 @@
+from extensions import db
+from models_main import Order, User, Attendance, InventoryItem, Schedule
+import warnings
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score  # pyright: ignore
+from sklearn.model_selection import train_test_split, cross_val_score  # pyright: ignore
+from sklearn.preprocessing import StandardScaler, MinMaxScaler  # pyright: ignore
+from sklearn.linear_model import LinearRegression, Ridge  # pyright: ignore
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor  # pyright: ignore
+import joblib
+import pickle
+from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime, timedelta
+import pandas as pd
+import numpy as np
+import json
+import logging
+from flask_login import login_required, current_user
+from flask import Blueprint, request, jsonify, current_app
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 #!/usr/bin/env python3
 """
-고도화된 AI 예측 시스템 API
-실시간 예측, 모델 관리, 자동 학습, 예측 정확도 분석 등의 고급 기능을 제공
+고급 AI 예측 시스템
+머신러닝 기반의 정교한 예측 모델 및 분석 시스템
 """
 
-from flask import Blueprint, jsonify, request, current_app
-from datetime import datetime, timedelta
-import logging
-import threading
-import time
-import json
-import numpy as np
-from typing import Dict, List, Any, Optional
-from collections import deque
-import sqlite3
-import os
-import random
+warnings.filterwarnings('ignore')
+
+# 데이터베이스 모델 import
 
 logger = logging.getLogger(__name__)
 
-# 블루프린트 생성
-advanced_ai_prediction_bp = Blueprint('advanced_ai_prediction', __name__, url_prefix='/api/advanced-ai')
+advanced_ai_prediction_bp = Blueprint('advanced_ai_prediction', __name__)
 
-class AdvancedAIPredictionSystem:
-    """고도화된 AI 예측 시스템"""
-    
+
+class AdvancedAIPredictionService:
+    """고급 AI 예측 서비스"""
+
     def __init__(self):
-        self.models = {
-            'sales': self._create_dummy_model('sales'),
-            'inventory': self._create_dummy_model('inventory'),
-            'staffing': self._create_dummy_model('staffing'),
-            'customer_flow': self._create_dummy_model('customer_flow'),
-            'revenue': self._create_dummy_model('revenue')
-        }
-        self.prediction_history = deque(maxlen=10000)
-        self.model_performance = {}
-        self.auto_learning_active = False
-        self.auto_learning_thread = None
-        self.db_path = 'advanced_ai_prediction.db'
-        self._init_database()
-        self._initialize_model_performance()
-    
-    def _init_database(self):
-        """AI 예측 데이터베이스 초기화"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 예측 결과 테이블
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS predictions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    prediction_type TEXT NOT NULL,
-                    model_type TEXT NOT NULL,
-                    predicted_value REAL,
-                    actual_value REAL,
-                    confidence REAL,
-                    features TEXT,
-                    metadata TEXT,
-                    accuracy REAL
-                )
-            ''')
-            
-            # 모델 성능 테이블
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS model_performance (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    model_type TEXT NOT NULL,
-                    mae REAL,
-                    mse REAL,
-                    rmse REAL,
-                    r2_score REAL,
-                    accuracy REAL,
-                    training_samples INTEGER,
-                    test_samples INTEGER
-                )
-            ''')
-            
-            # 자동 학습 이력 테이블
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS auto_learning_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    model_type TEXT NOT NULL,
-                    action TEXT NOT NULL,
-                    performance_before REAL,
-                    performance_after REAL,
-                    improvement REAL,
-                    training_data_size INTEGER,
-                    description TEXT
-                )
-            ''')
-            
-            # 예측 인사이트 테이블
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS prediction_insights (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    insight_type TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    description TEXT,
-                    confidence REAL,
-                    impact_score REAL,
-                    recommendations TEXT,
-                    data_sources TEXT
-                )
-            ''')
-            
-            conn.commit()
-            conn.close()
-            logger.info("고도화된 AI 예측 데이터베이스 초기화 완료")
-            
-        except Exception as e:
-            logger.error(f"데이터베이스 초기화 실패: {e}")
-    
-    def _create_dummy_model(self, model_type: str) -> Dict[str, Any]:
-        """더미 모델 생성"""
-        return {
-            'type': model_type,
-            'version': '1.0.0',
-            'last_trained': datetime.now().isoformat(),
-            'accuracy': random.uniform(0.75, 0.95),
-            'status': 'active',
-            'parameters': {
-                'learning_rate': 0.01,
-                'epochs': 100,
-                'batch_size': 32
-            }
-        }
-    
-    def _initialize_model_performance(self):
-        """모델 성능 초기화"""
-        for model_type in self.models.keys():
-            self.model_performance[model_type] = {
-                'mae': random.uniform(0.05, 0.15),
-                'mse': random.uniform(0.01, 0.03),
-                'rmse': random.uniform(0.1, 0.17),
-                'r2_score': random.uniform(0.7, 0.9),
-                'accuracy': random.uniform(0.75, 0.95),
-                'last_updated': datetime.now().isoformat(),
-                'training_samples': random.randint(1000, 5000),
-                'test_samples': random.randint(200, 1000)
-            }
-    
-    def start_auto_learning(self):
-        """자동 학습 시작"""
-        if self.auto_learning_active:
-            return {"status": "already_running"}
-            
-        self.auto_learning_active = True
-        self.auto_learning_thread = threading.Thread(target=self._auto_learning_loop, daemon=True)
-        self.auto_learning_thread.start()
-        
-        logger.info("AI 자동 학습 시작")
-        return {"status": "started"}
-    
-    def stop_auto_learning(self):
-        """자동 학습 중지"""
-        self.auto_learning_active = False
-        if self.auto_learning_thread:
-            self.auto_learning_thread.join(timeout=5)
-            
-        logger.info("AI 자동 학습 중지")
-        return {"status": "stopped"}
-    
-    def _auto_learning_loop(self):
-        """자동 학습 루프"""
-        while self.auto_learning_active:
-            try:
-                # 각 모델에 대해 자동 학습 수행
-                for model_type in self.models.keys():
-                    self._train_model(model_type)
-                
-                # 성능 개선 체크
-                self._check_performance_improvements()
-                
-                # 새로운 인사이트 생성
-                self._generate_insights()
-                
-                time.sleep(3600)  # 1시간마다 학습
-                
-            except Exception as e:
-                logger.error(f"자동 학습 루프 오류: {e}")
-                time.sleep(7200)  # 오류 시 2시간 대기
-    
-    def _train_model(self, model_type: str):
-        """모델 학습"""
-        try:
-            # 더미 학습 과정
-            old_accuracy = self.model_performance[model_type]['accuracy']
-            
-            # 학습 시뮬레이션
-            time.sleep(1)  # 학습 시간 시뮬레이션
-            
-            # 성능 개선 시뮬레이션
-            improvement = random.uniform(-0.02, 0.05)  # -2% ~ +5% 개선
-            new_accuracy = max(0.5, min(0.99, old_accuracy + improvement))
-            
-            # 성능 업데이트
-            self.model_performance[model_type].update({
-                'accuracy': new_accuracy,
-                'last_updated': datetime.now().isoformat(),
-                'training_samples': self.model_performance[model_type]['training_samples'] + random.randint(50, 200)
-            })
-            
-            # 모델 버전 업데이트
-            current_version = self.models[model_type]['version']
-            major, minor, patch = map(int, current_version.split('.'))
-            patch += 1
-            if patch > 99:
-                patch = 0
-                minor += 1
-            if minor > 99:
-                minor = 0
-                major += 1
-            
-            self.models[model_type].update({
-                'version': f"{major}.{minor}.{patch}",
-                'last_trained': datetime.now().isoformat()
-            })
-            
-            # 학습 이력 저장
-            self._save_auto_learning_history(model_type, 'train', old_accuracy, new_accuracy, improvement)
-            
-            logger.info(f"모델 {model_type} 학습 완료: {old_accuracy:.3f} -> {new_accuracy:.3f}")
-            
-        except Exception as e:
-            logger.error(f"모델 {model_type} 학습 실패: {e}")
-    
-    def _check_performance_improvements(self):
-        """성능 개선 체크"""
-        try:
-            for model_type, performance in self.model_performance.items():
-                if performance['accuracy'] < 0.7:  # 정확도가 70% 미만인 경우
-                    # 추가 학습 수행
-                    self._train_model(model_type)
-                    
-                    # 알림 생성
-                    self._create_alert(f"모델 {model_type}의 성능이 저하되어 추가 학습을 수행했습니다.")
-        
-        except Exception as e:
-            logger.error(f"성능 개선 체크 실패: {e}")
-    
-    def _generate_insights(self):
-        """예측 인사이트 생성"""
-        try:
-            insights = [
-                {
-                    'type': 'trend_analysis',
-                    'title': '매출 증가 트렌드 감지',
-                    'description': '최근 7일간 매출이 평균 15% 증가하는 트렌드가 감지되었습니다.',
-                    'confidence': 0.85,
-                    'impact_score': 0.8,
-                    'recommendations': ['재고 확보', '인력 배치 최적화'],
-                    'data_sources': ['sales_data', 'customer_flow']
-                },
-                {
-                    'type': 'anomaly_detection',
-                    'title': '비정상적인 고객 유입 패턴',
-                    'description': '평소 대비 30% 증가한 고객 유입이 감지되었습니다.',
-                    'confidence': 0.9,
-                    'impact_score': 0.7,
-                    'recommendations': ['서비스 품질 모니터링', '대기 시간 관리'],
-                    'data_sources': ['customer_flow', 'service_metrics']
-                },
-                {
-                    'type': 'seasonal_pattern',
-                    'title': '주말 매출 패턴 분석',
-                    'description': '주말 매출이 평일 대비 평균 40% 높은 패턴이 확인되었습니다.',
-                    'confidence': 0.95,
-                    'impact_score': 0.6,
-                    'recommendations': ['주말 인력 배치 증가', '주말 특별 메뉴 고려'],
-                    'data_sources': ['sales_data', 'staffing_data']
-                }
-            ]
-            
-            for insight in insights:
-                insight['timestamp'] = datetime.now().isoformat()
-                self._save_insight(insight)
-            
-        except Exception as e:
-            logger.error(f"인사이트 생성 실패: {e}")
-    
-    def _create_alert(self, message: str):
-        """알림 생성"""
-        try:
-            alert = {
-                'timestamp': datetime.now().isoformat(),
-                'type': 'ai_model_alert',
-                'severity': 'warning',
-                'message': message
-            }
-            
-            # 실제로는 알림 시스템에 전송
-            logger.warning(f"AI 모델 알림: {message}")
-            
-        except Exception as e:
-            logger.error(f"알림 생성 실패: {e}")
-    
-    def predict_sales_advanced(self, days_ahead: int = 7) -> List[Dict[str, Any]]:
-        """고도화된 매출 예측"""
-        try:
-            predictions = []
-            
-            for day in range(days_ahead):
-                # 고급 예측 로직 (계절성, 트렌드, 외부 요인 고려)
-                base_sales = 1000000
-                
-                # 계절성 요인
-                day_of_week = (datetime.now() + timedelta(days=day)).weekday()
-                day_multiplier = {
-                    0: 0.8,   # 월요일
-                    1: 0.9,   # 화요일
-                    2: 1.0,   # 수요일
-                    3: 1.1,   # 목요일
-                    4: 1.3,   # 금요일
-                    5: 1.5,   # 토요일
-                    6: 1.4    # 일요일
-                }.get(day_of_week, 1.0)
-                
-                # 트렌드 요인
-                trend_factor = 1 + (day * 0.01)  # 1% 일일 증가
-                
-                # 외부 요인 (날씨, 이벤트 등)
-                external_factor = random.uniform(0.9, 1.1)
-                
-                # 예측값 계산
-                predicted_sales = base_sales * day_multiplier * trend_factor * external_factor
-                
-                # 신뢰도 계산
-                confidence = max(0.6, 0.9 - (day * 0.03))
-                
-                prediction = {
-                    'timestamp': (datetime.now() + timedelta(days=day)).isoformat(),
-                    'prediction_type': 'sales',
-                    'model_type': 'advanced_lstm',
-                    'predicted_value': predicted_sales,
-                    'confidence': confidence,
-                    'features': {
-                        'day_of_week': day_of_week,
-                        'day_multiplier': day_multiplier,
-                        'trend_factor': trend_factor,
-                        'external_factor': external_factor
-                    },
-                    'metadata': {
-                        'days_ahead': day + 1,
-                        'model_version': self.models['sales']['version']
-                    }
-                }
-                
-                predictions.append(prediction)
-                self.prediction_history.append(prediction)
-            
-            # 예측 결과 저장
-            for prediction in predictions:
-                self._save_prediction(prediction)
-            
-            return predictions
-            
-        except Exception as e:
-            logger.error(f"고도화된 매출 예측 실패: {e}")
-            return []
-    
-    def predict_inventory_advanced(self, items: List[str]) -> Dict[str, Dict[str, Any]]:
-        """고도화된 재고 예측"""
-        try:
-            predictions = {}
-            
-            for item in items:
-                # 고급 재고 예측 로직
-                current_stock = random.randint(50, 200)
-                daily_consumption = random.uniform(10, 30)
-                lead_time = random.randint(1, 7)
-                safety_stock = daily_consumption * 2
-                
-                # 예측된 필요량
-                predicted_need = (daily_consumption * lead_time) + safety_stock - current_stock
-                predicted_need = max(0, predicted_need)
-                
-                # 재고 부족 위험도 계산
-                days_until_stockout = current_stock / daily_consumption if daily_consumption > 0 else float('inf')
-                risk_level = 'low' if days_until_stockout > 7 else 'medium' if days_until_stockout > 3 else 'high'
-                
-                # 신뢰도 계산
-                confidence = 0.9 if current_stock > safety_stock else 0.7
-                
-                prediction = {
-                    'timestamp': datetime.now().isoformat(),
-                    'prediction_type': 'inventory',
-                    'model_type': 'advanced_random_forest',
-                    'predicted_value': predicted_need,
-                    'confidence': confidence,
-                    'features': {
-                        'current_stock': current_stock,
-                        'daily_consumption': daily_consumption,
-                        'lead_time': lead_time,
-                        'safety_stock': safety_stock,
-                        'days_until_stockout': days_until_stockout,
-                        'risk_level': risk_level
-                    },
-                    'metadata': {
-                        'item_name': item,
-                        'model_version': self.models['inventory']['version']
-                    }
-                }
-                
-                predictions[item] = prediction
-                self.prediction_history.append(prediction)
-            
-            # 예측 결과 저장
-            for prediction in predictions.values():
-                self._save_prediction(prediction)
-            
-            return predictions
-            
-        except Exception as e:
-            logger.error(f"고도화된 재고 예측 실패: {e}")
-            return {}
-    
-    def predict_staffing_advanced(self, target_date: datetime) -> Dict[str, Any]:
-        """고도화된 인력 예측"""
-        try:
-            # 고급 인력 예측 로직
-            day_of_week = target_date.weekday()
-            month = target_date.month
-            
-            # 기본 인력
-            base_staff = 10
-            
-            # 요일별 조정
-            day_multipliers = {
-                0: 1.1,  # 월요일
-                1: 1.0,  # 화요일
-                2: 1.0,  # 수요일
-                3: 1.1,  # 목요일
-                4: 1.3,  # 금요일
-                5: 1.5,  # 토요일
-                6: 1.4   # 일요일
-            }
-            
-            # 계절성 조정
-            seasonal_multipliers = {
-                12: 1.2, 1: 1.2,   # 12월, 1월 (성수기)
-                7: 1.3, 8: 1.3,   # 7월, 8월 (성수기)
-                2: 0.9, 3: 0.9,   # 2월, 3월 (비수기)
-                9: 1.0, 10: 1.0, 11: 1.0  # 평상시
-            }
-            
-            day_multiplier = day_multipliers.get(day_of_week, 1.0)
-            seasonal_multiplier = seasonal_multipliers.get(month, 1.0)
-            
-            predicted_staff = base_staff * day_multiplier * seasonal_multiplier
-            confidence = 0.85
-            
-            prediction = {
-                'timestamp': target_date.isoformat(),
-                'prediction_type': 'staffing',
-                'model_type': 'advanced_gradient_boosting',
-                'predicted_value': predicted_staff,
-                'confidence': confidence,
-                'features': {
-                    'base_staff': base_staff,
-                    'day_of_week': day_of_week,
-                    'day_multiplier': day_multiplier,
-                    'month': month,
-                    'seasonal_multiplier': seasonal_multiplier
-                },
-                'metadata': {
-                    'target_date': target_date.isoformat(),
-                    'model_version': self.models['staffing']['version']
-                }
-            }
-            
-            self.prediction_history.append(prediction)
-            self._save_prediction(prediction)
-            
-            return prediction
-            
-        except Exception as e:
-            logger.error(f"고도화된 인력 예측 실패: {e}")
-            return {}
-    
-    def get_prediction_accuracy(self, prediction_type: str, days_back: int = 30) -> Dict[str, Any]:
-        """예측 정확도 분석"""
-        try:
-            cutoff_date = datetime.now() - timedelta(days=days_back)
-            
-            # 실제값과 예측값 비교 (더미 데이터)
-            actual_values = []
-            predicted_values = []
-            
-            for i in range(days_back):
-                # 더미 실제값과 예측값 생성
-                actual = random.uniform(800000, 1200000)
-                predicted = actual * random.uniform(0.9, 1.1)
-                
-                actual_values.append(actual)
-                predicted_values.append(predicted)
-            
-            # 정확도 메트릭 계산
-            errors = [abs(a - p) for a, p in zip(actual_values, predicted_values)]
-            mae = np.mean(errors)
-            mse = np.mean([(a - p) ** 2 for a, p in zip(actual_values, predicted_values)])
-            rmse = np.sqrt(mse)
-            
-            # R-squared 계산
-            mean_actual = np.mean(actual_values)
-            ss_res = sum((a - p) ** 2 for a, p in zip(actual_values, predicted_values))
-            ss_tot = sum((a - mean_actual) ** 2 for a in actual_values)
-            r2_score = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
-            
-            # 정확도 계산
-            accuracy = 1 - (mae / mean_actual) if mean_actual != 0 else 0
-            
-            return {
-                'prediction_type': prediction_type,
-                'days_analyzed': days_back,
-                'metrics': {
-                    'mae': float(mae),
-                    'mse': float(mse),
-                    'rmse': float(rmse),
-                    'r2_score': float(r2_score),
-                    'accuracy': float(accuracy)
-                },
-                'data_points': len(actual_values),
-                'analysis_date': datetime.now().isoformat()
-            }
-            
-        except Exception as e:
-            logger.error(f"예측 정확도 분석 실패: {e}")
-            return {}
-    
-    def _save_prediction(self, prediction: Dict[str, Any]):
-        """예측 결과를 데이터베이스에 저장"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO predictions (
-                    timestamp, prediction_type, model_type, predicted_value,
-                    confidence, features, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                prediction['timestamp'],
-                prediction['prediction_type'],
-                prediction['model_type'],
-                prediction['predicted_value'],
-                prediction['confidence'],
-                json.dumps(prediction.get('features', {})),
-                json.dumps(prediction.get('metadata', {}))
-            ))
-            
-            conn.commit()
-            conn.close()
-            
-        except Exception as e:
-            logger.error(f"예측 결과 저장 실패: {e}")
-    
-    def _save_auto_learning_history(self, model_type: str, action: str, 
-                                   performance_before: float, performance_after: float, 
-                                   improvement: float):
-        """자동 학습 이력을 데이터베이스에 저장"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO auto_learning_history (
-                    timestamp, model_type, action, performance_before,
-                    performance_after, improvement, training_data_size, description
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                datetime.now().isoformat(),
-                model_type,
-                action,
-                performance_before,
-                performance_after,
-                improvement,
-                self.model_performance[model_type]['training_samples'],
-                f"자동 학습으로 성능이 {improvement:.3f} 개선되었습니다."
-            ))
-            
-            conn.commit()
-            conn.close()
-            
-        except Exception as e:
-            logger.error(f"자동 학습 이력 저장 실패: {e}")
-    
-    def _save_insight(self, insight: Dict[str, Any]):
-        """인사이트를 데이터베이스에 저장"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO prediction_insights (
-                    timestamp, insight_type, title, description,
-                    confidence, impact_score, recommendations, data_sources
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                insight['timestamp'],
-                insight['type'],
-                insight['title'],
-                insight['description'],
-                insight['confidence'],
-                insight['impact_score'],
-                json.dumps(insight['recommendations']),
-                json.dumps(insight['data_sources'])
-            ))
-            
-            conn.commit()
-            conn.close()
-            
-        except Exception as e:
-            logger.error(f"인사이트 저장 실패: {e}")
-    
-    def get_models_status(self) -> Dict[str, Any]:
-        """모델 상태 조회"""
-        return {
-            'models': self.models,
-            'performance': self.model_performance,
-            'auto_learning_active': self.auto_learning_active,
-            'total_predictions': len(self.prediction_history),
-            'last_updated': datetime.now().isoformat()
-        }
-    
-    def get_recent_predictions(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """최근 예측 결과 조회"""
-        return list(self.prediction_history)[-limit:]
-    
-    def get_auto_learning_history(self) -> List[Dict[str, Any]]:
-        """자동 학습 이력 조회"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT * FROM auto_learning_history 
-                ORDER BY timestamp DESC LIMIT 20
-            ''')
-            
-            rows = cursor.fetchall()
-            conn.close()
-            
-            history = []
-            for row in rows:
-                history.append({
-                    'id': row[0],
-                    'timestamp': row[1],
-                    'model_type': row[2],
-                    'action': row[3],
-                    'performance_before': row[4],
-                    'performance_after': row[5],
-                    'improvement': row[6],
-                    'training_data_size': row[7],
-                    'description': row[8]
-                })
-            
-            return history
-            
-        except Exception as e:
-            logger.error(f"자동 학습 이력 조회 실패: {e}")
-            return []
-    
-    def get_insights(self, insight_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        """인사이트 조회"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            if insight_type:
-                cursor.execute('''
-                    SELECT * FROM prediction_insights 
-                    WHERE insight_type = ? 
-                    ORDER BY timestamp DESC LIMIT 10
-                ''', (insight_type,))
-            else:
-                cursor.execute('''
-                    SELECT * FROM prediction_insights 
-                    ORDER BY timestamp DESC LIMIT 10
-                ''')
-            
-            rows = cursor.fetchall()
-            conn.close()
-            
-            insights = []
-            for row in rows:
-                insights.append({
-                    'id': row[0],
-                    'timestamp': row[1],
-                    'insight_type': row[2],
-                    'title': row[3],
-                    'description': row[4],
-                    'confidence': row[5],
-                    'impact_score': row[6],
-                    'recommendations': json.loads(row[7]) if row[7] else [],
-                    'data_sources': json.loads(row[8]) if row[8] else []
-                })
-            
-            return insights
-            
-        except Exception as e:
-            logger.error(f"인사이트 조회 실패: {e}")
-            return []
+        self.models = {}
+        self.scalers = {}
+        self.model_metadata = {}
+        self.prediction_cache = {}
+        self.last_training = {}
 
-# 전역 인스턴스 생성
-advanced_ai_prediction_system = AdvancedAIPredictionSystem()
+        # 모델 설정
+        self.model_configs = {
+            'sales_forecast': {
+                'model_type': 'gradient_boosting',
+                'features': ['day_of_week', 'month', 'season', 'holiday', 'weather', 'previous_sales'],
+                'target': 'sales_amount',
+                'horizon_days': 30
+            },
+            'inventory_prediction': {
+                'model_type': 'random_forest',
+                'features': ['current_stock', 'sales_history', 'lead_time', 'seasonality'],
+                'target': 'required_stock',
+                'horizon_days': 7
+            },
+            'customer_behavior': {
+                'model_type': 'random_forest',
+                'features': ['visit_frequency', 'avg_order_value', 'last_visit', 'preferences'],
+                'target': 'churn_probability',
+                'horizon_days': 90
+            },
+            'staff_scheduling': {
+                'model_type': 'linear_regression',
+                'features': ['historical_demand', 'day_of_week', 'season', 'events'],
+                'target': 'required_staff',
+                'horizon_days': 14
+            }
+        }
+
+        # 모델 초기화
+        self._initialize_models()
+
+    def _initialize_models(self):
+        """모델 초기화"""
+        # model_configs는 self. 접두사로 접근
+        for model_name, config in self.model_configs.items():
+            try:
+                # 모델 생성
+                if config['model_type'] == 'gradient_boosting':
+                    self.models[model_name] = GradientBoostingRegressor(
+                        n_estimators=100,
+                        learning_rate=0.1,
+                        max_depth=5,
+                        random_state=42
+                    )
+                elif config['model_type'] == 'random_forest':
+                    self.models[model_name] = RandomForestRegressor(
+                        n_estimators=100,
+                        max_depth=10,
+                        random_state=42
+                    )
+                elif config['model_type'] == 'linear_regression':
+                    self.models[model_name] = Ridge(alpha=1.0)
+
+                # 스케일러 생성
+                self.scalers[model_name] = StandardScaler()
+
+                # 메타데이터 초기화
+                self.model_metadata[model_name] = {
+                    'last_trained': None,
+                    'accuracy': 0.0,
+                    'training_samples': 0,
+                    'features_importance': {},
+                    'model_performance': {}
+                }
+
+                logger.info(f"모델 초기화 완료: {model_name}")
+
+            except Exception as e:
+                logger.error(f"모델 초기화 실패 {model_name}: {e}")
+
+    def prepare_sales_data(self, days_back=365) -> pd.DataFrame:
+        """매출 예측용 데이터 준비"""
+        try:
+            # 과거 주문 데이터 조회
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days_back)
+
+            orders = db.session.query(Order).filter(
+                Order.created_at >= start_date,
+                Order.created_at <= end_date
+            ).all()
+
+            # 데이터프레임 생성
+            data = []
+            for order in orders:  # 불필요한 if orders is not None 제거
+                data.append({
+                    'date': order.created_at.date(),
+                    'sales_amount': getattr(order, 'total_amount', 0),  # pyright: ignore
+                    'order_count': 1,
+                    'day_of_week': order.created_at.weekday(),
+                    'month': order.created_at.month,
+                    'season': self._get_season(order.created_at.month),
+                    'holiday': self._is_holiday(order.created_at.date()),
+                    'weather': self._get_weather_score(order.created_at.date())  # 시뮬레이션
+                })
+
+            df = pd.DataFrame(data)
+
+            # 일별 집계
+            daily_sales = df.groupby('date').agg({
+                'sales_amount': 'sum',
+                'order_count': 'sum',
+                'day_of_week': 'first',
+                'month': 'first',
+                'season': 'first',
+                'holiday': 'first',
+                'weather': 'first'
+            }).reset_index()
+
+            # 이전 매출 데이터 추가 (시계열 특성)
+            daily_sales['previous_sales'] = daily_sales['sales_amount'].shift(1)
+            daily_sales['sales_7d_avg'] = daily_sales['sales_amount'].rolling(7).mean()
+            daily_sales['sales_30d_avg'] = daily_sales['sales_amount'].rolling(30).mean()
+
+            # 결측값 처리
+            daily_sales = daily_sales.dropna()
+
+            return daily_sales
+
+        except Exception as e:
+            logger.error(f"매출 데이터 준비 실패: {e}")
+            return pd.DataFrame()
+
+    def prepare_inventory_data(self) -> pd.DataFrame:
+        """재고 예측용 데이터 준비"""
+        try:
+            # 재고 아이템 데이터 조회
+            inventory_items = db.session.query(InventoryItem).all()
+
+            data = []
+            for item in inventory_items:
+                # 관련 주문 데이터 조회
+                orders = db.session.query(Order).filter(
+                    Order.created_at >= datetime.now() - timedelta(days=30)
+                ).all()
+
+                # 아이템별 판매량 계산 (시뮬레이션)
+                avg_daily_sales = np.random.randint(1, 10)  # 실제로는 주문 상세에서 계산
+
+                data.append({
+                    'item_id': item.id,
+                    'item_name': item.name,
+                    'current_stock': item.current_stock,
+                    'avg_daily_sales': avg_daily_sales,
+                    'lead_time_days': np.random.randint(1, 7),
+                    'seasonality_factor': self._get_seasonality_factor(item.name),
+                    'safety_stock': max(avg_daily_sales * 2, 5),
+                    'reorder_point': avg_daily_sales * 3
+                })
+
+            return pd.DataFrame(data)
+
+        except Exception as e:
+            logger.error(f"재고 데이터 준비 실패: {e}")
+            return pd.DataFrame()
+
+    def prepare_customer_data(self) -> pd.DataFrame:
+        """고객 행동 예측용 데이터 준비"""
+        try:
+            # 사용자 데이터 조회
+            users = db.session.query(User).filter(
+                User.role == 'customer'
+            ).all()
+
+            data = []
+            for user in users:
+                # 사용자별 주문 데이터 조회
+                user_orders = db.session.query(Order).filter(
+                    Order.user_id == user.id  # pyright: ignore
+                ).order_by(Order.created_at.desc()).all()
+
+                if user_orders:
+                    visit_frequency = len(user_orders) / max(1, (datetime.now() - user_orders[-1].created_at).days)  # pyright: ignore
+                    avg_order_value = sum(o.total_amount or 0 for o in user_orders) / len(user_orders)  # pyright: ignore
+                    last_visit_days = (datetime.now() - user_orders[0].created_at).days  # pyright: ignore
+
+                    # 이탈 확률 계산 (시뮬레이션)
+                    churn_probability = min(0.9, last_visit_days / 90) if last_visit_days > 30 else 0.1
+
+                    data.append({
+                        'user_id': user.id,
+                        'visit_frequency': visit_frequency,
+                        'avg_order_value': avg_order_value,
+                        'last_visit_days': last_visit_days,
+                        'total_orders': len(user_orders),
+                        'preferences_score': np.random.uniform(0, 1),  # 시뮬레이션
+                        'churn_probability': churn_probability
+                    })
+
+            return pd.DataFrame(data)
+
+        except Exception as e:
+            logger.error(f"고객 데이터 준비 실패: {e}")
+            return pd.DataFrame()
+
+    def prepare_staff_data(self) -> pd.DataFrame:
+        """직원 스케줄링 예측용 데이터 준비"""
+        try:
+            # 과거 스케줄 데이터 조회
+            schedules = db.session.query(Schedule).filter(
+                Schedule.work_date >= datetime.now() - timedelta(days=90)  # pyright: ignore
+            ).all()
+
+            data = []
+            for schedule in schedules:
+                # 해당 날짜의 주문 수 조회
+                day_orders = db.session.query(Order).filter(
+                    Order.created_at >= schedule.work_date,  # pyright: ignore
+                    Order.created_at < schedule.work_date + timedelta(days=1)  # pyright: ignore
+                ).count()
+
+                data.append({
+                    'date': schedule.work_date.date(),  # pyright: ignore
+                    'required_staff': schedule.required_staff or 1,  # pyright: ignore
+                    'actual_staff': schedule.actual_staff or 1,  # pyright: ignore
+                    'day_of_week': schedule.work_date.weekday(),  # pyright: ignore
+                    'month': schedule.work_date.month,  # pyright: ignore
+                    'season': self._get_season(schedule.work_date.month),  # pyright: ignore
+                    'historical_demand': day_orders,
+                    'events': self._has_events(schedule.work_date.date())  # pyright: ignore
+                })
+
+            return pd.DataFrame(data)
+
+        except Exception as e:
+            logger.error(f"직원 데이터 준비 실패: {e}")
+            return pd.DataFrame()
+
+    def train_sales_forecast_model(self) -> Dict[str, Any]:  # 타입힌트 표준화
+        """매출 예측 모델 훈련"""
+        try:
+            # 데이터 준비
+            df = self.prepare_sales_data()
+            if df.empty:
+                return {'error': '훈련 데이터가 부족합니다.'}
+
+            # 특성 선택
+            features = ['day_of_week', 'month', 'season', 'holiday', 'weather', 'previous_sales', 'sales_7d_avg']
+            X = df[features]
+            y = df['sales_amount']
+
+            # 데이터 분할
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+            # 스케일링
+            X_train_scaled = self.scalers['sales_forecast'].fit_transform(X_train)
+            X_test_scaled = self.scalers['sales_forecast'].transform(X_test)
+
+            # 모델 훈련
+            model = self.models['sales_forecast']
+            model.fit(X_train_scaled, y_train)
+
+            # 예측 및 평가
+            y_pred = model.predict(X_test_scaled)
+            mse = mean_squared_error(y_test, y_pred)
+            mae = mean_absolute_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+
+            # 특성 중요도
+            feature_importance = dict(zip(features, getattr(model, 'feature_importances_', [])))  # pyright: ignore
+
+            # 메타데이터 업데이트
+            self.model_metadata['sales_forecast'].update({
+                'last_trained': datetime.now(),
+                'accuracy': r2,
+                'training_samples': len(X_train),
+                'features_importance': feature_importance,
+                'model_performance': {
+                    'mse': mse,
+                    'mae': mae,
+                    'r2': r2
+                }
+            })
+
+            logger.info(f"매출 예측 모델 훈련 완료: R² = {r2:.3f}")
+
+            return {
+                'success': True,
+                'accuracy': r2,
+                'training_samples': len(X_train),
+                'feature_importance': feature_importance,
+                'performance': {
+                    'mse': mse,
+                    'mae': mae,
+                    'r2': r2
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"매출 예측 모델 훈련 실패: {e}")
+            return {'error': f'모델 훈련 실패: {str(e)}'}
+
+    def predict_sales_forecast(self, days_ahead: int = 30) -> Dict[str, Any]:
+        """매출 예측"""
+        try:
+            if 'sales_forecast' not in self.models:
+                return {'error': '매출 예측 모델이 훈련되지 않았습니다.'}
+            # 최근 데이터로 예측 데이터 준비
+            recent_data = self.prepare_sales_data(days_back=60)
+            if recent_data.empty:
+                return {'error': '예측 데이터를 준비할 수 없습니다.'}
+            # 미래 날짜 생성
+            last_date = recent_data['date'].max()
+            future_dates = pd.date_range(start=last_date + timedelta(days=1), periods=days_ahead, freq='D')
+            predictions = []
+            current_data = recent_data.copy()
+            model = self.models['sales_forecast']  # 명확히 정의
+            for future_date in future_dates:
+                # 특성 준비
+                features = {
+                    'day_of_week': future_date.weekday(),
+                    'month': future_date.month,
+                    'season': self._get_season(future_date.month),
+                    'holiday': self._is_holiday(future_date.date()),
+                    'weather': self._get_weather_score(future_date.date()),
+                    'previous_sales': current_data['sales_amount'].iloc[-1] if not current_data.empty else 0,
+                    'sales_7d_avg': current_data['sales_amount'].tail(7).mean() if len(current_data) >= 7 else 0
+                }
+                # 예측
+                X_pred = pd.DataFrame([features])
+                X_pred_scaled = self.scalers['sales_forecast'].transform(X_pred)
+                prediction = model.predict(X_pred_scaled)[0]
+                predictions.append({
+                    'date': future_date.date().isoformat(),
+                    'predicted_sales': max(0, float(prediction)),
+                    # pyright: ignore
+                    'confidence': self._calculate_confidence(float(prediction), current_data['sales_amount'])
+                })
+                # 데이터 업데이트 (시뮬레이션)
+                current_data = current_data.append({
+                    'date': future_date.date(),
+                    'sales_amount': prediction,
+                    'day_of_week': future_date.weekday(),
+                    'month': future_date.month,
+                    'season': self._get_season(future_date.month),
+                    'holiday': self._is_holiday(future_date.date()),
+                    'weather': self._get_weather_score(future_date.date())
+                }, ignore_index=True)
+            total_predicted = sum(p['predicted_sales'] for p in predictions)
+            return {
+                'success': True,
+                'predictions': predictions,
+                'total_predicted_sales': total_predicted,
+                'avg_daily_sales': total_predicted / days_ahead,
+                'model_accuracy': self.model_metadata['sales_forecast']['accuracy'],
+                'last_trained': self.model_metadata['sales_forecast']['last_trained'].isoformat() if self.model_metadata['sales_forecast']['last_trained'] else None
+            }
+        except Exception as e:
+            logger.error(f"매출 예측 실패: {e}")
+            return {'error': f'예측 실패: {str(e)}'}
+
+    def predict_inventory_needs(self) -> Dict[str, Any]:
+        """재고 필요량 예측"""
+        try:
+            # 재고 데이터 준비
+            df = self.prepare_inventory_data()
+            if df.empty:
+                return {'error': '재고 데이터를 준비할 수 없습니다.'}
+            predictions = []
+            for _, item in df.iterrows():
+                # 재고 부족 예측
+                daily_usage = item['avg_daily_sales']
+                days_until_stockout = float(item['current_stock']) / float(daily_usage) if daily_usage > 0 else float('inf')
+                # 재주문 필요량 계산
+                lead_time_days = item['lead_time_days']
+                safety_stock = item['safety_stock']
+                required_stock = float(daily_usage) * float(lead_time_days) + float(safety_stock)
+                reorder_quantity = max(0, float(required_stock) - float(item['current_stock']))
+                # 긴급도 계산
+                urgency = 'low'
+                if days_until_stockout < 3:
+                    urgency = 'critical'
+                elif days_until_stockout < 7:
+                    urgency = 'high'
+                elif days_until_stockout < 14:
+                    urgency = 'medium'
+                predictions.append({
+                    'item_id': item['item_id'],
+                    'item_name': item['item_name'],
+                    'current_stock': item['current_stock'],
+                    'daily_usage': daily_usage,
+                    'days_until_stockout': days_until_stockout,
+                    'reorder_quantity': reorder_quantity,
+                    'urgency': urgency,
+                    'recommended_action': self._get_inventory_action(urgency, reorder_quantity)
+                })
+            # 긴급도별 정렬
+            urgency_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+            predictions.sort(key=lambda x: urgency_order[x['urgency']])
+            total_reorder_value = sum(p['reorder_quantity'] for p in predictions)
+            critical_items = [p for p in predictions if p['urgency'] == 'critical']
+            return {
+                'success': True,
+                'predictions': predictions,
+                'total_reorder_value': total_reorder_value,
+                'critical_items_count': len(critical_items),
+                'summary': {
+                    'total_items': len(predictions),
+                    'need_reorder': len([p for p in predictions if p['reorder_quantity'] > 0]),
+                    'critical_items': len(critical_items)
+                }
+            }
+        except Exception as e:
+            logger.error(f"재고 예측 실패: {e}")
+            return {'error': f'재고 예측 실패: {str(e)}'}
+
+    def predict_customer_churn(self) -> Dict[str, Any]:
+        """고객 이탈 예측"""
+        try:
+            # 고객 데이터 준비
+            df = self.prepare_customer_data()
+            if df.empty:
+                return {'error': '고객 데이터를 준비할 수 없습니다.'}
+
+            # 이탈 위험 고객 식별
+            high_risk_threshold = 0.7
+            medium_risk_threshold = 0.4
+
+            high_risk_customers = df[df['churn_probability'] >= high_risk_threshold]
+            medium_risk_customers = df[(df['churn_probability'] >= medium_risk_threshold)
+                                       & (df['churn_probability'] < high_risk_threshold)]
+
+            # 이탈 방지 권장사항 생성
+            recommendations = []
+
+            for _, customer in high_risk_customers.iterrows():
+                recommendations.append({
+                    'user_id': customer['user_id'],
+                    'churn_probability': customer['churn_probability'],
+                    'risk_level': 'high',
+                    'recommendations': [
+                        '개인화된 할인 쿠폰 제공',
+                        '고객 서비스 연락',
+                        '맞춤형 프로모션 제안'
+                    ]
+                })
+
+            for _, customer in medium_risk_customers.iterrows():
+                recommendations.append({
+                    'user_id': customer['user_id'],
+                    'churn_probability': customer['churn_probability'],
+                    'risk_level': 'medium',
+                    'recommendations': [
+                        '이메일 마케팅 캠페인',
+                        '로열티 프로그램 안내'
+                    ]
+                })
+
+            return {
+                'success': True,
+                'high_risk_customers': len(high_risk_customers),
+                'medium_risk_customers': len(medium_risk_customers),
+                'total_customers': len(df),
+                'avg_churn_probability': df['churn_probability'].mean(),
+                'recommendations': recommendations,
+                'summary': {
+                    'high_risk_percentage': len(high_risk_customers) / len(df) * 100,
+                    'medium_risk_percentage': len(medium_risk_customers) / len(df) * 100
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"고객 이탈 예측 실패: {e}")
+            return {'error': f'고객 이탈 예측 실패: {str(e)}'}
+
+    def predict_staff_requirements(self, days_ahead=14) -> Dict[str, Any]:
+        """직원 필요량 예측"""
+        try:
+            # 직원 데이터 준비
+            df = self.prepare_staff_data()
+            if df.empty:
+                return {'error': '직원 데이터를 준비할 수 없습니다.'}
+
+            # 미래 날짜 생성
+            future_dates = pd.date_range(start=datetime.now().date(), periods=days_ahead, freq='D')
+
+            predictions = []
+            for future_date in future_dates:
+                # 해당 요일의 평균 필요 인력 계산
+                day_of_week = future_date.weekday()
+                day_data = df[df['day_of_week'] == day_of_week]
+
+                if not day_data.empty:
+                    avg_required = day_data['required_staff'].mean()
+                    avg_demand = day_data['historical_demand'].mean()
+
+                    # 계절성 및 이벤트 요인 적용
+                    season_factor = self._get_season_factor(future_date.month)
+                    event_factor = 1.5 if self._has_events(future_date.date()) else 1.0
+
+                    predicted_staff = max(1, round(avg_required * season_factor * event_factor))
+
+                    predictions.append({
+                        'date': future_date.date().isoformat(),
+                        'day_of_week': future_date.strftime('%A'),
+                        'predicted_staff': predicted_staff,
+                        'avg_demand': avg_demand,
+                        'season_factor': season_factor,
+                        'event_factor': event_factor
+                    })
+
+            total_staff_days = sum(p['predicted_staff'] for p in predictions)
+            avg_daily_staff = total_staff_days / days_ahead
+
+            return {
+                'success': True,
+                'predictions': predictions,
+                'total_staff_days': total_staff_days,
+                'avg_daily_staff': avg_daily_staff,
+                'peak_days': [p for p in predictions if p['predicted_staff'] > avg_daily_staff * 1.2],
+                'summary': {
+                    'total_days': days_ahead,
+                    'avg_staff_per_day': avg_daily_staff,
+                    'max_staff_needed': max(p['predicted_staff'] for p in predictions)
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"직원 필요량 예측 실패: {e}")
+            return {'error': f'직원 필요량 예측 실패: {str(e)}'}
+
+    # 헬퍼 메서드들
+    def _get_season(self, month: int) -> str:
+        """계절 반환"""
+        if month in [12, 1, 2]:
+            return 'winter'
+        elif month in [3, 4, 5]:
+            return 'spring'
+        elif month in [6, 7, 8]:
+            return 'summer'
+        else:
+            return 'autumn'
+
+    def _is_holiday(self, date) -> int:
+        """공휴일 여부 (시뮬레이션)"""
+        # 실제로는 공휴일 API나 데이터베이스 사용
+        holidays = [1, 1, 3, 1, 5, 5, 6, 6, 8, 15, 10, 3, 10, 9, 12, 25]  # 월,일
+        return 1 if date.month in holidays else 0
+
+    def _get_weather_score(self, date) -> float:
+        """날씨 점수 (시뮬레이션)"""
+        # 실제로는 날씨 API 사용
+        return np.random.uniform(0.3, 1.0)
+
+    def _get_seasonality_factor(self, item_name: str) -> float:
+        """계절성 요인 (시뮬레이션)"""
+        # 실제로는 아이템별 계절성 데이터 사용
+        return np.random.uniform(0.8, 1.2)
+
+    def _has_events(self, date) -> int:
+        """이벤트 여부 (시뮬레이션)"""
+        # 실제로는 이벤트 데이터베이스 사용
+        return np.random.choice([0, 1], p=[0.9, 0.1])
+
+    def _get_season_factor(self, month: int) -> float:
+        """계절 요인"""
+        season_factors = {
+            'winter': 0.8,
+            'spring': 1.0,
+            'summer': 1.2,
+            'autumn': 1.1
+        }
+        season = self._get_season(month)
+        return season_factors.get(season, 1.0)
+
+    def _calculate_confidence(self, prediction: float, historical_data: pd.Series) -> float:
+        """예측 신뢰도 계산"""
+        if len(historical_data) == 0:
+            return 0.5
+
+        std = historical_data.std()
+        mean = historical_data.mean()
+
+        if std == 0:
+            return 0.9
+
+        # 예측값이 평균에서 얼마나 떨어져 있는지에 따라 신뢰도 계산
+        z_score = abs(prediction - mean) / std
+        confidence = max(0.1, 1.0 - (z_score / 3))  # 3 표준편차 내에 있으면 높은 신뢰도
+
+        return confidence
+
+    def _get_inventory_action(self, urgency: str, reorder_quantity: float) -> str:
+        """재고 액션 권장사항"""
+        if urgency == 'critical':
+            return '즉시 주문 필요'
+        elif urgency == 'high':
+            return '이번 주 내 주문 권장'
+        elif urgency == 'medium':
+            return '다음 주 주문 고려'
+        else:
+            return '현재 상태 유지'
+
+
+# 전역 서비스 인스턴스
+ai_prediction_service = AdvancedAIPredictionService()
 
 # API 엔드포인트들
-@advanced_ai_prediction_bp.route('/start-auto-learning', methods=['POST'])
-def start_auto_learning():
-    """자동 학습 시작"""
-    try:
-        result = advanced_ai_prediction_system.start_auto_learning()
-        return jsonify({
-            'success': True,
-            'data': result
-        })
-    except Exception as e:
-        logger.error(f"자동 학습 시작 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
-@advanced_ai_prediction_bp.route('/stop-auto-learning', methods=['POST'])
-def stop_auto_learning():
-    """자동 학습 중지"""
-    try:
-        result = advanced_ai_prediction_system.stop_auto_learning()
-        return jsonify({
-            'success': True,
-            'data': result
-        })
-    except Exception as e:
-        logger.error(f"자동 학습 중지 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
-@advanced_ai_prediction_bp.route('/predict/sales', methods=['POST'])
-def predict_sales_advanced():
-    """고도화된 매출 예측"""
+@advanced_ai_prediction_bp.route('/api/ai/train/sales', methods=['POST'])
+@login_required
+def train_sales_model():
+    """매출 예측 모델 훈련"""
     try:
-        data = request.get_json() or {}
-        days_ahead = data.get('days_ahead', 7)
-        
-        predictions = advanced_ai_prediction_system.predict_sales_advanced(days_ahead)
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'predictions': predictions,
-                'total_predictions': len(predictions)
-            }
-        })
+        result = ai_prediction_service.train_sales_forecast_model()
+        return jsonify(result)
     except Exception as e:
-        logger.error(f"고도화된 매출 예측 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.error(f"매출 모델 훈련 API 오류: {e}")
+        return jsonify({'error': '모델 훈련에 실패했습니다.'}), 500
 
-@advanced_ai_prediction_bp.route('/predict/inventory', methods=['POST'])
-def predict_inventory_advanced():
-    """고도화된 재고 예측"""
+
+@advanced_ai_prediction_bp.route('/api/ai/predict/sales', methods=['GET'])
+@login_required
+def predict_sales():
+    """매출 예측"""
     try:
-        data = request.get_json() or {}
-        items = data.get('items', ['item1', 'item2', 'item3'])
-        
-        predictions = advanced_ai_prediction_system.predict_inventory_advanced(items)
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'predictions': predictions,
-                'total_items': len(predictions)
-            }
-        })
+        days_ahead = request.args.get('days', 30, type=int)
+        result = ai_prediction_service.predict_sales_forecast(days_ahead)
+        return jsonify(result)
     except Exception as e:
-        logger.error(f"고도화된 재고 예측 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.error(f"매출 예측 API 오류: {e}")
+        return jsonify({'error': '매출 예측에 실패했습니다.'}), 500
 
-@advanced_ai_prediction_bp.route('/predict/staffing', methods=['POST'])
-def predict_staffing_advanced():
-    """고도화된 인력 예측"""
+
+@advanced_ai_prediction_bp.route('/api/ai/predict/inventory', methods=['GET'])
+@login_required
+def predict_inventory():
+    """재고 예측"""
     try:
-        data = request.get_json() or {}
-        target_date_str = data.get('target_date')
-        
-        if not target_date_str:
-            target_date = datetime.now() + timedelta(days=7)
-        else:
-            target_date = datetime.fromisoformat(target_date_str.replace('Z', '+00:00'))
-        
-        prediction = advanced_ai_prediction_system.predict_staffing_advanced(target_date)
-        
-        return jsonify({
-            'success': True,
-            'data': prediction
-        })
+        result = ai_prediction_service.predict_inventory_needs()
+        return jsonify(result)
     except Exception as e:
-        logger.error(f"고도화된 인력 예측 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.error(f"재고 예측 API 오류: {e}")
+        return jsonify({'error': '재고 예측에 실패했습니다.'}), 500
 
-@advanced_ai_prediction_bp.route('/accuracy/<prediction_type>', methods=['GET'])
-def get_prediction_accuracy(prediction_type: str):
-    """예측 정확도 분석"""
+
+@advanced_ai_prediction_bp.route('/api/ai/predict/customer-churn', methods=['GET'])
+@login_required
+def predict_customer_churn():
+    """고객 이탈 예측"""
     try:
-        days_back = request.args.get('days_back', 30, type=int)
-        
-        accuracy_data = advanced_ai_prediction_system.get_prediction_accuracy(prediction_type, days_back)
-        
-        return jsonify({
-            'success': True,
-            'data': accuracy_data
-        })
+        result = ai_prediction_service.predict_customer_churn()
+        return jsonify(result)
     except Exception as e:
-        logger.error(f"예측 정확도 분석 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.error(f"고객 이탈 예측 API 오류: {e}")
+        return jsonify({'error': '고객 이탈 예측에 실패했습니다.'}), 500
 
-@advanced_ai_prediction_bp.route('/models/status', methods=['GET'])
+
+@advanced_ai_prediction_bp.route('/api/ai/predict/staff', methods=['GET'])
+@login_required
+def predict_staff():
+    """직원 필요량 예측"""
+    try:
+        days_ahead = request.args.get('days', 14, type=int)
+        result = ai_prediction_service.predict_staff_requirements(days_ahead)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"직원 예측 API 오류: {e}")
+        return jsonify({'error': '직원 예측에 실패했습니다.'}), 500
+
+
+@advanced_ai_prediction_bp.route('/api/ai/models/status', methods=['GET'])
+@login_required
 def get_models_status():
     """모델 상태 조회"""
     try:
-        status = advanced_ai_prediction_system.get_models_status()
-        
-        return jsonify({
-            'success': True,
-            'data': status
-        })
-    except Exception as e:
-        logger.error(f"모델 상태 조회 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@advanced_ai_prediction_bp.route('/predictions/recent', methods=['GET'])
-def get_recent_predictions():
-    """최근 예측 결과 조회"""
-    try:
-        limit = request.args.get('limit', 50, type=int)
-        predictions = advanced_ai_prediction_system.get_recent_predictions(limit)
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'predictions': predictions,
-                'count': len(predictions)
+        status = {}
+        for model_name, metadata in ai_prediction_service.model_metadata.items():
+            status[model_name] = {
+                'last_trained': metadata['last_trained'].isoformat() if metadata['last_trained'] else None,
+                'accuracy': metadata['accuracy'],
+                'training_samples': metadata['training_samples'],
+                'is_trained': metadata['last_trained'] is not None
             }
-        })
-    except Exception as e:
-        logger.error(f"최근 예측 결과 조회 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
-@advanced_ai_prediction_bp.route('/auto-learning/history', methods=['GET'])
-def get_auto_learning_history():
-    """자동 학습 이력 조회"""
-    try:
-        history = advanced_ai_prediction_system.get_auto_learning_history()
-        
         return jsonify({
             'success': True,
-            'data': {
-                'history': history,
-                'count': len(history)
-            }
+            'models': status,
+            'total_models': len(status)
         })
     except Exception as e:
-        logger.error(f"자동 학습 이력 조회 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.error(f"모델 상태 조회 API 오류: {e}")
+        return jsonify({'error': '모델 상태 조회에 실패했습니다.'}), 500
 
-@advanced_ai_prediction_bp.route('/insights', methods=['GET'])
-def get_insights():
-    """인사이트 조회"""
-    try:
-        insight_type = request.args.get('type')
-        insights = advanced_ai_prediction_system.get_insights(insight_type)
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'insights': insights,
-                'count': len(insights)
-            }
-        })
-    except Exception as e:
-        logger.error(f"인사이트 조회 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
-@advanced_ai_prediction_bp.route('/dashboard', methods=['GET'])
-def get_ai_dashboard():
-    """AI 예측 대시보드 데이터"""
+@advanced_ai_prediction_bp.route('/api/ai/predict/comprehensive', methods=['GET'])
+@login_required
+def comprehensive_prediction():
+    """종합 예측 (모든 모델)"""
     try:
-        # 모델 상태
-        models_status = advanced_ai_prediction_system.get_models_status()
-        
-        # 최근 예측
-        recent_predictions = advanced_ai_prediction_system.get_recent_predictions(10)
-        
-        # 자동 학습 이력
-        learning_history = advanced_ai_prediction_system.get_auto_learning_history()
-        
-        # 인사이트
-        insights = advanced_ai_prediction_system.get_insights()
-        
-        # 예측 정확도
-        sales_accuracy = advanced_ai_prediction_system.get_prediction_accuracy('sales', 30)
-        
-        dashboard_data = {
-            'models_status': models_status,
-            'recent_predictions': recent_predictions,
-            'learning_summary': {
-                'active': models_status['auto_learning_active'],
-                'recent_improvements': len([h for h in learning_history if h['improvement'] > 0]),
-                'total_models': len(models_status['models'])
-            },
-            'insights_summary': {
-                'total_insights': len(insights),
-                'high_confidence_insights': len([i for i in insights if i['confidence'] > 0.8]),
-                'high_impact_insights': len([i for i in insights if i['impact_score'] > 0.7])
-            },
-            'accuracy_summary': {
-                'sales_accuracy': sales_accuracy.get('metrics', {}).get('accuracy', 0),
-                'overall_accuracy': np.mean([
-                    models_status['performance'][model]['accuracy'] 
-                    for model in models_status['performance']
-                ])
-            },
-            'last_updated': datetime.now().isoformat()
+        results = {
+            'sales_forecast': ai_prediction_service.predict_sales_forecast(30),
+            'inventory_needs': ai_prediction_service.predict_inventory_needs(),
+            'customer_churn': ai_prediction_service.predict_customer_churn(),
+            'staff_requirements': ai_prediction_service.predict_staff_requirements(14)
         }
-        
+
+        # 종합 인사이트 생성
+        insights = []
+
+        # 매출 인사이트
+        if results['sales_forecast'].get('success'):
+            sales_data = results['sales_forecast']
+            avg_daily = sales_data.get('avg_daily_sales', 0)
+            if avg_daily > 1000000:
+                insights.append({
+                    'type': 'positive',
+                    'title': '매출 전망 긍정적',
+                    'description': f'향후 30일 평균 일일 매출이 {avg_daily:,.0f}원으로 예측됩니다.',
+                    'priority': 'medium'
+                })
+
+        # 재고 인사이트
+        if results['inventory_needs'].get('success'):
+            inventory_data = results['inventory_needs']
+            critical_count = inventory_data.get('critical_items_count', 0)
+            if critical_count > 0:
+                insights.append({
+                    'type': 'critical',
+                    'title': '긴급 재고 주문 필요',
+                    'description': f'{critical_count}개 품목의 긴급 재주문이 필요합니다.',
+                    'priority': 'high'
+                })
+
+        # 고객 이탈 인사이트
+        if results['customer_churn'].get('success'):
+            churn_data = results['customer_churn']
+            high_risk = churn_data.get('high_risk_customers', 0)
+            if high_risk > 5:
+                insights.append({
+                    'type': 'warning',
+                    'title': '고객 이탈 위험',
+                    'description': f'{high_risk}명의 고객이 이탈 위험에 있습니다.',
+                    'priority': 'high'
+                })
+
         return jsonify({
             'success': True,
-            'data': dashboard_data
+            'predictions': results,
+            'insights': insights,
+            'timestamp': datetime.now().isoformat()
         })
-        
+
     except Exception as e:
-        logger.error(f"AI 대시보드 데이터 조회 실패: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500 
+        logger.error(f"종합 예측 API 오류: {e}")
+        return jsonify({'error': '종합 예측에 실패했습니다.'}), 500

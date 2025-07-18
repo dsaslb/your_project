@@ -1,13 +1,15 @@
+from typing import Dict, List, Any, Optional
+import logging
+from datetime import datetime, timedelta
+from flask_login import login_required, current_user
+from flask import Blueprint, request, jsonify, current_app
+args = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 고도화된 플러그인 모니터링 API
 실시간 그래프/차트, 상세 로그/이벤트 추적, 드릴다운 보기
 """
 
-from flask import Blueprint, request, jsonify, current_app
-from flask_login import login_required, current_user
-from datetime import datetime, timedelta
-import logging
-from typing import Dict, List, Any, Optional
 
 # 고도화된 모니터링 시스템 import
 try:
@@ -28,6 +30,7 @@ logger = logging.getLogger(__name__)
 # 블루프린트 생성
 advanced_monitoring_bp = Blueprint('advanced_monitoring', __name__, url_prefix='/api/advanced-monitoring')
 
+
 @advanced_monitoring_bp.route('/status', methods=['GET'])
 @login_required
 def get_monitoring_status():
@@ -37,18 +40,18 @@ def get_monitoring_status():
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         real_time_stats = advanced_plugin_monitor.get_real_time_stats()
         all_summaries = advanced_plugin_monitor.get_all_plugins_summary()
-        
+
         return jsonify({
             'success': True,
             'data': {
                 'monitoring_active': advanced_plugin_monitor.monitoring_active,
                 'total_plugins': len(real_time_stats),
-                'active_plugins': len([s for s in all_summaries if s['status'] == 'active']),
-                'inactive_plugins': len([s for s in all_summaries if s['status'] == 'inactive']),
+                'active_plugins': len([s for s in all_summaries if s is not None and s.get('status') == 'active']),
+                'inactive_plugins': len([s for s in all_summaries if s is not None and s.get('status') == 'inactive']),
                 'total_metrics': sum(len(advanced_plugin_monitor.metrics_cache) for _ in advanced_plugin_monitor.metrics_cache),
                 'total_logs': sum(len(advanced_plugin_monitor.logs_cache) for _ in advanced_plugin_monitor.logs_cache),
                 'total_events': sum(len(advanced_plugin_monitor.events_cache) for _ in advanced_plugin_monitor.events_cache)
@@ -61,6 +64,7 @@ def get_monitoring_status():
             'message': f'상태 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins', methods=['GET'])
 @login_required
 def get_all_plugins():
@@ -70,15 +74,15 @@ def get_all_plugins():
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         summaries = advanced_plugin_monitor.get_all_plugins_summary()
-        
+
         # JSON 직렬화를 위해 datetime 객체 변환
         for summary in summaries:
             if summary.get('last_update'):
                 summary['last_update'] = summary['last_update'].isoformat()
-        
+
         return jsonify({
             'success': True,
             'data': summaries
@@ -90,6 +94,7 @@ def get_all_plugins():
             'message': f'플러그인 목록 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/summary', methods=['GET'])
 @login_required
 def get_plugin_summary(plugin_id: str):
@@ -99,20 +104,20 @@ def get_plugin_summary(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         summary = advanced_plugin_monitor.get_plugin_summary(plugin_id)
-        
+
         if not summary:
             return jsonify({
                 'success': False,
                 'message': '플러그인을 찾을 수 없습니다.'
             }), 404
-        
+
         # JSON 직렬화를 위해 datetime 객체 변환
         if summary.get('last_update'):
             summary['last_update'] = summary['last_update'].isoformat()
-        
+
         return jsonify({
             'success': True,
             'data': summary
@@ -124,6 +129,7 @@ def get_plugin_summary(plugin_id: str):
             'message': f'플러그인 요약 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/metrics', methods=['GET'])
 @login_required
 def get_plugin_metrics(plugin_id: str):
@@ -133,12 +139,12 @@ def get_plugin_metrics(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         # 쿼리 파라미터
         metric_type = request.args.get('metric_type')
         hours = request.args.get('hours', 24, type=int)
-        
+
         # 메트릭 타입 변환
         metric_enum = None
         if metric_type:
@@ -155,19 +161,20 @@ def get_plugin_metrics(plugin_id: str):
             # MetricType의 기본값을 지정하세요. 예시로 CPU로 설정 (실제 프로젝트에 맞게 수정)
             metric_enum = MetricType.CPU  # pyright: ignore
 
-        metrics = advanced_plugin_monitor.get_plugin_metrics(plugin_id, metric_enum, hours)  # pyright: ignore
-        
+        metrics = advanced_plugin_monitor.get_plugin_metrics(plugin_id,  metric_enum,  hours)  # pyright: ignore
+
         # JSON 직렬화를 위해 데이터 변환
         metrics_data = []
-        for metric in metrics:
-            metrics_data.append({
-                'plugin_id': metric.plugin_id,
-                'metric_type': metric.metric_type.value,
-                'value': metric.value,
-                'timestamp': metric.timestamp.isoformat(),
-                'metadata': metric.metadata
-            })
-        
+        if metrics is not None:
+            for metric in metrics:
+                metrics_data.append({
+                    'plugin_id': metric.plugin_id,
+                    'metric_type': metric.metric_type.value if metric_type is not None else None,
+                    'value': metric.value if metric is not None else None,
+                    'timestamp': metric.timestamp.isoformat(),
+                    'metadata': metric.metadata
+                })
+
         return jsonify({
             'success': True,
             'data': metrics_data
@@ -179,6 +186,7 @@ def get_plugin_metrics(plugin_id: str):
             'message': f'메트릭 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/logs', methods=['GET'])
 @login_required
 def get_plugin_logs(plugin_id: str):
@@ -188,12 +196,12 @@ def get_plugin_logs(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         # 쿼리 파라미터
-        level = request.args.get('level')
-        hours = request.args.get('hours', 24, type=int)
-        
+        level = request.args.get('level') if args else None
+        hours = request.args.get('hours', 24, type=int) if args else None
+
         # 로그 레벨 변환
         log_level = None
         if level:
@@ -209,20 +217,21 @@ def get_plugin_logs(plugin_id: str):
         if log_level is None:
             log_level = LogLevel.INFO  # pyright: ignore
 
-        logs = advanced_plugin_monitor.get_plugin_logs(plugin_id, log_level, hours)  # pyright: ignore
-        
+        logs = advanced_plugin_monitor.get_plugin_logs(plugin_id,  log_level,  hours)  # pyright: ignore
+
         # JSON 직렬화를 위해 데이터 변환
         logs_data = []
-        for log in logs:
-            logs_data.append({
-                'plugin_id': log.plugin_id,
-                'level': log.level.value,
-                'message': log.message,
-                'timestamp': log.timestamp.isoformat(),
-                'context': log.context,
-                'traceback': log.traceback
-            })
-        
+        if logs is not None:
+            for log in logs:
+                logs_data.append({
+                    'plugin_id': log.plugin_id,
+                    'level': log.level.value if hasattr(log, 'level') and log.level is not None else None,
+                    'message': log.message,
+                    'timestamp': log.timestamp.isoformat(),
+                    'context': log.context,
+                    'traceback': log.traceback
+                })
+
         return jsonify({
             'success': True,
             'data': logs_data
@@ -234,6 +243,7 @@ def get_plugin_logs(plugin_id: str):
             'message': f'로그 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/events', methods=['GET'])
 @login_required
 def get_plugin_events(plugin_id: str):
@@ -243,28 +253,29 @@ def get_plugin_events(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         # 쿼리 파라미터
-        event_type = request.args.get('event_type')
-        hours = request.args.get('hours', 24, type=int)
-        
+        event_type = request.args.get('event_type') if args else None
+        hours = request.args.get('hours', 24, type=int) if args else None
+
         # event_type이 None일 경우 빈 문자열로 대체하여 타입 오류 방지
         safe_event_type = event_type if event_type is not None else ""
-        events = advanced_plugin_monitor.get_plugin_events(plugin_id, safe_event_type, hours)  # pyright: ignore
-        
+        events = advanced_plugin_monitor.get_plugin_events(plugin_id,  safe_event_type,  hours)  # pyright: ignore
+
         # JSON 직렬화를 위해 데이터 변환
         events_data = []
-        for event in events:
-            events_data.append({
-                'plugin_id': event.plugin_id,
-                'event_type': event.event_type,
-                'description': event.description,
-                'timestamp': event.timestamp.isoformat(),
-                'severity': event.severity,
-                'data': event.data
-            })
-        
+        if events is not None:
+            for event in events:
+                events_data.append({
+                    'plugin_id': event.plugin_id,
+                    'event_type': event.event_type,
+                    'description': event.description,
+                    'timestamp': event.timestamp.isoformat(),
+                    'severity': event.severity,
+                    'data': event.data
+                })
+
         return jsonify({
             'success': True,
             'data': events_data
@@ -276,6 +287,7 @@ def get_plugin_events(plugin_id: str):
             'message': f'이벤트 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/snapshots', methods=['GET'])
 @login_required
 def get_plugin_snapshots(plugin_id: str):
@@ -285,30 +297,31 @@ def get_plugin_snapshots(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         # 쿼리 파라미터
-        hours = request.args.get('hours', 24, type=int)
-        
+        hours = request.args.get('hours', 24, type=int) if args else None
+
         snapshots = advanced_plugin_monitor.get_performance_snapshots(plugin_id, hours)
-        
+
         # JSON 직렬화를 위해 데이터 변환
         snapshots_data = []
-        for snapshot in snapshots:
-            snapshots_data.append({
-                'plugin_id': snapshot.plugin_id,
-                'timestamp': snapshot.timestamp.isoformat(),
-                'cpu_usage': snapshot.cpu_usage,
-                'memory_usage': snapshot.memory_usage,
-                'response_time': snapshot.response_time,
-                'error_rate': snapshot.error_rate,
-                'request_count': snapshot.request_count,
-                'throughput': snapshot.throughput,
-                'disk_io': snapshot.disk_io,
-                'network_io': snapshot.network_io,
-                'custom_metrics': snapshot.custom_metrics
-            })
-        
+        if snapshots is not None:
+            for snapshot in snapshots:
+                snapshots_data.append({
+                    'plugin_id': snapshot.plugin_id,
+                    'timestamp': snapshot.timestamp.isoformat(),
+                    'cpu_usage': snapshot.cpu_usage,
+                    'memory_usage': snapshot.memory_usage,
+                    'response_time': snapshot.response_time,
+                    'error_rate': snapshot.error_rate,
+                    'request_count': snapshot.request_count,
+                    'throughput': snapshot.throughput,
+                    'disk_io': snapshot.disk_io,
+                    'network_io': snapshot.network_io,
+                    'custom_metrics': snapshot.custom_metrics
+                })
+
         return jsonify({
             'success': True,
             'data': snapshots_data
@@ -320,6 +333,7 @@ def get_plugin_snapshots(plugin_id: str):
             'message': f'스냅샷 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/real-time', methods=['GET'])
 @login_required
 def get_plugin_real_time(plugin_id: str):
@@ -329,20 +343,20 @@ def get_plugin_real_time(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         stats = advanced_plugin_monitor.get_real_time_stats(plugin_id)
-        
+
         if not stats:
             return jsonify({
                 'success': False,
                 'message': '플러그인을 찾을 수 없습니다.'
             }), 404
-        
+
         # JSON 직렬화를 위해 datetime 객체 변환
-        if stats.get('last_update'):
+        if stats and 'last_update' in stats and stats['last_update']:
             stats['last_update'] = stats['last_update'].isoformat()
-        
+
         return jsonify({
             'success': True,
             'data': stats
@@ -354,6 +368,7 @@ def get_plugin_real_time(plugin_id: str):
             'message': f'실시간 통계 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/metrics', methods=['POST'])
 @login_required
 def record_plugin_metric(plugin_id: str):
@@ -363,34 +378,34 @@ def record_plugin_metric(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         data = request.get_json()
-        
+
         # 필수 필드 검증
         if 'metric_type' not in data or 'value' not in data:
             return jsonify({
                 'success': False,
                 'message': '필수 필드가 누락되었습니다: metric_type, value'
             }), 400
-        
+
         # 메트릭 타입 검증
         try:
-            metric_type = MetricType(data['metric_type'])
+            metric_type = MetricType(data['metric_type'] if data is not None else None)
         except ValueError:
             return jsonify({
                 'success': False,
-                'message': f'유효하지 않은 메트릭 타입입니다: {data["metric_type"]}'
+                'message': f'유효하지 않은 메트릭 타입입니다: {data["metric_type"] if data is not None else None}'
             }), 400
-        
+
         # 메트릭 기록
         advanced_plugin_monitor.record_metric(
             plugin_id=plugin_id,
             metric_type=metric_type,
-            value=float(data['value']),
-            metadata=data.get('metadata', {})
+            value=float(data['value'] if data is not None else None),
+            metadata=data.get('metadata', {}) if data else {}
         )
-        
+
         return jsonify({
             'success': True,
             'message': '메트릭이 기록되었습니다.'
@@ -402,6 +417,7 @@ def record_plugin_metric(plugin_id: str):
             'message': f'메트릭 기록 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/logs', methods=['POST'])
 @login_required
 def record_plugin_log(plugin_id: str):
@@ -411,35 +427,35 @@ def record_plugin_log(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         data = request.get_json()
-        
+
         # 필수 필드 검증
         if 'level' not in data or 'message' not in data:
             return jsonify({
                 'success': False,
                 'message': '필수 필드가 누락되었습니다: level, message'
             }), 400
-        
+
         # 로그 레벨 검증
         try:
-            level = LogLevel(data['level'])
+            level = LogLevel(data['level'] if data is not None else None)
         except ValueError:
             return jsonify({
                 'success': False,
-                'message': f'유효하지 않은 로그 레벨입니다: {data["level"]}'
+                'message': f'유효하지 않은 로그 레벨입니다: {data["level"] if data is not None else None}'
             }), 400
-        
+
         # 로그 기록
         advanced_plugin_monitor.record_log(
             plugin_id=plugin_id,
             level=level,
-            message=data['message'],
-            context=data.get('context', {}),
-            traceback=data.get('traceback')
+            message=data['message'] if data is not None else None,
+            context=data.get('context', {}) if data else {},
+            traceback=data.get('traceback') if data else None
         )
-        
+
         return jsonify({
             'success': True,
             'message': '로그가 기록되었습니다.'
@@ -451,6 +467,7 @@ def record_plugin_log(plugin_id: str):
             'message': f'로그 기록 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/events', methods=['POST'])
 @login_required
 def record_plugin_event(plugin_id: str):
@@ -460,28 +477,29 @@ def record_plugin_event(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         data = request.get_json()
-        
+
         # 필수 필드 검증
         required_fields = ['event_type', 'description', 'severity']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({
-                    'success': False,
-                    'message': f'필수 필드가 누락되었습니다: {field}'
-                }), 400
-        
+        if required_fields is not None:
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({
+                        'success': False,
+                        'message': f'필수 필드가 누락되었습니다: {field}'
+                    }), 400
+
         # 이벤트 기록
         advanced_plugin_monitor.record_event(
             plugin_id=plugin_id,
-            event_type=data['event_type'],
-            description=data['description'],
-            severity=data['severity'],
-            data=data.get('data', {})
+            event_type=data['event_type'] if data is not None else None,
+            description=data['description'] if data is not None else None,
+            severity=data['severity'] if data is not None else None,
+            data=data.get('data', {}) if data else {}
         )
-        
+
         return jsonify({
             'success': True,
             'message': '이벤트가 기록되었습니다.'
@@ -493,6 +511,7 @@ def record_plugin_event(plugin_id: str):
             'message': f'이벤트 기록 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/plugins/<plugin_id>/snapshots', methods=['POST'])
 @login_required
 def create_plugin_snapshot(plugin_id: str):
@@ -502,35 +521,36 @@ def create_plugin_snapshot(plugin_id: str):
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         data = request.get_json()
-        
+
         # 필수 필드 검증
         required_fields = ['cpu_usage', 'memory_usage', 'response_time', 'error_rate', 'request_count', 'throughput']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({
-                    'success': False,
-                    'message': f'필수 필드가 누락되었습니다: {field}'
-                }), 400
-        
+        if required_fields is not None:
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({
+                        'success': False,
+                        'message': f'필수 필드가 누락되었습니다: {field}'
+                    }), 400
+
         # 스냅샷 데이터 준비
         snapshot_data = {
-            'cpu_usage': float(data['cpu_usage']),
-            'memory_usage': float(data['memory_usage']),
-            'response_time': float(data['response_time']),
-            'error_rate': float(data['error_rate']),
-            'request_count': int(data['request_count']),
-            'throughput': float(data['throughput']),
-            'disk_io': data.get('disk_io', {}),
-            'network_io': data.get('network_io', {}),
-            'custom_metrics': data.get('custom_metrics', {})
+            'cpu_usage': float(data['cpu_usage'] if data is not None else None),
+            'memory_usage': float(data['memory_usage'] if data is not None else None),
+            'response_time': float(data['response_time'] if data is not None else None),
+            'error_rate': float(data['error_rate'] if data is not None else None),
+            'request_count': int(data['request_count'] if data is not None else None),
+            'throughput': float(data['throughput'] if data is not None else None),
+            'disk_io': data.get('disk_io', {}) if data else {},
+            'network_io': data.get('network_io', {}) if data else {},
+            'custom_metrics': data.get('custom_metrics', {}) if data else {}
         }
-        
+
         # 스냅샷 생성
         advanced_plugin_monitor.create_snapshot(plugin_id, snapshot_data)
-        
+
         return jsonify({
             'success': True,
             'message': '성능 스냅샷이 생성되었습니다.'
@@ -542,6 +562,7 @@ def create_plugin_snapshot(plugin_id: str):
             'message': f'스냅샷 생성 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/analytics/trends', methods=['GET'])
 @login_required
 def get_analytics_trends():
@@ -551,40 +572,41 @@ def get_analytics_trends():
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         # 쿼리 파라미터
-        hours = request.args.get('hours', 24, type=int)
-        metric_type = request.args.get('metric_type', 'cpu_usage')
-        
+        hours = request.args.get('hours', 24, type=int) if args else None
+        metric_type = request.args.get('metric_type', 'cpu_usage') if args else None
+
         # 모든 플러그인의 메트릭 수집
         all_metrics = []
         for plugin_id in advanced_plugin_monitor.real_time_stats.keys():
             try:
                 metric_enum = MetricType(metric_type)
-                metrics = advanced_plugin_monitor.get_plugin_metrics(plugin_id, metric_enum, hours)
+                metrics = advanced_plugin_monitor.get_plugin_metrics(plugin_id,  metric_enum,  hours)
                 all_metrics.extend(metrics)
             except ValueError:
                 continue
-        
+
         # 시간별 평균 계산
         hourly_averages = {}
-        for metric in all_metrics:
-            hour_key = metric.timestamp.strftime('%Y-%m-%d %H:00')
-            if hour_key not in hourly_averages:
-                hourly_averages[hour_key] = {'sum': 0, 'count': 0}
-            hourly_averages[hour_key]['sum'] += metric.value
-            hourly_averages[hour_key]['count'] += 1
-        
+        if all_metrics is not None:
+            for metric in all_metrics:
+                hour_key = metric.timestamp.strftime('%Y-%m-%d %H:00')
+                if hour_key not in hourly_averages:
+                    hourly_averages[hour_key] = {'sum': 0, 'count': 0}
+                hourly_averages[hour_key]['sum'] += metric.value if metric is not None else None
+                hourly_averages[hour_key]['count'] += 1
+
         # 평균 계산
         trends = []
-        for hour_key, data in sorted(hourly_averages.items()):
+        for hour_key, data in sorted(hourly_averages.items() if hourly_averages is not None else []):
             trends.append({
                 'timestamp': hour_key,
-                'average_value': data['sum'] / data['count'],
+                'average_value': data['sum'] / data['count'] if data['count'] > 0 else 0,
                 'data_points': data['count']
             })
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -600,6 +622,7 @@ def get_analytics_trends():
             'message': f'분석 트렌드 조회 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+
 @advanced_monitoring_bp.route('/analytics/performance', methods=['GET'])
 @login_required
 def get_performance_analytics():
@@ -609,17 +632,17 @@ def get_performance_analytics():
             'success': False,
             'message': '고도화된 모니터링 시스템이 사용할 수 없습니다.'
         }), 503
-    
+
     try:
         # 쿼리 파라미터
-        hours = request.args.get('hours', 24, type=int)
-        
+        hours = request.args.get('hours', 24, type=int) if args else None
+
         # 모든 플러그인의 스냅샷 수집
         all_snapshots = []
         for plugin_id in advanced_plugin_monitor.real_time_stats.keys():
             snapshots = advanced_plugin_monitor.get_performance_snapshots(plugin_id, hours)
             all_snapshots.extend(snapshots)
-        
+
         if not all_snapshots:
             return jsonify({
                 'success': True,
@@ -633,7 +656,7 @@ def get_performance_analytics():
                     'average_throughput': 0
                 }
             })
-        
+
         # 통계 계산
         total_snapshots = len(all_snapshots)
         total_cpu = sum(s.cpu_usage for s in all_snapshots)
@@ -642,7 +665,7 @@ def get_performance_analytics():
         total_error_rate = sum(s.error_rate for s in all_snapshots)
         total_requests = sum(s.request_count for s in all_snapshots)
         total_throughput = sum(s.throughput for s in all_snapshots)
-        
+
         analytics = {
             'total_snapshots': total_snapshots,
             'average_cpu': total_cpu / total_snapshots,
@@ -652,7 +675,7 @@ def get_performance_analytics():
             'total_requests': total_requests,
             'average_throughput': total_throughput / total_snapshots
         }
-        
+
         return jsonify({
             'success': True,
             'data': analytics
@@ -662,4 +685,4 @@ def get_performance_analytics():
         return jsonify({
             'success': False,
             'message': f'성능 분석 조회 중 오류가 발생했습니다: {str(e)}'
-        }), 500 
+        }), 500

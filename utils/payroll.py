@@ -1,20 +1,21 @@
+from models_main import User, Payroll
+from reportlab.lib import colors  # pyright: ignore
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle  # pyright: ignore
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # pyright: ignore
+from reportlab.lib.pagesizes import A4  # pyright: ignore
+from datetime import time
+import logging
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 급여 관리 시스템
 """
 
-import logging
-from datetime import time
-
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib import colors
-
-from models import User, Payroll
 
 logger = logging.getLogger(__name__)
 
-def calc_wage(user, work_time_hour, wage_table=None):
+
+def calc_wage(user,  work_time_hour, wage_table=None):
     """
     사용자별 급여 계산
 
@@ -30,7 +31,7 @@ def calc_wage(user, work_time_hour, wage_table=None):
     wage_per_hour = 12000
 
     # 사용자별 급여 정책 적용
-    if wage_table and user.id in wage_table:
+    if wage_table is not None and user.id in wage_table:
         wage_per_hour = wage_table[user.id]
 
     # 월급제/시급제/주급제 분기 가능
@@ -79,7 +80,7 @@ def format_work_time(total_minutes):
     return f"{hours}시간 {minutes}분"
 
 
-def get_monthly_stats(user_id, year, month, db_session):
+def get_monthly_stats(user_id,  year,  month,  db_session):
     """
     사용자의 월별 근무 통계 조회
 
@@ -94,7 +95,7 @@ def get_monthly_stats(user_id, year, month, db_session):
     """
     from sqlalchemy import extract
 
-    from models import Attendance
+    from models_main import Attendance
 
     # 해당 월의 출퇴근 기록 조회
     attendances = (
@@ -127,14 +128,16 @@ def get_monthly_stats(user_id, year, month, db_session):
     }
 
 
-def generate_payroll_pdf(user_id, year, month, filename=None):
+def generate_payroll_pdf(user_id,  year,  month, filename=None):
     """급여명세서 PDF 생성"""
     try:
         if not filename:
             filename = f"payroll_{user_id}_{year}_{month}.pdf"
 
         # 사용자 정보 조회
-        user = User.query.get(user_id)
+        user = None
+        if query:
+            user = User.query.get(user_id)
         if not user:
             return None
 
@@ -154,7 +157,7 @@ def generate_payroll_pdf(user_id, year, month, filename=None):
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             "CustomTitle",
-            parent=styles["Heading1"],
+            parent=styles["Heading1"] if styles is not None else None,
             fontSize=16,
             spaceAfter=30,
             alignment=1,  # 중앙 정렬
@@ -229,14 +232,16 @@ def generate_payroll_pdf(user_id, year, month, filename=None):
         return None
 
 
-def generate_simple_payroll_pdf(user_id, year, month, filename=None):
+def generate_simple_payroll_pdf(user_id,  year,  month, filename=None):
     """간단 급여명세서 PDF 생성"""
     try:
         if not filename:
             filename = f"simple_payroll_{user_id}_{year}_{month}.pdf"
 
         # 사용자 정보 조회
-        user = User.query.get(user_id)
+        user = None
+        if query:
+            user = User.query.get(user_id)
         if not user:
             return None
 
@@ -256,7 +261,7 @@ def generate_simple_payroll_pdf(user_id, year, month, filename=None):
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             "CustomTitle",
-            parent=styles["Heading1"],
+            parent=styles["Heading1"] if styles is not None else None,
             fontSize=16,
             spaceAfter=30,
             alignment=1,
@@ -274,7 +279,7 @@ def generate_simple_payroll_pdf(user_id, year, month, filename=None):
         실수령액: {payroll.net_salary:,}원
         지급일: {year}년 {month}월 말일
         """
-        info_para = Paragraph(info_text, styles["Normal"])
+        info_para = Paragraph(info_text, styles["Normal"] if styles is not None else None)
         story.append(info_para)
 
         # PDF 생성

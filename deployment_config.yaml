@@ -1,0 +1,8 @@
+deployment:
+  backup_before_deploy: true
+  health_check_url: http://localhost:5000/health
+  restart_services: true
+  source_dir: src
+services:
+- your_program
+- ai_server

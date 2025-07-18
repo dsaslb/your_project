@@ -8,9 +8,10 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import and_, extract, func
 
-from models import Attendance, AttendanceReport, SystemLog, User, db, Notification
-from models import Staff, Contract, HealthCertificate
+from models_main import Attendance, AttendanceReport, SystemLog, User, db, Notification
+from models_main import Staff, Contract, HealthCertificate
 from utils.auto_processor import auto_processor
+
 # from utils.backup_manager import backup_manager  # 삭제된 파일
 from utils.email_utils import email_service
 from utils.notify import send_notification_enhanced
@@ -433,13 +434,18 @@ class BackupScheduler:
         self.app = app
         # self.backup_manager = backup_manager  # 삭제된 파일
         # self.backup_manager.init_app(app)  # 삭제된 파일
-        
+
         # 더미 백업 매니저 (실제 기능은 비활성화)
         class DummyBackupManager:
-            def init_app(self, app): pass
-            def create_backup(self, backup_type): return None
-            def cleanup_old_backups(self): pass
-        
+            def init_app(self, app):
+                pass
+
+            def create_backup(self, backup_type):
+                return None
+
+            def cleanup_old_backups(self):
+                pass
+
         self.backup_manager = DummyBackupManager()
 
         # 스케줄러 설정
@@ -548,7 +554,7 @@ class BackupScheduler:
                         send_notification_enhanced(
                             user_id=admin.id,
                             content=f"{backup_type} 자동 백업이 성공적으로 완료되었습니다.\n백업 파일: {os.path.basename(backup_path)}",
-                            category="시스템"
+                            category="시스템",
                         )
 
         except Exception as e:
@@ -566,7 +572,7 @@ class BackupScheduler:
                         send_notification_enhanced(
                             user_id=admin.id,
                             content=f"{backup_type} 자동 백업 중 오류가 발생했습니다.\n오류 내용: {error_message}",
-                            category="시스템"
+                            category="시스템",
                         )
 
         except Exception as e:
@@ -616,7 +622,9 @@ class BackupScheduler:
                     else:
                         logger.error("사용자 정의 백업 실패")
             else:
-                logger.warning("Flask 앱이 설정되지 않아 사용자 정의 백업을 건너뜁니다.")
+                logger.warning(
+                    "Flask 앱이 설정되지 않아 사용자 정의 백업을 건너뜁니다."
+                )
 
         except Exception as e:
             logger.error(f"사용자 정의 백업 중 오류 발생: {str(e)}")
@@ -688,21 +696,23 @@ def check_document_expiry():
     try:
         today = datetime.now().date()
         thirty_days_later = today + timedelta(days=30)
-        
+
         # 계약서 만료 임박 확인
         expiring_contracts = Contract.query.filter(
             and_(
                 Contract.expiry_date <= thirty_days_later,
                 Contract.expiry_date > today,
-                Contract.notification_sent == False
+                Contract.notification_sent == False,
             )
         ).all()
-        
+
         for contract in expiring_contracts:
             staff = Staff.query.get(contract.staff_id)
             if staff:
                 # 관리자에게 알림 발송
-                managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
+                managers = User.query.filter_by(
+                    role="manager", your_program_id=staff.your_program_id
+                ).all()
                 for manager in managers:
                     notification = Notification()
                     notification.user_id = manager.id
@@ -711,25 +721,29 @@ def check_document_expiry():
                     notification.category = "document_expiry"
                     notification.priority = "중요"
                     db.session.add(notification)
-                
+
                 # 알림 발송 상태 업데이트
                 contract.notification_sent = True
-                logger.info(f"계약서 만료 알림 발송: {staff.name} (만료일: {contract.expiry_date})")
-        
+                logger.info(
+                    f"계약서 만료 알림 발송: {staff.name} (만료일: {contract.expiry_date})"
+                )
+
         # 보건증 만료 임박 확인
         expiring_health_certs = HealthCertificate.query.filter(
             and_(
                 HealthCertificate.expiry_date <= thirty_days_later,
                 HealthCertificate.expiry_date > today,
-                HealthCertificate.notification_sent == False
+                HealthCertificate.notification_sent == False,
             )
         ).all()
-        
+
         for health_cert in expiring_health_certs:
             staff = Staff.query.get(health_cert.staff_id)
             if staff:
                 # 관리자에게 알림 발송
-                managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
+                managers = User.query.filter_by(
+                    role="manager", your_program_id=staff.your_program_id
+                ).all()
                 for manager in managers:
                     notification = Notification()
                     notification.user_id = manager.id
@@ -738,23 +752,27 @@ def check_document_expiry():
                     notification.category = "document_expiry"
                     notification.priority = "중요"
                     db.session.add(notification)
-                
+
                 # 알림 발송 상태 업데이트
                 health_cert.notification_sent = True
-                logger.info(f"보건증 만료 알림 발송: {staff.name} (만료일: {health_cert.expiry_date})")
-        
+                logger.info(
+                    f"보건증 만료 알림 발송: {staff.name} (만료일: {health_cert.expiry_date})"
+                )
+
         # 만료된 문서 확인 (당일)
         expired_contracts = Contract.query.filter(
             and_(
                 Contract.expiry_date == today,
-                Contract.expired_notification_sent == False
+                Contract.expired_notification_sent == False,
             )
         ).all()
-        
+
         for contract in expired_contracts:
             staff = Staff.query.get(contract.staff_id)
             if staff:
-                managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
+                managers = User.query.filter_by(
+                    role="manager", your_program_id=staff.your_program_id
+                ).all()
                 for manager in managers:
                     notification = Notification()
                     notification.user_id = manager.id
@@ -763,21 +781,25 @@ def check_document_expiry():
                     notification.category = "document_expired"
                     notification.priority = "긴급"
                     db.session.add(notification)
-                
+
                 contract.expired_notification_sent = True
-                logger.info(f"계약서 만료 알림 발송: {staff.name} (만료일: {contract.expiry_date})")
-        
+                logger.info(
+                    f"계약서 만료 알림 발송: {staff.name} (만료일: {contract.expiry_date})"
+                )
+
         expired_health_certs = HealthCertificate.query.filter(
             and_(
                 HealthCertificate.expiry_date == today,
-                HealthCertificate.expired_notification_sent == False
+                HealthCertificate.expired_notification_sent == False,
             )
         ).all()
-        
+
         for health_cert in expired_health_certs:
             staff = Staff.query.get(health_cert.staff_id)
             if staff:
-                managers = User.query.filter_by(role='manager', your_program_id=staff.your_program_id).all()
+                managers = User.query.filter_by(
+                    role="manager", your_program_id=staff.your_program_id
+                ).all()
                 for manager in managers:
                     notification = Notification()
                     notification.user_id = manager.id
@@ -786,29 +808,32 @@ def check_document_expiry():
                     notification.category = "document_expired"
                     notification.priority = "긴급"
                     db.session.add(notification)
-                
+
                 health_cert.expired_notification_sent = True
-                logger.info(f"보건증 만료 알림 발송: {staff.name} (만료일: {health_cert.expiry_date})")
-        
+                logger.info(
+                    f"보건증 만료 알림 발송: {staff.name} (만료일: {health_cert.expiry_date})"
+                )
+
         db.session.commit()
         logger.info("문서 만료 확인 완료")
-        
+
     except Exception as e:
         logger.error(f"문서 만료 확인 중 오류 발생: {str(e)}")
         db.session.rollback()
+
 
 def check_health_certificate_expiry():
     """보건증 만료 임박 체크 및 알림 발송"""
     try:
         # 30일 이내 만료되는 보건증 조회
         expiry_date = datetime.now().date() + timedelta(days=30)
-        
+
         expiring_certs = HealthCertificate.query.filter(
             HealthCertificate.expiry_date <= expiry_date,
             HealthCertificate.expiry_date > datetime.now().date(),
-            HealthCertificate.notification_sent == False
+            HealthCertificate.notification_sent == False,
         ).all()
-        
+
         for cert in expiring_certs:
             staff = Staff.query.get(cert.staff_id)
             if staff and staff.user_id:
@@ -822,31 +847,32 @@ def check_health_certificate_expiry():
                     notification.category = "보건증"
                     notification.priority = "중요"
                     notification.is_admin_only = False
-                    
+
                     db.session.add(notification)
-                    
+
                     # 알림 발송 표시
                     cert.notification_sent = True
-        
+
         db.session.commit()
         logger.info(f"보건증 만료 알림 {len(expiring_certs)}건 발송 완료")
-        
+
     except Exception as e:
         logger.error(f"보건증 만료 알림 발송 오류: {str(e)}")
         db.session.rollback()
+
 
 def check_contract_expiry():
     """계약서 만료 임박 체크 및 알림 발송"""
     try:
         # 30일 이내 만료되는 계약서 조회
         expiry_date = datetime.now().date() + timedelta(days=30)
-        
+
         expiring_contracts = Contract.query.filter(
             Contract.expiry_date <= expiry_date,
             Contract.expiry_date > datetime.now().date(),
-            Contract.notification_sent == False
+            Contract.notification_sent == False,
         ).all()
-        
+
         for contract in expiring_contracts:
             staff = Staff.query.get(contract.staff_id)
             if staff and staff.user_id:
@@ -860,28 +886,30 @@ def check_contract_expiry():
                     notification.category = "계약서"
                     notification.priority = "중요"
                     notification.is_admin_only = False
-                    
+
                     db.session.add(notification)
-                    
+
                     # 알림 발송 표시
                     contract.notification_sent = True
-        
+
         db.session.commit()
         logger.info(f"계약서 만료 알림 {len(expiring_contracts)}건 발송 완료")
-        
+
     except Exception as e:
         logger.error(f"계약서 만료 알림 발송 오류: {str(e)}")
         db.session.rollback()
+
 
 def setup_scheduler():
     """스케줄러 설정"""
     # 매일 오전 9시에 보건증 만료 체크
     schedule.every().day.at("09:00").do(check_health_certificate_expiry)
-    
+
     # 매일 오전 9시에 계약서 만료 체크
     schedule.every().day.at("09:00").do(check_contract_expiry)
-    
+
     logger.info("스케줄러 설정 완료")
+
 
 def run_scheduler():
     """스케줄러 실행"""
@@ -889,6 +917,6 @@ def run_scheduler():
         schedule.run_pending()
         time.sleep(60)  # 1분마다 체크
 
+
 if __name__ == "__main__":
     run_scheduler()
-

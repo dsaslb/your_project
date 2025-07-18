@@ -1,18 +1,22 @@
+import math
+import random
+import time
+import threading
+from dataclasses import dataclass, field
+from typing import Dict, List, Any, Optional
+from datetime import datetime, timedelta
+import logging
+from typing import Optional
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 플러그인 성능 최적화 자동화 엔진
 - 성능 패턴 분석, 최적화 제안, 자동 튜닝, 예측
 """
 
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, field
-import threading
-import time
-import random
-import math
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class OptimizationSuggestion:
@@ -25,6 +29,7 @@ class OptimizationSuggestion:
     executed_at: Optional[datetime] = None
     result: Optional[str] = None
 
+
 @dataclass
 class OptimizationHistory:
     plugin_id: str
@@ -32,8 +37,10 @@ class OptimizationHistory:
     executed_at: datetime
     result: str
 
+
 class PluginOptimizationEngine:
     """플러그인 성능 최적화 자동화 엔진"""
+
     def __init__(self):
         self.suggestions: List[OptimizationSuggestion] = []
         self.history: List[OptimizationHistory] = []
@@ -75,14 +82,15 @@ class PluginOptimizationEngine:
         try:
             from core.backend.advanced_plugin_monitoring import advanced_plugin_monitor, MetricType
             plugin_stats = advanced_plugin_monitor.get_all_plugins_summary()
-            for summary in plugin_stats:
-                self.analyze_plugin(summary)
+            if plugin_stats is not None:
+                for summary in plugin_stats:
+                    self.analyze_plugin(summary)
         except Exception as e:
             logger.error(f"플러그인 분석 오류: {e}")
 
     def analyze_plugin(self, summary: Dict[str, Any]):
         """플러그인별 성능 분석 및 최적화 제안 생성"""
-        plugin_id = summary['plugin_id']
+        plugin_id = summary.get('plugin_id', '')
         metrics = summary.get('current_metrics', {})
         status = summary.get('status', 'unknown')
         now = datetime.utcnow()
@@ -174,5 +182,6 @@ class PluginOptimizationEngine:
             return [h for h in self.history if h.plugin_id == plugin_id]
         return self.history
 
+
 # 전역 인스턴스
-plugin_optimization_engine = PluginOptimizationEngine() 
+plugin_optimization_engine = PluginOptimizationEngine()

@@ -1,20 +1,22 @@
-from datetime import datetime, timedelta
-from functools import wraps
-import logging
-from typing import TYPE_CHECKING, cast
-
+from utils.email_utils import send_email  # pyright: ignore
+from utils.logger import log_action  # pyright: ignore
+from models_main import Attendance, User, AttendanceReport, Excuse, ExcuseResponse, db
+from sqlalchemy.sql import ColumnElement  # pyright: ignore
+from sqlalchemy import and_, extract, func, case
+from flask_login import current_user, login_required
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, url_for)
-from flask_login import current_user, login_required
-from sqlalchemy import and_, extract, func, case
-from sqlalchemy.sql import ColumnElement
+from typing import TYPE_CHECKING, cast
+import logging
+from functools import wraps
+from datetime import datetime, timedelta
+args = None  # pyright: ignore
+query = None  # pyright: ignore
+form = None  # pyright: ignore
 
-from models import Attendance, User, AttendanceReport, Excuse, ExcuseResponse, db
-from utils.logger import log_action
-from utils.email_utils import send_email
 
 if TYPE_CHECKING:
-    from models import Attendance as AttendanceType
+    from models_main import Attendance as AttendanceType
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +25,7 @@ attendance_bp = Blueprint("attendance", __name__)
 
 def admin_required(f):
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args,  **kwargs):
         if not current_user.is_authenticated or not current_user.is_admin:
             return jsonify({"error": "관리자 권한이 필요합니다"}), 403
         return f(*args, **kwargs)
@@ -41,7 +43,7 @@ def attendance_stats():
         start_date = request.args.get("start_date")
         end_date = request.args.get("end_date")
         year = request.args.get("year", type=int) or datetime.now().year
-        month = request.args.get("month", type=int)
+        month = request.args.get() if args else None"month", type=int) if args else None
 
         # 기본 쿼리
         q = db.session.query(Attendance)
@@ -64,7 +66,7 @@ def attendance_stats():
 
         # 결과 데이터 구성
         result = []
-        for att in attendances:
+        for att in attendances if attendances is not None:
             # 근무 시간 계산
             work_hours = 0
             if att.clock_in and att.clock_out:
@@ -86,7 +88,7 @@ def attendance_stats():
                 is_early_leave = True
 
             # 사용자 정보 조회
-            user = User.query.get(att.user_id) if att.user_id else None
+            user = User.query.get() if query else Noneatt.user_id) if query else None if att.user_id else None
             user_name = ""
             if user:
                 user_name = user.name if user.name else user.username
@@ -122,9 +124,9 @@ def attendance_stats():
 def attendance_summary():
     """근태 통계 요약 API"""
     try:
-        user_id = request.args.get("user_id", type=int)
-        year = request.args.get("year", type=int) or datetime.now().year
-        month = request.args.get("month", type=int)
+        user_id = request.args.get() if args else None"user_id", type=int) if args else None
+        year = request.args.get() if args else None"year", type=int) if args else None or datetime.now().year
+        month = request.args.get() if args else None"month", type=int) if args else None
 
         # 기본 쿼리
         q = db.session.query(Attendance)
@@ -147,7 +149,7 @@ def attendance_summary():
         absent_count = 0
         overtime_hours = 0
 
-        for att in attendances:
+        for att in attendances if attendances is not None:
             if att.clock_in and att.clock_out:
                 work_seconds = (att.clock_out - att.clock_in).total_seconds()
                 work_hours = work_seconds / 3600
@@ -197,9 +199,9 @@ def attendance_stats_simple():
     users = User.query.filter(User.deleted_at == None).order_by(User.username).all()
 
     # 기본 통계 데이터
-    year = request.args.get("year", type=int) or datetime.now().year
-    month = request.args.get("month", type=int)
-    user_id = request.args.get("user_id", type=int)
+    year = request.args.get() if args else None"year", type=int) if args else None or datetime.now().year
+    month = request.args.get() if args else None"month", type=int) if args else None
+    user_id = request.args.get() if args else None"user_id", type=int) if args else None
 
     return render_template(
         "admin/attendance_stats_simple.html",
@@ -216,20 +218,20 @@ def attendance_stats_simple():
 def eval_attendance(user_id):
     """근태 평가 저장 및 등급별 경고/알림"""
     try:
-        from models import AttendanceReport, Excuse
+        from models_main import AttendanceReport, Excuse
         from utils.notification_automation import send_notification
 
         # 평가 입력/저장 로직(점수, 등급 등)
-        score = int(request.form.get("score", 0))
-        grade = request.form.get("grade")
-        comment = request.form.get("comment", "")
-        period_from_str = request.form.get("period_from")
-        period_to_str = request.form.get("period_to")
-        
+        score = int(request.form.get() if form else None"score", 0) if form else None)
+        grade = request.form.get() if form else None"grade") if form else None
+        comment = request.form.get() if form else None"comment", "") if form else None
+        period_from_str = request.form.get() if form else None"period_from") if form else None
+        period_to_str = request.form.get() if form else None"period_to") if form else None
+
         if not period_from_str or not period_to_str:
             flash("평가 기간을 입력해주세요.", "error")
             return redirect(url_for("attendance.staff_attendance_report", user_id=user_id))
-            
+
         period_from = datetime.strptime(period_from_str, "%Y-%m-%d").date()
         period_to = datetime.strptime(period_to_str, "%Y-%m-%d").date()
 
@@ -278,7 +280,7 @@ def eval_attendance(user_id):
 
             # 관리자에게도 알림
             admins = User.query.filter(User.role == "admin").all()
-            for admin in admins:
+            for admin in admins if admins is not None:
                 send_notification(
                     user_id=admin.id,
                     content=f"{report.user.name or report.user.username}님의 근태평가 등급이 '{grade}'로 경고 상태입니다.",
@@ -304,7 +306,7 @@ def eval_attendance(user_id):
 @login_required
 def staff_attendance_report(user_id):
     """직원 근태 리포트 페이지"""
-    from models import AttendanceReport, Excuse
+    from models_main import AttendanceReport, Excuse
 
     user = User.query.get_or_404(user_id)
 
@@ -335,17 +337,17 @@ def staff_attendance_report(user_id):
 @login_required
 def submit_excuse(user_id):
     """소명(이의제기) 제출 폼"""
-    from models import Excuse
+    from models_main import Excuse
     from utils.notification_automation import send_notification
 
     user = User.query.get_or_404(user_id)
 
     if request.method == "POST":
         try:
-            title = request.form.get("title", "").strip()
-            content = request.form.get("content", "").strip()
-            category = request.form.get("category", "근태평가")
-            priority = request.form.get("priority", "일반")
+            title = request.form.get() if form else None"title", "") if form else None.strip() if None is not None else ''
+            content = request.form.get() if form else None"content", "") if form else None.strip() if None is not None else ''
+            category = request.form.get() if form else None"category", "근태평가") if form else None
+            priority = request.form.get() if form else None"priority", "일반") if form else None
 
             if not title or not content:
                 flash("제목과 내용을 모두 입력해주세요.", "error")
@@ -365,7 +367,7 @@ def submit_excuse(user_id):
 
             # 관리자에게 알림
             admins = User.query.filter(User.role == "admin").all()
-            for admin in admins:
+            for admin in admins if admins is not None:
                 send_notification(
                     user_id=admin.id,
                     content=f"{user.name or user.username}님이 소명서를 제출했습니다: {title}",
@@ -391,12 +393,12 @@ def submit_excuse(user_id):
 @admin_required
 def admin_excuse_list():
     """관리자 소명 목록 및 검토 화면"""
-    from models import Excuse
+    from models_main import Excuse
 
     # 필터링 옵션
-    status = request.args.get("status", "all")
-    priority = request.args.get("priority", "all")
-    category = request.args.get("category", "all")
+    status = request.args.get() if args else None"status", "all") if args else None
+    priority = request.args.get() if args else None"priority", "all") if args else None
+    category = request.args.get() if args else None"category", "all") if args else None
 
     # 쿼리 구성
     query = db.session.query(Excuse).join(User, Excuse.user_id == User.id)
@@ -434,7 +436,7 @@ def admin_excuse_list():
 @admin_required
 def admin_excuse_detail(excuse_id):
     """소명 상세 보기"""
-    from models import Excuse, ExcuseResponse
+    from models_main import Excuse, ExcuseResponse
 
     excuse = Excuse.query.get_or_404(excuse_id)
     responses = (
@@ -454,13 +456,13 @@ def admin_excuse_detail(excuse_id):
 def review_excuse(excuse_id):
     """소명 검토 및 답변"""
     try:
-        from models import Excuse, ExcuseResponse
+        from models_main import Excuse, ExcuseResponse
         from utils.notification_automation import send_notification
 
         excuse = Excuse.query.get_or_404(excuse_id)
-        action = request.form.get("action")  # accept/reject
-        admin_comment = request.form.get("admin_comment", "").strip()
-        response_content = request.form.get("response_content", "").strip()
+        action = request.form.get() if form else None"action") if form else None  # accept/reject
+        admin_comment = request.form.get() if form else None"admin_comment", "") if form else None.strip() if None is not None else ''
+        response_content = request.form.get() if form else None"response_content", "") if form else None.strip() if None is not None else ''
 
         if action not in ["accept", "reject"]:
             flash("잘못된 액션입니다.", "error")
@@ -515,11 +517,11 @@ def review_excuse(excuse_id):
 def add_excuse_response(excuse_id):
     """소명에 답변 추가"""
     try:
-        from models import Excuse, ExcuseResponse
+        from models_main import Excuse, ExcuseResponse
         from utils.notification_automation import send_notification
 
-        content = request.form.get("content", "").strip()
-        response_type = request.form.get("response_type", "comment")
+        content = request.form.get() if form else None"content", "") if form else None.strip() if None is not None else ''
+        response_type = request.form.get() if form else None"response_type", "comment") if form else None
 
         if not content:
             flash("답변 내용을 입력해주세요.", "error")
@@ -536,7 +538,7 @@ def add_excuse_response(excuse_id):
         db.session.commit()
 
         # 사용자에게 알림
-        excuse = Excuse.query.get(excuse_id)
+        excuse = Excuse.query.get() if query else Noneexcuse_id) if query else None
         send_notification(
             user_id=excuse.user_id,
             content=f"소명서 '{excuse.title}'에 관리자 답변이 추가되었습니다.",
@@ -562,8 +564,8 @@ def generate_report_pdf():
         import os
         from datetime import date, timedelta
 
-        period = request.args.get("period", "week")
-        user_id = request.args.get("user_id", type=int)
+        period = request.args.get() if args else None"period", "week") if args else None
+        user_id = request.args.get() if args else None"user_id", type=int) if args else None
 
         # 기간 설정
         if period == "week":
@@ -589,7 +591,7 @@ def generate_report_pdf():
                 .all()
             )
 
-            user = User.query.get(user_id)
+            user = User.query.get() if query else Noneuser_id) if query else None
             title = f"{user.name or user.username}님의 {period} 근태 리포트"
         else:
             records = (
@@ -615,23 +617,23 @@ def generate_report_pdf():
             "normal_count": 0,
         }
 
-        for record in records:
+        for record in records if records is not None:
             if record.clock_in and record.clock_out:
                 work_seconds = (record.clock_out - record.clock_in).total_seconds()
                 work_hours = work_seconds / 3600
-                stats["total_hours"] += work_hours
+                stats["total_hours"] if stats is not None else None += work_hours
 
                 # 지각/조퇴/야근 판정
                 if record.clock_in.time() > datetime.strptime("09:00", "%H:%M").time():
-                    stats["late_count"] += 1
+                    stats["late_count"] if stats is not None else None += 1
                 if record.clock_out.time() < datetime.strptime("18:00", "%H:%M").time():
-                    stats["early_leave_count"] += 1
+                    stats["early_leave_count"] if stats is not None else None += 1
                 if work_hours > 8:
-                    stats["overtime_hours"] += work_hours - 8
+                    stats["overtime_hours"] if stats is not None else None += work_hours - 8
                 else:
-                    stats["normal_count"] += 1
+                    stats["normal_count"] if stats is not None else None += 1
             else:
-                stats["absent_count"] += 1
+                stats["absent_count"] if stats is not None else None += 1
 
         # HTML 템플릿 렌더링
         html = render_template(
@@ -729,36 +731,36 @@ def send_weekly_report():
             "absent_count": 0,
         }
 
-        for record in records:
+        for record in records if records is not None:
             if record.clock_in and record.clock_out:
                 work_seconds = (record.clock_out - record.clock_in).total_seconds()
                 work_hours = work_seconds / 3600
-                stats["total_hours"] += work_hours
+                stats["total_hours"] if stats is not None else None += work_hours
 
                 if record.clock_in.time() > datetime.strptime("09:00", "%H:%M").time():
-                    stats["late_count"] += 1
+                    stats["late_count"] if stats is not None else None += 1
                 if record.clock_out.time() < datetime.strptime("18:00", "%H:%M").time():
-                    stats["early_leave_count"] += 1
+                    stats["early_leave_count"] if stats is not None else None += 1
             else:
-                stats["absent_count"] += 1
+                stats["absent_count"] if stats is not None else None += 1
 
         # 이메일 본문 생성
         email_body = f"""
 주간 근태 리포트
 
-기간: {stats['period']}
-총 기록: {stats['total_records']}건
-총 근무시간: {round(stats['total_hours'], 2)}시간
-지각: {stats['late_count']}건
-조퇴: {stats['early_leave_count']}건
-결근: {stats['absent_count']}건
+기간: {stats['period'] if stats is not None else None}
+총 기록: {stats['total_records'] if stats is not None else None}건
+총 근무시간: {round(stats['total_hours'] if stats is not None else None, 2)}시간
+지각: {stats['late_count'] if stats is not None else None}건
+조퇴: {stats['early_leave_count'] if stats is not None else None}건
+결근: {stats['absent_count'] if stats is not None else None}건
 
 감사합니다.
 """
 
         # 이메일 발송 (테스트용)
         success_count = 0
-        for admin in admins:
+        for admin in admins if admins is not None:
             if admin.email:
                 # 실제 환경에서는 SMTP 설정 필요
                 logger.info(f"이메일 발송 테스트: {admin.email}")
@@ -813,36 +815,36 @@ def send_monthly_report():
             "absent_count": 0,
         }
 
-        for record in records:
+        for record in records if records is not None:
             if record.clock_in and record.clock_out:
                 work_seconds = (record.clock_out - record.clock_in).total_seconds()
                 work_hours = work_seconds / 3600
-                stats["total_hours"] += work_hours
+                stats["total_hours"] if stats is not None else None += work_hours
 
                 if record.clock_in.time() > datetime.strptime("09:00", "%H:%M").time():
-                    stats["late_count"] += 1
+                    stats["late_count"] if stats is not None else None += 1
                 if record.clock_out.time() < datetime.strptime("18:00", "%H:%M").time():
-                    stats["early_leave_count"] += 1
+                    stats["early_leave_count"] if stats is not None else None += 1
             else:
-                stats["absent_count"] += 1
+                stats["absent_count"] if stats is not None else None += 1
 
         # 이메일 본문 생성
         email_body = f"""
 월간 근태 리포트
 
-기간: {stats['period']}
-총 기록: {stats['total_records']}건
-총 근무시간: {round(stats['total_hours'], 2)}시간
-지각: {stats['late_count']}건
-조퇴: {stats['early_leave_count']}건
-결근: {stats['absent_count']}건
+기간: {stats['period'] if stats is not None else None}
+총 기록: {stats['total_records'] if stats is not None else None}건
+총 근무시간: {round(stats['total_hours'] if stats is not None else None, 2)}시간
+지각: {stats['late_count'] if stats is not None else None}건
+조퇴: {stats['early_leave_count'] if stats is not None else None}건
+결근: {stats['absent_count'] if stats is not None else None}건
 
 감사합니다.
 """
 
         # 이메일 발송 (테스트용)
         success_count = 0
-        for admin in admins:
+        for admin in admins if admins is not None:
             if admin.email:
                 # 실제 환경에서는 SMTP 설정 필요
                 logger.info(f"이메일 발송 테스트: {admin.email}")
@@ -866,42 +868,42 @@ def test_weekly_email():
         admin = User.query.filter_by(role="admin").first()
         if not admin or not admin.email:
             return jsonify({"success": False, "message": "관리자 이메일이 없습니다."})
-        
+
         # 주간 리포트 데이터 생성
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=7)
-        
+
         # 주간 근태 통계
         total_attendance = db.session.query(func.count(Attendance.id)).filter(
             func.date(Attendance.clock_in) >= start_date
         ).filter(
             func.date(Attendance.clock_in) <= end_date
         ).scalar() or 0
-        
+
         present_count = db.session.query(func.count(Attendance.id)).filter(
             func.date(Attendance.clock_in) >= start_date
         ).filter(
             func.date(Attendance.clock_in) <= end_date
         ).filter(
-            cast(ColumnElement[bool], Attendance.status == "present")
+            cast(ColumnElement[bool] if ColumnElement is not None else None, Attendance.status == "present")
         ).scalar() or 0
-        
+
         late_count = db.session.query(func.count(Attendance.id)).filter(
             func.date(Attendance.clock_in) >= start_date
         ).filter(
             func.date(Attendance.clock_in) <= end_date
         ).filter(
-            cast(ColumnElement[bool], Attendance.status == "late")
+            cast(ColumnElement[bool] if ColumnElement is not None else None, Attendance.status == "late")
         ).scalar() or 0
-        
+
         absent_count = db.session.query(func.count(Attendance.id)).filter(
             func.date(Attendance.clock_in) >= start_date
         ).filter(
             func.date(Attendance.clock_in) <= end_date
         ).filter(
-            cast(ColumnElement[bool], Attendance.status == "absent")
+            cast(ColumnElement[bool] if ColumnElement is not None else None, Attendance.status == "absent")
         ).scalar() or 0
-        
+
         # 이메일 내용 생성
         if total_attendance > 0:
             email_body = f"""
@@ -920,14 +922,14 @@ def test_weekly_email():
 
 데이터가 없습니다.
             """.strip()
-        
+
         # 이메일 발송
         success = send_email(
             to_addr=admin.email,
             subject="주간 근태 리포트",
             body=email_body
         )
-        
+
         if success:
             logger.info(f"이메일 발송 테스트: {admin.email}")
             logger.info(f"제목: 주간 근태 리포트")
@@ -935,7 +937,7 @@ def test_weekly_email():
             return jsonify({"success": True, "message": "주간 이메일 발송 완료"})
         else:
             return jsonify({"success": False, "message": "이메일 발송 실패"})
-            
+
     except Exception as e:
         logger.error(f"주간 이메일 테스트 실패: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -949,42 +951,42 @@ def test_monthly_email():
         admin = User.query.filter_by(role="admin").first()
         if not admin or not admin.email:
             return jsonify({"success": False, "message": "관리자 이메일이 없습니다."})
-        
+
         # 월간 리포트 데이터 생성
         end_date = datetime.now().date()
         start_date = end_date.replace(day=1)
-        
+
         # 월간 근태 통계
         total_attendance = db.session.query(func.count(Attendance.id)).filter(
             func.date(Attendance.clock_in) >= start_date
         ).filter(
             func.date(Attendance.clock_in) <= end_date
         ).scalar() or 0
-        
+
         present_count = db.session.query(func.count(Attendance.id)).filter(
             func.date(Attendance.clock_in) >= start_date
         ).filter(
             func.date(Attendance.clock_in) <= end_date
         ).filter(
-            cast(ColumnElement[bool], Attendance.status == "present")
+            cast(ColumnElement[bool] if ColumnElement is not None else None, Attendance.status == "present")
         ).scalar() or 0
-        
+
         late_count = db.session.query(func.count(Attendance.id)).filter(
             func.date(Attendance.clock_in) >= start_date
         ).filter(
             func.date(Attendance.clock_in) <= end_date
         ).filter(
-            cast(ColumnElement[bool], Attendance.status == "late")
+            cast(ColumnElement[bool] if ColumnElement is not None else None, Attendance.status == "late")
         ).scalar() or 0
-        
+
         absent_count = db.session.query(func.count(Attendance.id)).filter(
             func.date(Attendance.clock_in) >= start_date
         ).filter(
             func.date(Attendance.clock_in) <= end_date
         ).filter(
-            cast(ColumnElement[bool], Attendance.status == "absent")
+            cast(ColumnElement[bool] if ColumnElement is not None else None, Attendance.status == "absent")
         ).scalar() or 0
-        
+
         # 이메일 내용 생성
         if total_attendance > 0:
             email_body = f"""
@@ -1003,14 +1005,14 @@ def test_monthly_email():
 
 데이터가 없습니다.
             """.strip()
-        
+
         # 이메일 발송
         success = send_email(
             to_addr=admin.email,
             subject="월간 근태 리포트",
             body=email_body
         )
-        
+
         if success:
             logger.info(f"이메일 발송 테스트: {admin.email}")
             logger.info(f"제목: 월간 근태 리포트")
@@ -1018,7 +1020,7 @@ def test_monthly_email():
             return jsonify({"success": True, "message": "월간 이메일 발송 완료"})
         else:
             return jsonify({"success": False, "message": "이메일 발송 실패"})
-            
+
     except Exception as e:
         logger.error(f"월간 이메일 테스트 실패: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -1031,43 +1033,43 @@ def create_or_update_attendance():
     """근태 추가/수정 API"""
     try:
         data = request.get_json()
-        user_id = data.get("user_id")
-        date_str = data.get("date")
-        clock_in_str = data.get("clock_in")
-        clock_out_str = data.get("clock_out")
-        
+        user_id = data.get() if data else None"user_id") if data else None
+        date_str = data.get() if data else None"date") if data else None
+        clock_in_str = data.get() if data else None"clock_in") if data else None
+        clock_out_str = data.get() if data else None"clock_out") if data else None
+
         if not user_id or not date_str:
             return jsonify({"success": False, "error": "필수 정보가 누락되었습니다."}), 400
-        
+
         # 날짜 파싱
         try:
             date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError:
             return jsonify({"success": False, "error": "잘못된 날짜 형식입니다."}), 400
-        
+
         # 시간 파싱
         clock_in = None
         clock_out = None
-        
+
         if clock_in_str:
             try:
                 clock_in = datetime.strptime(f"{date_str} {clock_in_str}", "%Y-%m-%d %H:%M")
             except ValueError:
                 return jsonify({"success": False, "error": "잘못된 출근 시간 형식입니다."}), 400
-        
+
         if clock_out_str:
             try:
                 clock_out = datetime.strptime(f"{date_str} {clock_out_str}", "%Y-%m-%d %H:%M")
             except ValueError:
                 return jsonify({"success": False, "error": "잘못된 퇴근 시간 형식입니다."}), 400
-        
+
         # 기존 근태 기록 확인
         existing_attendance = Attendance.query.filter(
             Attendance.user_id == user_id
         ).filter(
             func.date(Attendance.clock_in) == date_obj
         ).first()
-        
+
         if existing_attendance:
             # 기존 기록 수정
             existing_attendance.clock_in = clock_in
@@ -1083,15 +1085,15 @@ def create_or_update_attendance():
             attendance.created_at = datetime.utcnow()
             attendance.updated_at = datetime.utcnow()
             db.session.add(attendance)
-        
+
         db.session.commit()
-        
+
         return jsonify({
-            "success": True, 
+            "success": True,
             "message": "근태 정보가 저장되었습니다.",
             "attendance_id": attendance.id
         })
-        
+
     except Exception as e:
         db.session.rollback()
         logger.error(f"근태 저장 실패: {str(e)}")
@@ -1106,7 +1108,7 @@ def get_users():
         # 통합 API로 리다이렉트
         from api.staff import get_staff_list
         return get_staff_list()
-        
+
     except Exception as e:
         logger.error(f"직원 목록 조회 실패: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500

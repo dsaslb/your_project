@@ -1,0 +1,8 @@
+{
+  "name": "settings_backup",
+  "version": "1.0.0",
+  "description": "설정 백업 플러그인",
+  "main": "backend/__init__.py",
+  "author": "your_program",
+  "license": "MIT"
+} 

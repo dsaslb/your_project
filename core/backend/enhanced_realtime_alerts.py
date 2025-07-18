@@ -1,25 +1,30 @@
+from pathlib import Path
+import sqlite3
+import psutil
+from collections import defaultdict, deque
+from enum import Enum
+from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Any, Callable, Set
+from datetime import datetime, timedelta
+import uuid
+import json
+import time
+import threading
+import asyncio
+import logging
+from typing import Optional
+args = None  # pyright: ignore
+config = None  # pyright: ignore
+form = None  # pyright: ignore
 """
 고도화된 실시간 알림/이벤트 연동 시스템
 플러그인 CPU/RAM/에러율 임계 초과 시 즉시 알림
 웹·모바일 푸시 알림 지원
 """
 
-import logging
-import asyncio
-import threading
-import time
-import json
-import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable, Set
-from dataclasses import dataclass, asdict
-from enum import Enum
-from collections import defaultdict, deque
-import psutil
-import sqlite3
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
 
 class AlertSeverity(Enum):
     """알림 심각도"""
@@ -27,6 +32,7 @@ class AlertSeverity(Enum):
     WARNING = "warning"
     ERROR = "error"
     CRITICAL = "critical"
+
 
 class AlertType(Enum):
     """알림 타입"""
@@ -41,6 +47,7 @@ class AlertType(Enum):
     SECURITY_BREACH = "security_breach"
     CUSTOM_ALERT = "custom_alert"
 
+
 class NotificationChannel(Enum):
     """알림 채널"""
     WEB_TOAST = "web_toast"
@@ -49,6 +56,7 @@ class NotificationChannel(Enum):
     SMS = "sms"
     SLACK = "slack"
     WEBHOOK = "webhook"
+
 
 @dataclass
 class AlertThreshold:
@@ -60,6 +68,7 @@ class AlertThreshold:
     system_cpu_threshold: float = 90.0  # 시스템 CPU 90% 초과
     system_memory_threshold: float = 95.0  # 시스템 메모리 95% 초과
     system_disk_threshold: float = 90.0  # 디스크 사용률 90% 초과
+
 
 @dataclass
 class Alert:
@@ -77,19 +86,26 @@ class Alert:
     resolved: bool = False
     resolved_at: Optional[datetime] = None
     metadata: Optional[Dict[str, Any]] = None  # pyright: ignore
+
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = datetime.utcnow()
         if self.metadata is None:
             self.metadata = {}
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """딕셔너리로 변환"""
         data = asdict(self)
-        data['timestamp'] = self.timestamp.isoformat()
+        if self.timestamp:
+            data['timestamp'] = self.timestamp.isoformat()
+        else:
+            data['timestamp'] = None
         if self.resolved_at:
             data['resolved_at'] = self.resolved_at.isoformat()
+        else:
+            data['resolved_at'] = None
         return data
+
 
 @dataclass
 class NotificationConfig:
@@ -102,9 +118,10 @@ class NotificationConfig:
     quiet_hours_start: Optional[int] = None  # 0-23
     quiet_hours_end: Optional[int] = None    # 0-23
 
+
 class EnhancedRealtimeAlertSystem:
     """고도화된 실시간 알림 시스템"""
-    
+
     def __init__(self, db_path: str = "alerts.db"):
         self.db_path = db_path
         self.thresholds = AlertThreshold()
@@ -113,29 +130,29 @@ class EnhancedRealtimeAlertSystem:
         self.alert_callbacks: List[Callable[[Alert], None]] = []
         self.monitoring_active = False
         self.monitor_thread: Optional[threading.Thread] = None
-        
+
         # 실시간 연결 관리
         self.web_connections: Dict[str, Any] = {}  # connection_id -> handler
         self.mobile_connections: Dict[str, Any] = {}  # device_id -> handler
-        
+
         # 알림 히스토리 (최근 1000개)
         self.alert_history = deque(maxlen=1000)
-        
+
         # 플러그인 메트릭 캐시
         self.plugin_metrics: Dict[str, Dict[str, Any]] = {}
-        
+
         # 중복 알림 방지 (5분 내 동일 알림 무시)
         self.recent_alerts: Dict[str, datetime] = {}
-        
+
         self._init_database()
         self._load_notification_configs()
-        
+
     def _init_database(self):
         """데이터베이스 초기화"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 알림 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS alerts (
@@ -154,7 +171,7 @@ class EnhancedRealtimeAlertSystem:
                     metadata TEXT
                 )
             ''')
-            
+
             # 알림 설정 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS notification_configs (
@@ -167,26 +184,26 @@ class EnhancedRealtimeAlertSystem:
                     quiet_hours_end INTEGER
                 )
             ''')
-            
+
             conn.commit()
             conn.close()
             logger.info("알림 데이터베이스 초기화 완료")
-            
+
         except Exception as e:
             logger.error(f"데이터베이스 초기화 실패: {e}")
-    
+
     def _load_notification_configs(self):
         """알림 설정 로드"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('SELECT * FROM notification_configs')
             rows = cursor.fetchall()
-            
+
             for row in rows:
                 user_id, channels_json, alert_types_json, severity_levels_json, enabled, quiet_start, quiet_end = row
-                
+
                 config = NotificationConfig(
                     user_id=user_id,
                     channels=set(NotificationChannel(c) for c in json.loads(channels_json)),
@@ -196,15 +213,15 @@ class EnhancedRealtimeAlertSystem:
                     quiet_hours_start=quiet_start,
                     quiet_hours_end=quiet_end
                 )
-                
+
                 self.notification_configs[user_id] = config
-            
+
             conn.close()
             logger.info(f"알림 설정 로드 완료: {len(self.notification_configs)}개")
-            
+
         except Exception as e:
             logger.error(f"알림 설정 로드 실패: {e}")
-    
+
     def start_monitoring(self):
         """모니터링 시작"""
         if self.monitoring_active:
@@ -219,7 +236,7 @@ class EnhancedRealtimeAlertSystem:
                         try:
                             if not hasattr(self, "_monitor_loop") or not callable(getattr(self, "_monitor_loop", None)):
                                 raise AttributeError("_monitor_loop 메서드가 클래스에 정의되어 있지 않거나 호출할 수 없습니다.")
-                            # pyright: ignore[reportAttributeAccessIssue] - _monitor_loop 메서드는 클래스 내부에 정의되어 있어야 합니다.
+                            # pyright: ignore[reportAttributeAccessIssue] if ignore is not None else None - _monitor_loop 메서드는 클래스 내부에 정의되어 있어야 합니다.
                             self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)  # noqa
                             self.monitor_thread.start()
                             logger.info("고도화된 실시간 알림 시스템 시작")
@@ -233,25 +250,25 @@ class EnhancedRealtimeAlertSystem:
             self.monitoring_active = False
             if self.monitor_thread:
                 self.monitor_thread.join(timeout=5)
-            
+
             logger.info("고도화된 실시간 알림 시스템 중지")
-    
-    def update_plugin_metrics(self, plugin_id: str, metrics: Dict[str, Any]):
+
+    def update_plugin_metrics(self,  plugin_id: str,  metrics: Dict[str,  Any]):
         """플러그인 메트릭 업데이트"""
         self.plugin_metrics[plugin_id] = {
             **metrics,
             'timestamp': datetime.utcnow().isoformat()
         }
-        
+
         # 임계값 체크
-        self._check_plugin_thresholds(plugin_id, metrics)
-    
-    def _check_plugin_thresholds(self, plugin_id: str, metrics: Dict[str, Any]):
+        self._check_plugin_thresholds(plugin_id,  metrics)
+
+    def _check_plugin_thresholds(self,  plugin_id: str,  metrics: Dict[str,  Any]):
         """플러그인 임계값 체크"""
         alerts = []
-        
+
         # CPU 사용률 체크
-        cpu_usage = metrics.get('cpu_usage', 0)
+        cpu_usage = metrics.get('cpu_usage', 0) if metrics else 0
         if cpu_usage > self.thresholds.plugin_cpu_threshold:
             alert = self._create_alert(
                 AlertType.PLUGIN_CPU_HIGH,
@@ -263,9 +280,9 @@ class EnhancedRealtimeAlertSystem:
                 threshold_value=self.thresholds.plugin_cpu_threshold
             )
             alerts.append(alert)
-        
+
         # 메모리 사용률 체크
-        memory_usage = metrics.get('memory_usage', 0)
+        memory_usage = metrics.get('memory_usage', 0) if metrics else 0
         if memory_usage > self.thresholds.plugin_memory_threshold:
             alert = self._create_alert(
                 AlertType.PLUGIN_MEMORY_HIGH,
@@ -277,9 +294,9 @@ class EnhancedRealtimeAlertSystem:
                 threshold_value=self.thresholds.plugin_memory_threshold
             )
             alerts.append(alert)
-        
+
         # 에러율 체크
-        error_rate = metrics.get('error_rate', 0)
+        error_rate = metrics.get('error_rate', 0) if metrics else 0
         if error_rate > self.thresholds.plugin_error_rate_threshold:
             alert = self._create_alert(
                 AlertType.PLUGIN_ERROR_RATE_HIGH,
@@ -291,9 +308,9 @@ class EnhancedRealtimeAlertSystem:
                 threshold_value=self.thresholds.plugin_error_rate_threshold
             )
             alerts.append(alert)
-        
+
         # 응답시간 체크
-        response_time = metrics.get('response_time', 0)
+        response_time = metrics.get('response_time', 0) if metrics else 0
         if response_time > self.thresholds.plugin_response_time_threshold:
             alert = self._create_alert(
                 AlertType.PLUGIN_RESPONSE_SLOW,
@@ -305,66 +322,56 @@ class EnhancedRealtimeAlertSystem:
                 threshold_value=self.thresholds.plugin_response_time_threshold
             )
             alerts.append(alert)
-        
+
         # 알림 발송
         for alert in alerts:
-            self._send_alert(alert)  # pyright: ignore [reportAttributeAccessIssue]  # _send_alert 접근 오류 무시
+            self._send_alert(alert)
 
-    def _create_alert(self, alert_type: AlertType, severity: AlertSeverity, 
-                     title: str, message: str, **kwargs) -> Alert | None:  # pyright: ignore [reportReturnType]
+    def _create_alert(self, alert_type: AlertType, severity: AlertSeverity,
+                     title: str, message: str, **kwargs) -> Optional[Alert]:
         """알림 생성"""
-        alert_id = f"{alert_type.value}_{kwargs.get('plugin_id', 'system')}_{int(time.time())}"
-        
+        alert_id = f"{alert_type.value if alert_type is not None else None}_{kwargs.get('plugin_id', 'system') if kwargs else None}_{int(time.time())}"
         # 중복 알림 체크
         if alert_id in self.recent_alerts:
             last_time = self.recent_alerts[alert_id]
-            if (datetime.utcnow() - last_time).total_seconds() < 300:  # 5분
-                return None  # pyright: ignore [reportReturnType]  # 최근 5분 이내 중복 알림 방지
-
-            # Alert 객체 생성
-            alert = Alert(
-                type=alert_type,  # pyright: ignore [reportGeneralTypeIssues]  # Alert 클래스에 맞게 수정
-                severity=severity,
-                title=title,
-                message=message,
-                **kwargs
-            )
-
-            # 중복 알림 방지
-            self.recent_alerts[alert_id] = datetime.utcnow()
-            
-            return alert
+            if last_time and (datetime.utcnow() - last_time).total_seconds() < 300:  # 5분
+                return None  # 최근 5분 이내 중복 알림 방지
+        # Alert 객체 생성
+        alert = Alert(
+            type=alert_type,
+            severity=severity,
+            title=title,
+            message=message,
+            **kwargs
+        )
+        # 중복 알림 방지
+        self.recent_alerts[alert_id] = datetime.utcnow()
+        return alert
 
     def _send_alert(self, alert: Alert):
         """알림 발송"""
         if not alert:
             return
-        
         # 알림 저장
         self.alerts[alert.id] = alert
         self.alert_history.append(alert)
-        
         # 데이터베이스에 저장
         self._save_alert_to_db(alert)
-        
         # 콜백 호출
         for callback in self.alert_callbacks:
             try:
                 callback(alert)
             except Exception as e:
                 logger.error(f"알림 콜백 실행 실패: {e}")
-        
         # 실시간 알림 전송
         self._send_realtime_notifications(alert)
-        
         logger.info(f"알림 발송: {alert.title} ({alert.severity.value})")
-    
-    def _save_alert_to_db(self, alert: Alert):
+
+    def _save_alert_to_db(self,  alert: Alert):
         """알림을 데이터베이스에 저장"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             cursor.execute('''
                 INSERT OR REPLACE INTO alerts 
                 (id, type, severity, title, message, plugin_id, plugin_name, 
@@ -373,18 +380,16 @@ class EnhancedRealtimeAlertSystem:
             ''', (
                 alert.id, alert.type.value, alert.severity.value, alert.title, alert.message,
                 alert.plugin_id, alert.plugin_name, alert.current_value, alert.threshold_value,
-                alert.timestamp.isoformat(), alert.resolved,
+                alert.timestamp.isoformat() if alert.timestamp else None, alert.resolved,
                 alert.resolved_at.isoformat() if alert.resolved_at else None,
                 json.dumps(alert.metadata)
             ))
-            
             conn.commit()
             conn.close()
-            
         except Exception as e:
             logger.error(f"알림 데이터베이스 저장 실패: {e}")
-    
-    def _send_realtime_notifications(self, alert: Alert):
+
+    def _send_realtime_notifications(self,  alert: Alert):
         """실시간 알림 전송"""
         # 웹 토스트 알림
         for connection_id, handler in self.web_connections.items():
@@ -396,7 +401,7 @@ class EnhancedRealtimeAlertSystem:
                 })
             except Exception as e:
                 logger.error(f"웹 알림 전송 실패: {e}")
-        
+
         # 모바일 푸시 알림
         for device_id, handler in self.mobile_connections.items():
             try:
@@ -408,55 +413,55 @@ class EnhancedRealtimeAlertSystem:
                 })
             except Exception as e:
                 logger.error(f"모바일 알림 전송 실패: {e}")
-    
-    def register_web_connection(self, connection_id: str, handler: Callable):
+
+    def register_web_connection(self,  connection_id: str,  handler: Callable[[Dict[str, Any]], None]):
         """웹 연결 등록"""
         self.web_connections[connection_id] = handler
         logger.info(f"웹 연결 등록: {connection_id}")
-    
-    def unregister_web_connection(self, connection_id: str):
+
+    def unregister_web_connection(self,  connection_id: str):
         """웹 연결 해제"""
         self.web_connections.pop(connection_id, None)
         logger.info(f"웹 연결 해제: {connection_id}")
-    
-    def register_mobile_connection(self, device_id: str, handler: Callable):
+
+    def register_mobile_connection(self,  device_id: str,  handler: Callable[[Dict[str, Any]], None]):
         """모바일 연결 등록"""
         self.mobile_connections[device_id] = handler
         logger.info(f"모바일 연결 등록: {device_id}")
-    
-    def unregister_mobile_connection(self, device_id: str):
+
+    def unregister_mobile_connection(self,  device_id: str):
         """모바일 연결 해제"""
         self.mobile_connections.pop(device_id, None)
         logger.info(f"모바일 연결 해제: {device_id}")
-    
-    def add_alert_callback(self, callback: Callable[[Alert], None]):
+
+    def add_alert_callback(self,  callback: Callable[[Alert],  None]):
         """알림 콜백 추가"""
         self.alert_callbacks.append(callback)
-    
-    def remove_alert_callback(self, callback: Callable[[Alert], None]):
+
+    def remove_alert_callback(self,  callback: Callable[[Alert],  None]):
         """알림 콜백 제거"""
         if callback in self.alert_callbacks:
             self.alert_callbacks.remove(callback)
-    
-    def get_active_alerts(self, severity: Optional[AlertSeverity] = None) -> List[Alert]:
+
+    def get_active_alerts(self, severity=None) -> List[Alert]:
         """활성 알림 조회"""
         alerts = [alert for alert in self.alerts.values() if not alert.resolved]
         if severity:
             alerts = [alert for alert in alerts if alert.severity == severity]
-        # timestamp가 None일 경우 datetime.min으로 대체
-        return sorted(alerts, key=lambda x: x.timestamp if x.timestamp is not None else datetime.min, reverse=True)
+        return alerts
 
     def resolve_alert(self, alert_id: str):
         """알림 해결"""
         if alert_id in self.alerts:
             alert = self.alerts[alert_id]
-            alert.resolved = True
-            alert.resolved_at = datetime.utcnow()
-            # 데이터베이스 업데이트
-            self._update_alert_in_db(alert)
-            logger.info(f"알림 해결: {alert_id}")
+            if alert:
+                alert.resolved = True
+                alert.resolved_at = datetime.utcnow()
+                # 데이터베이스 업데이트
+                self._update_alert_in_db(alert)
+                logger.info(f"알림 해결: {alert_id}")
 
-    def _update_alert_in_db(self, alert: Alert):
+    def _update_alert_in_db(self,  alert: Alert):
         """데이터베이스에서 알림 업데이트"""
         try:
             conn = sqlite3.connect(self.db_path)
@@ -465,7 +470,7 @@ class EnhancedRealtimeAlertSystem:
                 UPDATE alerts 
                 SET resolved = ?, resolved_at = ?
                 WHERE id = ?
-            ''', (alert.resolved, alert.resolved_at.isoformat(), alert.id))
+            ''', (alert.resolved, alert.resolved_at.isoformat() if alert.resolved_at else None, alert.id))
             conn.commit()
             conn.close()
         except Exception as e:
@@ -542,7 +547,7 @@ class EnhancedRealtimeAlertSystem:
         """비활성 플러그인 체크"""
         current_time = datetime.utcnow()
         for plugin_id, metrics in self.plugin_metrics.items():
-            last_activity = datetime.fromisoformat(metrics.get('timestamp', '1970-01-01T00:00:00'))
+            last_activity = datetime.fromisoformat(metrics.get('timestamp', '1970-01-01T00:00:00') if metrics else '1970-01-01T00:00:00')
             if (current_time - last_activity).total_seconds() > 300:
                 alert = self._create_alert(
                     AlertType.PLUGIN_OFFLINE,
@@ -588,9 +593,9 @@ class EnhancedRealtimeAlertSystem:
             'resolved_alerts': resolved_alerts,
             'severity_distribution': dict(severity_counts),
             'type_distribution': dict(type_counts),
-            'last_24h_alerts': len([a for a in self.alerts.values() 
-                                  if (datetime.utcnow() - a.timestamp).total_seconds() < 86400])
+            'last_24h_alerts': len([a for a in self.alerts.values() if a.timestamp and (datetime.utcnow() - a.timestamp).total_seconds() < 86400])
         }
 
+
 # 전역 인스턴스
-enhanced_alert_system = EnhancedRealtimeAlertSystem() 
+enhanced_alert_system = EnhancedRealtimeAlertSystem()

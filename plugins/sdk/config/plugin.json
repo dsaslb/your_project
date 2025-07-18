@@ -1,0 +1,8 @@
+{
+  "name": "sdk",
+  "version": "1.0.0",
+  "description": "SDK 플러그인",
+  "main": "backend/plugin_cli.py",
+  "author": "your_program",
+  "license": "MIT"
+} 

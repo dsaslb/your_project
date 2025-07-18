@@ -6,10 +6,13 @@ import requests
 import time
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 BASE_URL = "http://localhost:5000"
+
 
 class PluginOptimizationTester:
     def __init__(self, base_url=BASE_URL):
@@ -21,11 +24,11 @@ class PluginOptimizationTester:
         try:
             r = self.session.get(f"{self.base_url}/api/plugin-optimization/suggestions")
             data = r.json()
-            assert data['success'], data.get('message')
+            assert data["success"], data.get("message")
             logger.info(f"  - 제안 개수: {len(data['data'])}")
-            if data['data']:
+            if data["data"]:
                 logger.info(f"  - 첫 제안: {data['data'][0]}")
-            return data['data']
+            return data["data"]
         except Exception as e:
             logger.error(f"제안 목록 조회 실패: {e}")
             return []
@@ -33,9 +36,11 @@ class PluginOptimizationTester:
     def test_execute(self, suggestion_id):
         logger.info(f"[2] 최적화 제안 실행: {suggestion_id}")
         try:
-            r = self.session.post(f"{self.base_url}/api/plugin-optimization/execute/{suggestion_id}")
+            r = self.session.post(
+                f"{self.base_url}/api/plugin-optimization/execute/{suggestion_id}"
+            )
             data = r.json()
-            assert data['success'], data.get('message')
+            assert data["success"], data.get("message")
             logger.info(f"  - 실행 결과: {data['message']}")
             return True
         except Exception as e:
@@ -47,11 +52,11 @@ class PluginOptimizationTester:
         try:
             r = self.session.get(f"{self.base_url}/api/plugin-optimization/history")
             data = r.json()
-            assert data['success'], data.get('message')
+            assert data["success"], data.get("message")
             logger.info(f"  - 이력 개수: {len(data['data'])}")
-            if data['data']:
+            if data["data"]:
                 logger.info(f"  - 첫 이력: {data['data'][0]}")
-            return data['data']
+            return data["data"]
         except Exception as e:
             logger.error(f"이력 조회 실패: {e}")
             return []
@@ -59,11 +64,12 @@ class PluginOptimizationTester:
     def run(self):
         suggestions = self.test_suggestions()
         if suggestions:
-            first_id = suggestions[0]['id']
+            first_id = suggestions[0]["id"]
             self.test_execute(first_id)
             time.sleep(1)
         self.test_history()
         logger.info("테스트 완료!")
 
+
 if __name__ == "__main__":
-    PluginOptimizationTester().run() 
+    PluginOptimizationTester().run()
