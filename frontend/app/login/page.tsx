@@ -1,4 +1,6 @@
-﻿import ComfortableLoginPage from '../comfortable-login'
+﻿"use client";
+
+import ComfortableLoginPage from '../comfortable-login'
 import { useRouter } from 'next/navigation';
 import useUserStore from '@/store/useUserStore';
 import { useEffect } from 'react';

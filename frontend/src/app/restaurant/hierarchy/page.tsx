@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { RestaurantHierarchy } from '@/components/RestaurantHierarchy/RestaurantHierarchy';
@@ -13,6 +13,7 @@ import {
   DollarSign, 
   ShoppingCart,
   ArrowLeft,
+  ArrowRight,
   Home
 } from 'lucide-react';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ export default function RestaurantHierarchyPage() {
               <div className="text-3xl mr-4">🍽️</div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">레스토랑 계층 관리</h1>
-                <p className="text-sm text-gray-500">브랜드 > 매장 > 직원 계층별 관리</p>
+                <p className="text-sm text-gray-500">브랜드 &gt; 매장 &gt; 직원 계층별 관리</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -167,7 +168,7 @@ export default function RestaurantHierarchyPage() {
                 <div className="text-xs text-gray-500">스타벅스, 맥도날드 등</div>
               </div>
               
-              <ArrowLeft className="h-6 w-6 text-gray-400" />
+              <ArrowRight className="h-6 w-6 text-gray-400" />
               
               <div className="text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -177,7 +178,7 @@ export default function RestaurantHierarchyPage() {
                 <div className="text-xs text-gray-500">강남점, 홍대점 등</div>
               </div>
               
-              <ArrowLeft className="h-6 w-6 text-gray-400" />
+              <ArrowRight className="h-6 w-6 text-gray-400" />
               
               <div className="text-center">
                 <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
