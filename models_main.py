@@ -3434,3 +3434,501 @@ class OnboardingTemplate(db.Model):
 
     def __repr__(self):
         return f"<OnboardingTemplate {self.name}>"
+
+
+# MVP 플러그인 모델들
+# 출근관리 플러그인 모델
+class AttendanceRecord(db.Model):
+    """출근 기록 모델"""
+    __tablename__ = 'attendance_records'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    check_in_time = db.Column(db.DateTime, nullable=True)
+    check_out_time = db.Column(db.DateTime, nullable=True)
+    work_hours = db.Column(db.Float, default=0.0)  # 실제 근무시간 (시간)
+    break_hours = db.Column(db.Float, default=0.0)  # 휴식시간 (시간)
+    overtime_hours = db.Column(db.Float, default=0.0)  # 초과근무시간 (시간)
+    status = db.Column(db.String(20), default='present')  # present, absent, late, early_leave
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    user = db.relationship('User', backref='attendance_records')
+    store = db.relationship('Branch', backref='attendance_records')
+    
+    def __repr__(self):
+        return f'<AttendanceRecord {self.user_id} {self.date.date()}>'
+    
+    def calculate_work_hours(self):
+        """근무시간 계산"""
+        if self.check_in_time and self.check_out_time:
+            work_duration = self.check_out_time - self.check_in_time
+            self.work_hours = work_duration.total_seconds() / 3600
+            return self.work_hours
+        return 0.0
+
+class AttendanceSettings(db.Model):
+    """출근 설정 모델"""
+    __tablename__ = 'attendance_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    work_start_time = db.Column(db.String(5), default='09:00')  # HH:MM 형식
+    work_end_time = db.Column(db.String(5), default='18:00')  # HH:MM 형식
+    break_time = db.Column(db.Integer, default=60)  # 분 단위
+    overtime_threshold = db.Column(db.Float, default=8.0)  # 시간 단위
+    late_threshold = db.Column(db.Integer, default=15)  # 분 단위
+    early_leave_threshold = db.Column(db.Integer, default=30)  # 분 단위
+    flexible_work = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='attendance_settings')
+    
+    def __repr__(self):
+        return f'<AttendanceSettings {self.store_id}>'
+
+# 재고관리 플러그인 모델
+class InventoryProduct(db.Model):
+    """상품 모델"""
+    __tablename__ = 'inventory_products'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    sku = db.Column(db.String(50), unique=True, nullable=False)  # Stock Keeping Unit
+    description = db.Column(db.Text, nullable=True)
+    category = db.Column(db.String(50), nullable=True)
+    unit = db.Column(db.String(20), default='개')  # 단위 (개, kg, L 등)
+    cost_price = db.Column(db.Float, default=0.0)  # 원가
+    selling_price = db.Column(db.Float, default=0.0)  # 판매가
+    current_stock = db.Column(db.Integer, default=0)  # 현재 재고
+    min_stock = db.Column(db.Integer, default=0)  # 최소 재고
+    max_stock = db.Column(db.Integer, default=1000)  # 최대 재고
+    supplier = db.Column(db.String(100), nullable=True)  # 공급업체
+    location = db.Column(db.String(50), nullable=True)  # 보관 위치
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='inventory_products')
+    transactions = db.relationship('InventoryTransaction', backref='product')
+    
+    def __repr__(self):
+        return f'<InventoryProduct {self.name} ({self.sku})>'
+    
+    def update_stock(self, quantity, transaction_type):
+        """재고 업데이트"""
+        if transaction_type == 'in':
+            self.current_stock += quantity
+        elif transaction_type == 'out':
+            self.current_stock -= quantity
+        elif transaction_type == 'adjustment':
+            self.current_stock = quantity
+        elif transaction_type == 'return':
+            self.current_stock += quantity
+        elif transaction_type == 'damage':
+            self.current_stock -= quantity
+        
+        self.updated_at = datetime.utcnow()
+    
+    def is_low_stock(self):
+        """재고 부족 여부 확인"""
+        return self.current_stock <= self.min_stock
+
+class InventoryTransaction(db.Model):
+    """재고 거래 기록 모델"""
+    __tablename__ = 'inventory_transactions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('inventory_products.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    transaction_type = db.Column(db.String(20), nullable=False)  # in, out, adjustment, return, damage
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_price = db.Column(db.Float, default=0.0)  # 단가
+    total_amount = db.Column(db.Float, default=0.0)  # 총 금액
+    reference_number = db.Column(db.String(50), nullable=True)  # 참조 번호 (주문번호 등)
+    notes = db.Column(db.Text, nullable=True)
+    transaction_date = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    user = db.relationship('User', backref='inventory_transactions')
+    
+    def __repr__(self):
+        return f'<InventoryTransaction {self.transaction_type} {self.quantity}>'
+    
+    def calculate_total(self):
+        """총 금액 계산"""
+        self.total_amount = self.quantity * self.unit_price
+        return self.total_amount
+
+class InventorySettings(db.Model):
+    """재고 관리 설정 모델"""
+    __tablename__ = 'inventory_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    low_stock_threshold = db.Column(db.Integer, default=10)  # 재고 부족 임계값
+    auto_reorder_enabled = db.Column(db.Boolean, default=False)  # 자동 재주문 활성화
+    reorder_quantity = db.Column(db.Integer, default=50)  # 재주문 수량
+    stock_alert_email = db.Column(db.Boolean, default=True)  # 재고 알림 이메일
+    stock_alert_sms = db.Column(db.Boolean, default=False)  # 재고 알림 SMS
+    alert_recipients = db.Column(db.Text, nullable=True)  # 알림 수신자 (JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='inventory_settings')
+    
+    def __repr__(self):
+        return f'<InventorySettings {self.store_id}>'
+
+# 구매관리 플러그인 모델
+class PurchaseSupplier(db.Model):
+    """공급업체 모델"""
+    __tablename__ = 'purchase_suppliers'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    contact_person = db.Column(db.String(50), nullable=True)
+    email = db.Column(db.String(100), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    address = db.Column(db.Text, nullable=True)
+    business_number = db.Column(db.String(20), nullable=True)  # 사업자등록번호
+    payment_terms = db.Column(db.Integer, default=30)  # 결제 조건 (일)
+    credit_limit = db.Column(db.Float, default=0.0)  # 신용 한도
+    is_active = db.Column(db.Boolean, default=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='purchase_suppliers')
+    purchase_orders = db.relationship('PurchaseOrder', backref='supplier')
+    
+    def __repr__(self):
+        return f'<PurchaseSupplier {self.name}>'
+
+class PurchaseOrder(db.Model):
+    """구매 주문 모델"""
+    __tablename__ = 'purchase_orders'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('purchase_suppliers.id'), nullable=False)
+    order_number = db.Column(db.String(50), unique=True, nullable=False)  # 주문번호
+    order_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expected_delivery_date = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(20), default='draft')  # draft, pending, approved, ordered, received, cancelled
+    payment_status = db.Column(db.String(20), default='pending')  # pending, partial, paid, overdue
+    subtotal = db.Column(db.Float, default=0.0)  # 소계
+    tax_amount = db.Column(db.Float, default=0.0)  # 세금
+    total_amount = db.Column(db.Float, default=0.0)  # 총액
+    notes = db.Column(db.Text, nullable=True)
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='purchase_orders')
+    approved_user = db.relationship('User', foreign_keys=[approved_by], backref='approved_purchase_orders')
+    created_user = db.relationship('User', foreign_keys=[created_by], backref='created_purchase_orders')
+    order_items = db.relationship('PurchaseOrderItem', backref='purchase_order', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<PurchaseOrder {self.order_number}>'
+    
+    def calculate_totals(self):
+        """총액 계산"""
+        self.subtotal = sum(item.total_price for item in self.order_items)
+        self.tax_amount = self.subtotal * 0.1  # 10% 부가세
+        self.total_amount = self.subtotal + self.tax_amount
+        return self.total_amount
+
+class PurchaseOrderItem(db.Model):
+    """구매 주문 항목 모델"""
+    __tablename__ = 'purchase_order_items'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    purchase_order_id = db.Column(db.Integer, db.ForeignKey('purchase_orders.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('inventory_products.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_price = db.Column(db.Float, nullable=False)
+    total_price = db.Column(db.Float, default=0.0)
+    received_quantity = db.Column(db.Integer, default=0)  # 입고된 수량
+    notes = db.Column(db.Text, nullable=True)
+    
+    # 관계 설정
+    product = db.relationship('InventoryProduct', backref='purchase_order_items')
+    
+    def __repr__(self):
+        return f'<PurchaseOrderItem {self.product.name} x {self.quantity}>'
+    
+    def calculate_total(self):
+        """총 가격 계산"""
+        self.total_price = self.quantity * self.unit_price
+        return self.total_price
+
+class PurchaseSettings(db.Model):
+    """구매 관리 설정 모델"""
+    __tablename__ = 'purchase_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    auto_approval_limit = db.Column(db.Float, default=100000)  # 자동 승인 한도
+    default_payment_terms = db.Column(db.Integer, default=30)  # 기본 결제 조건
+    email_notifications = db.Column(db.Boolean, default=True)
+    sms_notifications = db.Column(db.Boolean, default=False)
+    approval_workflow = db.Column(db.Text, nullable=True)  # 승인 워크플로우 (JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='purchase_settings')
+    
+    def __repr__(self):
+        return f'<PurchaseSettings {self.store_id}>'
+
+# 스케줄관리 플러그인 모델
+class WorkSchedule(db.Model):
+    """근무 스케줄 모델"""
+    __tablename__ = 'work_schedules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    schedule_date = db.Column(db.DateTime, nullable=False)
+    shift_type = db.Column(db.String(20), nullable=False)  # morning, afternoon, night, full_day, part_time
+    start_time = db.Column(db.String(5), nullable=False)  # HH:MM 형식
+    end_time = db.Column(db.String(5), nullable=False)  # HH:MM 형식
+    break_start = db.Column(db.String(5), nullable=True)  # 휴식 시작
+    break_end = db.Column(db.String(5), nullable=True)  # 휴식 종료
+    total_hours = db.Column(db.Float, default=0.0)  # 총 근무시간
+    status = db.Column(db.String(20), default='draft')  # draft, published, confirmed, cancelled
+    notes = db.Column(db.Text, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='work_schedules')
+    user = db.relationship('User', foreign_keys=[user_id], backref='work_schedules')
+    created_user = db.relationship('User', foreign_keys=[created_by], backref='created_schedules')
+    
+    def __repr__(self):
+        return f'<WorkSchedule {self.user_id} {self.schedule_date.date()}>'
+    
+    def calculate_hours(self):
+        """근무시간 계산"""
+        start = datetime.strptime(self.start_time, '%H:%M')
+        end = datetime.strptime(self.end_time, '%H:%M')
+        
+        # 날짜가 다른 경우 (야간 근무 등)
+        if end < start:
+            end = end.replace(day=end.day + 1)
+        
+        work_duration = end - start
+        self.total_hours = work_duration.total_seconds() / 3600
+        
+        # 휴식시간 차감
+        if self.break_start and self.break_end:
+            break_start = datetime.strptime(self.break_start, '%H:%M')
+            break_end = datetime.strptime(self.break_end, '%H:%M')
+            
+            if break_end < break_start:
+                break_end = break_end.replace(day=break_end.day + 1)
+            
+            break_duration = break_end - break_start
+            break_hours = break_duration.total_seconds() / 3600
+            self.total_hours -= break_hours
+        
+        return self.total_hours
+
+class ScheduleTemplate(db.Model):
+    """스케줄 템플릿 모델"""
+    __tablename__ = 'schedule_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    shift_type = db.Column(db.String(20), nullable=False)
+    start_time = db.Column(db.String(5), nullable=False)
+    end_time = db.Column(db.String(5), nullable=False)
+    break_start = db.Column(db.String(5), nullable=True)
+    break_end = db.Column(db.String(5), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='schedule_templates')
+    
+    def __repr__(self):
+        return f'<ScheduleTemplate {self.name}>'
+
+class ScheduleRequest(db.Model):
+    """스케줄 변경 요청 모델"""
+    __tablename__ = 'schedule_requests'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    schedule_id = db.Column(db.Integer, db.ForeignKey('work_schedules.id'), nullable=False)
+    request_type = db.Column(db.String(20), nullable=False)  # change, swap, cancel
+    requested_date = db.Column(db.DateTime, nullable=False)
+    requested_start_time = db.Column(db.String(5), nullable=True)
+    requested_end_time = db.Column(db.String(5), nullable=True)
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    user = db.relationship('User', foreign_keys=[user_id], backref='schedule_requests')
+    schedule = db.relationship('WorkSchedule', backref='schedule_requests')
+    approved_user = db.relationship('User', foreign_keys=[approved_by], backref='approved_schedule_requests')
+    
+    def __repr__(self):
+        return f'<ScheduleRequest {self.user_id} {self.request_type}>'
+
+class ScheduleSettings(db.Model):
+    """스케줄 관리 설정 모델"""
+    __tablename__ = 'schedule_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    default_shift_hours = db.Column(db.Float, default=8.0)
+    break_time_minutes = db.Column(db.Integer, default=60)
+    overtime_threshold = db.Column(db.Float, default=8.0)
+    auto_schedule_enabled = db.Column(db.Boolean, default=False)
+    max_consecutive_days = db.Column(db.Integer, default=7)  # 최대 연속 근무일
+    min_rest_hours = db.Column(db.Float, default=11.0)  # 최소 휴식시간
+    schedule_publish_days = db.Column(db.Integer, default=7)  # 스케줄 발표일 (일전)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    store = db.relationship('Branch', backref='schedule_settings')
+    
+    def __repr__(self):
+        return f'<ScheduleSettings {self.store_id}>'
+
+
+# 플러그인 관리 시스템 모델들
+class PluginActivation(db.Model):
+    """플러그인 활성화/비활성화 관리 모델"""
+    __tablename__ = 'plugin_activations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), nullable=False, index=True)  # 플러그인 ID
+    target_type = db.Column(db.String(20), nullable=False, index=True)  # industry, brand, store, user
+    target_id = db.Column(db.Integer, nullable=False, index=True)  # 대상 ID
+    is_active = db.Column(db.Boolean, default=False, index=True)  # 활성화 상태
+    activation_date = db.Column(db.DateTime, nullable=True)  # 활성화 날짜
+    deactivation_date = db.Column(db.DateTime, nullable=True)  # 비활성화 날짜
+    activated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 활성화한 사용자
+    settings = db.Column(db.JSON, nullable=True)  # 플러그인별 설정
+    version = db.Column(db.String(20), nullable=True)  # 플러그인 버전
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    activator = db.relationship('User', backref='plugin_activations')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_plugin_target', 'plugin_id', 'target_type', 'target_id'),
+    )
+    
+    def __repr__(self):
+        return f'<PluginActivation {self.plugin_id} - {self.target_type}:{self.target_id}>'
+
+
+class PluginPermission(db.Model):
+    """플러그인 권한 분배 모델"""
+    __tablename__ = 'plugin_permissions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), nullable=False, index=True)
+    target_type = db.Column(db.String(20), nullable=False, index=True)  # industry, brand, store, user
+    target_id = db.Column(db.Integer, nullable=False, index=True)
+    role = db.Column(db.String(20), nullable=False, index=True)  # admin, manager, employee
+    permissions = db.Column(db.JSON, nullable=False)  # 권한 설정 (view, create, edit, delete, approve)
+    is_inherited = db.Column(db.Boolean, default=False, index=True)  # 상속된 권한인지 여부
+    inherited_from = db.Column(db.String(20), nullable=True)  # 상속 출처 (parent_type:parent_id)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    creator = db.relationship('User', backref='plugin_permissions')
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_plugin_permission_target', 'plugin_id', 'target_type', 'target_id', 'role'),
+    )
+    
+    def __repr__(self):
+        return f'<PluginPermission {self.plugin_id} - {self.target_type}:{self.target_id} - {self.role}>'
+
+
+class PluginHierarchy(db.Model):
+    """플러그인 계층 구조 관리 모델"""
+    __tablename__ = 'plugin_hierarchies'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), nullable=False, index=True)
+    parent_type = db.Column(db.String(20), nullable=False, index=True)  # industry, brand, store
+    parent_id = db.Column(db.Integer, nullable=False, index=True)
+    child_type = db.Column(db.String(20), nullable=False, index=True)  # brand, store, user
+    child_id = db.Column(db.Integer, nullable=False, index=True)
+    inheritance_type = db.Column(db.String(20), default='full')  # full, partial, none
+    inheritance_settings = db.Column(db.JSON, nullable=True)  # 상속 설정
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 복합 인덱스
+    __table_args__ = (
+        db.Index('idx_plugin_hierarchy_parent', 'plugin_id', 'parent_type', 'parent_id'),
+        db.Index('idx_plugin_hierarchy_child', 'plugin_id', 'child_type', 'child_id'),
+    )
+    
+    def __repr__(self):
+        return f'<PluginHierarchy {self.plugin_id} - {self.parent_type}:{self.parent_id} -> {self.child_type}:{self.child_id}>'
+
+
+class PluginTestResult(db.Model):
+    """플러그인 테스트 결과 모델"""
+    __tablename__ = 'plugin_test_results'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plugin_id = db.Column(db.String(100), nullable=False, index=True)
+    target_type = db.Column(db.String(20), nullable=False, index=True)
+    target_id = db.Column(db.Integer, nullable=False, index=True)
+    test_type = db.Column(db.String(50), nullable=False, index=True)  # activation, permission, ui, api
+    test_name = db.Column(db.String(100), nullable=False)
+    status = db.Column(db.String(20), nullable=False, index=True)  # passed, failed, error, skipped
+    result_data = db.Column(db.JSON, nullable=True)  # 테스트 결과 데이터
+    error_message = db.Column(db.Text, nullable=True)  # 에러 메시지
+    execution_time = db.Column(db.Float, nullable=True)  # 실행 시간 (초)
+    tested_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    tester = db.relationship('User', backref='plugin_test_results')
+    
+    def __repr__(self):
+        return f'<PluginTestResult {self.plugin_id} - {self.test_name} - {self.status}>'

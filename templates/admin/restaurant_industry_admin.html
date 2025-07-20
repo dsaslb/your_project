@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍽️ 레스토랑 업종 관리자 대시보드</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- 헤더 -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div class="flex items-center">
+                    <div class="text-3xl mr-4">🍽️</div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">레스토랑 업종 관리자 대시보드</h1>
+                        <p class="text-sm text-gray-500">업종 전체 현황 및 관리</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500">{{ user.username }}님 (관리자)</span>
+                    <a href="{{ url_for('auth.logout') }}" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-sign-out-alt"></i> 로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- 업종 전체 통계 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-chart-line text-green-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">오늘 전체 매출</dt>
+                                <dd class="text-lg font-medium text-gray-900">₩{{ "{:,}".format(industry_stats.today_revenue) }}</dd>
+                                <dd class="text-sm text-green-600">+{{ industry_stats.revenue_change }}%</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-utensils text-blue-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">오늘 전체 주문</dt>
+                                <dd class="text-lg font-medium text-gray-900">{{ industry_stats.today_orders }}</dd>
+                                <dd class="text-sm text-blue-600">평균 ₩{{ "{:,}".format(industry_stats.avg_order_value) }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-store text-purple-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">전체 브랜드</dt>
+                                <dd class="text-lg font-medium text-gray-900">{{ industry_stats.brand_count }}개</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-users text-orange-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">전체 직원</dt>
+                                <dd class="text-lg font-medium text-gray-900">{{ industry_stats.staff_count }}명</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 브랜드별 현황 -->
+        <div class="bg-white shadow rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    브랜드별 현황
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">브랜드</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">오늘 매출</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">매장 수</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">직원 수</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">매장당 평균 매출</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for brand in brand_summary %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ brand.name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">₩{{ "{:,}".format(brand.today_revenue) }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ brand.branch_count }}개</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ brand.staff_count }}명</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">₩{{ "{:,}".format(brand.avg_revenue_per_branch) }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button onclick="showBrandDetails({{ brand.id }})" class="text-blue-600 hover:text-blue-900">
+                                        상세보기
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 매장별 현황 -->
+        <div class="bg-white shadow rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    매장별 현황
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">매장명</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">브랜드</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">위치</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">오늘 매출</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문 수</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">직원 수</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for branch in branch_summary %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ branch.name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ branch.brand_name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ branch.location }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">₩{{ "{:,}".format(branch.today_revenue) }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ branch.today_orders }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ branch.staff_count }}명</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button onclick="showBranchDetails({{ branch.id }})" class="text-blue-600 hover:text-blue-900">
+                                        상세보기
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 직원별 현황 -->
+        <div class="bg-white shadow rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    직원별 현황
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">직원명</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">직책</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">매장</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">브랜드</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">오늘 주문</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">매출 기여</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for staff in staff_summary %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ staff.name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ staff.position }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ staff.branch_name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ staff.brand_name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ staff.today_orders }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">₩{{ "{:,}".format(staff.today_revenue) }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button onclick="showStaffDetails({{ staff.id }})" class="text-blue-600 hover:text-blue-900">
+                                        상세보기
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 최근 활동 -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    최근 활동
+                </h3>
+                <div class="space-y-3">
+                    {% for activity in recent_activities %}
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="w-2 h-2 rounded-full mr-3
+                            {% if activity.type == 'order' %}bg-green-500
+                            {% elif activity.type == 'staff' %}bg-blue-500
+                            {% else %}bg-yellow-500{% endif %}"></div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium text-gray-900">{{ activity.message }}</div>
+                            {% if activity.amount > 0 %}
+                            <div class="text-xs text-gray-600">₩{{ "{:,}".format(activity.amount) }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="text-xs text-gray-500">{{ activity.time }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 브랜드 상세 모달 -->
+    <div id="brandModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">브랜드 상세 정보</h3>
+                </div>
+                <div class="px-6 py-4" id="brandModalContent">
+                    <!-- 동적으로 내용이 채워집니다 -->
+                </div>
+                <div class="px-6 py-4 border-t">
+                    <button onclick="hideBrandModal()" class="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 매장 상세 모달 -->
+    <div id="branchModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">매장 상세 정보</h3>
+                </div>
+                <div class="px-6 py-4" id="branchModalContent">
+                    <!-- 동적으로 내용이 채워집니다 -->
+                </div>
+                <div class="px-6 py-4 border-t">
+                    <button onclick="hideBranchModal()" class="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 직원 상세 모달 -->
+    <div id="staffModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">직원 상세 정보</h3>
+                </div>
+                <div class="px-6 py-4" id="staffModalContent">
+                    <!-- 동적으로 내용이 채워집니다 -->
+                </div>
+                <div class="px-6 py-4 border-t">
+                    <button onclick="hideStaffModal()" class="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 모달 표시/숨김 함수들
+        function showBrandDetails(brandId) {
+            // 브랜드 상세 정보 로드
+            fetch(`/api/admin/restaurant/industry/brands`)
+                .then(response => response.json())
+                .then(brands => {
+                    const brand = brands.find(b => b.id === brandId);
+                    if (brand) {
+                        document.getElementById('brandModalContent').innerHTML = `
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-semibold text-lg">${brand.name}</h4>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span class="text-sm text-gray-600">오늘 매출:</span>
+                                        <div class="font-semibold">₩${brand.today_revenue.toLocaleString()}</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">매장 수:</span>
+                                        <div class="font-semibold">${brand.branch_count}개</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">직원 수:</span>
+                                        <div class="font-semibold">${brand.staff_count}명</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">매장당 평균 매출:</span>
+                                        <div class="font-semibold">₩${brand.avg_revenue_per_branch.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.getElementById('brandModal').classList.remove('hidden');
+                    }
+                });
+        }
+
+        function hideBrandModal() {
+            document.getElementById('brandModal').classList.add('hidden');
+        }
+
+        function showBranchDetails(branchId) {
+            // 매장 상세 정보 로드
+            fetch(`/api/admin/restaurant/industry/branches`)
+                .then(response => response.json())
+                .then(branches => {
+                    const branch = branches.find(b => b.id === branchId);
+                    if (branch) {
+                        document.getElementById('branchModalContent').innerHTML = `
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-semibold text-lg">${branch.name}</h4>
+                                    <p class="text-sm text-gray-600">${branch.brand_name} - ${branch.location}</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span class="text-sm text-gray-600">오늘 매출:</span>
+                                        <div class="font-semibold">₩${branch.today_revenue.toLocaleString()}</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">주문 수:</span>
+                                        <div class="font-semibold">${branch.today_orders}건</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">직원 수:</span>
+                                        <div class="font-semibold">${branch.staff_count}명</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">평균 주문 금액:</span>
+                                        <div class="font-semibold">₩${branch.avg_order_value.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.getElementById('branchModal').classList.remove('hidden');
+                    }
+                });
+        }
+
+        function hideBranchModal() {
+            document.getElementById('branchModal').classList.add('hidden');
+        }
+
+        function showStaffDetails(staffId) {
+            // 직원 상세 정보 로드
+            fetch(`/api/admin/restaurant/industry/staff`)
+                .then(response => response.json())
+                .then(staffList => {
+                    const staff = staffList.find(s => s.id === staffId);
+                    if (staff) {
+                        document.getElementById('staffModalContent').innerHTML = `
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-semibold text-lg">${staff.name}</h4>
+                                    <p class="text-sm text-gray-600">${staff.position} - ${staff.branch_name}</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span class="text-sm text-gray-600">오늘 주문:</span>
+                                        <div class="font-semibold">${staff.today_orders}건</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">매출 기여:</span>
+                                        <div class="font-semibold">₩${staff.today_revenue.toLocaleString()}</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">평균 주문 금액:</span>
+                                        <div class="font-semibold">₩${staff.avg_order_value.toLocaleString()}</div>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600">소속 브랜드:</span>
+                                        <div class="font-semibold">${staff.brand_name}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.getElementById('staffModal').classList.remove('hidden');
+                    }
+                });
+        }
+
+        function hideStaffModal() {
+            document.getElementById('staffModal').classList.add('hidden');
+        }
+
+        // 모달 외부 클릭 시 닫기
+        document.addEventListener('click', function(event) {
+            const brandModal = document.getElementById('brandModal');
+            const branchModal = document.getElementById('branchModal');
+            const staffModal = document.getElementById('staffModal');
+
+            if (event.target === brandModal) {
+                hideBrandModal();
+            }
+            if (event.target === branchModal) {
+                hideBranchModal();
+            }
+            if (event.target === staffModal) {
+                hideStaffModal();
+            }
+        });
+
+        // 실시간 데이터 업데이트
+        function updateIndustryData() {
+            fetch('/api/admin/restaurant/industry/stats')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('업종 데이터 업데이트됨:', data);
+                })
+                .catch(error => console.error('데이터 업데이트 오류:', error));
+        }
+
+        // 30초마다 데이터 업데이트
+        setInterval(updateIndustryData, 30000);
+    </script>
+</body>
+</html> 

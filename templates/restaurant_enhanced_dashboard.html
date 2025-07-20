@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍽️ 레스토랑 특화 관리자 대시보드 - your_program</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-active { background-color: #10b981; }
+        .status-warning { background-color: #f59e0b; }
+        .status-danger { background-color: #ef4444; }
+        .status-inactive { background-color: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 헤더 섹션 -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="text-3xl">🍽️</div>
+                    <div>
+                        <h1 class="text-2xl font-bold">레스토랑 특화 관리자 대시보드</h1>
+                        <p class="text-blue-100">{{ user.username }}님 환영합니다</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                        <span class="text-sm">현재 시간: <span id="current-time"></span></span>
+                    </div>
+                    <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                        <span class="text-sm">영업 상태: <span class="status-indicator status-active"></span>영업중</span>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-6 py-8">
+        <!-- 실시간 알림 섹션 -->
+        <div class="mb-8">
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
+                    <div>
+                        <h3 class="text-lg font-semibold text-yellow-800">실시간 알림</h3>
+                        <p class="text-yellow-700" id="alert-message">재고 부족 알림: 토마토 소스 5개 남음</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 주요 지표 카드 섹션 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- 오늘 매출 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">오늘 매출</p>
+                        <p class="text-3xl font-bold text-green-600">₩{{ "{:,}".format(stats.today_revenue) }}</p>
+                        <p class="text-green-500 text-sm">
+                            <i class="fas fa-arrow-up mr-1"></i>+12.5% 어제 대비
+                        </p>
+                    </div>
+                    <div class="text-4xl text-green-500">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 주문 수 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">오늘 주문</p>
+                        <p class="text-3xl font-bold text-blue-600">{{ stats.today_orders }}</p>
+                        <p class="text-blue-500 text-sm">
+                            <i class="fas fa-arrow-up mr-1"></i>+8.3% 어제 대비
+                        </p>
+                    </div>
+                    <div class="text-4xl text-blue-500">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 평균 주문 금액 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">평균 주문 금액</p>
+                        <p class="text-3xl font-bold text-purple-600">₩{{ "{:,}".format(stats.avg_order_value) }}</p>
+                        <p class="text-purple-500 text-sm">
+                            <i class="fas fa-arrow-up mr-1"></i>+5.2% 어제 대비
+                        </p>
+                    </div>
+                    <div class="text-4xl text-purple-500">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 고객 만족도 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">고객 만족도</p>
+                        <p class="text-3xl font-bold text-orange-600">{{ stats.customer_satisfaction }}%</p>
+                        <p class="text-orange-500 text-sm">
+                            <i class="fas fa-arrow-up mr-1"></i>+2.1% 어제 대비
+                        </p>
+                    </div>
+                    <div class="text-4xl text-orange-500">
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 그리드 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 왼쪽 컬럼: 실시간 모니터링 -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- 실시간 주문 현황 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-clock mr-2 text-blue-500"></i>실시간 주문 현황
+                        </h2>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm">전체</button>
+                            <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm">대기중</button>
+                            <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm">조리중</button>
+                            <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm">완료</button>
+                        </div>
+                    </div>
+                    <div class="space-y-4" id="realtime-orders">
+                        <!-- 실시간 주문 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+
+                <!-- 매출 트렌드 차트 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">
+                        <i class="fas fa-chart-area mr-2 text-green-500"></i>매출 트렌드 (최근 7일)
+                    </h2>
+                    <canvas id="revenueChart" height="100"></canvas>
+                </div>
+
+                <!-- 인기 메뉴 분석 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">
+                        <i class="fas fa-fire mr-2 text-red-500"></i>인기 메뉴 분석
+                    </h2>
+                    <div class="space-y-4" id="popular-menu">
+                        <!-- 인기 메뉴 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오른쪽 컬럼: 빠른 액션 및 알림 -->
+            <div class="space-y-8">
+                <!-- 빠른 액션 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">
+                        <i class="fas fa-bolt mr-2 text-yellow-500"></i>빠른 액션
+                    </h2>
+                    <div class="space-y-3">
+                        <button class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg transition-colors">
+                            <i class="fas fa-plus mr-2"></i>새 주문 등록
+                        </button>
+                        <button class="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg transition-colors">
+                            <i class="fas fa-box mr-2"></i>재고 발주
+                        </button>
+                        <button class="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg transition-colors">
+                            <i class="fas fa-users mr-2"></i>직원 스케줄
+                        </button>
+                        <button class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg transition-colors">
+                            <i class="fas fa-chart-bar mr-2"></i>매출 리포트
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 재고 알림 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">
+                        <i class="fas fa-exclamation-triangle mr-2 text-red-500"></i>재고 알림
+                    </h2>
+                    <div class="space-y-3" id="inventory-alerts">
+                        <!-- 재고 알림 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+
+                <!-- 직원 현황 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">
+                        <i class="fas fa-users mr-2 text-blue-500"></i>직원 현황
+                    </h2>
+                    <div class="space-y-4" id="staff-status">
+                        <!-- 직원 현황이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+
+                <!-- 예약 현황 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">
+                        <i class="fas fa-calendar-check mr-2 text-green-500"></i>오늘 예약
+                    </h2>
+                    <div class="space-y-3" id="reservations">
+                        <!-- 예약 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 섹션: 상세 분석 -->
+        <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 고객 분석 -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-6">
+                    <i class="fas fa-user-friends mr-2 text-purple-500"></i>고객 분석
+                </h2>
+                <canvas id="customerChart" height="200"></canvas>
+            </div>
+
+            <!-- 시간대별 주문 분석 -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-6">
+                    <i class="fas fa-clock mr-2 text-orange-500"></i>시간대별 주문 분석
+                </h2>
+                <canvas id="timeChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // 현재 시간 업데이트
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('ko-KR');
+            document.getElementById('current-time').textContent = timeString;
+        }
+        setInterval(updateCurrentTime, 1000);
+        updateCurrentTime();
+
+        // 매출 트렌드 차트
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: ['월', '화', '수', '목', '금', '토', '일'],
+                datasets: [{
+                    label: '매출',
+                    data: [1200000, 1350000, 1100000, 1400000, 1600000, 1800000, 1700000],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₩' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 고객 분석 차트
+        const customerCtx = document.getElementById('customerChart').getContext('2d');
+        new Chart(customerCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['신규 고객', '재방문 고객', 'VIP 고객'],
+                datasets: [{
+                    data: [30, 55, 15],
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // 시간대별 주문 분석 차트
+        const timeCtx = document.getElementById('timeChart').getContext('2d');
+        new Chart(timeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['11-13시', '13-15시', '15-17시', '17-19시', '19-21시', '21-23시'],
+                datasets: [{
+                    label: '주문 수',
+                    data: [45, 32, 28, 67, 89, 56],
+                    backgroundColor: '#f59e0b'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // 실시간 데이터 업데이트 (시뮬레이션)
+        function updateRealtimeData() {
+            // 실시간 주문 업데이트
+            const ordersContainer = document.getElementById('realtime-orders');
+            const sampleOrders = [
+                { id: '#1234', items: '스테이크, 파스타', time: '2분 전', status: '조리중' },
+                { id: '#1235', items: '피자, 콜라', time: '5분 전', status: '대기중' },
+                { id: '#1236', items: '샐러드, 주스', time: '8분 전', status: '완료' }
+            ];
+
+            ordersContainer.innerHTML = sampleOrders.map(order => `
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <h3 class="font-semibold">${order.id}</h3>
+                        <p class="text-sm text-gray-600">${order.items}</p>
+                        <p class="text-xs text-gray-500">${order.time}</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-sm ${
+                        order.status === '완료' ? 'bg-green-100 text-green-800' :
+                        order.status === '조리중' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-blue-100 text-blue-800'
+                    }">${order.status}</span>
+                </div>
+            `).join('');
+
+            // 인기 메뉴 업데이트
+            const menuContainer = document.getElementById('popular-menu');
+            const popularMenus = [
+                { name: '스테이크', sales: 45, revenue: 2250000 },
+                { name: '피자', sales: 38, revenue: 1140000 },
+                { name: '파스타', sales: 32, revenue: 640000 },
+                { name: '샐러드', sales: 28, revenue: 420000 }
+            ];
+
+            menuContainer.innerHTML = popularMenus.map(menu => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <h3 class="font-semibold">${menu.name}</h3>
+                        <p class="text-sm text-gray-600">${menu.sales}개 판매</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold text-green-600">₩${menu.revenue.toLocaleString()}</p>
+                        <p class="text-xs text-gray-500">매출</p>
+                    </div>
+                </div>
+            `).join('');
+
+            // 재고 알림 업데이트
+            const alertContainer = document.getElementById('inventory-alerts');
+            const alerts = [
+                { item: '토마토 소스', level: '부족', quantity: 5 },
+                { item: '치즈', level: '경고', quantity: 12 },
+                { item: '올리브 오일', level: '부족', quantity: 2 }
+            ];
+
+            alertContainer.innerHTML = alerts.map(alert => `
+                <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                    <div>
+                        <h3 class="font-semibold text-red-800">${alert.item}</h3>
+                        <p class="text-sm text-red-600">${alert.quantity}개 남음</p>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">${alert.level}</span>
+                </div>
+            `).join('');
+
+            // 직원 현황 업데이트
+            const staffContainer = document.getElementById('staff-status');
+            const staff = [
+                { name: '김주방장', status: '근무중', position: '주방장' },
+                { name: '이서버', status: '근무중', position: '서버' },
+                { name: '박캐셔', status: '휴식', position: '캐셔' },
+                { name: '최청소', status: '근무중', position: '청소' }
+            ];
+
+            staffContainer.innerHTML = staff.map(employee => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <h3 class="font-semibold">${employee.name}</h3>
+                        <p class="text-sm text-gray-600">${employee.position}</p>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-xs ${
+                        employee.status === '근무중' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }">${employee.status}</span>
+                </div>
+            `).join('');
+
+            // 예약 현황 업데이트
+            const reservationContainer = document.getElementById('reservations');
+            const reservations = [
+                { time: '18:00', name: '김예약', guests: 4, status: '확정' },
+                { time: '19:30', name: '이예약', guests: 2, status: '확정' },
+                { time: '20:00', name: '박예약', guests: 6, status: '대기' }
+            ];
+
+            reservationContainer.innerHTML = reservations.map(reservation => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <h3 class="font-semibold">${reservation.time}</h3>
+                        <p class="text-sm text-gray-600">${reservation.name} (${reservation.guests}명)</p>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-xs ${
+                        reservation.status === '확정' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }">${reservation.status}</span>
+                </div>
+            `).join('');
+        }
+
+        // 초기 데이터 로드 및 주기적 업데이트
+        updateRealtimeData();
+        setInterval(updateRealtimeData, 10000); // 10초마다 업데이트
+    </script>
+</body>
+</html> 

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👤 {{ staff.name }} 직원 대시보드</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/restaurant-dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- 헤더 -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div class="flex items-center">
+                    <div class="text-3xl mr-4">👤</div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">{{ staff.name }} 직원 대시보드</h1>
+                        <p class="text-sm text-gray-500">{{ staff.position }} - 개인 성과 및 스케줄</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('restaurant_hierarchical.restaurant_branch_dashboard', branch_id=staff.branch_id) }}" 
+                       class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-arrow-left"></i> 매장으로
+                    </a>
+                    <span class="text-sm text-gray-500">{{ user.username }}님</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- 직원 통계 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-utensils text-blue-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">오늘 처리 주문</dt>
+                                <dd class="text-lg font-medium text-gray-900">{{ staff_stats.today_orders }}</dd>
+                                <dd class="text-sm text-blue-600">+{{ staff_stats.order_change }}%</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-chart-line text-green-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">오늘 매출 기여</dt>
+                                <dd class="text-lg font-medium text-gray-900">₩{{ "{:,}".format(staff_stats.today_revenue) }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-clock text-purple-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">평균 처리 시간</dt>
+                                <dd class="text-lg font-medium text-gray-900">{{ staff_performance.avg_processing_time }}분</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-star text-orange-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">고객 만족도</dt>
+                                <dd class="text-lg font-medium text-gray-900">{{ staff_performance.customer_satisfaction }}/5.0</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 스케줄 및 성과 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- 오늘 스케줄 -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                        오늘 스케줄
+                    </h3>
+                    <div class="space-y-3">
+                        {% for schedule in staff_schedule.today %}
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full 
+                                    {% if schedule.type == '근무' %}bg-green-500{% else %}bg-yellow-500{% endif %} mr-3"></div>
+                                <div>
+                                    <div class="font-semibold text-gray-900">{{ schedule.time }}</div>
+                                    <div class="text-sm text-gray-600">{{ schedule.type }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 내일 스케줄 -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                        내일 스케줄
+                    </h3>
+                    <div class="space-y-3">
+                        {% for schedule in staff_schedule.tomorrow %}
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full 
+                                    {% if schedule.type == '근무' %}bg-green-500{% else %}bg-yellow-500{% endif %} mr-3"></div>
+                                <div>
+                                    <div class="font-semibold text-gray-900">{{ schedule.time }}</div>
+                                    <div class="text-sm text-gray-600">{{ schedule.type }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 성과 분석 -->
+        <div class="bg-white shadow rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    성과 분석 (최근 30일)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-600">{{ staff_performance.total_orders }}</div>
+                        <div class="text-sm text-gray-600">총 처리 주문</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-green-600">{{ staff_performance.avg_processing_time }}분</div>
+                        <div class="text-sm text-gray-600">평균 처리 시간</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-orange-600">{{ staff_performance.customer_satisfaction }}/5.0</div>
+                        <div class="text-sm text-gray-600">고객 만족도</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 개인 목표 및 성취 -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    개인 목표 및 성취
+                </h3>
+                <div class="space-y-4">
+                    <!-- 주문 처리 목표 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-gray-700">일일 주문 처리 목표</span>
+                            <span class="text-sm text-gray-500">{{ staff_stats.today_orders }}/50</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ (staff_stats.today_orders / 50) * 100 }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 고객 만족도 목표 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-gray-700">고객 만족도 목표</span>
+                            <span class="text-sm text-gray-500">{{ staff_performance.customer_satisfaction }}/4.5</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ (staff_performance.customer_satisfaction / 4.5) * 100 }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 처리 시간 목표 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-gray-700">평균 처리 시간 목표</span>
+                            <span class="text-sm text-gray-500">{{ staff_performance.avg_processing_time }}분/15분</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-purple-600 h-2 rounded-full" style="width: {{ (15 / staff_performance.avg_processing_time) * 100 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 모바일 네비게이션 -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t lg:hidden">
+        <div class="flex justify-around py-2">
+            <a href="{{ url_for('restaurant_hierarchical.restaurant_industry_dashboard') }}" 
+               class="flex flex-col items-center text-gray-400">
+                <i class="fas fa-industry text-lg"></i>
+                <span class="text-xs mt-1">업종</span>
+            </a>
+            <a href="{{ url_for('restaurant_hierarchical.restaurant_brand_dashboard', brand_id=staff.branch.brand_id) }}" 
+               class="flex flex-col items-center text-gray-400">
+                <i class="fas fa-store text-lg"></i>
+                <span class="text-xs mt-1">브랜드</span>
+            </a>
+            <a href="{{ url_for('restaurant_hierarchical.restaurant_branch_dashboard', branch_id=staff.branch_id) }}" 
+               class="flex flex-col items-center text-gray-400">
+                <i class="fas fa-building text-lg"></i>
+                <span class="text-xs mt-1">매장</span>
+            </a>
+            <a href="{{ url_for('restaurant_hierarchical.restaurant_staff_dashboard', staff_id=staff.id) }}" 
+               class="flex flex-col items-center text-blue-600">
+                <i class="fas fa-users text-lg"></i>
+                <span class="text-xs mt-1">직원</span>
+            </a>
+        </div>
+    </nav>
+
+    <script>
+        // 실시간 데이터 업데이트
+        function updateStaffData() {
+            fetch('/api/restaurant/staff/{{ staff.id }}/stats')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('직원 데이터 업데이트됨:', data);
+                })
+                .catch(error => console.error('데이터 업데이트 오류:', error));
+        }
+
+        // 30초마다 데이터 업데이트
+        setInterval(updateStaffData, 30000);
+    </script>
+</body>
+</html> 

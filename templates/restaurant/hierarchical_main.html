@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍽️ 레스토랑 계층 관리 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/restaurant-dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- 헤더 -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div class="flex items-center">
+                    <div class="text-3xl mr-4">🍽️</div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">레스토랑 계층 관리 시스템</h1>
+                        <p class="text-sm text-gray-500">업종 > 브랜드 > 매장 > 직원 계층별 관리</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500">{{ user.username }}님</span>
+                    <a href="{{ url_for('auth.logout') }}" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-sign-out-alt"></i> 로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- 계층별 접근 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- 업종 레벨 -->
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow-lg overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-industry text-3xl mr-3"></i>
+                        <div>
+                            <h3 class="text-xl font-bold">업종 레벨</h3>
+                            <p class="text-blue-100">전체 업종 관리</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between">
+                            <span class="text-blue-100">전체 브랜드</span>
+                            <span class="font-semibold">{{ industry_stats.brand_count }}개</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-blue-100">전체 매장</span>
+                            <span class="font-semibold">{{ industry_stats.branch_count }}개</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-blue-100">전체 직원</span>
+                            <span class="font-semibold">{{ industry_stats.staff_count }}명</span>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('restaurant_hierarchical.restaurant_industry_dashboard') }}" 
+                       class="block w-full bg-white bg-opacity-20 text-center py-2 rounded-lg hover:bg-opacity-30 transition-all">
+                        업종 대시보드 접근
+                    </a>
+                </div>
+            </div>
+
+            <!-- 브랜드 레벨 -->
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-lg overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-store text-3xl mr-3"></i>
+                        <div>
+                            <h3 class="text-xl font-bold">브랜드 레벨</h3>
+                            <p class="text-purple-100">브랜드별 관리</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between">
+                            <span class="text-purple-100">활성 브랜드</span>
+                            <span class="font-semibold">{{ industry_stats.brand_count }}개</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-purple-100">평균 매장 수</span>
+                            <span class="font-semibold">{{ (industry_stats.branch_count / industry_stats.brand_count) | round(1) }}개</span>
+                        </div>
+                    </div>
+                    <a href="#" onclick="showBrandSelection()" 
+                       class="block w-full bg-white bg-opacity-20 text-center py-2 rounded-lg hover:bg-opacity-30 transition-all">
+                        브랜드 선택
+                    </a>
+                </div>
+            </div>
+
+            <!-- 매장 레벨 -->
+            <div class="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg shadow-lg overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-building text-3xl mr-3"></i>
+                        <div>
+                            <h3 class="text-xl font-bold">매장 레벨</h3>
+                            <p class="text-green-100">매장별 관리</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between">
+                            <span class="text-green-100">전체 매장</span>
+                            <span class="font-semibold">{{ industry_stats.branch_count }}개</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-green-100">영업중</span>
+                            <span class="font-semibold">{{ industry_stats.branch_count }}개</span>
+                        </div>
+                    </div>
+                    <a href="#" onclick="showBranchSelection()" 
+                       class="block w-full bg-white bg-opacity-20 text-center py-2 rounded-lg hover:bg-opacity-30 transition-all">
+                        매장 선택
+                    </a>
+                </div>
+            </div>
+
+            <!-- 직원 레벨 -->
+            <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg shadow-lg overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-users text-3xl mr-3"></i>
+                        <div>
+                            <h3 class="text-xl font-bold">직원 레벨</h3>
+                            <p class="text-orange-100">직원별 관리</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between">
+                            <span class="text-orange-100">전체 직원</span>
+                            <span class="font-semibold">{{ industry_stats.staff_count }}명</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-orange-100">근무중</span>
+                            <span class="font-semibold">{{ (industry_stats.staff_count * 0.7) | round }}명</span>
+                        </div>
+                    </div>
+                    <a href="#" onclick="showStaffSelection()" 
+                       class="block w-full bg-white bg-opacity-20 text-center py-2 rounded-lg hover:bg-opacity-30 transition-all">
+                        직원 선택
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 최근 활동 -->
+        <div class="bg-white shadow rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    최근 활동
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium text-gray-900">새로운 주문 접수</div>
+                            <div class="text-xs text-gray-500">강남점에서 #1234 주문이 접수되었습니다.</div>
+                        </div>
+                        <div class="text-xs text-gray-500">2분 전</div>
+                    </div>
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium text-gray-900">재고 부족 알림</div>
+                            <div class="text-xs text-gray-500">홍대점에서 토마토 소스 재고가 부족합니다.</div>
+                        </div>
+                        <div class="text-xs text-gray-500">5분 전</div>
+                    </div>
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium text-gray-900">직원 스케줄 변경</div>
+                            <div class="text-xs text-gray-500">김서버의 오늘 스케줄이 변경되었습니다.</div>
+                        </div>
+                        <div class="text-xs text-gray-500">10분 전</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 빠른 액션 -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    빠른 액션
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <button onclick="showBrandSelection()" class="flex flex-col items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-store text-purple-500 text-2xl mb-2"></i>
+                        <span class="text-sm font-medium">브랜드 관리</span>
+                    </button>
+                    <button onclick="showBranchSelection()" class="flex flex-col items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-building text-green-500 text-2xl mb-2"></i>
+                        <span class="text-sm font-medium">매장 관리</span>
+                    </button>
+                    <button onclick="showStaffSelection()" class="flex flex-col items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-users text-orange-500 text-2xl mb-2"></i>
+                        <span class="text-sm font-medium">직원 관리</span>
+                    </button>
+                    <button onclick="showReports()" class="flex flex-col items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-chart-bar text-blue-500 text-2xl mb-2"></i>
+                        <span class="text-sm font-medium">리포트</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 브랜드 선택 모달 -->
+    <div id="brandModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">브랜드 선택</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="space-y-2">
+                        {% for brand in brand_summary %}
+                        <a href="{{ url_for('restaurant_hierarchical.restaurant_brand_dashboard', brand_id=brand.id) }}" 
+                           class="block p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                            <div class="font-semibold text-gray-900">{{ brand.name }}</div>
+                            <div class="text-sm text-gray-600">{{ brand.branch_count }}개 매장</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t">
+                    <button onclick="hideBrandSelection()" class="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 매장 선택 모달 -->
+    <div id="branchModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">매장 선택</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="space-y-2">
+                        {% for brand in brand_summary %}
+                            {% for branch in brand.branches %}
+                            <a href="{{ url_for('restaurant_hierarchical.restaurant_branch_dashboard', branch_id=branch.id) }}" 
+                               class="block p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                                <div class="font-semibold text-gray-900">{{ branch.name }}</div>
+                                <div class="text-sm text-gray-600">{{ brand.name }} - {{ branch.location }}</div>
+                            </a>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t">
+                    <button onclick="hideBranchSelection()" class="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 직원 선택 모달 -->
+    <div id="staffModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">직원 선택</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="space-y-2">
+                        <!-- 샘플 직원 데이터 -->
+                        <a href="#" class="block p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                            <div class="font-semibold text-gray-900">김서버</div>
+                            <div class="text-sm text-gray-600">강남점 - 서버</div>
+                        </a>
+                        <a href="#" class="block p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                            <div class="font-semibold text-gray-900">이주방장</div>
+                            <div class="text-sm text-gray-600">홍대점 - 주방장</div>
+                        </a>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t">
+                    <button onclick="hideStaffSelection()" class="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 모달 표시/숨김 함수들
+        function showBrandSelection() {
+            document.getElementById('brandModal').classList.remove('hidden');
+        }
+
+        function hideBrandSelection() {
+            document.getElementById('brandModal').classList.add('hidden');
+        }
+
+        function showBranchSelection() {
+            document.getElementById('branchModal').classList.remove('hidden');
+        }
+
+        function hideBranchSelection() {
+            document.getElementById('branchModal').classList.add('hidden');
+        }
+
+        function showStaffSelection() {
+            document.getElementById('staffModal').classList.remove('hidden');
+        }
+
+        function hideStaffSelection() {
+            document.getElementById('staffModal').classList.add('hidden');
+        }
+
+        function showReports() {
+            alert('리포트 기능은 준비 중입니다.');
+        }
+
+        // 모달 외부 클릭 시 닫기
+        document.addEventListener('click', function(event) {
+            const brandModal = document.getElementById('brandModal');
+            const branchModal = document.getElementById('branchModal');
+            const staffModal = document.getElementById('staffModal');
+
+            if (event.target === brandModal) {
+                hideBrandSelection();
+            }
+            if (event.target === branchModal) {
+                hideBranchSelection();
+            }
+            if (event.target === staffModal) {
+                hideStaffSelection();
+            }
+        });
+    </script>
+</body>
+</html> 

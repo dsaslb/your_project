@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🍽️ 레스토랑 모바일 대시보드</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/restaurant-dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 모바일 특화 스타일 */
+        .mobile-container {
+            max-width: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .mobile-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .mobile-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            padding: 1rem;
+        }
+        
+        .mobile-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        
+        .mobile-tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 0.5rem;
+            display: flex;
+            justify-content: space-around;
+            z-index: 40;
+        }
+        
+        .mobile-tab {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: #6b7280;
+        }
+        
+        .mobile-tab.active {
+            background: #f3f4f6;
+            color: #667eea;
+        }
+        
+        .mobile-tab i {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .mobile-tab span {
+            font-size: 0.75rem;
+        }
+        
+        .content-area {
+            padding-bottom: 5rem; /* 탭바 높이만큼 여백 */
+        }
+        
+        .swipe-indicator {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+            padding: 0.5rem;
+        }
+        
+        .quick-action-btn {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 12px;
+            font-weight: 600;
+            border: none;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .pull-to-refresh {
+            text-align: center;
+            padding: 1rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 모바일 헤더 -->
+    <header class="mobile-header text-white">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="text-2xl">🍽️</div>
+                <div>
+                    <h1 class="text-lg font-bold">레스토랑 대시보드</h1>
+                    <p class="text-sm opacity-90">{{ user.username }}님</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span class="text-sm">영업중</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 영역 -->
+    <div class="content-area">
+        <!-- 실시간 알림 -->
+        <div class="mobile-card mx-4 mt-4">
+            <div class="flex items-center space-x-2 mb-3">
+                <i class="fas fa-bell text-yellow-500"></i>
+                <h2 class="font-semibold">실시간 알림</h2>
+            </div>
+            <div id="mobile-alerts" class="space-y-2">
+                <!-- 알림 내용이 여기에 동적으로 추가됩니다 -->
+            </div>
+        </div>
+
+        <!-- 주요 지표 -->
+        <div class="mobile-stats-grid">
+            <div class="mobile-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">오늘 매출</p>
+                        <p class="text-xl font-bold text-green-600">₩{{ "{:,}".format(stats.today_revenue) }}</p>
+                        <p class="text-xs text-green-500">+12.5%</p>
+                    </div>
+                    <div class="text-2xl text-green-500">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mobile-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">오늘 주문</p>
+                        <p class="text-xl font-bold text-blue-600">{{ stats.today_orders }}</p>
+                        <p class="text-xs text-blue-500">+8.3%</p>
+                    </div>
+                    <div class="text-2xl text-blue-500">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mobile-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">평균 주문</p>
+                        <p class="text-xl font-bold text-purple-600">₩{{ "{:,}".format(stats.avg_order_value) }}</p>
+                        <p class="text-xs text-purple-500">+5.2%</p>
+                    </div>
+                    <div class="text-2xl text-purple-500">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mobile-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">만족도</p>
+                        <p class="text-xl font-bold text-orange-600">{{ stats.customer_satisfaction }}%</p>
+                        <p class="text-xs text-orange-500">+2.1%</p>
+                    </div>
+                    <div class="text-2xl text-orange-500">
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 탭 콘텐츠 -->
+        <div id="tab-content">
+            <!-- 대시보드 탭 -->
+            <div id="dashboard-tab" class="tab-panel active">
+                <!-- 실시간 주문 -->
+                <div class="mobile-card mx-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-semibold">실시간 주문</h2>
+                        <span class="text-sm text-gray-500" id="order-count">0개</span>
+                    </div>
+                    <div id="mobile-orders" class="space-y-2">
+                        <!-- 주문 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+
+                <!-- 빠른 액션 -->
+                <div class="mobile-card mx-4">
+                    <h2 class="font-semibold mb-3">빠른 액션</h2>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="quick-action-btn bg-blue-500 text-white">
+                            <i class="fas fa-plus mr-2"></i>새 주문
+                        </button>
+                        <button class="quick-action-btn bg-green-500 text-white">
+                            <i class="fas fa-box mr-2"></i>재고 발주
+                        </button>
+                        <button class="quick-action-btn bg-purple-500 text-white">
+                            <i class="fas fa-users mr-2"></i>직원 관리
+                        </button>
+                        <button class="quick-action-btn bg-orange-500 text-white">
+                            <i class="fas fa-chart-bar mr-2"></i>매출 리포트
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 주문 탭 -->
+            <div id="orders-tab" class="tab-panel hidden">
+                <div class="mobile-card mx-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-semibold">주문 관리</h2>
+                        <div class="flex space-x-1">
+                            <button class="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded">전체</button>
+                            <button class="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">대기</button>
+                            <button class="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">조리</button>
+                        </div>
+                    </div>
+                    <div id="mobile-order-list" class="space-y-2">
+                        <!-- 주문 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 재고 탭 -->
+            <div id="inventory-tab" class="tab-panel hidden">
+                <div class="mobile-card mx-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-semibold">재고 관리</h2>
+                        <span class="text-sm text-red-500" id="low-stock-count">0개 부족</span>
+                    </div>
+                    <div id="mobile-inventory" class="space-y-2">
+                        <!-- 재고 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 직원 탭 -->
+            <div id="staff-tab" class="tab-panel hidden">
+                <div class="mobile-card mx-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-semibold">직원 현황</h2>
+                        <span class="text-sm text-green-500" id="working-staff-count">0명 근무</span>
+                    </div>
+                    <div id="mobile-staff" class="space-y-2">
+                        <!-- 직원 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 분석 탭 -->
+            <div id="analytics-tab" class="tab-panel hidden">
+                <div class="mobile-card mx-4">
+                    <h2 class="font-semibold mb-3">매출 분석</h2>
+                    <canvas id="mobile-revenue-chart" height="200"></canvas>
+                </div>
+                
+                <div class="mobile-card mx-4">
+                    <h2 class="font-semibold mb-3">인기 메뉴</h2>
+                    <div id="mobile-popular-menu" class="space-y-2">
+                        <!-- 인기 메뉴 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모바일 탭바 -->
+    <nav class="mobile-tab-bar">
+        <a href="#dashboard" class="mobile-tab active" data-tab="dashboard-tab">
+            <i class="fas fa-home"></i>
+            <span>대시보드</span>
+        </a>
+        <a href="#orders" class="mobile-tab" data-tab="orders-tab">
+            <i class="fas fa-utensils"></i>
+            <span>주문</span>
+        </a>
+        <a href="#inventory" class="mobile-tab" data-tab="inventory-tab">
+            <i class="fas fa-boxes"></i>
+            <span>재고</span>
+        </a>
+        <a href="#staff" class="mobile-tab" data-tab="staff-tab">
+            <i class="fas fa-users"></i>
+            <span>직원</span>
+        </a>
+        <a href="#analytics" class="mobile-tab" data-tab="analytics-tab">
+            <i class="fas fa-chart-bar"></i>
+            <span>분석</span>
+        </a>
+    </nav>
+
+    <!-- JavaScript -->
+    <script>
+        // 탭 전환 기능
+        document.querySelectorAll('.mobile-tab').forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // 모든 탭 비활성화
+                document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+                
+                // 클릭된 탭 활성화
+                this.classList.add('active');
+                const targetTab = this.getAttribute('data-tab');
+                document.getElementById(targetTab).classList.remove('hidden');
+            });
+        });
+
+        // 실시간 데이터 업데이트
+        function updateMobileData() {
+            // 실시간 알림 업데이트
+            const alertsContainer = document.getElementById('mobile-alerts');
+            const sampleAlerts = [
+                '재고 부족: 토마토 소스 5개 남음',
+                '새 주문: #1234 스테이크, 파스타',
+                '직원 휴식: 김서버 15분 휴식 시작'
+            ];
+            
+            alertsContainer.innerHTML = sampleAlerts.map(alert => `
+                <div class="flex items-center space-x-2 p-2 bg-yellow-50 rounded-lg">
+                    <i class="fas fa-exclamation-triangle text-yellow-500"></i>
+                    <span class="text-sm">${alert}</span>
+                </div>
+            `).join('');
+
+            // 실시간 주문 업데이트
+            const ordersContainer = document.getElementById('mobile-orders');
+            const sampleOrders = [
+                { id: '#1234', items: '스테이크, 파스타', status: '조리중', time: '2분 전' },
+                { id: '#1235', items: '피자, 콜라', status: '대기중', time: '5분 전' },
+                { id: '#1236', items: '샐러드, 주스', status: '완료', time: '8분 전' }
+            ];
+            
+            document.getElementById('order-count').textContent = `${sampleOrders.length}개`;
+            
+            ordersContainer.innerHTML = sampleOrders.map(order => `
+                <div class="order-item">
+                    <div>
+                        <div class="font-semibold">${order.id}</div>
+                        <div class="text-sm text-gray-600">${order.items}</div>
+                        <div class="text-xs text-gray-500">${order.time}</div>
+                    </div>
+                    <span class="status-badge ${
+                        order.status === '완료' ? 'bg-green-100 text-green-800' :
+                        order.status === '조리중' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-blue-100 text-blue-800'
+                    }">${order.status}</span>
+                </div>
+            `).join('');
+
+            // 재고 현황 업데이트
+            const inventoryContainer = document.getElementById('mobile-inventory');
+            const sampleInventory = [
+                { name: '토마토 소스', quantity: 5, status: '부족' },
+                { name: '치즈', quantity: 12, status: '경고' },
+                { name: '올리브 오일', quantity: 2, status: '부족' }
+            ];
+            
+            document.getElementById('low-stock-count').textContent = 
+                `${sampleInventory.filter(item => item.status === '부족').length}개 부족`;
+            
+            inventoryContainer.innerHTML = sampleInventory.map(item => `
+                <div class="order-item">
+                    <div>
+                        <div class="font-semibold">${item.name}</div>
+                        <div class="text-sm text-gray-600">${item.quantity}개 남음</div>
+                    </div>
+                    <span class="status-badge ${
+                        item.status === '부족' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                    }">${item.status}</span>
+                </div>
+            `).join('');
+
+            // 직원 현황 업데이트
+            const staffContainer = document.getElementById('mobile-staff');
+            const sampleStaff = [
+                { name: '김주방장', position: '주방장', status: '근무중' },
+                { name: '이서버', position: '서버', status: '근무중' },
+                { name: '박캐셔', position: '캐셔', status: '휴식' }
+            ];
+            
+            document.getElementById('working-staff-count').textContent = 
+                `${sampleStaff.filter(staff => staff.status === '근무중').length}명 근무`;
+            
+            staffContainer.innerHTML = sampleStaff.map(staff => `
+                <div class="order-item">
+                    <div>
+                        <div class="font-semibold">${staff.name}</div>
+                        <div class="text-sm text-gray-600">${staff.position}</div>
+                    </div>
+                    <span class="status-badge ${
+                        staff.status === '근무중' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }">${staff.status}</span>
+                </div>
+            `).join('');
+
+            // 인기 메뉴 업데이트
+            const menuContainer = document.getElementById('mobile-popular-menu');
+            const sampleMenus = [
+                { name: '스테이크', sales: 45, revenue: 2250000 },
+                { name: '피자', sales: 38, revenue: 1140000 },
+                { name: '파스타', sales: 32, revenue: 640000 }
+            ];
+            
+            menuContainer.innerHTML = sampleMenus.map(menu => `
+                <div class="order-item">
+                    <div>
+                        <div class="font-semibold">${menu.name}</div>
+                        <div class="text-sm text-gray-600">${menu.sales}개 판매</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-semibold text-green-600">₩${menu.revenue.toLocaleString()}</div>
+                        <div class="text-xs text-gray-500">매출</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 모바일 매출 차트
+        function initMobileChart() {
+            const ctx = document.getElementById('mobile-revenue-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['월', '화', '수', '목', '금', '토', '일'],
+                    datasets: [{
+                        label: '매출',
+                        data: [1200000, 1350000, 1100000, 1400000, 1600000, 1800000, 1700000],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₩' + (value / 1000000) + 'M';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            updateMobileData();
+            initMobileChart();
+            
+            // 10초마다 데이터 업데이트
+            setInterval(updateMobileData, 10000);
+        });
+
+        // 풀 투 리프레시 기능 (간단한 구현)
+        let startY = 0;
+        let currentY = 0;
+        
+        document.addEventListener('touchstart', function(e) {
+            startY = e.touches[0].clientY;
+        });
+        
+        document.addEventListener('touchmove', function(e) {
+            currentY = e.touches[0].clientY;
+        });
+        
+        document.addEventListener('touchend', function(e) {
+            const diff = startY - currentY;
+            if (diff > 100 && window.scrollY === 0) {
+                // 풀 투 리프레시
+                updateMobileData();
+                showRefreshIndicator();
+            }
+        });
+        
+        function showRefreshIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'pull-to-refresh';
+            indicator.textContent = '새로고침 완료!';
+            indicator.style.position = 'fixed';
+            indicator.style.top = '0';
+            indicator.style.left = '0';
+            indicator.style.right = '0';
+            indicator.style.background = '#10b981';
+            indicator.style.color = 'white';
+            indicator.style.zIndex = '1000';
+            
+            document.body.appendChild(indicator);
+            
+            setTimeout(() => {
+                document.body.removeChild(indicator);
+            }, 2000);
+        }
+    </script>
+</body>
+</html> 

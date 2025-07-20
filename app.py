@@ -175,6 +175,12 @@ def register_blueprints():
         
         # 고도화된 모니터링 API
         ("api.advanced_monitoring_api", "advanced_monitoring_bp", "advanced_monitoring_api"),
+        
+        # MVP 플러그인 블루프린트
+        ("plugins.attendance_management", "attendance_bp", "attendance_management"),
+        ("plugins.inventory_management", "inventory_bp", "inventory_management"),
+        ("plugins.purchase_management", "purchase_bp", "purchase_management"),
+        ("plugins.schedule_management", "schedule_bp", "schedule_management"),
     ]
     
     for module_path, blueprint_name, url_prefix in blueprints:
@@ -188,6 +194,70 @@ def register_blueprints():
 
 # 블루프린트 등록
 register_blueprints()
+
+# 레스토랑 특화 대시보드 라우트 등록
+try:
+    from routes.restaurant_enhanced_dashboard import restaurant_dashboard
+    restaurant_dashboard.init_app(app)
+    logger.info("레스토랑 특화 대시보드 라우트 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 특화 대시보드 라우트 등록 실패: {e}")
+
+# 레스토랑 분석 API 등록
+try:
+    from api.restaurant_analytics import restaurant_analytics
+    restaurant_analytics.init_app(app)
+    logger.info("레스토랑 분석 API 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 분석 API 등록 실패: {e}")
+
+# 레스토랑 AI 예측 API 등록
+try:
+    from api.restaurant_ai_prediction import restaurant_ai_prediction
+    restaurant_ai_prediction.init_app(app)
+    logger.info("레스토랑 AI 예측 API 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 AI 예측 API 등록 실패: {e}")
+
+# 레스토랑 자동화 API 등록
+try:
+    from api.restaurant_automation import restaurant_automation
+    restaurant_automation.init_app(app)
+    logger.info("레스토랑 자동화 API 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 자동화 API 등록 실패: {e}")
+
+# 모바일 레스토랑 대시보드 등록
+try:
+    from routes.mobile_restaurant_dashboard import mobile_restaurant_dashboard
+    mobile_restaurant_dashboard.init_app(app)
+    logger.info("모바일 레스토랑 대시보드 등록 완료")
+except Exception as e:
+    logger.error(f"모바일 레스토랑 대시보드 등록 실패: {e}")
+
+# 레스토랑 고급 분석 API 등록
+try:
+    from api.restaurant_advanced_analytics import restaurant_advanced_analytics
+    restaurant_advanced_analytics.init_app(app)
+    logger.info("레스토랑 고급 분석 API 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 고급 분석 API 등록 실패: {e}")
+
+# 레스토랑 계층적 대시보드 등록
+try:
+    from routes.restaurant_hierarchical_dashboard import restaurant_hierarchical
+    restaurant_hierarchical.init_app(app)
+    logger.info("레스토랑 계층적 대시보드 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 계층적 대시보드 등록 실패: {e}")
+
+# 레스토랑 업종 관리자 페이지 등록
+try:
+    from routes.restaurant_industry_admin import restaurant_industry_admin
+    restaurant_industry_admin.init_app(app)
+    logger.info("레스토랑 업종 관리자 페이지 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 업종 관리자 페이지 등록 실패: {e}")
 
 # 알림 관리 API 블루프린트 등록
 try:
@@ -4306,6 +4376,12 @@ def admin_plugin_customization_dashboard():
     """플러그인 커스터마이징 대시보드"""
     return render_template("admin/plugin_customization_dashboard.html")
 
+@app.route("/admin/plugin-management")
+@login_required
+def admin_plugin_management():
+    """플러그인 관리 페이지"""
+    return render_template("admin/plugin_management.html")
+
 
 @app.route("/api/admin/users")
 def api_admin_users():
@@ -5405,6 +5481,14 @@ def create_app():
     app.register_blueprint(plugin_system_manager_bp)
     app.register_blueprint(plugin_operations_bp)
     app.register_blueprint(plugin_monitoring_bp)
+    
+    # 플러그인 관리 블루프린트 등록
+    try:
+        from plugins.plugin_management import plugin_management
+        app.register_blueprint(plugin_management)
+        print("플러그인 관리 블루프린트 등록 완료")
+    except Exception as e:
+        print(f"플러그인 관리 블루프린트 등록 실패: {e}")
 
     # AI 통합 API 블루프린트 등록
     app.register_blueprint(ai_integrated_bp)
