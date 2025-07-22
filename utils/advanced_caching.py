@@ -1,572 +1,524 @@
-import threading
-from functools import wraps
-from typing import Any, Optional, Dict, List, Callable
-from datetime import datetime
-import logging
-import hashlib
-import pickle
+"""
+고도화된 캐싱 전략 시스템
+"""
+
+import redis
 import json
-import os
-from typing import Optional
-from flask import request
-args = None  # pyright: ignore
-config = None  # pyright: ignore
-#!/usr/bin/env python3
-"""
-고급 캐싱 시스템
-Redis, 메모리 캐시, 파일 캐시를 통합한 다층 캐싱 시스템
-"""
-
-
-try:
-    import redis
-    REDIS_AVAILABLE = True  # pyright: ignore
-except ImportError:
-    REDIS_AVAILABLE = False  # pyright: ignore
-
-try:
-    from cachetools import TTLCache  # type: ignore
-    CACHETOOLS_AVAILABLE = True  # pyright: ignore
-except ImportError:
-    CACHETOOLS_AVAILABLE = False  # pyright: ignore
-    # 캐싱 라이브러리 설치 필요: pip install cachetools
+import pickle
+import hashlib
+import time
+import logging
+from typing import Dict, List, Any, Optional, Callable, Union
+from dataclasses import dataclass, asdict
+from datetime import datetime, timedelta
+from functools import wraps
+import threading
+from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
+@dataclass
+class CacheItem:
+    """캐시 아이템"""
+    key: str
+    value: Any
+    created_at: float
+    expires_at: Optional[float]
+    access_count: int
+    last_accessed: float
+    size_bytes: int
 
-class CacheLevel:
-    """캐시 레벨 정의"""
-    L1_MEMORY = "l1_memory"      # 메모리 캐시 (가장 빠름)
-    L2_REDIS = "l2_redis"        # Redis 캐시 (중간)
-    L3_FILE = "l3_file"          # 파일 캐시 (가장 느림)
+@dataclass
+class CacheStats:
+    """캐시 통계"""
+    total_items: int
+    total_size: int
+    hit_count: int
+    miss_count: int
+    hit_rate: float
+    eviction_count: int
+    memory_usage: int
 
-
-class CacheStrategy:
-    """캐시 전략"""
-    WRITE_THROUGH = "write_through"      # 모든 레벨에 즉시 쓰기
-    WRITE_BACK = "write_back"           # 지연 쓰기
-    WRITE_AROUND = "write_around"       # 캐시 우회
-    READ_THROUGH = "read_through"       # 캐시 미스 시 자동 로드
-
-
-class AdvancedCache:
-    """고급 캐싱 시스템"""
-
-    def __init__(self,  config: Optional[Dict[str,  Any]] = None):
-        self.config = config or {}
-        self.l1_cache = None
-        self.l2_cache = None
-        self.l3_cache = None
+class LRUCache:
+    """LRU (Least Recently Used) 캐시"""
+    
+    def __init__(self, max_size: int = 1000, max_memory: int = 100 * 1024 * 1024):  # 100MB
+        self.max_size = max_size
+        self.max_memory = max_memory
+        self.cache = OrderedDict()
         self.stats = {
-            'hits': {'l1': 0, 'l2': 0, 'l3': 0},
-            'misses': {'l1': 0, 'l2': 0, 'l3': 0},
-            'writes': {'l1': 0, 'l2': 0, 'l3': 0},
-            'evictions': {'l1': 0, 'l2': 0, 'l3': 0}
+            'hits': 0,
+            'misses': 0,
+            'evictions': 0,
+            'total_size': 0
         }
         self.lock = threading.RLock()
-
-        self._initialize_caches()
-
-    def _initialize_caches(self):
-        """캐시 초기화"""
-        # L1 캐시 (메모리)
-        if CACHETOOLS_AVAILABLE and 'TTLCache' in globals():
-            maxsize = self.config.get('l1_maxsize', 1000)
-            ttl = self.config.get('l1_ttl', 300)  # 5분
-            self.l1_cache = TTLCache(maxsize=maxsize, ttl=ttl)
-            logger.info(f"L1 캐시 초기화: maxsize={maxsize}, ttl={ttl}s")
-
-        # L2 캐시 (Redis)
-        if REDIS_AVAILABLE and 'redis' in globals():
-            try:
-                redis_config = self.config.get('redis', {})
-                self.l2_cache = redis.Redis(
-                    host=redis_config.get('host', 'localhost'),
-                    port=redis_config.get('port', 6379),
-                    db=redis_config.get('db', 0),
-                    password=redis_config.get('password'),
-                    decode_responses=False,
-                    socket_connect_timeout=2,  # 연결 타임아웃 2초
-                    socket_timeout=2,  # 소켓 타임아웃 2초
-                    retry_on_timeout=True
-                )
-                # 연결 테스트
-                self.l2_cache.ping()
-                logger.info("L2 캐시 (Redis) 초기화 완료")
-            except Exception as e:
-                logger.warning(f"Redis 연결 실패: {e}")
-                logger.info("Redis 없이 파일 캐시만 사용합니다.")
-                self.l2_cache = None
-
-        # L3 캐시 (파일)
-        cache_dir = self.config.get('file_cache_dir', 'cache')
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir, exist_ok=True)
-        self.l3_cache = FileCache(cache_dir)
-        logger.info(f"L3 캐시 (파일) 초기화: {cache_dir}")
-
-    def _generate_key(self,  key: str, namespace="default") -> str:
-        """캐시 키 생성"""
-        if namespace:
-            key = f"{namespace}:{key}"
-
-        # 키 길이 제한 및 해시화
-        if len(key) > 250:
-            key_hash = hashlib.md5(key.encode()).hexdigest()
-            key = f"{key[:200] if key is not None else None}:{key_hash}"
-
-        return key
-
-    def get(self, key: str, namespace: str = "default",
-            levels: Optional[List[str]] = None) -> Optional[Any]:
-        """캐시에서 값 조회"""
-        if levels is None:
-            levels = [CacheLevel.L1_MEMORY, CacheLevel.L2_REDIS, CacheLevel.L3_FILE]
-
-        cache_key = self._generate_key(key,  namespace)
-
-        with self.lock:
-            # L1 캐시 조회
-            if CacheLevel.L1_MEMORY in levels and self.l1_cache:
-                try:
-                    value = self.l1_cache.get(cache_key)
-                    if value is not None:
-                        self.stats['hits']['l1'] += 1
-                        logger.debug(f"L1 캐시 히트: {cache_key}")
-                        return value
-                    else:
-                        self.stats['misses']['l1'] += 1
-                except Exception as e:
-                    logger.warning(f"L1 캐시 조회 오류: {e}")
-
-            # L2 캐시 조회
-            if CacheLevel.L2_REDIS in levels and self.l2_cache:
-                try:
-                    value = self.l2_cache.get(cache_key)
-                    if value is not None:
-                        # L1 캐시에 저장
-                        if self.l1_cache:
-                            try:
-                                if isinstance(value, bytes):
-                                    self.l1_cache[cache_key] = pickle.loads(value)  # type: ignore
-                                else:
-                                    self.l1_cache[cache_key] = value
-                            except Exception:
-                                self.l1_cache[cache_key] = value
-
-                        self.stats['hits']['l2'] += 1
-                        logger.debug(f"L2 캐시 히트: {cache_key}")
-                        return pickle.loads(value)  # type: ignore
-                    else:
-                        self.stats['misses']['l2'] += 1
-                except Exception as e:
-                    logger.warning(f"L2 캐시 조회 오류: {e}")
-                    # Redis 연결 실패 시 L2 캐시 비활성화
-                    self.l2_cache = None
-
-            # L3 캐시 조회
-            if CacheLevel.L3_FILE in levels and self.l3_cache:
-                try:
-                    value = self.l3_cache.get(cache_key)
-                    if value is not None:
-                        # 상위 캐시에 저장
-                        if self.l1_cache:
-                            self.l1_cache[cache_key] = value
-                        if self.l2_cache:
-                            l2_ttl = self.config.get('l2_ttl', 3600)
-                            if l2_ttl is not None:
-                                try:
-                                    self.l2_cache.setex(
-                                        cache_key,
-                                        l2_ttl,
-                                        pickle.dumps(value)
-                                    )
-                                except Exception:
-                                    pass
-
-                        self.stats['hits']['l3'] += 1
-                        logger.debug(f"L3 캐시 히트: {cache_key}")
-                        return value
-                    else:
-                        self.stats['misses']['l3'] += 1
-                except Exception as e:
-                    logger.warning(f"L3 캐시 조회 오류: {e}")
-
-        logger.debug(f"캐시 미스: {cache_key}")
-        return None
-
-    def set(self, key: str, value: Any, ttl: Optional[int] = None,
-            namespace: str = "default", levels: Optional[List[str]] = None,
-            strategy: str = CacheStrategy.WRITE_THROUGH) -> bool:
-        """캐시에 값 저장"""
-        if levels is None:
-            levels = [CacheLevel.L1_MEMORY, CacheLevel.L2_REDIS, CacheLevel.L3_FILE]
-
-        cache_key = self._generate_key(key,  namespace)
-        success = True
-
-        with self.lock:
-            # L1 캐시 저장
-            if CacheLevel.L1_MEMORY in levels and self.l1_cache:
-                try:
-                    self.l1_cache[cache_key] = value
-                    self.stats['writes']['l1'] += 1
-                    logger.debug(f"L1 캐시 저장: {cache_key}")
-                except Exception as e:
-                    logger.warning(f"L1 캐시 저장 오류: {e}")
-                    success = False
-
-            # L2 캐시 저장
-            if CacheLevel.L2_REDIS in levels and self.l2_cache:
-                try:
-                    redis_ttl = ttl if ttl is not None else self.config.get('l2_ttl', 3600)
-                    self.l2_cache.setex(
-                        cache_key,
-                        redis_ttl,
-                        pickle.dumps(value)
-                    )
-                    self.stats['writes']['l2'] += 1
-                    logger.debug(f"L2 캐시 저장: {cache_key}")
-                except Exception as e:
-                    logger.warning(f"L2 캐시 저장 오류: {e}")
-                    success = False
-
-            # L3 캐시 저장
-            if CacheLevel.L3_FILE in levels and self.l3_cache:
-                try:
-                    file_ttl = ttl or self.config.get('l3_ttl', 86400)
-                    self.l3_cache.set(cache_key,  value,  file_ttl)
-                    self.stats['writes']['l3'] += 1
-                    logger.debug(f"L3 캐시 저장: {cache_key}")
-                except Exception as e:
-                    logger.warning(f"L3 캐시 저장 오류: {e}")
-                    success = False
-
-        return success
-
-    def delete(self, key: str, namespace: str = "default",
-               levels: Optional[List[str]] = None) -> bool:
-        """캐시에서 값 삭제"""
-        if levels is None:
-            levels = [CacheLevel.L1_MEMORY, CacheLevel.L2_REDIS, CacheLevel.L3_FILE]
-
-        cache_key = self._generate_key(key,  namespace)
-        success = True
-
-        with self.lock:
-            # L1 캐시 삭제
-            if CacheLevel.L1_MEMORY in levels and self.l1_cache:
-                try:
-                    if cache_key in self.l1_cache:
-                        del self.l1_cache[cache_key]
-                        logger.debug(f"L1 캐시 삭제: {cache_key}")
-                except Exception as e:
-                    logger.warning(f"L1 캐시 삭제 오류: {e}")
-                    success = False
-
-            # L2 캐시 삭제
-            if CacheLevel.L2_REDIS in levels and self.l2_cache:
-                try:
-                    self.l2_cache.delete(cache_key)
-                    logger.debug(f"L2 캐시 삭제: {cache_key}")
-                except Exception as e:
-                    logger.warning(f"L2 캐시 삭제 오류: {e}")
-                    success = False
-
-            # L3 캐시 삭제
-            if CacheLevel.L3_FILE in levels and self.l3_cache:
-                try:
-                    self.l3_cache.delete(cache_key)
-                    logger.debug(f"L3 캐시 삭제: {cache_key}")
-                except Exception as e:
-                    logger.warning(f"L3 캐시 삭제 오류: {e}")
-                    success = False
-
-        return success
-
-    def clear(self, namespace=None,  levels: Optional[List[str]] = None) -> bool:
-        """캐시 전체 삭제"""
-        if levels is None:
-            levels = [CacheLevel.L1_MEMORY, CacheLevel.L2_REDIS, CacheLevel.L3_FILE]
-
-        success = True
-
-        with self.lock:
-            # L1 캐시 전체 삭제
-            if CacheLevel.L1_MEMORY in levels and self.l1_cache:
-                try:
-                    if namespace:
-                        # 네임스페이스별 삭제
-                        keys_to_delete = [
-                            key for key in self.l1_cache.keys()
-                            if key.startswith(f"{namespace}:")
-                        ]
-                        for key in keys_to_delete:
-                            del self.l1_cache[key]
-                    else:
-                        self.l1_cache.clear()
-                    logger.info(f"L1 캐시 전체 삭제: {namespace or 'all'}")
-                except Exception as e:
-                    logger.warning(f"L1 캐시 전체 삭제 오류: {e}")
-                    success = False
-
-            # L2 캐시 전체 삭제
-            if CacheLevel.L2_REDIS in levels and self.l2_cache:
-                try:
-                    if namespace:
-                        pattern = f"{namespace}:*"
-                        keys = self.l2_cache.keys(pattern)  # type: ignore
-                        if keys and len(keys) > 0:  # type: ignore
-                            self.l2_cache.delete(*keys)  # type: ignore
-                    else:
-                        self.l2_cache.flushdb()
-                    logger.info(f"L2 캐시 전체 삭제: {namespace or 'all'}")
-                except Exception as e:
-                    logger.warning(f"L2 캐시 전체 삭제 오류: {e}")
-                    success = False
-
-            # L3 캐시 전체 삭제
-            if CacheLevel.L3_FILE in levels and self.l3_cache:
-                try:
-                    self.l3_cache.clear(namespace)
-                    logger.info(f"L3 캐시 전체 삭제: {namespace or 'all'}")
-                except Exception as e:
-                    logger.warning(f"L3 캐시 전체 삭제 오류: {e}")
-                    success = False
-
-        return success
-
-    def get_stats(self) -> Dict[str, Any]:
-        """캐시 통계 조회"""
-        with self.lock:
-            stats = self.stats.copy()
-
-            # 히트율 계산
-            total_hits = sum(v for v in stats['hits'].values() if isinstance(v, int))
-            total_misses = sum(v for v in stats['misses'].values() if isinstance(v, int))
-            total_requests = total_hits + total_misses
-
-            if total_requests > 0:
-                hit_rate = (total_hits / total_requests) * 100
-            else:
-                hit_rate = 0
-
-            # 레벨별 히트율
-            level_hit_rates = {}
-            for level in ['l1', 'l2', 'l3']:
-                level_hits = stats['hits'][level] if isinstance(stats['hits'][level], int) else 0
-                level_misses = stats['misses'][level] if isinstance(stats['misses'][level], int) else 0
-                level_total = level_hits + level_misses
-
-                if level_total > 0:
-                    level_hit_rates[level] = (level_hits / level_total) * 100
-                else:
-                    level_hit_rates[level] = 0
-
-            return {
-                'hits': stats['hits'],
-                'misses': stats['misses'],
-                'writes': stats['writes'],
-                'evictions': stats['evictions'],
-                'total_requests': total_requests,
-                'overall_hit_rate': hit_rate,
-                'level_hit_rates': level_hit_rates,
-                'cache_status': {
-                    'l1_enabled': self.l1_cache is not None,
-                    'l2_enabled': self.l2_cache is not None,
-                    'l3_enabled': self.l3_cache is not None
-                }
-            }
-
-    def reset_stats(self):
-        """통계 초기화"""
-        with self.lock:
-            self.stats = {
-                'hits': {'l1': 0, 'l2': 0, 'l3': 0},
-                'misses': {'l1': 0, 'l2': 0, 'l3': 0},
-                'writes': {'l1': 0, 'l2': 0, 'l3': 0},
-                'evictions': {'l1': 0, 'l2': 0, 'l3': 0}
-            }
-
-
-class FileCache:
-    """파일 기반 캐시"""
-
-    def __init__(self,  cache_dir: str):
-        self.cache_dir = cache_dir
-        self.metadata_file = os.path.join(cache_dir, 'metadata.json')
-        self.metadata = self._load_metadata()
-
-    def _load_metadata(self) -> Dict[str, Any]:
-        """메타데이터 로드"""
-        try:
-            if os.path.exists(self.metadata_file):
-                with open(self.metadata_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-        except Exception as e:
-            logger.warning(f"메타데이터 로드 실패: {e}")
-        return {}
-
-    def _save_metadata(self):
-        """메타데이터 저장"""
-        try:
-            with open(self.metadata_file, 'w', encoding='utf-8') as f:
-                json.dump(self.metadata, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            logger.warning(f"메타데이터 저장 실패: {e}")
-
-    def _get_file_path(self,  key: str) -> str:
-        """캐시 파일 경로 생성"""
-        # 키를 안전한 파일명으로 변환
-        safe_key = hashlib.md5(key.encode()).hexdigest()
-        return os.path.join(self.cache_dir, f"{safe_key}.cache")
-
+    
     def get(self, key: str) -> Optional[Any]:
         """캐시에서 값 조회"""
-        try:
-            if key not in self.metadata:
+        with self.lock:
+            if key in self.cache:
+                # LRU 업데이트
+                value = self.cache.pop(key)
+                self.cache[key] = value
+                self.stats['hits'] += 1
+                return value
+            else:
+                self.stats['misses'] += 1
                 return None
-
-            metadata = self.metadata[key]
-            file_path = self._get_file_path(key)
-
-            # 만료 확인
-            if datetime.now().timestamp() > metadata['expires_at']:
-                self.delete(key)
-                return None
-
-            # 파일에서 값 로드
-            if os.path.exists(file_path):
-                with open(file_path, 'rb') as f:
-                    return pickle.load(f)
-
-            return None
-
-        except Exception as e:
-            logger.warning(f"파일 캐시 조회 실패: {e}")
-            return None
-
-    def set(self,  key: str,  value: Any, ttl=3600):
+    
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         """캐시에 값 저장"""
-        try:
-            file_path = self._get_file_path(key)
-            expires_at = datetime.now().timestamp() + ttl
-
-            # 값 저장
-            with open(file_path, 'wb') as f:
-                pickle.dump(value, f)
-
-            # 메타데이터 업데이트
-            self.metadata[key] = {
-                'file_path': file_path,
-                'expires_at': expires_at,
-                'created_at': datetime.now().timestamp(),
-                'size': os.path.getsize(file_path)
-            }
-
-            self._save_metadata()
-
-        except Exception as e:
-            logger.warning(f"파일 캐시 저장 실패: {e}")
-
-    def delete(self,  key: str):
-        """캐시에서 값 삭제"""
-        try:
-            if key in self.metadata:
-                file_path = self.metadata[key]['file_path']
-
-                # 파일 삭제
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-
-                # 메타데이터에서 제거
-                del self.metadata[key]
-                self._save_metadata()
-
-        except Exception as e:
-            logger.warning(f"파일 캐시 삭제 실패: {e}")
-
-    def clear(self,namespace=None):
+        with self.lock:
+            # 크기 계산 (대략적)
+            size = len(str(value).encode('utf-8'))
+            
+            # 메모리 제한 확인
+            if self.stats['total_size'] + size > self.max_memory:
+                self._evict_items(size)
+            
+            # TTL 설정
+            expires_at = time.time() + ttl if ttl else None
+            
+            # 캐시 아이템 생성
+            item = CacheItem(
+                key=key,
+                value=value,
+                created_at=time.time(),
+                expires_at=expires_at,
+                access_count=1,
+                last_accessed=time.time(),
+                size_bytes=size
+            )
+            
+            # 기존 키가 있으면 제거
+            if key in self.cache:
+                old_item = self.cache.pop(key)
+                self.stats['total_size'] -= old_item.size_bytes
+            
+            # 새 아이템 추가
+            self.cache[key] = item
+            self.stats['total_size'] += size
+            
+            # 크기 제한 확인
+            if len(self.cache) > self.max_size:
+                self._evict_lru()
+            
+            return True
+    
+    def _evict_items(self, required_size: int):
+        """필요한 크기만큼 아이템 제거"""
+        while self.stats['total_size'] + required_size > self.max_memory and self.cache:
+            self._evict_lru()
+    
+    def _evict_lru(self):
+        """LRU 아이템 제거"""
+        if self.cache:
+            key, item = self.cache.popitem(last=False)
+            self.stats['total_size'] -= item.size_bytes
+            self.stats['evictions'] += 1
+    
+    def delete(self, key: str) -> bool:
+        """캐시에서 키 삭제"""
+        with self.lock:
+            if key in self.cache:
+                item = self.cache.pop(key)
+                self.stats['total_size'] -= item.size_bytes
+                return True
+            return False
+    
+    def clear(self):
         """캐시 전체 삭제"""
+        with self.lock:
+            self.cache.clear()
+            self.stats['total_size'] = 0
+    
+    def get_stats(self) -> CacheStats:
+        """캐시 통계 조회"""
+        with self.lock:
+            total_requests = self.stats['hits'] + self.stats['misses']
+            hit_rate = (self.stats['hits'] / total_requests * 100) if total_requests > 0 else 0
+            
+            return CacheStats(
+                total_items=len(self.cache),
+                total_size=self.stats['total_size'],
+                hit_count=self.stats['hits'],
+                miss_count=self.stats['misses'],
+                hit_rate=hit_rate,
+                eviction_count=self.stats['evictions'],
+                memory_usage=self.stats['total_size']
+            )
+
+class RedisCache:
+    """Redis 캐시 래퍼"""
+    
+    def __init__(self, host: str = 'localhost', port: int = 6379, db: int = 0, 
+                 password: str = None, max_connections: int = 10):
+        self.redis_client = redis.Redis(
+            host=host,
+            port=port,
+            db=db,
+            password=password,
+            max_connections=max_connections,
+            decode_responses=False  # 바이너리 데이터 지원
+        )
+        self.stats = {
+            'hits': 0,
+            'misses': 0,
+            'errors': 0
+        }
+    
+    def get(self, key: str) -> Optional[Any]:
+        """Redis에서 값 조회"""
         try:
-            if namespace:
-                # 네임스페이스별 삭제
-                keys_to_delete = [
-                    key for key in list(self.metadata.keys())
-                    if key.startswith(f"{namespace}:")
-                ]
-                for key in keys_to_delete:
-                    self.delete(key)
+            value = self.redis_client.get(key)
+            if value is not None:
+                self.stats['hits'] += 1
+                return pickle.loads(value)
             else:
-                # 전체 삭제
-                for key in list(self.metadata.keys()):
-                    self.delete(key)
-
+                self.stats['misses'] += 1
+                return None
         except Exception as e:
-            logger.warning(f"파일 캐시 전체 삭제 실패: {e}")
-
-    def cleanup_expired(self):
-        """만료된 캐시 정리"""
+            logger.error(f"Redis get 오류 {key}: {e}")
+            self.stats['errors'] += 1
+            return None
+    
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+        """Redis에 값 저장"""
         try:
-            current_time = datetime.now().timestamp()
-            expired_keys = [
-                key for key, metadata in self.metadata.items()
-                if current_time > metadata['expires_at']
-            ]
-
-            for key in expired_keys:
-                self.delete(key)
-
-            logger.info(f"만료된 캐시 {len(expired_keys)}개 정리 완료")
-
+            serialized_value = pickle.dumps(value)
+            if ttl:
+                return self.redis_client.setex(key, ttl, serialized_value)
+            else:
+                return self.redis_client.set(key, serialized_value)
         except Exception as e:
-            logger.warning(f"만료된 캐시 정리 실패: {e}")
+            logger.error(f"Redis set 오류 {key}: {e}")
+            self.stats['errors'] += 1
+            return False
+    
+    def delete(self, key: str) -> bool:
+        """Redis에서 키 삭제"""
+        try:
+            return bool(self.redis_client.delete(key))
+        except Exception as e:
+            logger.error(f"Redis delete 오류 {key}: {e}")
+            self.stats['errors'] += 1
+            return False
+    
+    def clear(self):
+        """Redis 캐시 전체 삭제"""
+        try:
+            self.redis_client.flushdb()
+        except Exception as e:
+            logger.error(f"Redis clear 오류: {e}")
+            self.stats['errors'] += 1
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Redis 통계 조회"""
+        try:
+            info = self.redis_client.info()
+            total_requests = self.stats['hits'] + self.stats['misses']
+            hit_rate = (self.stats['hits'] / total_requests * 100) if total_requests > 0 else 0
+            
+            return {
+                'redis_info': {
+                    'used_memory': info.get('used_memory', 0),
+                    'used_memory_peak': info.get('used_memory_peak', 0),
+                    'connected_clients': info.get('connected_clients', 0),
+                    'total_commands_processed': info.get('total_commands_processed', 0)
+                },
+                'cache_stats': {
+                    'hits': self.stats['hits'],
+                    'misses': self.stats['misses'],
+                    'errors': self.stats['errors'],
+                    'hit_rate': hit_rate
+                }
+            }
+        except Exception as e:
+            logger.error(f"Redis stats 조회 오류: {e}")
+            return {}
 
+class MultiLevelCache:
+    """다단계 캐시 시스템"""
+    
+    def __init__(self, l1_cache: LRUCache, l2_cache: RedisCache):
+        self.l1_cache = l1_cache  # 메모리 캐시 (빠름)
+        self.l2_cache = l2_cache  # Redis 캐시 (느림)
+        self.stats = {
+            'l1_hits': 0,
+            'l2_hits': 0,
+            'misses': 0
+        }
+    
+    def get(self, key: str) -> Optional[Any]:
+        """다단계 캐시에서 값 조회"""
+        # L1 캐시 확인
+        value = self.l1_cache.get(key)
+        if value is not None:
+            self.stats['l1_hits'] += 1
+            return value
+        
+        # L2 캐시 확인
+        value = self.l2_cache.get(key)
+        if value is not None:
+            self.stats['l2_hits'] += 1
+            # L1 캐시에도 저장
+            self.l1_cache.set(key, value)
+            return value
+        
+        self.stats['misses'] += 1
+        return None
+    
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+        """다단계 캐시에 값 저장"""
+        l1_success = self.l1_cache.set(key, value, ttl)
+        l2_success = self.l2_cache.set(key, value, ttl)
+        return l1_success and l2_success
+    
+    def delete(self, key: str) -> bool:
+        """다단계 캐시에서 키 삭제"""
+        l1_success = self.l1_cache.delete(key)
+        l2_success = self.l2_cache.delete(key)
+        return l1_success or l2_success
+    
+    def clear(self):
+        """다단계 캐시 전체 삭제"""
+        self.l1_cache.clear()
+        self.l2_cache.clear()
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """다단계 캐시 통계 조회"""
+        l1_stats = self.l1_cache.get_stats()
+        l2_stats = self.l2_cache.get_stats()
+        
+        total_requests = self.stats['l1_hits'] + self.stats['l2_hits'] + self.stats['misses']
+        overall_hit_rate = ((self.stats['l1_hits'] + self.stats['l2_hits']) / total_requests * 100) if total_requests > 0 else 0
+        
+        return {
+            'l1_cache': asdict(l1_stats),
+            'l2_cache': l2_stats,
+            'overall': {
+                'l1_hits': self.stats['l1_hits'],
+                'l2_hits': self.stats['l2_hits'],
+                'misses': self.stats['misses'],
+                'overall_hit_rate': overall_hit_rate
+            }
+        }
 
-def cached(ttl: int = 300, namespace: str = "default",
-           levels: Optional[List[str]] = None, key_func: Optional[Callable[..., str]] = None):
+class CacheDecorator:
     """캐시 데코레이터"""
-    def decorator(func):
+    
+    def __init__(self, cache: Union[LRUCache, RedisCache, MultiLevelCache], 
+                 ttl: Optional[int] = None, key_prefix: str = ""):
+        self.cache = cache
+        self.ttl = ttl
+        self.key_prefix = key_prefix
+    
+    def __call__(self, func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args,  **kwargs):
+        def wrapper(*args, **kwargs):
             # 캐시 키 생성
-            if key_func:
-                cache_key = key_func(*args, **kwargs)
-            else:
-                # 기본 키 생성
-                key_parts = [func.__name__]
-                if args:
-                    key_parts.extend([str(arg) for arg in args])
-                if kwargs:
-                    for k, v in sorted(kwargs.items()):
-                        key_parts.extend([k, str(v)])
-                cache_key = ":".join(key_parts)
-
+            cache_key = self._generate_cache_key(func, args, kwargs)
+            
             # 캐시에서 조회
-            cache_instance = getattr(func, '_cache_instance', None)
-            if cache_instance is None:
-                cache_instance = AdvancedCache()
-                func._cache_instance = cache_instance
-
-            cached_value = cache_instance.get(cache_key, namespace, levels)
-            if cached_value is not None:
-                return cached_value
-
+            cached_result = self.cache.get(cache_key)
+            if cached_result is not None:
+                return cached_result
+            
             # 함수 실행
             result = func(*args, **kwargs)
-
-            # 캐시에 저장
-            cache_instance.set(cache_key,  result,  ttl,  namespace,  levels)
-
+            
+            # 결과 캐싱
+            self.cache.set(cache_key, result, self.ttl)
+            
             return result
+        
         return wrapper
-    return decorator
+    
+    def _generate_cache_key(self, func: Callable, args: tuple, kwargs: dict) -> str:
+        """캐시 키 생성"""
+        # 함수 정보
+        func_info = f"{func.__module__}.{func.__name__}"
+        
+        # 인자 정보
+        args_str = str(args) + str(sorted(kwargs.items()))
+        
+        # 해시 생성
+        key_data = f"{self.key_prefix}:{func_info}:{args_str}"
+        return hashlib.md5(key_data.encode()).hexdigest()
 
+class CacheManager:
+    """캐시 관리자"""
+    
+    def __init__(self, config: Dict[str, Any] = None):
+        self.config = config or {
+            'l1_cache': {
+                'max_size': 1000,
+                'max_memory': 100 * 1024 * 1024  # 100MB
+            },
+            'l2_cache': {
+                'host': 'localhost',
+                'port': 6379,
+                'db': 0,
+                'password': None
+            },
+            'default_ttl': 3600  # 1시간
+        }
+        
+        # 캐시 인스턴스 생성
+        self.l1_cache = LRUCache(
+            max_size=self.config['l1_cache']['max_size'],
+            max_memory=self.config['l1_cache']['max_memory']
+        )
+        
+        self.l2_cache = RedisCache(
+            host=self.config['l2_cache']['host'],
+            port=self.config['l2_cache']['port'],
+            db=self.config['l2_cache']['db'],
+            password=self.config['l2_cache']['password']
+        )
+        
+        self.multi_cache = MultiLevelCache(self.l1_cache, self.l2_cache)
+        
+        # 캐시별 데코레이터
+        self.l1_decorator = CacheDecorator(self.l1_cache, self.config['default_ttl'])
+        self.l2_decorator = CacheDecorator(self.l2_cache, self.config['default_ttl'])
+        self.multi_decorator = CacheDecorator(self.multi_cache, self.config['default_ttl'])
+    
+    def cache(self, ttl: Optional[int] = None, level: str = 'multi') -> Callable:
+        """캐시 데코레이터 팩토리"""
+        if level == 'l1':
+            return CacheDecorator(self.l1_cache, ttl or self.config['default_ttl'])
+        elif level == 'l2':
+            return CacheDecorator(self.l2_cache, ttl or self.config['default_ttl'])
+        else:
+            return CacheDecorator(self.multi_cache, ttl or self.config['default_ttl'])
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """모든 캐시 통계 조회"""
+        return {
+            'l1_cache': asdict(self.l1_cache.get_stats()),
+            'l2_cache': self.l2_cache.get_stats(),
+            'multi_cache': self.multi_cache.get_stats()
+        }
+    
+    def clear_all_caches(self):
+        """모든 캐시 삭제"""
+        self.l1_cache.clear()
+        self.l2_cache.clear()
+        logger.info("모든 캐시가 삭제되었습니다.")
+    
+    def warm_up_cache(self, warm_up_data: Dict[str, Any]):
+        """캐시 워밍업"""
+        for key, value in warm_up_data.items():
+            self.multi_cache.set(key, value)
+        logger.info(f"캐시 워밍업 완료: {len(warm_up_data)}개 아이템")
+    
+    def get_cache_health(self) -> Dict[str, Any]:
+        """캐시 상태 확인"""
+        try:
+            l1_stats = self.l1_cache.get_stats()
+            l2_stats = self.l2_cache.get_stats()
+            
+            # Redis 연결 확인
+            redis_healthy = False
+            try:
+                self.l2_cache.redis_client.ping()
+                redis_healthy = True
+            except:
+                pass
+            
+            return {
+                'l1_cache': {
+                    'healthy': True,
+                    'memory_usage_percent': (l1_stats.memory_usage / self.config['l1_cache']['max_memory']) * 100,
+                    'item_count': l1_stats.total_items
+                },
+                'l2_cache': {
+                    'healthy': redis_healthy,
+                    'hit_rate': l2_stats.get('cache_stats', {}).get('hit_rate', 0),
+                    'error_count': l2_stats.get('cache_stats', {}).get('errors', 0)
+                },
+                'overall': {
+                    'healthy': True and redis_healthy,
+                    'recommendations': self._generate_cache_recommendations(l1_stats, l2_stats)
+                }
+            }
+        except Exception as e:
+            logger.error(f"캐시 상태 확인 실패: {e}")
+            return {'overall': {'healthy': False, 'error': str(e)}}
+    
+    def _generate_cache_recommendations(self, l1_stats: CacheStats, l2_stats: Dict) -> List[str]:
+        """캐시 최적화 권장사항 생성"""
+        recommendations = []
+        
+        # L1 캐시 권장사항
+        memory_usage_percent = (l1_stats.memory_usage / self.config['l1_cache']['max_memory']) * 100
+        if memory_usage_percent > 80:
+            recommendations.append("L1 캐시 메모리 사용률이 높습니다. 메모리 크기를 늘리거나 TTL을 줄이세요.")
+        
+        if l1_stats.eviction_count > 100:
+            recommendations.append("L1 캐시에서 많은 아이템이 제거되고 있습니다. 캐시 크기를 늘리세요.")
+        
+        # L2 캐시 권장사항
+        l2_hit_rate = l2_stats.get('cache_stats', {}).get('hit_rate', 0)
+        if l2_hit_rate < 50:
+            recommendations.append("L2 캐시 히트율이 낮습니다. 캐시 키 전략을 검토하세요.")
+        
+        l2_errors = l2_stats.get('cache_stats', {}).get('errors', 0)
+        if l2_errors > 10:
+            recommendations.append("L2 캐시에서 오류가 발생하고 있습니다. Redis 연결을 확인하세요.")
+        
+        if not recommendations:
+            recommendations.append("캐시가 정상적으로 작동하고 있습니다.")
+        
+        return recommendations
 
-# 전역 캐시 인스턴스
-advanced_cache = AdvancedCache()
+# 전역 캐시 관리자 인스턴스
+cache_manager = CacheManager()
 
-
-def get_cache() -> AdvancedCache:
-    """전역 캐시 인스턴스 반환"""
-    return advanced_cache
+class AdvancedCache:
+    """고급 캐시 클래스 - 합 대시보드용"""
+    
+    def __init__(self):
+        self.cache_manager = cache_manager
+    
+    def get(self, key: str) -> Optional[Any]:
+        """캐시에서 값 조회"""
+        return self.cache_manager.multi_cache.get(key)
+    
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+        """캐시에 값 저장"""
+        return self.cache_manager.multi_cache.set(key, value, ttl)
+    
+    def delete(self, key: str) -> bool:
+        """캐시에서 값 삭제"""
+        return self.cache_manager.multi_cache.delete(key)
+    
+    def clear(self):
+        """캐시 전체 삭제"""
+        self.cache_manager.clear_all_caches()
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """캐시 통계 조회"""
+        return self.cache_manager.get_cache_stats()
+    
+    def get_health(self) -> Dict[str, Any]:
+        """캐시 상태 조회"""
+        return self.cache_manager.get_cache_health()
+    
+    def get_settings(self) -> Dict[str, Any]:
+        """캐시 설정 조회"""
+        return {
+            'enabled': True,
+            'default_ttl': 300,
+            'max_size': 100,
+            'lru_policy': True,
+            'auto_cleanup': True,
+            'cleanup_interval': 60
+        }
+    
+    def update_settings(self, settings: Dict[str, Any]):
+        """캐시 설정 업데이트"""
+        logger.info(f"캐시 설정 업데이트: {settings}")
+        # 실제로는 설정을 적용하는 로직 구현

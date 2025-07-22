@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Dialog } from '@headlessui/react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import useUserStore from '@/store/useUserStore';
-import Toast from '@/components/ui/Toast';
+import { toast } from 'sonner';
 
 // 매장 타입 예시
 interface Store {
@@ -77,21 +77,21 @@ export default function BrandStoresPage() {
         // 등록 후 목록 새로고침
         const data = await res.json();
         setStores(prev => [...prev, data.store]);
-        Toast.success('매장 등록 완료!');
+        toast.success('매장 등록 완료!');
       } else {
         setSubmitError('매장 등록에 실패했습니다.');
-        Toast.error('매장 등록에 실패했습니다.');
+        toast.error('매장 등록에 실패했습니다.');
       }
     } catch (e) {
       setSubmitError('네트워크 오류가 발생했습니다.');
-      Toast.error('네트워크 오류가 발생했습니다.');
+      toast.error('네트워크 오류가 발생했습니다.');
     } finally {
       setSubmitLoading(false);
     }
   }
 
   return (
-    <ProtectedRoute requiredRoles={['admin', 'brand_admin', 'store_manager']} redirectTo="/admin-dashboard">
+    <ProtectedRoute requiredRoles={['admin', 'brand_admin', 'store_manager']}>
       <main className="p-8">
         <h1 className="text-2xl font-bold mb-4" aria-label="브랜드별 매장 목록">매장 목록</h1>
         {canManage ? (
@@ -109,7 +109,7 @@ export default function BrandStoresPage() {
         )}
         {/* 매장 등록 모달 */}
         <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} className="fixed z-50 inset-0 flex items-center justify-center">
-          <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+          <div className="fixed inset-0 bg-black opacity-30" />
           <div className="relative bg-white rounded p-6 w-full max-w-md mx-auto">
             <Dialog.Title className="text-lg font-bold mb-2">매장 등록</Dialog.Title>
             <form onSubmit={handleAddStore} className="space-y-4">

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 import time
 from email.utils import formataddr  # pyright: ignore
 from email.mime.text import MIMEText  # pyright: ignore
@@ -146,3 +146,74 @@ def generate_signature(secret_key: str, method: str, url: str) -> str:
     message = method + ' ' + url + '\n' + timestamp + '\n' + secret_key
     signature = base64.b64encode(hmac.new(secret_key.encode(), message.encode(), hashlib.sha256).digest())
     return signature.decode()
+
+class AlertNotifier:
+    """알림 관리 클래스"""
+    
+    def __init__(self):
+        self.settings = {
+            'email_enabled': False,
+            'slack_enabled': False,
+            'webhook_enabled': False,
+            'email': '',
+            'slack_webhook': '',
+            'critical_enabled': True,
+            'warning_enabled': True,
+            'info_enabled': False,
+            'repeat_interval': 30
+        }
+        self.stats = {
+            'total_sent': 0,
+            'email_sent': 0,
+            'slack_sent': 0,
+            'webhook_sent': 0,
+            'errors': 0
+        }
+        self.channel_status = {
+            'email': {'status': 'unknown', 'last_test': None},
+            'slack': {'status': 'unknown', 'last_test': None},
+            'webhook': {'status': 'unknown', 'last_test': None}
+        }
+    
+    @classmethod
+    def get_settings(cls) -> Dict[str, Any]:
+        """알림 설정 조회"""
+        # 실제로는 데이터베이스나 설정 파일에서 조회
+        return {
+            'email_enabled': False,
+            'slack_enabled': False,
+            'webhook_enabled': False,
+            'email': '',
+            'slack_webhook': '',
+            'critical_enabled': True,
+            'warning_enabled': True,
+            'info_enabled': False,
+            'repeat_interval': 30
+        }
+    
+    @classmethod
+    def update_settings(cls, settings: Dict[str, Any]):
+        """알림 설정 업데이트"""
+        # 실제로는 데이터베이스나 설정 파일에 저장
+        print(f"알림 설정 업데이트: {settings}")
+    
+    @classmethod
+    def get_channel_status(cls) -> Dict[str, Any]:
+        """알림 채널 상태 조회"""
+        return {
+            'email': {'status': 'unknown', 'last_test': None},
+            'slack': {'status': 'unknown', 'last_test': None},
+            'webhook': {'status': 'unknown', 'last_test': None}
+        }
+    
+    @classmethod
+    def get_notification_stats(cls) -> Dict[str, Any]:
+        """알림 통계 조회"""
+        return {
+            'total_sent': 0,
+            'email_sent': 0,
+            'slack_sent': 0,
+            'webhook_sent': 0,
+            'errors': 0,
+            'last_24h': 0
+        }

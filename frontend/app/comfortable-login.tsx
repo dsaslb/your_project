@@ -2,58 +2,51 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChefHat } from "lucide-react"
+import { useAuth } from "@/hooks/useAuth"
+import { useAuthStore } from "@/store/auth-store"
 
 export default function ComfortableLoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
+  
+  // 새로운 API 훅과 인증 스토어 사용
+  const { login, isLoading } = useAuth()
+  const { setUser } = useAuthStore()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
     setError("")
-    setIsLoading(true)
     
+    if (!username || !password) {
+      setError("아이디와 비밀번호를 입력해주세요")
+      return
+    }
+
     try {
-      if (username && password) {
-        // 실제 API 호출
-        const response = await fetch('http://localhost:5000/api/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            username: username,
-            password: password
-          })
-        })
-
-        const data = await response.json()
-
-        if (response.ok && data.success) {
-          // 토큰을 로컬 스토리지에 저장
-          localStorage.setItem('token', data.token)
-          localStorage.setItem('user', JSON.stringify(data.user))
-          
-          // 권한에 따라 리다이렉트
-          if (data.user.role === 'admin') {
-            router.push("/admin-dashboard")
-          } else {
-            router.push("/dashboard")
-          }
+      const result = await login({ username, password })
+      
+      if (result.success) {
+        // 인증 스토어에 사용자 정보 저장
+        setUser(result.data.user)
+        
+        // 권한에 따라 리다이렉트
+        if (result.data.user.role === 'admin' || result.data.user.role === 'super_admin') {
+          router.push("/admin-dashboard")
+        } else if (result.data.user.role === 'brand_manager') {
+          router.push("/brand-dashboard")
+        } else if (result.data.user.role === 'store_manager') {
+          router.push("/store-dashboard")
         } else {
-          setError(data.error || "로그인에 실패했습니다.")
-          setIsLoading(false)
+          router.push("/dashboard")
         }
       } else {
-        setError("아이디와 비밀번호를 입력해주세요")
-        setIsLoading(false)
+        setError(result.error || "로그인에 실패했습니다.")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error)
       setError("서버 연결에 실패했습니다. 다시 시도해주세요.")
-      setIsLoading(false)
     }
   }
 

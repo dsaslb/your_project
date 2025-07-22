@@ -118,11 +118,17 @@ const AIPredictionDashboard: React.FC = () => {
   const [isTraining, setIsTraining] = useState(false);
   const [error, setError] = useState<string>('');
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [salesModelType, setSalesModelType] = useState<'random_forest' | 'prophet' | 'compare'>('random_forest');
+  const [salesPredictionResults, setSalesPredictionResults] = useState<any>(null);
 
   useEffect(() => {
     fetchModelStatus();
     fetchPredictions();
   }, []);
+
+  useEffect(() => {
+    fetchSalesPredictions(salesModelType);
+  }, [salesModelType]);
 
   const fetchModelStatus = async () => {
     try {
@@ -200,6 +206,33 @@ const AIPredictionDashboard: React.FC = () => {
       setError(err instanceof Error ? err.message : '훈련 중 오류 발생');
     } finally {
       setIsTraining(false);
+    }
+  };
+
+  const fetchSalesPredictions = async (modelType: 'random_forest' | 'prophet' | 'compare') => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/ai/advanced/analysis/sales/predict', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ model_type: modelType })
+      });
+      if (!response.ok) throw new Error('예측 데이터를 불러올 수 없습니다.');
+      const data = await response.json();
+      if (data.success) {
+        setSalesPredictionResults(data.results);
+        setLastUpdate(new Date().toLocaleString());
+      } else {
+        setError(data.error || '예측에 실패했습니다.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '알 수 없는 오류');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -352,84 +385,90 @@ const AIPredictionDashboard: React.FC = () => {
 
         {/* 매출 예측 */}
         <TabsContent value="sales" className="space-y-6">
-          {predictionData?.sales_forecast.success && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4" />
-                      총 예측 매출
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {predictionData.sales_forecast.total_predicted_sales.toLocaleString()}원
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      30일 예측
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4" />
-                      일평균 매출
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {predictionData.sales_forecast.avg_daily_sales.toLocaleString()}원
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      일일 평균
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
+          <div className="flex items-center gap-4 mb-2">
+            <label htmlFor="modelType" className="font-medium">예측 모델 선택:</label>
+            <select
+              id="modelType"
+              value={salesModelType}
+              onChange={e => setSalesModelType(e.target.value as any)}
+              className="border rounded px-2 py-1"
+            >
+              <option value="random_forest">랜덤포레스트</option>
+              <option value="prophet">Prophet</option>
+              <option value="compare">비교(둘 다)</option>
+            </select>
+          </div>
+          {/* 비교 모드: 두 모델 모두 결과 표시 */}
+          {salesModelType === 'compare' && salesPredictionResults && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {['random_forest', 'prophet'].map(model => (
+                <Card key={model}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Brain className="w-4 h-4" />
-                      모델 정확도
+                      {model === 'random_forest' ? '랜덤포레스트' : 'Prophet'} 예측 결과
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {(predictionData.sales_forecast.model_accuracy * 100).toFixed(1)}%
+                    {salesPredictionResults[model]?.predictions && (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={salesPredictionResults[model].predictions}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip formatter={(value) => `${Number(value).toLocaleString()}원`} />
+                          <Line type="monotone" dataKey="predicted_amount" stroke="#3b82f6" strokeWidth={2} name="예측 매출" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      신뢰도: {salesPredictionResults[model]?.predictions?.[0]?.confidence ? `${(salesPredictionResults[model].predictions[0].confidence * 100).toFixed(0)}%` : 'N/A'}<br />
+                      R²: {salesPredictionResults[model]?.model_performance?.r2_score ? salesPredictionResults[model].model_performance.r2_score.toFixed(3) : 'N/A'}<br />
+                      MAE: {salesPredictionResults[model]?.model_performance?.mae ? salesPredictionResults[model].model_performance.mae.toLocaleString() : 'N/A'}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      R² 점수
-                    </div>
+                    {salesPredictionResults[model]?.trend_analysis && (
+                      <div className="mt-2 text-xs">
+                        트렌드: {salesPredictionResults[model].trend_analysis.direction} / 변동성: {salesPredictionResults[model].trend_analysis.volatility?.toFixed(3)}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>매출 예측 트렌드</CardTitle>
-                </CardHeader>
-                <CardContent>
+              ))}
+            </div>
+          )}
+          {/* 단일 모델 결과 */}
+          {salesModelType !== 'compare' && salesPredictionResults && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="w-4 h-4" />
+                  {salesModelType === 'random_forest' ? '랜덤포레스트' : 'Prophet'} 예측 결과
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {salesPredictionResults[salesModelType]?.predictions && (
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={predictionData.sales_forecast.predictions}>
+                    <LineChart data={salesPredictionResults[salesModelType].predictions}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
                       <Tooltip formatter={(value) => `${Number(value).toLocaleString()}원`} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="predicted_sales" 
-                        stroke="#3b82f6" 
-                        strokeWidth={2}
-                        name="예측 매출"
-                      />
+                      <Line type="monotone" dataKey="predicted_amount" stroke="#3b82f6" strokeWidth={2} name="예측 매출" />
                     </LineChart>
                   </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </>
+                )}
+                <div className="mt-2 text-sm text-muted-foreground">
+                  신뢰도: {salesPredictionResults[salesModelType]?.predictions?.[0]?.confidence ? `${(salesPredictionResults[salesModelType].predictions[0].confidence * 100).toFixed(0)}%` : 'N/A'}<br />
+                  R²: {salesPredictionResults[salesModelType]?.model_performance?.r2_score ? salesPredictionResults[salesModelType].model_performance.r2_score.toFixed(3) : 'N/A'}<br />
+                  MAE: {salesPredictionResults[salesModelType]?.model_performance?.mae ? salesPredictionResults[salesModelType].model_performance.mae.toLocaleString() : 'N/A'}
+                </div>
+                {salesPredictionResults[salesModelType]?.trend_analysis && (
+                  <div className="mt-2 text-xs">
+                    트렌드: {salesPredictionResults[salesModelType].trend_analysis.direction} / 변동성: {salesPredictionResults[salesModelType].trend_analysis.volatility?.toFixed(3)}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 

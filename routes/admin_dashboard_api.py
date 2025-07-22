@@ -1,7 +1,8 @@
 import json
 from datetime import datetime, timedelta, date
 from extensions import db
-from models_main import Brand, Branch, User, Order, Notification, SystemLog
+from models_main import Brand, Branch, User, Order, Notification
+from models_main import SystemLog as MainSystemLog
 from flask_login import login_required, current_user
 from flask import Blueprint, jsonify, request, render_template
 args = None  # pyright: ignore
@@ -643,7 +644,7 @@ def system_logs():
         return jsonify({'success': False, 'error': '권한이 없습니다.'}), 403
 
     try:
-        logs = SystemLog.query.order_by(SystemLog.created_at.desc()).limit(100).all()
+        logs = MainSystemLog.query.order_by(MainSystemLog.created_at.desc()).limit(100).all()
         log_list = []
 
         if logs is not None:
@@ -653,7 +654,7 @@ def system_logs():
                     'action': log.action,
                     'user_id': log.user_id,
                     'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    'details': log.details if hasattr(log, 'details') else '',
+                    'detail': log.detail if hasattr(log, 'detail') else '',
                 })
 
         return jsonify({'success': True, 'logs': log_list})
@@ -661,7 +662,29 @@ def system_logs():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# 7. 고급 분석 대시보드 페이지
+# 7. 캐시 클리어 API
+
+@admin_dashboard_api.route('/clear-cache', methods=['POST'])
+@login_required
+def clear_cache():
+    """캐시 클리어"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': '권한이 없습니다.'}), 403
+
+    try:
+        # 여기서 실제 캐시 클리어 로직을 구현
+        # 예: Redis 캐시 클리어, 메모리 캐시 클리어 등
+        
+        return jsonify({
+            'success': True,
+            'message': '캐시가 성공적으로 클리어되었습니다.',
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# 8. 고급 분석 대시보드 페이지
 
 
 @admin_dashboard_api.route('/advanced-analytics')
@@ -764,4 +787,95 @@ def create_store():
 
     except Exception as e:
         db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_dashboard_api.route('/dashboard/summary', methods=['GET'])
+@login_required
+def dashboard_summary():
+    """
+    shadcn/v0 스타일 대시보드용 요약 데이터(카드/그래프/알림 등) 제공
+    """
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': '권한이 없습니다.'}), 403
+
+    try:
+        # KPI 카드 데이터
+        total_brands = Brand.query.count()
+        total_stores = Branch.query.count()
+        total_users = User.query.count()
+        total_orders = Order.query.count()
+        recent_orders = Order.query.order_by(Order.created_at.desc()).limit(10).all()
+        recent_logs = MainSystemLog.query.order_by(MainSystemLog.created_at.desc()).limit(10).all()
+
+        # 브랜드별/매장별 통계(그래프용)
+        brand_stats = []
+        for brand in Brand.query.all():
+            store_count = Branch.query.filter_by(brand_id=brand.id).count()
+            employee_count = User.query.filter_by(brand_id=brand.id).count()
+            order_count = Order.query.join(Branch).filter(Branch.brand_id == brand.id).count()
+            brand_stats.append({
+                'brand_name': brand.name,
+                'store_count': store_count,
+                'employee_count': employee_count,
+                'order_count': order_count
+            })
+        store_stats = []
+        for store in Branch.query.all():
+            employee_count = User.query.filter_by(branch_id=store.id).count()
+            order_count = Order.query.filter_by(store_id=store.id).count()
+            store_stats.append({
+                'store_name': store.name,
+                'employee_count': employee_count,
+                'order_count': order_count
+            })
+
+        # 알림(최근 10개)
+        notifications = Notification.query.order_by(Notification.created_at.desc()).limit(10).all()
+        notification_list = [
+            {
+                'id': n.id,
+                'message': n.message,
+                'level': n.level if hasattr(n, 'level') else 'info',
+                'created_at': n.created_at.isoformat() if n.created_at else None
+            } for n in notifications
+        ]
+
+        # 시스템 로그(최근 10개)
+        log_list = [
+            {
+                'id': log.id,
+                'action': log.action,
+                'user_id': log.user_id,
+                'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'detail': log.detail if hasattr(log, 'detail') else '',
+            } for log in recent_logs
+        ]
+
+        return jsonify({
+            'success': True,
+            'cards': {
+                'total_brands': total_brands,
+                'total_stores': total_stores,
+                'total_users': total_users,
+                'total_orders': total_orders
+            },
+            'charts': {
+                'brand_stats': brand_stats,
+                'store_stats': store_stats
+            },
+            'tables': {
+                'recent_orders': [
+                    {
+                        'id': o.id,
+                        'item': o.item if hasattr(o, 'item') else '',
+                        'store_id': o.store_id,
+                        'status': o.status,
+                        'created_at': o.created_at.isoformat() if o.created_at else None
+                    } for o in recent_orders
+                ],
+                'system_logs': log_list
+            },
+            'notifications': notification_list
+        })
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

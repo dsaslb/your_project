@@ -71,20 +71,102 @@ export const RestaurantHierarchy: React.FC<RestaurantHierarchyProps> = ({
     try {
       setLoading(true);
       
-      // 브랜드 데이터 로드
-      const brandsResponse = await fetch('/api/admin/restaurant/industry/brands');
-      const brandsData = await brandsResponse.json();
-      setBrands(brandsData);
+      // 예시 데이터 사용 (API 호출 대신)
+      const mockBrands = [
+        {
+          id: 1,
+          name: '스타벅스',
+          today_revenue: 15000000,
+          branch_count: 5,
+          staff_count: 45,
+          avg_revenue_per_branch: 3000000
+        },
+        {
+          id: 2,
+          name: '맥도날드',
+          today_revenue: 12000000,
+          branch_count: 4,
+          staff_count: 38,
+          avg_revenue_per_branch: 3000000
+        },
+        {
+          id: 3,
+          name: '버거킹',
+          today_revenue: 8000000,
+          branch_count: 3,
+          staff_count: 25,
+          avg_revenue_per_branch: 2666667
+        }
+      ];
+      setBrands(mockBrands);
 
-      // 매장 데이터 로드
-      const branchesResponse = await fetch('/api/admin/restaurant/industry/branches');
-      const branchesData = await branchesResponse.json();
-      setBranches(branchesData);
+      const mockBranches = [
+        {
+          id: 1,
+          name: '강남점',
+          brand_name: '스타벅스',
+          location: '서울시 강남구',
+          today_revenue: 3500000,
+          staff_count: 12,
+          today_orders: 150,
+          avg_order_value: 23333
+        },
+        {
+          id: 2,
+          name: '홍대점',
+          brand_name: '스타벅스',
+          location: '서울시 마포구',
+          today_revenue: 2800000,
+          staff_count: 10,
+          today_orders: 120,
+          avg_order_value: 23333
+        },
+        {
+          id: 3,
+          name: '강남점',
+          brand_name: '맥도날드',
+          location: '서울시 강남구',
+          today_revenue: 3200000,
+          staff_count: 15,
+          today_orders: 200,
+          avg_order_value: 16000
+        }
+      ];
+      setBranches(mockBranches);
 
-      // 직원 데이터 로드
-      const staffResponse = await fetch('/api/admin/restaurant/industry/staff');
-      const staffData = await staffResponse.json();
-      setStaff(staffData);
+      const mockStaff = [
+        {
+          id: 1,
+          name: '김철수',
+          position: '매니저',
+          branch_name: '강남점',
+          brand_name: '스타벅스',
+          today_orders: 25,
+          today_revenue: 600000,
+          avg_order_value: 24000
+        },
+        {
+          id: 2,
+          name: '이영희',
+          position: '바리스타',
+          branch_name: '강남점',
+          brand_name: '스타벅스',
+          today_orders: 30,
+          today_revenue: 720000,
+          avg_order_value: 24000
+        },
+        {
+          id: 3,
+          name: '박민수',
+          position: '매니저',
+          branch_name: '홍대점',
+          brand_name: '스타벅스',
+          today_orders: 20,
+          today_revenue: 480000,
+          avg_order_value: 24000
+        }
+      ];
+      setStaff(mockStaff);
 
     } catch (error) {
       console.error('데이터 로드 오류:', error);

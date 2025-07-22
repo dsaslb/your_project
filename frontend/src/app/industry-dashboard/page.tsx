@@ -60,67 +60,61 @@ export default function IndustryDashboard() {
 
   const loadIndustryData = async () => {
     try {
-      // 실제로는 백엔드 API에서 데이터 가져오기
-      // 현재는 더미 데이터 사용
-      const mockStats: IndustryStats = {
-        totalIndustries: 4,
-        totalBrands: 12,
-        totalStores: 48,
-        totalEmployees: 240,
-        activeStores: 45,
-        totalRevenue: 1250000000,
-        growthRate: 15.5
-      };
+      // 새로운 API 유틸리티 사용
+      const { brandApi } = await import('@/utils/api');
+      
+      const [statsResult, brandsResult] = await Promise.all([
+        brandApi.getStats(),
+        brandApi.getAll()
+      ]);
 
-      const mockIndustries: Industry[] = [
-        {
-          id: 1,
-          name: '의료 서비스',
-          type: 'hospital',
-          brandsCount: 3,
-          storesCount: 15,
-          employeesCount: 75,
-          revenue: 450000000,
-          status: 'active',
-          lastUpdated: '2024-01-15T14:30:00'
-        },
-        {
-          id: 2,
-          name: '패션 리테일',
-          type: 'fashion',
-          brandsCount: 4,
-          storesCount: 18,
-          employeesCount: 90,
-          revenue: 380000000,
-          status: 'active',
-          lastUpdated: '2024-01-15T14:25:00'
-        },
-        {
-          id: 3,
-          name: '뷰티 서비스',
-          type: 'beauty',
-          brandsCount: 3,
-          storesCount: 12,
-          employeesCount: 60,
-          revenue: 280000000,
-          status: 'active',
-          lastUpdated: '2024-01-15T14:20:00'
-        },
-        {
-          id: 4,
-          name: '레스토랑',
-          type: 'your_program',
-          brandsCount: 2,
-          storesCount: 3,
-          employeesCount: 15,
-          revenue: 140000000,
-          status: 'active',
-          lastUpdated: '2024-01-15T14:15:00'
-        }
-      ];
+      if (statsResult.success && statsResult.data) {
+        setStats(statsResult.data as IndustryStats);
+      } else {
+        // API 호출 실패 시 기본 데이터 사용
+        console.warn('업종 통계 API 호출 실패:', statsResult.error);
+        setStats({
+          totalIndustries: 0,
+          totalBrands: 0,
+          totalStores: 0,
+          totalEmployees: 0,
+          activeStores: 0,
+          totalRevenue: 0,
+          growthRate: 0
+        });
+      }
 
-      setStats(mockStats);
-      setIndustries(mockIndustries);
+      if (brandsResult.success && brandsResult.data) {
+        const brandsData = brandsResult.data as any;
+        // 브랜드 데이터를 업종별로 그룹화하여 업종 데이터 생성
+        const groupedIndustries = brandsData.brands?.reduce((acc: any, brand: any) => {
+          const industryType = brand.industry_type || 'restaurant';
+          if (!acc[industryType]) {
+            acc[industryType] = {
+              id: industryType,
+              name: brand.industry_name || '레스토랑',
+              type: industryType,
+              brandsCount: 0,
+              storesCount: 0,
+              employeesCount: 0,
+              revenue: 0,
+              status: 'active',
+              lastUpdated: new Date().toISOString()
+            };
+          }
+          acc[industryType].brandsCount++;
+          acc[industryType].storesCount += brand.stores_count || 0;
+          acc[industryType].employeesCount += brand.employees_count || 0;
+          acc[industryType].revenue += brand.revenue || 0;
+          return acc;
+        }, {}) || {};
+
+        setIndustries(Object.values(groupedIndustries));
+      } else {
+        // API 호출 실패 시 기본 데이터 사용
+        console.warn('업종 데이터 API 호출 실패:', brandsResult.error);
+        setIndustries([]);
+      }
     } catch (error) {
       console.error('업종 데이터 로드 오류:', error);
     } finally {

@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 시스템 대시보드 - 관리자</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <h1 class="text-2xl font-bold text-gray-900">통합 시스템 대시보드</h1>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-500" id="last-updated"></span>
+                        <button onclick="refreshData()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                            새로고침
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 시스템 상태 카드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-blue-100 rounded-lg">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">워크플로우</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="workflow-count">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-green-100 rounded-lg">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">이벤트</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="event-count">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-purple-100 rounded-lg">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">API 요청</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="api-request-count">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-yellow-100 rounded-lg">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">마이크로서비스</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="microservice-count">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 차트 섹션 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- 시스템 성능 차트 -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">시스템 성능</h3>
+                    <canvas id="performanceChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- 서비스 상태 차트 -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">서비스 상태</h3>
+                    <canvas id="serviceStatusChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- 탭 섹션 -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8 px-6">
+                        <button onclick="showTab('workflows')" class="tab-button py-4 px-1 border-b-2 border-blue-500 font-medium text-sm text-blue-600" id="tab-workflows">
+                            워크플로우
+                        </button>
+                        <button onclick="showTab('events')" class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700" id="tab-events">
+                            이벤트 버스
+                        </button>
+                        <button onclick="showTab('gateway')" class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700" id="tab-gateway">
+                            API 게이트웨이
+                        </button>
+                        <button onclick="showTab('microservices')" class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700" id="tab-microservices">
+                            마이크로서비스
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- 워크플로우 탭 -->
+                <div id="tab-content-workflows" class="tab-content p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900">워크플로우 관리</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="createWorkflow()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                                워크플로우 생성
+                            </button>
+                            <button onclick="loadWorkflows()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                새로고침
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 워크플로우 목록 -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시작 시간</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">완료 시간</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작성자</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                                </tr>
+                            </thead>
+                            <tbody id="workflows-table" class="bg-white divide-y divide-gray-200">
+                                <!-- 동적으로 로드됨 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 이벤트 버스 탭 -->
+                <div id="tab-content-events" class="tab-content p-6 hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900">이벤트 버스</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="publishEvent()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                                이벤트 발행
+                            </button>
+                            <button onclick="loadEvents()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                새로고침
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 이벤트 발행 폼 -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <h4 class="font-medium text-gray-900 mb-4">이벤트 발행</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">이벤트 타입</label>
+                                <input type="text" id="event-type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">소스</label>
+                                <input type="text" id="event-source" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700">데이터 (JSON)</label>
+                                <textarea id="event-data" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="submitEvent()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                이벤트 발행
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 이벤트 목록 -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시간</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">타입</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">소스</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">우선순위</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="events-table" class="bg-white divide-y divide-gray-200">
+                                <!-- 동적으로 로드됨 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- API 게이트웨이 탭 -->
+                <div id="tab-content-gateway" class="tab-content p-6 hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900">API 게이트웨이</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="createRoute()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                                라우트 생성
+                            </button>
+                            <button onclick="createApiKey()" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">
+                                API 키 생성
+                            </button>
+                            <button onclick="loadGatewayData()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                새로고침
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 라우트 생성 폼 -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <h4 class="font-medium text-gray-900 mb-4">라우트 생성</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">경로</label>
+                                <input type="text" id="route-path" placeholder="/api/users" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">메서드</label>
+                                <select id="route-method" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                    <option value="PUT">PUT</option>
+                                    <option value="DELETE">DELETE</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">타겟 URL</label>
+                                <input type="text" id="route-target" placeholder="http://localhost:8080" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="submitRoute()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                라우트 생성
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- API 키 생성 폼 -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <h4 class="font-medium text-gray-900 mb-4">API 키 생성</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">이름</label>
+                                <input type="text" id="api-key-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">사용자 ID</label>
+                                <input type="text" id="api-key-user-id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="submitApiKey()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                API 키 생성
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 게이트웨이 통계 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <h5 class="font-medium text-blue-900">총 요청 수</h5>
+                            <p class="text-2xl font-bold text-blue-600" id="total-requests">-</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <h5 class="font-medium text-green-900">성공률</h5>
+                            <p class="text-2xl font-bold text-green-600" id="success-rate">-</p>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4">
+                            <h5 class="font-medium text-yellow-900">평균 응답 시간</h5>
+                            <p class="text-2xl font-bold text-yellow-600" id="avg-response-time">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 마이크로서비스 탭 -->
+                <div id="tab-content-microservices" class="tab-content p-6 hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900">마이크로서비스 관리</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="registerService()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                                서비스 등록
+                            </button>
+                            <button onclick="registerInstance()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                인스턴스 등록
+                            </button>
+                            <button onclick="loadMicroservices()" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">
+                                새로고침
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 서비스 등록 폼 -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <h4 class="font-medium text-gray-900 mb-4">서비스 등록</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">서비스 이름</label>
+                                <input type="text" id="service-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">버전</label>
+                                <input type="text" id="service-version" value="1.0.0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700">설명</label>
+                                <input type="text" id="service-description" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="submitService()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                서비스 등록
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 인스턴스 등록 폼 -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <h4 class="font-medium text-gray-900 mb-4">인스턴스 등록</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">서비스 이름</label>
+                                <select id="instance-service-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    <!-- 동적으로 로드됨 -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">호스트</label>
+                                <input type="text" id="instance-host" placeholder="localhost" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">포트</label>
+                                <input type="number" id="instance-port" placeholder="8080" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="submitInstance()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                인스턴스 등록
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 서비스 상태 목록 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="services-status-grid">
+                        <!-- 동적으로 로드됨 -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentTab = 'workflows';
+        let performanceChart = null;
+        let serviceStatusChart = null;
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadIntegrationStatistics();
+            loadWorkflows();
+            loadEvents();
+            loadGatewayData();
+            loadMicroservices();
+            updateLastUpdated();
+            
+            // 30초마다 자동 새로고침
+            setInterval(refreshData, 30000);
+        });
+
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭 콘텐츠 숨기기
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // 모든 탭 버튼 비활성화
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('border-blue-500', 'text-blue-600');
+                button.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // 선택된 탭 활성화
+            document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById(`tab-${tabName}`).classList.add('border-blue-500', 'text-blue-600');
+            
+            currentTab = tabName;
+        }
+
+        // 통합 시스템 통계 로드
+        async function loadIntegrationStatistics() {
+            try {
+                const response = await axios.get('/api/integration/statistics');
+                if (response.data.success) {
+                    const stats = response.data.statistics;
+                    
+                    // 카드 업데이트
+                    document.getElementById('workflow-count').textContent = stats.workflows?.total_workflows || 0;
+                    document.getElementById('event-count').textContent = stats.events?.total_events || 0;
+                    document.getElementById('api-request-count').textContent = stats.gateway?.total_requests || 0;
+                    document.getElementById('microservice-count').textContent = stats.microservices?.summary?.total_services || 0;
+                    
+                    // 차트 업데이트
+                    updateCharts(stats);
+                }
+            } catch (error) {
+                console.error('통합 시스템 통계 로드 오류:', error);
+            }
+        }
+
+        // 차트 업데이트
+        function updateCharts(stats) {
+            // 성능 차트
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            if (performanceChart) {
+                performanceChart.destroy();
+            }
+            
+            performanceChart = new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: ['워크플로우', '이벤트', 'API 요청', '마이크로서비스'],
+                    datasets: [{
+                        label: '처리량',
+                        data: [
+                            stats.workflows?.total_workflows || 0,
+                            stats.events?.total_events || 0,
+                            stats.gateway?.total_requests || 0,
+                            stats.microservices?.summary?.total_services || 0
+                        ],
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // 서비스 상태 차트
+            const serviceCtx = document.getElementById('serviceStatusChart').getContext('2d');
+            if (serviceStatusChart) {
+                serviceStatusChart.destroy();
+            }
+            
+            const microservices = stats.microservices?.services || {};
+            const healthyCount = Object.values(microservices).reduce((sum, service) => sum + (service.healthy_instances || 0), 0);
+            const unhealthyCount = Object.values(microservices).reduce((sum, service) => sum + (service.unhealthy_instances || 0), 0);
+            
+            serviceStatusChart = new Chart(serviceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['정상', '비정상'],
+                    datasets: [{
+                        data: [healthyCount, unhealthyCount],
+                        backgroundColor: ['#10B981', '#EF4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 워크플로우 관련 함수들
+        async function loadWorkflows() {
+            try {
+                const response = await axios.get('/api/integration/workflows');
+                if (response.data.success) {
+                    displayWorkflows(response.data.workflows);
+                }
+            } catch (error) {
+                console.error('워크플로우 로드 오류:', error);
+            }
+        }
+
+        function displayWorkflows(workflows) {
+            const tbody = document.getElementById('workflows-table');
+            tbody.innerHTML = '';
+
+            workflows.forEach(workflow => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${workflow.id.substring(0, 8)}...</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(workflow.status)}">
+                            ${workflow.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(workflow.started_at).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${workflow.completed_at ? new Date(workflow.completed_at).toLocaleString() : '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${workflow.created_by}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="viewWorkflow('${workflow.id}')" class="text-blue-600 hover:text-blue-900">상세보기</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function createWorkflow() {
+            // 워크플로우 생성 모달 또는 페이지로 이동
+            alert('워크플로우 생성 기능은 별도 페이지에서 구현됩니다.');
+        }
+
+        // 이벤트 관련 함수들
+        async function loadEvents() {
+            try {
+                const response = await axios.get('/api/integration/events');
+                if (response.data.success) {
+                    displayEvents(response.data.events);
+                }
+            } catch (error) {
+                console.error('이벤트 로드 오류:', error);
+            }
+        }
+
+        function displayEvents(events) {
+            const tbody = document.getElementById('events-table');
+            tbody.innerHTML = '';
+
+            events.forEach(event => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(event.timestamp).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${event.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${event.source}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${event.priority}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${event.status}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function submitEvent() {
+            try {
+                const eventData = {
+                    type: document.getElementById('event-type').value,
+                    source: document.getElementById('event-source').value,
+                    data: JSON.parse(document.getElementById('event-data').value || '{}')
+                };
+
+                const response = await axios.post('/api/integration/events', eventData);
+                if (response.data.success) {
+                    alert('이벤트가 발행되었습니다.');
+                    loadEvents();
+                }
+            } catch (error) {
+                console.error('이벤트 발행 오류:', error);
+                alert('이벤트 발행 중 오류가 발생했습니다.');
+            }
+        }
+
+        // API 게이트웨이 관련 함수들
+        async function loadGatewayData() {
+            try {
+                const response = await axios.get('/api/integration/gateway/statistics');
+                if (response.data.success) {
+                    const stats = response.data.statistics;
+                    
+                    document.getElementById('total-requests').textContent = stats.total_requests || 0;
+                    document.getElementById('success-rate').textContent = `${(stats.success_rate || 0).toFixed(1)}%`;
+                    document.getElementById('avg-response-time').textContent = `${(stats.avg_response_time || 0).toFixed(2)}ms`;
+                }
+            } catch (error) {
+                console.error('게이트웨이 데이터 로드 오류:', error);
+            }
+        }
+
+        async function submitRoute() {
+            try {
+                const routeData = {
+                    path: document.getElementById('route-path').value,
+                    method: document.getElementById('route-method').value,
+                    target_url: document.getElementById('route-target').value
+                };
+
+                const response = await axios.post('/api/integration/gateway/routes', routeData);
+                if (response.data.success) {
+                    alert('라우트가 생성되었습니다.');
+                    loadGatewayData();
+                }
+            } catch (error) {
+                console.error('라우트 생성 오류:', error);
+                alert('라우트 생성 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function submitApiKey() {
+            try {
+                const apiKeyData = {
+                    name: document.getElementById('api-key-name').value,
+                    user_id: document.getElementById('api-key-user-id').value
+                };
+
+                const response = await axios.post('/api/integration/gateway/api-keys', apiKeyData);
+                if (response.data.success) {
+                    alert(`API 키가 생성되었습니다: ${response.data.api_key}`);
+                    loadGatewayData();
+                }
+            } catch (error) {
+                console.error('API 키 생성 오류:', error);
+                alert('API 키 생성 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 마이크로서비스 관련 함수들
+        async function loadMicroservices() {
+            try {
+                const response = await axios.get('/api/integration/microservices/status');
+                if (response.data.success) {
+                    displayMicroservices(response.data.status);
+                }
+            } catch (error) {
+                console.error('마이크로서비스 로드 오류:', error);
+            }
+        }
+
+        function displayMicroservices(status) {
+            const grid = document.getElementById('services-status-grid');
+            grid.innerHTML = '';
+
+            Object.entries(status.services || {}).forEach(([serviceName, serviceStatus]) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow p-4';
+                card.innerHTML = `
+                    <h5 class="font-medium text-gray-900 mb-2">${serviceName}</h5>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-500">총 인스턴스:</span>
+                            <span class="text-sm font-medium">${serviceStatus.total_instances}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-500">정상:</span>
+                            <span class="text-sm font-medium text-green-600">${serviceStatus.healthy_instances}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-500">비정상:</span>
+                            <span class="text-sm font-medium text-red-600">${serviceStatus.unhealthy_instances}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-500">가용성:</span>
+                            <span class="text-sm font-medium">${serviceStatus.availability.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function submitService() {
+            try {
+                const serviceData = {
+                    name: document.getElementById('service-name').value,
+                    version: document.getElementById('service-version').value,
+                    description: document.getElementById('service-description').value
+                };
+
+                const response = await axios.post('/api/integration/microservices', serviceData);
+                if (response.data.success) {
+                    alert('서비스가 등록되었습니다.');
+                    loadMicroservices();
+                }
+            } catch (error) {
+                console.error('서비스 등록 오류:', error);
+                alert('서비스 등록 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function submitInstance() {
+            try {
+                const instanceData = {
+                    host: document.getElementById('instance-host').value,
+                    port: parseInt(document.getElementById('instance-port').value),
+                    protocol: 'http'
+                };
+
+                const serviceName = document.getElementById('instance-service-name').value;
+                const response = await axios.post(`/api/integration/microservices/${serviceName}/instances`, instanceData);
+                if (response.data.success) {
+                    alert('인스턴스가 등록되었습니다.');
+                    loadMicroservices();
+                }
+            } catch (error) {
+                console.error('인스턴스 등록 오류:', error);
+                alert('인스턴스 등록 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 유틸리티 함수들
+        function getStatusClass(status) {
+            switch (status) {
+                case 'completed': return 'bg-green-100 text-green-800';
+                case 'running': return 'bg-blue-100 text-blue-800';
+                case 'failed': return 'bg-red-100 text-red-800';
+                case 'pending': return 'bg-yellow-100 text-yellow-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function refreshData() {
+            loadIntegrationStatistics();
+            if (currentTab === 'workflows') loadWorkflows();
+            if (currentTab === 'events') loadEvents();
+            if (currentTab === 'gateway') loadGatewayData();
+            if (currentTab === 'microservices') loadMicroservices();
+            updateLastUpdated();
+        }
+
+        function updateLastUpdated() {
+            document.getElementById('last-updated').textContent = 
+                `마지막 업데이트: ${new Date().toLocaleString()}`;
+        }
+    </script>
+</body>
+</html> 

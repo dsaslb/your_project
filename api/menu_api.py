@@ -62,15 +62,30 @@ def get_user_menus():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@menu_api_bp.route("/menu-access/<int:menu_id>", methods=["POST"])
+@menu_api_bp.route("/menu-access/<menu_id>", methods=["POST"])
 @login_required
 def record_menu_access(menu_id):
     """메뉴 접근 기록"""
     try:
+        # 메뉴 ID 검증 및 정규화
+        if ':' in str(menu_id):
+            # "1:1" 형식의 메뉴 ID를 처리
+            parts = str(menu_id).split(':')
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                normalized_menu_id = int(parts[0])  # 첫 번째 숫자를 메뉴 ID로 사용
+            else:
+                return jsonify({"success": False, "error": "잘못된 메뉴 ID 형식입니다."}), 400
+        else:
+            # 일반적인 숫자 메뉴 ID
+            try:
+                normalized_menu_id = int(menu_id)
+            except ValueError:
+                return jsonify({"success": False, "error": "메뉴 ID는 숫자여야 합니다."}), 400
+        
         # 메뉴 접근 통계 업데이트
-        menu_integration_system.update_menu_access(menu_id, current_user.id)
+        menu_integration_system.update_menu_access(normalized_menu_id, current_user.id)
 
-        return jsonify({"success": True, "message": "메뉴 접근이 기록되었습니다."})
+        return jsonify({"success": True, "message": "메뉴 접근이 기록되었습니다.", "menu_id": normalized_menu_id})
 
     except Exception as e:
         logger.error(f"메뉴 접근 기록 실패: {e}")

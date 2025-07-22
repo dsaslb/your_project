@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>합 대시보드 설정</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .setting-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .setting-card:hover {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-4">
+                        <a href="/admin/comprehensive" class="text-blue-600 hover:text-blue-800">
+                            ← 합 대시보드로 돌아가기
+                        </a>
+                        <h1 class="text-2xl font-bold text-gray-900">합 대시보드 설정</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="saveAllBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            모든 설정 저장
+                        </button>
+                        <button id="resetBtn" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                            기본값으로 초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 설정 탭 -->
+            <div class="mb-8">
+                <nav class="flex space-x-8">
+                    <button id="monitoringTab" class="tab-button active px-4 py-2 text-sm font-medium rounded-md">
+                        모니터링 설정
+                    </button>
+                    <button id="notificationsTab" class="tab-button px-4 py-2 text-sm font-medium rounded-md">
+                        알림 설정
+                    </button>
+                    <button id="cacheTab" class="tab-button px-4 py-2 text-sm font-medium rounded-md">
+                        캐시 설정
+                    </button>
+                    <button id="securityTab" class="tab-button px-4 py-2 text-sm font-medium rounded-md">
+                        보안 설정
+                    </button>
+                </nav>
+            </div>
+
+            <!-- 모니터링 설정 -->
+            <div id="monitoringSettings" class="setting-section">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 기본 모니터링 설정 -->
+                    <div class="setting-card p-6">
+                        <h3 class="text-lg font-semibold mb-4">기본 모니터링 설정</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">실시간 모니터링</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="realTimeMonitoring" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">모니터링 간격 (초)</label>
+                                <input type="number" id="monitoringInterval" value="30" min="5" max="300" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">데이터 보관 기간 (일)</label>
+                                <input type="number" id="dataRetentionDays" value="30" min="1" max="365" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 임계값 설정 -->
+                    <div class="setting-card p-6">
+                        <h3 class="text-lg font-semibold mb-4">임계값 설정</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">CPU 사용률 경고 임계값 (%)</label>
+                                <input type="number" id="cpuWarningThreshold" value="80" min="0" max="100" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">CPU 사용률 위험 임계값 (%)</label>
+                                <input type="number" id="cpuCriticalThreshold" value="90" min="0" max="100" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">메모리 사용률 경고 임계값 (%)</label>
+                                <input type="number" id="memoryWarningThreshold" value="80" min="0" max="100" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">메모리 사용률 위험 임계값 (%)</label>
+                                <input type="number" id="memoryCriticalThreshold" value="90" min="0" max="100" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 알림 설정 -->
+            <div id="notificationsSettings" class="setting-section hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 알림 채널 설정 -->
+                    <div class="setting-card p-6">
+                        <h3 class="text-lg font-semibold mb-4">알림 채널 설정</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">이메일 알림</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="emailNotifications">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">슬랙 알림</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="slackNotifications">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">웹훅 알림</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="webhookNotifications">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">이메일 주소</label>
+                                <input type="email" id="notificationEmail" placeholder="admin@example.com" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">슬랙 웹훅 URL</label>
+                                <input type="url" id="slackWebhookUrl" placeholder="https://hooks.slack.com/..." 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 알림 규칙 설정 -->
+                    <div class="setting-card p-6">
+                        <h3 class="text-lg font-semibold mb-4">알림 규칙 설정</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">긴급 알림</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="criticalAlertsEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">경고 알림</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="warningAlertsEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">정보 알림</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="infoAlertsEnabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">알림 반복 간격 (분)</label>
+                                <input type="number" id="alertRepeatInterval" value="30" min="1" max="1440" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 캐시 설정 -->
+            <div id="cacheSettings" class="setting-section hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 캐시 기본 설정 -->
+                    <div class="setting-card p-6">
+                        <h3 class="text-lg font-semibold mb-4">캐시 기본 설정</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">캐시 활성화</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="cacheEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">기본 캐시 TTL (초)</label>
+                                <input type="number" id="defaultCacheTTL" value="300" min="1" max="86400" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">최대 캐시 크기 (MB)</label>
+                                <input type="number" id="maxCacheSize" value="100" min="1" max="1000" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 캐시 정책 설정 -->
+                    <div class="setting-card p-6">
+                        <h3 class="text-lg font-semibold mb-4">캐시 정책 설정</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">LRU 정책 사용</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="lruPolicyEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">자동 정리</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="autoCleanupEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">정리 간격 (분)</label>
+                                <input type="number" id="cleanupInterval" value="60" min="1" max="1440" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 보안 설정 -->
+            <div id="securitySettings" class="setting-section hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 접근 제어 설정 -->
+                    <div class="setting-card p-6">
+                        <h3 class="text-lg font-semibold mb-4">접근 제어 설정</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">IP 화이트리스트</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="ipWhitelistEnabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">허용된 IP 주소</label>
+                                <textarea id="allowedIPs" rows="3" placeholder="127.0.0.1&#10;192.168.1.0/24&#10;10.0.0.0/8" 
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">2단계 인증</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="twoFactorEnabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 감사 로그 설정 -->
+                    <div class="setting-card p-6">
+                        <h3 class="text-lg font-semibold mb-4">감사 로그 설정</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">감사 로그 활성화</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="auditLogEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">로그 보관 기간 (일)</label>
+                                <input type="number" id="auditLogRetention" value="90" min="1" max="365" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-gray-700">민감한 데이터 마스킹</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="dataMaskingEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentSettings = {};
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTabs();
+            loadSettings();
+            setupEventListeners();
+        });
+
+        // 탭 초기화
+        function initializeTabs() {
+            const tabs = document.querySelectorAll('.tab-button');
+            const sections = document.querySelectorAll('.setting-section');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const targetId = this.id.replace('Tab', 'Settings');
+                    
+                    // 모든 탭 비활성화
+                    tabs.forEach(t => t.classList.remove('active', 'bg-blue-100', 'text-blue-700'));
+                    sections.forEach(s => s.classList.add('hidden'));
+                    
+                    // 선택된 탭 활성화
+                    this.classList.add('active', 'bg-blue-100', 'text-blue-700');
+                    document.getElementById(targetId).classList.remove('hidden');
+                });
+            });
+        }
+
+        // 설정 로드
+        async function loadSettings() {
+            try {
+                const response = await axios.get('/admin/comprehensive/settings');
+                currentSettings = response.data;
+                
+                // 설정값들을 폼에 적용
+                applySettingsToForm(currentSettings);
+                
+            } catch (error) {
+                console.error('설정 로드 실패:', error);
+                showError('설정을 불러오는 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 설정값을 폼에 적용
+        function applySettingsToForm(settings) {
+            // 모니터링 설정
+            if (settings.monitoring) {
+                document.getElementById('realTimeMonitoring').checked = settings.monitoring.real_time_enabled || false;
+                document.getElementById('monitoringInterval').value = settings.monitoring.interval || 30;
+                document.getElementById('dataRetentionDays').value = settings.monitoring.retention_days || 30;
+                document.getElementById('cpuWarningThreshold').value = settings.monitoring.cpu_warning_threshold || 80;
+                document.getElementById('cpuCriticalThreshold').value = settings.monitoring.cpu_critical_threshold || 90;
+                document.getElementById('memoryWarningThreshold').value = settings.monitoring.memory_warning_threshold || 80;
+                document.getElementById('memoryCriticalThreshold').value = settings.monitoring.memory_critical_threshold || 90;
+            }
+            
+            // 알림 설정
+            if (settings.notifications) {
+                document.getElementById('emailNotifications').checked = settings.notifications.email_enabled || false;
+                document.getElementById('slackNotifications').checked = settings.notifications.slack_enabled || false;
+                document.getElementById('webhookNotifications').checked = settings.notifications.webhook_enabled || false;
+                document.getElementById('notificationEmail').value = settings.notifications.email || '';
+                document.getElementById('slackWebhookUrl').value = settings.notifications.slack_webhook || '';
+                document.getElementById('criticalAlertsEnabled').checked = settings.notifications.critical_enabled || true;
+                document.getElementById('warningAlertsEnabled').checked = settings.notifications.warning_enabled || true;
+                document.getElementById('infoAlertsEnabled').checked = settings.notifications.info_enabled || false;
+                document.getElementById('alertRepeatInterval').value = settings.notifications.repeat_interval || 30;
+            }
+            
+            // 캐시 설정
+            if (settings.cache) {
+                document.getElementById('cacheEnabled').checked = settings.cache.enabled || true;
+                document.getElementById('defaultCacheTTL').value = settings.cache.default_ttl || 300;
+                document.getElementById('maxCacheSize').value = settings.cache.max_size || 100;
+                document.getElementById('lruPolicyEnabled').checked = settings.cache.lru_policy || true;
+                document.getElementById('autoCleanupEnabled').checked = settings.cache.auto_cleanup || true;
+                document.getElementById('cleanupInterval').value = settings.cache.cleanup_interval || 60;
+            }
+            
+            // 보안 설정
+            if (settings.security) {
+                document.getElementById('ipWhitelistEnabled').checked = settings.security.ip_whitelist_enabled || false;
+                document.getElementById('allowedIPs').value = settings.security.allowed_ips?.join('\n') || '';
+                document.getElementById('twoFactorEnabled').checked = settings.security.two_factor_enabled || false;
+                document.getElementById('auditLogEnabled').checked = settings.security.audit_log_enabled || true;
+                document.getElementById('auditLogRetention').value = settings.security.audit_log_retention || 90;
+                document.getElementById('dataMaskingEnabled').checked = settings.security.data_masking_enabled || true;
+            }
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 저장 버튼
+            document.getElementById('saveAllBtn').addEventListener('click', saveAllSettings);
+            
+            // 초기화 버튼
+            document.getElementById('resetBtn').addEventListener('click', resetToDefaults);
+        }
+
+        // 모든 설정 저장
+        async function saveAllSettings() {
+            try {
+                const settings = collectFormData();
+                
+                const response = await axios.post('/admin/comprehensive/settings', settings);
+                
+                if (response.data.success) {
+                    showSuccess('설정이 성공적으로 저장되었습니다.');
+                    currentSettings = settings;
+                } else {
+                    showError('설정 저장에 실패했습니다.');
+                }
+                
+            } catch (error) {
+                console.error('설정 저장 실패:', error);
+                showError('설정을 저장하는 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 폼 데이터 수집
+        function collectFormData() {
+            return {
+                monitoring: {
+                    real_time_enabled: document.getElementById('realTimeMonitoring').checked,
+                    interval: parseInt(document.getElementById('monitoringInterval').value),
+                    retention_days: parseInt(document.getElementById('dataRetentionDays').value),
+                    cpu_warning_threshold: parseInt(document.getElementById('cpuWarningThreshold').value),
+                    cpu_critical_threshold: parseInt(document.getElementById('cpuCriticalThreshold').value),
+                    memory_warning_threshold: parseInt(document.getElementById('memoryWarningThreshold').value),
+                    memory_critical_threshold: parseInt(document.getElementById('memoryCriticalThreshold').value)
+                },
+                notifications: {
+                    email_enabled: document.getElementById('emailNotifications').checked,
+                    slack_enabled: document.getElementById('slackNotifications').checked,
+                    webhook_enabled: document.getElementById('webhookNotifications').checked,
+                    email: document.getElementById('notificationEmail').value,
+                    slack_webhook: document.getElementById('slackWebhookUrl').value,
+                    critical_enabled: document.getElementById('criticalAlertsEnabled').checked,
+                    warning_enabled: document.getElementById('warningAlertsEnabled').checked,
+                    info_enabled: document.getElementById('infoAlertsEnabled').checked,
+                    repeat_interval: parseInt(document.getElementById('alertRepeatInterval').value)
+                },
+                cache: {
+                    enabled: document.getElementById('cacheEnabled').checked,
+                    default_ttl: parseInt(document.getElementById('defaultCacheTTL').value),
+                    max_size: parseInt(document.getElementById('maxCacheSize').value),
+                    lru_policy: document.getElementById('lruPolicyEnabled').checked,
+                    auto_cleanup: document.getElementById('autoCleanupEnabled').checked,
+                    cleanup_interval: parseInt(document.getElementById('cleanupInterval').value)
+                },
+                security: {
+                    ip_whitelist_enabled: document.getElementById('ipWhitelistEnabled').checked,
+                    allowed_ips: document.getElementById('allowedIPs').value.split('\n').filter(ip => ip.trim()),
+                    two_factor_enabled: document.getElementById('twoFactorEnabled').checked,
+                    audit_log_enabled: document.getElementById('auditLogEnabled').checked,
+                    audit_log_retention: parseInt(document.getElementById('auditLogRetention').value),
+                    data_masking_enabled: document.getElementById('dataMaskingEnabled').checked
+                }
+            };
+        }
+
+        // 기본값으로 초기화
+        function resetToDefaults() {
+            if (confirm('모든 설정을 기본값으로 초기화하시겠습니까?')) {
+                const defaultSettings = {
+                    monitoring: {
+                        real_time_enabled: true,
+                        interval: 30,
+                        retention_days: 30,
+                        cpu_warning_threshold: 80,
+                        cpu_critical_threshold: 90,
+                        memory_warning_threshold: 80,
+                        memory_critical_threshold: 90
+                    },
+                    notifications: {
+                        email_enabled: false,
+                        slack_enabled: false,
+                        webhook_enabled: false,
+                        email: '',
+                        slack_webhook: '',
+                        critical_enabled: true,
+                        warning_enabled: true,
+                        info_enabled: false,
+                        repeat_interval: 30
+                    },
+                    cache: {
+                        enabled: true,
+                        default_ttl: 300,
+                        max_size: 100,
+                        lru_policy: true,
+                        auto_cleanup: true,
+                        cleanup_interval: 60
+                    },
+                    security: {
+                        ip_whitelist_enabled: false,
+                        allowed_ips: [],
+                        two_factor_enabled: false,
+                        audit_log_enabled: true,
+                        audit_log_retention: 90,
+                        data_masking_enabled: true
+                    }
+                };
+                
+                applySettingsToForm(defaultSettings);
+                showSuccess('설정이 기본값으로 초기화되었습니다.');
+            }
+        }
+
+        // 성공 메시지 표시
+        function showSuccess(message) {
+            // 간단한 알림 표시 (실제로는 더 정교한 알림 시스템 사용)
+            alert(message);
+        }
+
+        // 에러 메시지 표시
+        function showError(message) {
+            // 간단한 알림 표시 (실제로는 더 정교한 알림 시스템 사용)
+            alert('오류: ' + message);
+        }
+    </script>
+</body>
+</html> 

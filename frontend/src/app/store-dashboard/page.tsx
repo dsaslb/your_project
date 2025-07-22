@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { useStoreStats, useEmployees } from '@/hooks/useApi';
+import { toast } from '@/store/useToastStore';
+import { MemoizedCard } from '@/components/optimized/MemoizedCard';
 import { 
   Store, 
   Users, 
@@ -42,7 +45,12 @@ interface Employee {
 }
 
 export default function StoreDashboard() {
-  const [stats, setStats] = useState<StoreStats>({
+  // React Query 훅 사용
+  const { data: statsData, isLoading: statsLoading, error: statsError } = useStoreStats();
+  const { data: employeesData, isLoading: employeesLoading, error: employeesError } = useEmployees();
+
+  // 기본값 설정
+  const stats: StoreStats = (statsData?.data as StoreStats) || {
     totalEmployees: 0,
     activeEmployees: 0,
     todayRevenue: 0,
@@ -52,97 +60,15 @@ export default function StoreDashboard() {
     customerSatisfaction: 0,
     pendingOrders: 0,
     lowStockItems: 0
-  });
-
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // 로그인 시에만 데이터 fetch (실시간 아님)
-    loadStoreData();
-  }, []);
-
-  const loadStoreData = async () => {
-    try {
-      // 실제로는 백엔드 API에서 데이터 가져오기
-      // 현재는 더미 데이터 사용
-      const mockStats: StoreStats = {
-        totalEmployees: 12,
-        activeEmployees: 8,
-        todayRevenue: 850000,
-        monthlyRevenue: 45000000,
-        growthRate: 8.5,
-        averageOrderValue: 28000,
-        customerSatisfaction: 4.7,
-        pendingOrders: 5,
-        lowStockItems: 3
-      };
-
-      const mockEmployees: Employee[] = [
-        {
-          id: 1,
-          name: '김매니저',
-          role: 'manager',
-          status: 'active',
-          startTime: '09:00',
-          endTime: '18:00',
-          avatar: '👨‍💼'
-        },
-        {
-          id: 2,
-          name: '이주방장',
-          role: 'kitchen',
-          status: 'active',
-          startTime: '08:00',
-          endTime: '17:00',
-          avatar: '👨‍🍳'
-        },
-        {
-          id: 3,
-          name: '박카운터',
-          role: 'cashier',
-          status: 'active',
-          startTime: '10:00',
-          endTime: '19:00',
-          avatar: '👩‍💼'
-        },
-        {
-          id: 4,
-          name: '최서빙',
-          role: 'staff',
-          status: 'break',
-          startTime: '11:00',
-          endTime: '20:00',
-          avatar: '👩‍🍳'
-        },
-        {
-          id: 5,
-          name: '정청소',
-          role: 'staff',
-          status: 'active',
-          startTime: '12:00',
-          endTime: '21:00',
-          avatar: '🧹'
-        },
-        {
-          id: 6,
-          name: '강배달',
-          role: 'staff',
-          status: 'active',
-          startTime: '13:00',
-          endTime: '22:00',
-          avatar: '🚚'
-        }
-      ];
-
-      setStats(mockStats);
-      setEmployees(mockEmployees);
-    } catch (error) {
-      console.error('매장 데이터 로드 오류:', error);
-    } finally {
-      setLoading(false);
-    }
   };
+
+  const employees: Employee[] = (employeesData?.data as any)?.employees || [];
+  const loading = statsLoading || employeesLoading;
+
+  // 에러 처리
+  if (statsError || employeesError) {
+    toast.error('데이터 로딩에 실패했습니다.');
+  }
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -219,51 +145,34 @@ export default function StoreDashboard() {
       <div className="container mx-auto px-6 py-8">
         {/* 통계 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-300">오늘 매출</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">
-                {(stats.todayRevenue / 1000).toFixed(0)}K
-              </div>
-              <p className="text-xs text-slate-400">오늘 총 매출</p>
-            </CardContent>
-          </Card>
+          <MemoizedCard
+            title="오늘 매출"
+            value={`${(stats.todayRevenue / 1000).toFixed(0)}K`}
+            icon={<TrendingUp className="h-4 w-4 text-green-400" />}
+            trend={{ value: stats.growthRate, isPositive: stats.growthRate > 0 }}
+            className="bg-white/10 backdrop-blur-xl border-white/20"
+          />
 
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-300">근무 직원</CardTitle>
-              <Users className="h-4 w-4 text-blue-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.activeEmployees}</div>
-              <p className="text-xs text-slate-400">현재 근무 중</p>
-            </CardContent>
-          </Card>
+          <MemoizedCard
+            title="근무 직원"
+            value={stats.activeEmployees}
+            icon={<Users className="h-4 w-4 text-blue-400" />}
+            className="bg-white/10 backdrop-blur-xl border-white/20"
+          />
 
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-300">대기 주문</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.pendingOrders}</div>
-              <p className="text-xs text-slate-400">처리 대기 중</p>
-            </CardContent>
-          </Card>
+          <MemoizedCard
+            title="대기 주문"
+            value={stats.pendingOrders}
+            icon={<Clock className="h-4 w-4 text-yellow-400" />}
+            className="bg-white/10 backdrop-blur-xl border-white/20"
+          />
 
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-300">고객 만족도</CardTitle>
-              <Star className="h-4 w-4 text-purple-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.customerSatisfaction}</div>
-              <p className="text-xs text-slate-400">평균 평점</p>
-            </CardContent>
-          </Card>
+          <MemoizedCard
+            title="고객 만족도"
+            value={stats.customerSatisfaction}
+            icon={<Star className="h-4 w-4 text-purple-400" />}
+            className="bg-white/10 backdrop-blur-xl border-white/20"
+          />
         </div>
 
         {/* 직원 현황 및 성과 지표 */}

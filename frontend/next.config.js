@@ -1,23 +1,3 @@
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  register: true,
-  skipWaiting: true,
-  runtimeCaching: [
-    {
-      urlPattern: /^https?.*/,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'offlineCache',
-        expiration: {
-          maxEntries: 200,
-        },
-      },
-    },
-  ],
-  buildExcludes: [/middleware-manifest\.json$/],
-});
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -36,10 +16,29 @@ const nextConfig = {
       },
     ];
   },
-  allowedDevOrigins: [
-    'http://localhost:3000',
-    'http://192.168.45.44:3000', // 본인 PC의 IP
-  ],
+
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:5000/api/:path*', // Flask 백엔드로 프록시
+      },
+    ];
+  },
+
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
+    return config;
+  },
 };
 
-module.exports = nextConfig; 
+module.exports = {
+  ...nextConfig,
+  allowedDevOrigins: [
+    'http://localhost:3000',
+    'http://192.168.45.44:3000', // 실제 사용하는 개발 도메인/IP
+  ],
+}; 

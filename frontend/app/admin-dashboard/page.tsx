@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { 
   Crown, 
   Building2, 
@@ -28,17 +27,23 @@ import {
 import useUserStore from '@/store/useUserStore';
 import { useRouter } from 'next/navigation';
 import FeedbackSystem from '../../../core/frontend/FeedbackSystem';
-import { Tooltip } from '@/components/ui/tooltip';
-import { toast } from 'react-hot-toast';
+import { Tooltip as TooltipUI } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 import { Bar } from 'react-chartjs-2'; // 차트 예시
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend
+} from 'chart.js';
 import Link from 'next/link';
-import AutomationHistory from './automation-history';
+import { useMediaQuery } from 'react-responsive';
 
-// 브랜드 타입 정의 (예시)
-type Brand = {
-  id: string;
-  name: string;
-};
+// Chart.js 스케일/플러그인 등록 (category 오류 방지)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 
 function AutomationStatusBanner() {
   // 실제 자동화 점검/최신화/보안 상태를 API/스크립트 결과와 연동하는 샘플
@@ -90,52 +95,167 @@ function AutomationStatusBanner() {
 }
 
 export default function AdminDashboard() {
-  const { user } = useUserStore();
-  const router = useRouter();
-  const [checking, setChecking] = useState(false);
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [realtimeNotifications, setRealtimeNotifications] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [brandFilter, setBrandFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const isMobile = useMediaQuery({ maxWidth: 768 });
 
+  // 실시간 알림 WebSocket 연결
   useEffect(() => {
-    // [샘플] WebSocket으로 실시간 알림 수신
-    // [안내] WebSocket 주소/이벤트는 실제 운영 환경에 맞게 수정하세요.
     const ws = new WebSocket('wss://yourserver/ws/alerts');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'alert') {
+        setRealtimeNotifications((prev) => [{...data, created_at: new Date().toISOString()}, ...prev].slice(0, 10));
         toast(data.message, { icon: '🔔' });
       }
     };
     return () => ws.close();
   }, []);
 
-  async function checkSystemHealth() {
-    setChecking(true);
-    try {
-      const res = await fetch('/api/admin/system-health');
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(`시스템 정상: ${data.status}`);
-      } else {
-        toast.error(`점검 실패: ${data.message || '오류'}`);
-      }
-    } catch {
-      toast.error('네트워크 오류');
-    } finally {
-      setChecking(false);
-    }
-  }
+  useEffect(() => {
+    fetch('/api/admin/dashboard/summary')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setDashboard(data);
+        else setError(data.error || '데이터 로드 실패');
+      })
+      .catch(() => setError('네트워크 오류'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="dark:bg-slate-900 min-h-screen flex items-center justify-center text-lg">대시보드 로딩 중...</div>;
+  if (error) return <div className="text-red-500 dark:text-red-400">{error}</div>;
+  if (!dashboard) return <div>데이터 없음</div>;
+
+  const { cards, charts, tables, notifications } = dashboard;
+  // 필터/검색 적용
+  const filteredOrders = tables.recent_orders.filter((o: any) =>
+    (brandFilter === 'all' || o.brand_id === brandFilter) &&
+    (statusFilter === 'all' || o.status === statusFilter) &&
+    (search === '' || o.item?.toLowerCase().includes(search.toLowerCase()))
+  );
+  const filteredLogs = tables.system_logs.filter((log: any) =>
+    search === '' || log.action?.toLowerCase().includes(search.toLowerCase())
+  );
+  const allNotifications = [...realtimeNotifications, ...notifications].slice(0, 10);
 
   return (
-    <ProtectedRoute requiredRoles={['admin']}>
-      <AdminDashboardContent />
-      <button
-        onClick={checkSystemHealth}
-        className="px-4 py-2 bg-green-600 text-white rounded"
-        disabled={checking}
-        aria-label="운영 상태 점검"
-      >
-        {checking ? '점검 중...' : '운영 상태 점검'}
-      </button>
-    </ProtectedRoute>
+    <div className="p-2 md:p-6 space-y-8 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 min-h-screen">
+      {/* KPI 카드 */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <Card className="flex-1 min-w-[180px] bg-gradient-to-br from-blue-500/10 to-cyan-500/10 dark:from-blue-900/30 dark:to-cyan-900/30 shadow-lg animate-fade-in">
+          <CardContent className="py-4 flex items-center gap-3">
+            <Crown className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+            <div>
+              <div className="text-xs text-blue-700 dark:text-blue-200">브랜드 수</div>
+              <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{cards.total_brands}</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="flex-1 min-w-[180px] bg-gradient-to-br from-green-500/10 to-emerald-500/10 dark:from-green-900/30 dark:to-emerald-900/30 shadow-lg animate-fade-in">
+          <CardContent className="py-4 flex items-center gap-3">
+            <Building2 className="h-6 w-6 text-green-600 dark:text-green-300" />
+            <div>
+              <div className="text-xs text-green-700 dark:text-green-200">매장 수</div>
+              <div className="text-2xl font-bold text-green-900 dark:text-green-100">{cards.total_stores}</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="flex-1 min-w-[180px] bg-gradient-to-br from-purple-500/10 to-pink-500/10 dark:from-purple-900/30 dark:to-pink-900/30 shadow-lg animate-fade-in">
+          <CardContent className="py-4 flex items-center gap-3">
+            <Users className="h-6 w-6 text-purple-600 dark:text-purple-300" />
+            <div>
+              <div className="text-xs text-purple-700 dark:text-purple-200">직원 수</div>
+              <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">{cards.total_users}</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="flex-1 min-w-[180px] bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-900/30 dark:to-orange-900/30 shadow-lg animate-fade-in">
+          <CardContent className="py-4 flex items-center gap-3">
+            <BarChart3 className="h-6 w-6 text-yellow-600 dark:text-yellow-300" />
+            <div>
+              <div className="text-xs text-yellow-700 dark:text-yellow-200">주문 수</div>
+              <div className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">{cards.total_orders}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      {/* 필터/검색 */}
+      <div className="flex flex-wrap gap-2 items-center mb-2">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="상품/액션 검색"
+          className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white"
+        />
+        <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white">
+          <option value="all">전체 브랜드</option>
+          {charts.brand_stats.map((b: any) => <option key={b.brand_name} value={b.brand_name}>{b.brand_name}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white">
+          <option value="all">전체 상태</option>
+          <option value="pending">대기</option>
+          <option value="completed">완료</option>
+        </select>
+      </div>
+      {/* 브랜드별 통계 그래프 */}
+      <div className="bg-white dark:bg-slate-800 rounded shadow p-4 overflow-x-auto animate-fade-in">
+        <h2 className="font-bold mb-2 text-slate-900 dark:text-white">브랜드별 매장/직원/주문 통계</h2>
+        <Bar
+          data={{
+            labels: charts.brand_stats.map((b: any) => b.brand_name),
+            datasets: [
+              { label: '매장 수', data: charts.brand_stats.map((b: any) => b.store_count), backgroundColor: 'rgba(59,130,246,0.5)' },
+              { label: '직원 수', data: charts.brand_stats.map((b: any) => b.employee_count), backgroundColor: 'rgba(16,185,129,0.5)' },
+              { label: '주문 수', data: charts.brand_stats.map((b: any) => b.order_count), backgroundColor: 'rgba(251,191,36,0.5)' },
+            ]
+          }}
+          options={{ responsive: true, plugins: { legend: { position: isMobile ? 'bottom' : 'top' } } }}
+        />
+      </div>
+      {/* 최근 주문 테이블 */}
+      <div className="bg-white dark:bg-slate-800 rounded shadow p-4 overflow-x-auto animate-fade-in">
+        <h2 className="font-bold mb-2 text-slate-900 dark:text-white">최근 주문</h2>
+        <table className="w-full text-sm">
+          <thead><tr><th>ID</th><th>상품</th><th>매장ID</th><th>상태</th><th>일시</th></tr></thead>
+          <tbody>
+            {filteredOrders.map((o: any) => (
+              <tr key={o.id}><td>{o.id}</td><td>{o.item}</td><td>{o.store_id}</td><td>{o.status}</td><td>{o.created_at}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* 시스템 로그 테이블 */}
+      <div className="bg-white dark:bg-slate-800 rounded shadow p-4 overflow-x-auto animate-fade-in">
+        <h2 className="font-bold mb-2 text-slate-900 dark:text-white">시스템 로그</h2>
+        <table className="w-full text-sm">
+          <thead><tr><th>ID</th><th>액션</th><th>사용자</th><th>일시</th><th>상세</th></tr></thead>
+          <tbody>
+            {filteredLogs.map((log: any) => (
+              <tr key={log.id}><td>{log.id}</td><td>{log.action}</td><td>{log.user_id}</td><td>{log.created_at}</td><td>{log.detail}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* 실시간 알림/최근 알림 리스트 */}
+      <div className="bg-white dark:bg-slate-800 rounded shadow p-4 animate-fade-in">
+        <h2 className="font-bold mb-2 text-slate-900 dark:text-white">실시간 알림/최근 알림</h2>
+        <ul className="space-y-2">
+          {allNotifications.map((n: any, idx: number) => (
+            <li key={n.id || idx} className={`p-2 rounded flex items-center gap-2 ${n.level === 'info' ? 'bg-blue-50 dark:bg-blue-900/20' : n.level === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20'} animate-fade-in`}>
+              <Bell className="h-4 w-4 text-blue-400 dark:text-blue-200" />
+              <b>[{n.level}]</b> {n.message} <span className="text-xs text-gray-400">{n.created_at}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 
@@ -143,112 +263,28 @@ function AdminDashboardContent() {
   const { user } = useUserStore();
   const router = useRouter();
 
-  // 브랜드 목록 상태
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [loadingBrands, setLoadingBrands] = useState(true);
+  // 새로운 API 훅들 사용
+  const { data: dashboardData, isLoading: loadingDashboard } = useAdminDashboard();
+  const { data: statsData, isLoading: loadingStats } = useAdminStats();
+  const { data: brandsData, isLoading: loadingBrands } = useBrands();
+  const { data: alertsData, isLoading: loadingAlerts } = useSystemAlerts();
+  const { data: feedbacksData, isLoading: loadingFeedbacks } = useFeedback();
 
-  // 통계/알림/피드백 상태
-  const [stats, setStats] = useState<any>(null);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [feedbacks, setFeedbacks] = useState<any[]>([]);
-  const [loadingStats, setLoadingStats] = useState(true);
-  const [loadingAlerts, setLoadingAlerts] = useState(true);
-  const [loadingFeedbacks, setLoadingFeedbacks] = useState(true);
+  // 데이터 추출
+  const stats = statsData?.data || dashboardData?.data;
+  const brands = brandsData?.data?.brands || [];
+  const alerts = alertsData?.data?.alerts || [];
+  const feedbacks = feedbacksData?.data?.feedbacks || [];
 
   // 상세 모달 상태
   const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<any | null>(null);
 
-  // 모달 닫기 핸들러
+    // 모달 닫기 핸들러
   const closeModal = () => {
     setSelectedAlert(null);
     setSelectedFeedback(null);
   };
-
-  // 브랜드 목록 불러오기 (API 연동)
-  useEffect(() => {
-    async function fetchBrands() {
-      setLoadingBrands(true);
-      try {
-        // 실제 운영에서는 /api/brands 등으로 교체
-        const res = await fetch('/api/brands');
-        if (res.ok) {
-          const data = await res.json();
-          setBrands(data.brands || []);
-        } else {
-          setBrands([]);
-        }
-      } catch (e) {
-        setBrands([]);
-      } finally {
-        setLoadingBrands(false);
-      }
-    }
-    fetchBrands();
-  }, []);
-
-  // 통계 데이터 불러오기
-  useEffect(() => {
-    async function fetchStats() {
-      setLoadingStats(true);
-      try {
-        const res = await fetch('/api/admin/brand_stats');
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data.stats || {});
-        } else {
-          setStats(null);
-        }
-      } catch (e) {
-        setStats(null);
-      } finally {
-        setLoadingStats(false);
-      }
-    }
-    fetchStats();
-  }, []);
-
-  // 시스템 알림 불러오기
-  useEffect(() => {
-    async function fetchAlerts() {
-      setLoadingAlerts(true);
-      try {
-        const res = await fetch('/api/admin/system-alerts');
-        if (res.ok) {
-          const data = await res.json();
-          setAlerts(data.alerts || []);
-        } else {
-          setAlerts([]);
-        }
-      } catch (e) {
-        setAlerts([]);
-      } finally {
-        setLoadingAlerts(false);
-      }
-    }
-    fetchAlerts();
-  }, []);
-
-  // 피드백 데이터 불러오기
-  useEffect(() => {
-    async function fetchFeedbacks() {
-      setLoadingFeedbacks(true);
-      try {
-        const res = await fetch('/api/feedback');
-        if (res.ok) {
-          const data = await res.json();
-          setFeedbacks(data.feedbacks || []);
-        } else {
-          setFeedbacks([]);
-        }
-      } catch (e) {
-        setFeedbacks([]);
-      } finally {
-        setLoadingFeedbacks(false);
-      }
-    }
-    fetchFeedbacks();
-  }, []);
 
   // 더미 데이터 (실제로는 API에서 가져올 데이터)
   // const stats = {
@@ -320,29 +356,9 @@ function AdminDashboardContent() {
   };
   const feedbackChartOptions = { responsive: true, plugins: { legend: { display: false } } };
 
-  const [tab, setTab] = useState<'dashboard' | 'history'>('dashboard');
-
   return (
     <>
-      <div className="flex items-center gap-4 mb-4">
-        <button
-          className={`px-4 py-2 rounded ${tab === 'dashboard' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          onClick={() => setTab('dashboard')}
-          aria-label="대시보드 탭"
-        >
-          대시보드
-        </button>
-        <button
-          className={`px-4 py-2 rounded ${tab === 'history' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          onClick={() => setTab('history')}
-          aria-label="자동화 이력 탭"
-        >
-          자동화 이력
-        </button>
-        <span className="text-xs text-gray-500">대시보드와 자동화 이력을 탭으로 빠르게 전환할 수 있습니다.</span>
-      </div>
-      {tab === 'dashboard' && (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
           {/* 대시보드 요약 배너 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <Card className="flex items-center gap-4 p-4 bg-blue-50 border-blue-200">
@@ -350,21 +366,21 @@ function AdminDashboardContent() {
                 <span className="text-lg font-bold text-blue-700">신규 피드백</span>
                 <span className="ml-2 inline-block bg-blue-600 text-white rounded-full px-3 py-1 text-sm font-semibold">{newFeedbackCount}</span>
               </div>
-              <Tooltip>오늘 접수된 신규 피드백 건수입니다.</Tooltip>
+              <TooltipUI>오늘 접수된 신규 피드백 건수입니다.</TooltipUI>
             </Card>
             <Card className="flex items-center gap-4 p-4 bg-orange-50 border-orange-200">
               <div>
                 <span className="text-lg font-bold text-orange-700">미처리 알림</span>
                 <span className="ml-2 inline-block bg-orange-600 text-white rounded-full px-3 py-1 text-sm font-semibold">{alerts.length}</span>
               </div>
-              <Tooltip>아직 확인되지 않은 시스템 알림 개수입니다.</Tooltip>
+              <TooltipUI>아직 확인되지 않은 시스템 알림 개수입니다.</TooltipUI>
             </Card>
             <Card className={`flex items-center gap-4 p-4 ${systemHealth === '정상' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
               <div>
                 <span className="text-lg font-bold text-green-700">시스템 상태</span>
                 <span className={`ml-2 inline-block rounded-full px-3 py-1 text-sm font-semibold ${systemHealth === '정상' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{systemHealth}</span>
               </div>
-              <Tooltip>현재 시스템의 전체 상태입니다.</Tooltip>
+              <TooltipUI>현재 시스템의 전체 상태입니다.</TooltipUI>
             </Card>
           </div>
           <div className="p-6 space-y-8">
@@ -676,7 +692,7 @@ function AdminDashboardContent() {
                       {alert.message}
                     </button>
                   ))}
-                  <Tooltip>즉시 조치가 필요한 중요 알림입니다.</Tooltip>
+                  <TooltipUI>즉시 조치가 필요한 중요 알림입니다.</TooltipUI>
                 </div>
               </Card>
             </div>
@@ -748,7 +764,6 @@ function AdminDashboardContent() {
           )}
         </div>
       )}
-      {tab === 'history' && <AutomationHistory />}
     </>
   );
 } 

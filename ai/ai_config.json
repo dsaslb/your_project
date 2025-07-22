@@ -1,0 +1,230 @@
+{
+  "ai_controller": {
+    "modules": {
+      "prediction_engine": {
+        "enabled": true,
+        "config_path": "ai_config.json"
+      },
+      "nlp_processor": {
+        "enabled": true,
+        "config_path": "nlp_config.json"
+      },
+      "anomaly_detection": {
+        "enabled": true,
+        "config_path": "anomaly_config.json"
+      },
+      "model_manager": {
+        "enabled": true,
+        "base_path": "models"
+      },
+      "recommendation_system": {
+        "enabled": true,
+        "config_path": "recommendation_config.json"
+      }
+    },
+    "processing": {
+      "max_concurrent_requests": 10,
+      "request_timeout": 300,
+      "batch_size": 100,
+      "enable_async": true
+    },
+    "monitoring": {
+      "enable_metrics": true,
+      "metrics_interval": 60,
+      "enable_health_checks": true,
+      "health_check_interval": 300
+    },
+    "workflows": {
+      "auto_retry": true,
+      "max_retries": 3,
+      "retry_delay": 5
+    }
+  },
+  "prediction_engine": {
+    "models": {
+      "regression": ["linear", "random_forest", "gradient_boosting", "svr", "neural_network"],
+      "classification": ["logistic", "random_forest", "gradient_boosting", "svc", "neural_network"]
+    },
+    "hyperparameters": {
+      "random_forest": {
+        "n_estimators": [100, 200, 300],
+        "max_depth": [10, 20, null],
+        "min_samples_split": [2, 5, 10]
+      },
+      "gradient_boosting": {
+        "n_estimators": [100, 200],
+        "learning_rate": [0.01, 0.1, 0.2],
+        "max_depth": [3, 5, 7]
+      },
+      "neural_network": {
+        "hidden_layer_sizes": [[50], [100], [50, 25]],
+        "learning_rate_init": [0.001, 0.01],
+        "max_iter": [500, 1000]
+      }
+    },
+    "feature_selection": {
+      "method": "k_best",
+      "k": 10
+    },
+    "scaling": "standard",
+    "cross_validation": {
+      "folds": 5,
+      "scoring": "auto"
+    }
+  },
+  "nlp_processor": {
+    "preprocessing": {
+      "remove_punctuation": true,
+      "remove_numbers": false,
+      "remove_stopwords": true,
+      "lowercase": true,
+      "stemming": true,
+      "lemmatization": false,
+      "min_word_length": 2
+    },
+    "vectorization": {
+      "method": "tfidf",
+      "max_features": 5000,
+      "ngram_range": [1, 2],
+      "min_df": 2,
+      "max_df": 0.95
+    },
+    "sentiment_analysis": {
+      "method": "vader",
+      "threshold": 0.1
+    },
+    "keyword_extraction": {
+      "method": "tfidf",
+      "top_k": 10
+    },
+    "text_classification": {
+      "models": ["naive_bayes", "logistic_regression", "random_forest"],
+      "test_size": 0.2,
+      "random_state": 42
+    }
+  },
+  "anomaly_detection": {
+    "statistical_detection": {
+      "z_score_threshold": 3.0,
+      "iqr_multiplier": 1.5,
+      "percentile_threshold": 0.95
+    },
+    "ml_detection": {
+      "isolation_forest": {
+        "contamination": 0.1,
+        "random_state": 42
+      },
+      "local_outlier_factor": {
+        "contamination": 0.1,
+        "n_neighbors": 20
+      },
+      "one_class_svm": {
+        "nu": 0.1,
+        "kernel": "rbf"
+      }
+    },
+    "time_series_detection": {
+      "window_size": 10,
+      "threshold_multiplier": 2.0,
+      "min_anomaly_duration": 3
+    },
+    "pattern_detection": {
+      "min_pattern_length": 3,
+      "similarity_threshold": 0.8,
+      "max_patterns": 100
+    },
+    "alerting": {
+      "min_confidence": 0.7,
+      "cooldown_period": 300,
+      "max_alerts_per_hour": 10
+    }
+  },
+  "model_manager": {
+    "storage": {
+      "max_versions_per_model": 10,
+      "auto_cleanup": true,
+      "cleanup_threshold_days": 30
+    },
+    "versioning": {
+      "auto_version": true,
+      "version_format": "v{major}.{minor}.{patch}",
+      "initial_version": "v1.0.0"
+    },
+    "performance_tracking": {
+      "metrics": ["accuracy", "precision", "recall", "f1_score", "rmse", "mae"],
+      "min_improvement": 0.01,
+      "tracking_window": 30
+    },
+    "deployment": {
+      "staging_environments": ["dev", "staging", "prod"],
+      "rollback_threshold": 0.1,
+      "health_check_interval": 300
+    },
+    "a_b_testing": {
+      "traffic_split": 0.5,
+      "min_sample_size": 1000,
+      "confidence_level": 0.95,
+      "test_duration_days": 7
+    }
+  },
+  "recommendation_system": {
+    "collaborative_filtering": {
+      "method": "user_based",
+      "similarity_metric": "cosine",
+      "min_common_items": 3,
+      "max_neighbors": 50
+    },
+    "content_based_filtering": {
+      "method": "tfidf",
+      "max_features": 1000,
+      "min_df": 2,
+      "max_df": 0.8
+    },
+    "hybrid_recommendation": {
+      "collaborative_weight": 0.6,
+      "content_weight": 0.4,
+      "ensemble_method": "weighted_average"
+    },
+    "real_time_updates": {
+      "cache_ttl": 300,
+      "update_threshold": 10,
+      "batch_update_interval": 3600
+    },
+    "personalization": {
+      "preference_decay": 0.95,
+      "context_weight": 0.3,
+      "diversity_factor": 0.1
+    },
+    "evaluation": {
+      "test_size": 0.2,
+      "metrics": ["precision", "recall", "ndcg", "diversity"]
+    }
+  },
+  "system": {
+    "logging": {
+      "level": "INFO",
+      "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+      "file": "ai_system.log"
+    },
+    "performance": {
+      "enable_profiling": true,
+      "profile_interval": 60,
+      "memory_limit_mb": 1024,
+      "cpu_limit_percent": 80
+    },
+    "security": {
+      "enable_encryption": true,
+      "api_key_required": true,
+      "rate_limiting": {
+        "requests_per_minute": 100,
+        "burst_limit": 20
+      }
+    },
+    "integration": {
+      "webhook_url": null,
+      "database_connection": null,
+      "cache_redis_url": null,
+      "message_queue_url": null
+    }
+  }
+} 

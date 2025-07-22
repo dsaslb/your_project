@@ -16,6 +16,30 @@ security_auth_bp = Blueprint("security_auth", __name__, url_prefix="/api/securit
 auth_bp = Blueprint("auth", __name__)
 
 
+# --- 자동 admin 계정 생성 및 초기화 ---
+def ensure_admin_account():
+    from models_main import User, db
+    admin = User.query.filter_by(username="admin").first()
+    if not admin:
+        admin = User()
+        admin.username = "admin"
+        admin.role = "super_admin"
+        admin.status = "approved"
+        admin.set_password("admin123")
+        db.session.add(admin)
+        db.session.commit()
+    else:
+        admin.set_password("admin123")
+        admin.status = "approved"
+        db.session.commit()
+
+# Flask 앱 생성 후에 호출
+try:
+    ensure_admin_account()
+except Exception as e:
+    print(f"[경고] admin 계정 자동 생성 실패: {e}")
+
+
 @api_auth_bp.route("/login", methods=["POST"])
 @csrf.exempt
 def api_login():
@@ -85,24 +109,43 @@ def api_login():
     }
 
     # 역할별 리다이렉트 페이지 결정 (프론트엔드 Next.js 앱으로 리다이렉트)
-    redirect_to = "http://192.168.45.44:3000/dashboard"  # 기본값
+    # 요청의 Origin, Referer, Host에서 프론트엔드 주소를 동적으로 추출
+    frontend_base = request.headers.get("Origin") or request.headers.get("Referer")
+    if frontend_base:
+        if frontend_base.endswith("/"):
+            frontend_base = frontend_base[:-1]
+    else:
+        frontend_base = "http://localhost:3000"  # 기본값
+    redirect_to = f"{frontend_base}/dashboard"  # 기본값
     if user.role == "admin":
-        redirect_to = "http://192.168.45.44:3000/admin-dashboard"
+        redirect_to = f"{frontend_base}/admin-dashboard"
     elif user.role == "brand_admin":
-        redirect_to = "http://192.168.45.44:3000/brand-dashboard"
+        redirect_to = f"{frontend_base}/brand-dashboard"
     elif user.role == "store_admin":
-        redirect_to = "http://192.168.45.44:3000/store-dashboard"
+        redirect_to = f"{frontend_base}/store-dashboard"
     elif user.role == "employee":
-        redirect_to = "http://192.168.45.44:3000/employee-dashboard"
+        redirect_to = f"{frontend_base}/employee-dashboard"
 
-    return jsonify({
+    # JWT access_token을 쿠키로 내려주기 (프론트엔드 인증 유지)
+    from flask import make_response
+    resp = make_response(jsonify({
         "message": "로그인 성공",
         "access_token": access_token,
         "refresh_token": refresh_token,
         "user": user_data,
         "redirect_to": redirect_to,
         "success": True
-    }), 200
+    }))
+    resp.set_cookie(
+        "access_token",
+        access_token,
+        httponly=True,
+        samesite='Lax',
+        secure=False,
+        path="/"
+        # domain 옵션은 명시하지 않음 (자동으로 현재 접속 주소에 저장)
+    )
+    return resp
 
 
 @security_auth_bp.route("/login", methods=["POST"])
@@ -178,15 +221,22 @@ def login():
         login_user(user)
 
         # 역할별 리다이렉트 페이지 결정 (프론트엔드 Next.js 앱으로 리다이렉트)
-        redirect_to = "http://192.168.45.44:3000/dashboard"  # 기본값
+        # 요청의 Origin, Referer, Host에서 프론트엔드 주소를 동적으로 추출
+        frontend_base = request.headers.get("Origin") or request.headers.get("Referer")
+        if frontend_base:
+            if frontend_base.endswith("/"):
+                frontend_base = frontend_base[:-1]
+        else:
+            frontend_base = "http://localhost:3000"  # 기본값
+        redirect_to = f"{frontend_base}/dashboard"  # 기본값
         if user.role == "admin":
-            redirect_to = "http://192.168.45.44:3000/admin-dashboard"
+            redirect_to = f"{frontend_base}/admin-dashboard"
         elif user.role == "brand_admin":
-            redirect_to = "http://192.168.45.44:3000/brand-dashboard"
+            redirect_to = f"{frontend_base}/brand-dashboard"
         elif user.role == "store_admin":
-            redirect_to = "http://192.168.45.44:3000/store-dashboard"
+            redirect_to = f"{frontend_base}/store-dashboard"
         elif user.role == "employee":
-            redirect_to = "http://192.168.45.44:3000/employee-dashboard"
+            redirect_to = f"{frontend_base}/employee-dashboard"
 
         # next 파라미터가 있으면 해당 페이지로, 없으면 역할별 페이지로
         next_page = request.args.get("next")
@@ -358,3 +408,32 @@ def api_profile():
 
     except Exception:
         return jsonify({"message": "프로필 조회 중 오류가 발생했습니다."}), 500
+
+
+@api_auth_bp.route("/me", methods=["GET", "OPTIONS"])
+def api_auth_me():
+    """현재 로그인된 사용자 정보 반환 (JWT 토큰 기반)"""
+    if request.method == "OPTIONS":
+        # CORS preflight 요청에 대해 200 OK와 CORS 헤더 반환
+        response = jsonify({"success": True, "message": "CORS preflight OK"})
+        response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        response.headers.add("Access-Control-Allow-Methods", "GET,OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", request.headers.get("Access-Control-Request-Headers", "*"))
+        return response, 200
+    from api.utils import get_current_user
+    user = get_current_user()
+    if not user:
+        return jsonify({"success": False, "error": "인증이 필요합니다."}), 401
+    user_data = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "name": getattr(user, "name", None),
+        "role": user.role,
+        "status": user.status,
+        "branch_id": getattr(user, "branch_id", None),
+        "created_at": user.created_at.isoformat() if hasattr(user, "created_at") and user.created_at else None,
+        "last_login": user.last_login.isoformat() if hasattr(user, "last_login") and user.last_login else None,
+    }
+    return jsonify({"success": True, "data": user_data}), 200

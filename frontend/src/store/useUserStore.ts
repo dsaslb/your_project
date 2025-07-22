@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiClient as _apiClient } from '@/lib/api-client';
+import { apiUtils, api } from '../../utils/api';
 
 const apiClient: any = _apiClient;
 
@@ -50,20 +51,30 @@ const useUserStore = create<UserState>()(
         set({ isLoading: true, error: null });
         
         try {
-          const result = await apiClient.login(username, password);
-          const user = result.user;
-          const redirect_to = result.redirect_to;
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-          
-          // 실시간 동기화: 로그인 이벤트 브로드캐스트
-          get().broadcastChange('login', { user, timestamp: new Date().toISOString() });
-          
-          return { success: true, redirectTo: redirect_to };
+          const result = await api.login({ username, password });
+          if (result.success && result.data) {
+            // 토큰과 유저 정보 저장
+            apiUtils.setToken(result.data.token || result.data.access_token);
+            apiUtils.setUser(result.data.user);
+
+            set({
+              user: result.data.user,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+            // 실시간 동기화: 로그인 이벤트 브로드캐스트
+            get().broadcastChange('login', { user: result.data.user, timestamp: new Date().toISOString() });
+            return { success: true, redirectTo: result.data.redirect_to };
+          } else {
+            set({
+              isLoading: false,
+              error: result.message || '로그인에 실패했습니다',
+              isAuthenticated: false,
+              user: null,
+            });
+            return { success: false };
+          }
         } catch (error: any) {
           const errorMessage = error.response?.data?.message || error.message || '로그인에 실패했습니다';
           set({
@@ -99,7 +110,7 @@ const useUserStore = create<UserState>()(
 
       checkAuth: async () => {
         // 토큰이 없으면 인증되지 않음
-        if (!apiClient.isAuthenticated()) {
+        if (!apiUtils.isAuthenticated()) {
           set({ isAuthenticated: false, user: null });
           return false;
         }
@@ -107,7 +118,7 @@ const useUserStore = create<UserState>()(
         set({ isLoading: true });
         
         try {
-          const user = await apiClient.getProfile();
+          const user = await api.getProfile();
           set({
             user,
             isAuthenticated: true,

@@ -69,12 +69,16 @@ def get_current_user():
     from flask import current_app
 
     token = None
+    # 1. Authorization 헤더 우선
     if 'Authorization' in request.headers:
         auth_header = request.headers['Authorization']
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header[7:]
         else:
             token = auth_header
+    # 2. 없으면 access_token 쿠키 사용
+    if not token:
+        token = request.cookies.get('access_token')
 
     if not token:
         return None

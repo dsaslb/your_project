@@ -7,6 +7,7 @@ from api.gateway import token_required, role_required  # pyright: ignore
 from models_main import db, User, Order, Schedule, Attendance
 from functools import wraps
 from flask import Blueprint, request, jsonify, current_app
+from utils.slack_alert import send_slack_alert
 args = None  # pyright: ignore
 query = None  # pyright: ignore
 form = None  # pyright: ignore
@@ -239,7 +240,7 @@ def get_performance_logs(current_user):
 @token_required
 @role_required(['super_admin'])
 def alert_settings(current_user):
-    """알림 설정 관리"""
+    """알림 설정 관리 (임계값/알림 채널/Slack/모바일)"""
     try:
         if request.method == 'GET':
             # 알림 설정 조회 (실제로는 데이터베이스에서 조회)
@@ -250,14 +251,12 @@ def alert_settings(current_user):
                 'error_notification': True,
                 'performance_notification': True,
                 'email_notifications': True,
-                'slack_notifications': False
+                'slack_notifications': False,
+                'mobile_notifications': False
             }
-
             return jsonify(settings), 200
-
         elif request.method == 'PUT':
             data = request.get_json()
-
             # 알림 설정 업데이트 (실제로는 데이터베이스에 저장)
             updated_settings = {
                 'cpu_threshold': data.get('cpu_threshold', 80),
@@ -266,18 +265,19 @@ def alert_settings(current_user):
                 'error_notification': data.get('error_notification', True),
                 'performance_notification': data.get('performance_notification', True),
                 'email_notifications': data.get('email_notifications', True),
-                'slack_notifications': data.get('slack_notifications', False)
+                'slack_notifications': data.get('slack_notifications', False),
+                'mobile_notifications': data.get('mobile_notifications', False)
             }
-
             # 설정 변경 로그
             log_error("alert_settings_updated", "Alert settings updated",
                       details=updated_settings, user_id=current_user.id)
-
+            # Slack 알림 연동
+            if updated_settings['slack_notifications']:
+                send_slack_alert(f"[운영 정책] 알림/임계값 설정이 변경되었습니다: {updated_settings}", level="INFO")
             return jsonify({
                 'message': '알림 설정이 업데이트되었습니다',
                 'settings': updated_settings
             }), 200
-
     except Exception as e:
         log_error("alert_settings",  str(e), user_id=current_user.id)
         return jsonify({'message': '알림 설정 처리 중 오류가 발생했습니다'}), 500

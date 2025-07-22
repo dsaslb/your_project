@@ -1,13 +1,23 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { AuthProvider } from '@/components/auth/AuthProvider'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from '@/lib/queryClient'
+import { ToastContainer } from '@/components/ui/Toast'
+import { useToastStore } from '@/store/useToastStore'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Your Program - 통합 관리 시스템',
-  description: '업종별 맞춤형 통합 관리 시스템',
+  title: 'Your Program',
+  description: 'Comprehensive management system',
+}
+
+function ToastProvider() {
+  const toasts = useToastStore((state) => state.toasts);
+  const removeToast = useToastStore((state) => state.removeToast);
+
+  return <ToastContainer toasts={toasts} onClose={removeToast} />;
 }
 
 export default function RootLayout({
@@ -18,9 +28,10 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={inter.className}>
-        <AuthProvider>
+        <QueryClientProvider client={queryClient}>
           {children}
-        </AuthProvider>
+          <ToastProvider />
+        </QueryClientProvider>
       </body>
     </html>
   )

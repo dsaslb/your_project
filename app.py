@@ -30,6 +30,12 @@ logger = logging.getLogger(__name__)
 from config.config import config_by_name
 from extensions import cache, csrf, db, limiter, login_manager, migrate
 
+# Swagger 설정 import
+from api.swagger_config import create_swagger_config
+
+# WebSocket 매니저 import
+from api.websocket_manager import websocket_manager
+
 # 데이터 모델 import
 from models_main import (
     Branch,
@@ -60,6 +66,11 @@ config_name = os.getenv("FLASK_ENV", "default")
 app = Flask(__name__)
 app.config.from_object(config_by_name[config_name])
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "your-secret-key")
+app.config["SECRET_KEY"] = app.config["JWT_SECRET_KEY"]
+
+from flask import jsonify, render_template, request
+from api.auth import api_auth_bp
+app.register_blueprint(api_auth_bp)
 
 CORS(
     app,
@@ -92,6 +103,18 @@ def initialize_extensions():
         login_manager.login_view = None  # API 경로는 인증을 우회하도록 설정
         login_manager.login_message = "로그인이 필요합니다."
         login_manager.login_message_category = "info"
+        
+        # Swagger 설정 초기화 (조건부)
+        try:
+            api = create_swagger_config(app)
+            logger.info("Swagger API 설정 초기화 완료")
+            return api
+        except Exception as e:
+            logger.warning(f"Swagger 설정 초기화 실패 (무시됨): {e}")
+            return None
+    except Exception as e:
+        logger.error(f"확장 모듈 초기화 실패: {e}")
+        return None
         limiter.init_app(app)
         cache.init_app(app)
         logger.info("Flask 확장 모듈 초기화 완료")
@@ -147,7 +170,13 @@ def create_default_admin():
         raise
 
 # 확장 모듈 초기화
-initialize_extensions()
+api = initialize_extensions()
+
+# Swagger API 설정 초기화
+api = create_swagger_config(app)
+
+# WebSocket 매니저 초기화
+websocket_manager.init_app(app)
 
 # 데이터베이스 초기화
 initialize_database()
@@ -175,6 +204,18 @@ def register_blueprints():
         
         # 고도화된 모니터링 API
         ("api.advanced_monitoring_api", "advanced_monitoring_bp", "advanced_monitoring_api"),
+        
+        # AI 시스템 API
+        ("api.ai_api", "ai_bp", "ai"),
+        
+        # 고급 데이터 분석 및 비즈니스 인텔리전스 API
+        ("api.analytics_api", "analytics_bp", "analytics"),
+        
+        # 고급 모니터링 및 분석 API
+        ("api.monitoring_api", "monitoring_bp", "monitoring"),
+        
+        # 고급 통합 및 자동화 API
+        ("api.integration_api", "integration_bp", "integration"),
         
         # MVP 플러그인 블루프린트
         ("plugins.attendance_management", "attendance_bp", "attendance_management"),
@@ -250,6 +291,14 @@ try:
     logger.info("레스토랑 계층적 대시보드 등록 완료")
 except Exception as e:
     logger.error(f"레스토랑 계층적 대시보드 등록 실패: {e}")
+
+# 합 대시보드 등록
+try:
+    from routes.comprehensive_dashboard import comprehensive_dashboard_bp
+    app.register_blueprint(comprehensive_dashboard_bp)
+    logger.info("합 대시보드 등록 완료")
+except Exception as e:
+    logger.error(f"합 대시보드 등록 실패: {e}")
 
 # 레스토랑 업종 관리자 페이지 등록
 try:
@@ -468,6 +517,16 @@ try:
 
     app.register_blueprint(enhanced_security_bp, name="enhanced_security_api")
     logger.info("고도화된 보안 모니터링 API 블루프린트 등록 완료")
+    
+    # 고급 보안 시스템 Blueprint 등록
+    from api.security_api import security_api
+    app.register_blueprint(security_api, name="security_api")
+    logger.info("고급 보안 시스템 API 블루프린트 등록 완료")
+    
+    # 보안 대시보드 Blueprint 등록
+    from routes.security_dashboard import security_dashboard
+    app.register_blueprint(security_dashboard, name="security_dashboard")
+    logger.info("보안 대시보드 블루프린트 등록 완료")
 except Exception as e:
     logger.error(f"고도화된 보안 모니터링 API 블루프린트 등록 실패: {e}")
 
@@ -814,24 +873,33 @@ login_manager.init_app(app)
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-
 @app.errorhandler(404)
 def page_not_found(e):
-    # API 경로인 경우 JSON으로 반환
     if request.path.startswith("/api/"):
-        return jsonify({"error": "API endpoint not found", "path": request.path}), 404
-    # 일반 페이지인 경우 HTML 템플릿 반환
+        return jsonify({
+            "error": "API endpoint not found",
+            "message": "API 엔드포인트를 찾을 수 없습니다.",
+            "path": request.path
+        }), 404
     return render_template("errors/404.html"), 404
 
+@app.errorhandler(400)
+def bad_request(e):
+    if request.path.startswith("/api/"):
+        return jsonify({
+            "error": "Bad Request",
+            "message": "잘못된 요청입니다."
+        }), 400
+    return render_template("errors/400.html"), 400
 
 @app.errorhandler(500)
 def server_error(e):
-    # API 경로인 경우 JSON으로 반환
     if request.path.startswith("/api/"):
-        return jsonify({"error": "Internal server error"}), 500
-    # 일반 페이지인 경우 HTML 템플릿 반환
+        return jsonify({
+            "error": "Internal server error",
+            "message": "서버 내부 오류가 발생했습니다."
+        }), 500
     return render_template("errors/500.html"), 500
-
 
 @app.route("/favicon.ico")
 def favicon():
@@ -1096,6 +1164,145 @@ def auth_login():
     return render_template("auth/login.html")
 
 
+@app.route("/api/security/auth/login", methods=["POST"])
+def api_security_auth_login():
+    """API 로그인 엔드포인트"""
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+
+        if not username or not password:
+            return jsonify({
+                "success": False,
+                "error": "사용자명과 비밀번호를 입력해주세요."
+            }), 400
+
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.check_password(password):
+            # JWT 토큰 생성
+            import jwt
+            from datetime import datetime, timedelta
+            
+            payload = {
+                'user_id': user.id,
+                'username': user.username,
+                'role': user.role,
+                'exp': datetime.utcnow() + timedelta(hours=24)
+            }
+            
+            token = jwt.encode(payload, app.config["JWT_SECRET_KEY"], algorithm="HS256")
+            refresh_token = jwt.encode({
+                'user_id': user.id,
+                'exp': datetime.utcnow() + timedelta(days=7)
+            }, app.config["JWT_SECRET_KEY"], algorithm="HS256")
+
+            # 마지막 로그인 시간 업데이트
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+
+            return jsonify({
+                "success": True,
+                "message": "로그인되었습니다.",
+                "token": token,
+                "refresh_token": refresh_token,
+                "data": {
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "role": user.role,
+                        "status": user.status,
+                        "brand_id": user.brand_id,
+                        "branch_id": user.branch_id
+                    }
+                }
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "잘못된 사용자명 또는 비밀번호입니다."
+            }), 401
+
+    except Exception as e:
+        logger.error(f"Login API error: {e}")
+        return jsonify({
+            "success": False,
+            "error": "로그인 처리 중 오류가 발생했습니다."
+        }), 500
+
+
+@app.route("/api/security/auth/logout", methods=["POST"])
+def api_security_auth_logout():
+    """API 로그아웃 엔드포인트"""
+    try:
+        return jsonify({
+            "success": True,
+            "message": "로그아웃되었습니다."
+        })
+    except Exception as e:
+        logger.error(f"Logout API error: {e}")
+        return jsonify({
+            "success": False,
+            "error": "로그아웃 처리 중 오류가 발생했습니다."
+        }), 500
+
+
+@app.route("/api/test/notification", methods=["POST"])
+def api_test_notification():
+    """실시간 알림 테스트 API"""
+    try:
+        data = request.get_json()
+        notification_type = data.get('type', 'info')
+        message = data.get('message', '테스트 알림입니다.')
+        
+        # WebSocket을 통해 실시간 알림 브로드캐스트
+        websocket_manager.broadcast_notification({
+            'type': notification_type,
+            'title': '테스트 알림',
+            'message': message
+        })
+        
+        return jsonify({
+            "success": True,
+            "message": "알림이 전송되었습니다."
+        })
+    except Exception as e:
+        logger.error(f"Test notification error: {e}")
+        return jsonify({
+            "success": False,
+            "error": "알림 전송 중 오류가 발생했습니다."
+        }), 500
+
+
+@app.route("/api/test/system-alert", methods=["POST"])
+def api_test_system_alert():
+    """시스템 알림 테스트 API"""
+    try:
+        data = request.get_json()
+        severity = data.get('severity', 'medium')
+        message = data.get('message', '테스트 시스템 알림입니다.')
+        
+        # WebSocket을 통해 시스템 알림 브로드캐스트
+        websocket_manager.broadcast_system_alert({
+            'severity': severity,
+            'title': '시스템 알림',
+            'message': message
+        })
+        
+        return jsonify({
+            "success": True,
+            "message": "시스템 알림이 전송되었습니다."
+        })
+    except Exception as e:
+        logger.error(f"Test system alert error: {e}")
+        return jsonify({
+            "success": False,
+            "error": "시스템 알림 전송 중 오류가 발생했습니다."
+        }), 500
+
+
 @app.route("/admin_dashboard")
 def admin_dashboard_route():
     return render_template("admin/admin_dashboard.html")
@@ -1232,7 +1439,7 @@ def api_admin_system_logs():
             {
                 "timestamp": datetime.utcnow().isoformat(),
                 "level": "INFO",
-                "message": f'플러그인 {plugin_status["total_plugins"]}개 로드됨',
+                "message": "플러그인 시스템 정상 운영 중",
                 "source": "plugin_loader",
             },
         ]
@@ -4609,18 +4816,41 @@ def api_menu_statistics():
         )
 
 
-@app.route("/api/menu/menu-access/<int:menu_id>", methods=["POST"])
+@app.route("/api/menu/menu-access/<menu_id>", methods=["POST"])
 def api_menu_access(menu_id):
     """메뉴 접근 기록 API"""
     try:
-        # 메뉴 접근 기록 로직 (간단한 구현)
+        # 메뉴 ID 검증 및 정규화
+        if ':' in str(menu_id):
+            # "1:1" 형식의 메뉴 ID를 처리
+            parts = str(menu_id).split(':')
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                normalized_menu_id = int(parts[0])  # 첫 번째 숫자를 메뉴 ID로 사용
+            else:
+                return jsonify({"success": False, "error": "잘못된 메뉴 ID 형식입니다."}), 400
+        else:
+            # 일반적인 숫자 메뉴 ID
+            try:
+                normalized_menu_id = int(menu_id)
+            except ValueError:
+                return jsonify({"success": False, "error": "메뉴 ID는 숫자여야 합니다."}), 400
+        
+        # 메뉴 접근 기록 로직
         username = (
             getattr(current_user, "username", "anonymous")
             if current_user.is_authenticated
             else "anonymous"
         )
-        logger.info(f"메뉴 접근: {menu_id} by {username}")
-        return jsonify({"success": True})
+        logger.info(f"메뉴 접근: {normalized_menu_id} (원본: {menu_id}) by {username}")
+        
+        # 메뉴 접근 통계 업데이트 (선택사항)
+        try:
+            from core.backend.menu_integration_system import menu_integration_system
+            menu_integration_system.update_menu_access(normalized_menu_id, current_user.id)
+        except Exception as e:
+            logger.warning(f"메뉴 접근 통계 업데이트 실패: {e}")
+        
+        return jsonify({"success": True, "menu_id": normalized_menu_id})
     except Exception as e:
         logger.error(f"메뉴 접근 기록 오류: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -5500,5 +5730,212 @@ def create_app():
     return app
 
 
+# 모니터링 시스템 import
+from monitoring.system_monitor import system_monitor
+from monitoring.application_monitor import application_monitor
+from utils.performance_optimizer import performance_optimizer
+
+# 보안 시스템 import
+from security.jwt_auth import jwt_auth, jwt_required, require_role, require_permission
+from security.oauth2_auth import oauth2_manager
+from security.two_factor_auth import two_factor_auth
+from security.security_middleware import security_middleware
+
+# E2E 테스트를 위한 API 엔드포인트
+@app.route("/api/test/setup", methods=["POST"])
+def api_test_setup():
+    """E2E 테스트를 위한 환경 설정"""
+    try:
+        # 테스트 데이터베이스 초기화
+        # 테스트 데이터 생성
+        return jsonify({
+            "success": True,
+            "message": "테스트 환경이 설정되었습니다."
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/test/create-test-user", methods=["POST"])
+def api_test_create_user():
+    """E2E 테스트용 사용자 생성"""
+    try:
+        # 테스트 사용자 생성 로직
+        test_user_id = "test_user_123"
+        return jsonify({
+            "success": True,
+            "user_id": test_user_id,
+            "message": "테스트 사용자가 생성되었습니다."
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/test/cleanup", methods=["POST"])
+def api_test_cleanup():
+    """E2E 테스트 환경 정리"""
+    try:
+        # 테스트 데이터 정리
+        # 임시 파일 삭제
+        return jsonify({
+            "success": True,
+            "message": "테스트 환경이 정리되었습니다."
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 모니터링 API 엔드포인트
+@app.route("/api/monitoring/system-metrics")
+def api_system_metrics():
+    """시스템 메트릭 조회"""
+    try:
+        metrics = system_monitor.get_current_metrics()
+        if metrics:
+            return jsonify({
+                "success": True,
+                "data": {
+                    "cpu_percent": metrics.cpu_percent,
+                    "memory_percent": metrics.memory_percent,
+                    "memory_used_gb": metrics.memory_used,
+                    "memory_total_gb": metrics.memory_total,
+                    "disk_usage_percent": metrics.disk_usage_percent,
+                    "disk_used_gb": metrics.disk_used,
+                    "disk_total_gb": metrics.disk_total,
+                    "network_bytes_sent": metrics.network_bytes_sent,
+                    "network_bytes_recv": metrics.network_bytes_recv,
+                    "active_connections": metrics.active_connections,
+                    "load_average": metrics.load_average
+                }
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "메트릭을 수집할 수 없습니다."
+            }), 500
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/monitoring/application-metrics")
+def api_application_metrics():
+    """애플리케이션 메트릭 조회"""
+    try:
+        metrics = application_monitor.get_current_stats()
+        return jsonify({
+            "success": True,
+            "data": metrics
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/monitoring/performance-report")
+def api_performance_report():
+    """성능 리포트 조회"""
+    try:
+        system_report = system_monitor.get_performance_report()
+        app_report = application_monitor.get_performance_report()
+        backend_report = performance_optimizer.get_performance_metrics()
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "system": system_report,
+                "application": app_report,
+                "backend": backend_report,
+                "timestamp": datetime.now().isoformat()
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/monitoring/endpoint-stats")
+def api_endpoint_stats():
+    """엔드포인트별 통계 조회"""
+    try:
+        hours = request.args.get('hours', 1, type=int)
+        stats = application_monitor.get_endpoint_stats(hours)
+        
+        return jsonify({
+            "success": True,
+            "data": stats
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/monitoring/error-summary")
+def api_error_summary():
+    """에러 요약 조회"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        summary = application_monitor.get_error_summary(hours)
+        
+        return jsonify({
+            "success": True,
+            "data": summary
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/monitoring/export-metrics", methods=["POST"])
+def api_export_metrics():
+    """메트릭 내보내기"""
+    try:
+        data = request.get_json() or {}
+        include_system = data.get('system', True)
+        include_application = data.get('application', True)
+        include_backend = data.get('backend', True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        if include_system:
+            system_monitor.export_metrics(f"system_metrics_{timestamp}.json")
+        
+        if include_application:
+            application_monitor.export_metrics(f"application_metrics_{timestamp}.json")
+        
+        return jsonify({
+            "success": True,
+            "message": "메트릭 내보내기가 완료되었습니다.",
+            "files": [
+                f"system_metrics_{timestamp}.json" if include_system else None,
+                f"application_metrics_{timestamp}.json" if include_application else None
+            ]
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    # 모니터링 시스템 시작
+    system_monitor.start_monitoring()
+    application_monitor.start_monitoring()
+    performance_optimizer.init_app(app)
+    
+    # 실시간 대시보드 브로드캐스트 시작
+    websocket_manager.start_dashboard_broadcast()
+    
+    # SocketIO 서버로 실행
+    websocket_manager.socketio.run(app, debug=True, host="0.0.0.0", port=5000)

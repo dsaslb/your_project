@@ -1,94 +1,127 @@
 ﻿version: '3.8'
 
 services:
-  # 백엔드 서버
-  backend:
+  # 메인 애플리케이션
+  app:
     build: .
-    container_name: multitenancy-backend
+    container_name: your_program_app
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
-      - DATABASE_URL=postgresql://postgres:password@db:5432/multitenancy
+      - DATABASE_URL=postgresql://your_program:password@db:5432/your_program
       - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=your-production-secret-key-change-this
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - SMS_API_KEY=${SMS_API_KEY}
+      - SMS_SECRET_KEY=${SMS_SECRET_KEY}
     volumes:
-      - ./logs:/app/logs
       - ./uploads:/app/uploads
+      - ./logs:/app/logs
       - ./backups:/app/backups
     depends_on:
       - db
       - redis
-    restart: unless-stopped
     networks:
-      - multitenancy-network
-
-  # 프론트엔드 서버
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: multitenancy-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
-    depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - multitenancy-network
+      - your_program_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # PostgreSQL 데이터베이스
   db:
     image: postgres:15-alpine
-    container_name: multitenancy-db
+    container_name: your_program_db
+    restart: unless-stopped
     environment:
-      - POSTGRES_DB=multitenancy
-      - POSTGRES_USER=postgres
+      - POSTGRES_DB=your_program
+      - POSTGRES_USER=your_program
       - POSTGRES_PASSWORD=password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5432:5432"
-    restart: unless-stopped
     networks:
-      - multitenancy-network
+      - your_program_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U your_program -d your_program"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Redis 캐시
   redis:
     image: redis:7-alpine
-    container_name: multitenancy-redis
-    ports:
-      - "6379:6379"
+    container_name: your_program_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redispassword
     volumes:
       - redis_data:/data
-    restart: unless-stopped
+    ports:
+      - "6379:6379"
     networks:
-      - multitenancy-network
+      - your_program_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Nginx 리버스 프록시
   nginx:
     image: nginx:alpine
-    container_name: multitenancy-nginx
+    container_name: your_program_nginx
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./static:/var/www/static
     depends_on:
-      - backend
-      - frontend
-    restart: unless-stopped
+      - app
     networks:
-      - multitenancy-network
+      - your_program_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # 모니터링 (Prometheus)
-  prometheus:
+  # 백업 서비스
+  backup:
+    image: postgres:15-alpine
+    container_name: your_program_backup
+    restart: "no"
+    environment:
+      - POSTGRES_DB=your_program
+      - POSTGRES_USER=your_program
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - ./scripts/backup.sh:/backup.sh
+      - ./backups:/backups
+    depends_on:
+      - db
+    networks:
+      - your_program_network
+    command: ["/bin/sh", "/backup.sh"]
+
+  # 모니터링 서비스
+  monitoring:
     image: prom/prometheus:latest
-    container_name: multitenancy-prometheus
+    container_name: your_program_monitoring
+    restart: unless-stopped
     ports:
       - "9090:9090"
     volumes:
@@ -101,34 +134,65 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
-    restart: unless-stopped
     networks:
-      - multitenancy-network
+      - your_program_network
 
-  # 모니터링 (Grafana)
-  grafana:
-    image: grafana/grafana:latest
-    container_name: multitenancy-grafana
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-    depends_on:
-      - prometheus
+  # 로그 수집 서비스
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.8.0
+    container_name: your_program_logstash
     restart: unless-stopped
+    volumes:
+      - ./monitoring/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./logs:/var/log/your_program
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
     networks:
-      - multitenancy-network
+      - your_program_network
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: your_program_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - your_program_network
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    container_name: your_program_kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - your_program_network
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
   prometheus_data:
-  grafana_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
 
 networks:
-  multitenancy-network:
-    driver: bridge 
+  your_program_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

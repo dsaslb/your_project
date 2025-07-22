@@ -106,7 +106,7 @@ export interface UserPermissions {
 export const useAuth = () => {
   const { currentUser, setCurrentUser } = useDataStore();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // 기본값 false로 변경
 
   // 권한 확인 함수
   const hasPermission = (module: string, action: string): boolean => {
@@ -276,46 +276,49 @@ export const useAuth = () => {
     router.push('/login');
   };
 
+  // 로그인 함수 추가
+  const login = async ({ username, password }: { username: string; password: string }) => {
+    setIsLoading(true);
+    try {
+      const { default: api } = await import('@/utils/api');
+      const result = await api.login({ username, password });
+      if (result.success && result.data) {
+        setCurrentUser(result.data.user);
+        // 토큰 저장 등 필요시 추가
+      }
+      // 서버에서 내려온 message가 있으면 error로 전달
+      return { ...result, error: result.error || result.message };
+    } catch (error) {
+      return { success: false, error: '로그인 중 오류가 발생했습니다.' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 초기 로드 시 사용자 정보 확인
   useEffect(() => {
     const loadUser = async () => {
       try {
-        // TODO: 실제 API 호출로 변경
-        // const response = await fetch('/api/auth/me');
-        // if (response.ok) {
-        //   const userData = await response.json();
-        //   setCurrentUser(userData);
-        // }
+        const { authApi } = await import('@/utils/api');
+        const result = await authApi.me();
 
-        // 개발용 임시 사용자 데이터
-        const mockUser: User = {
-          id: 1,
-          username: 'admin',
-          email: 'admin@your_program.com',
-          name: '관리자',
-          role: 'admin',
-          grade: 'ceo',
-          status: 'approved',
-          permissions: {
-            dashboard: { view: true, edit: true, admin_only: false },
-            brand_management: { view: true, create: true, edit: true, delete: true, approve: true, monitor: true },
-            store_management: { view: true, create: true, edit: true, delete: true, approve: true, monitor: true },
-            employee_management: { view: true, create: true, edit: true, delete: true, approve: true, assign_roles: true },
-            schedule_management: { view: true, create: true, edit: true, delete: true, approve: true },
-            order_management: { view: true, create: true, edit: true, delete: true, approve: true },
-            inventory_management: { view: true, create: true, edit: true, delete: true },
-            notification_management: { view: true, send: true, delete: true },
-            system_management: { view: true, backup: true, restore: true, settings: true, monitoring: true },
-            ai_management: { view: true, create: true, edit: true, delete: true, approve: true, monitor: true },
-            reports: { view: true, export: true, admin_only: true },
-          },
-          created_at: '2024-01-01',
-          updated_at: '2024-01-01',
-        };
-
-        setCurrentUser(mockUser);
+        if (result.success && result.data) {
+          setCurrentUser(result.data);
+        } else {
+          // 네트워크 에러와 진짜 비로그인 구분
+          if (result.error && result.error.includes('네트워크')) {
+            alert('서버에 연결할 수 없습니다. 관리자에게 문의하세요.\n(네트워크 오류: 인증 상태 확인 불가)');
+            setCurrentUser(null); // 기본 권한 부여하지 않음
+          } else {
+            // 진짜 비로그인(401/403 등): 로그인 페이지로 이동
+            console.warn('API 호출 실패, 로그인 화면으로 이동:', result.error);
+            setCurrentUser(null);
+            router.push('/login');
+          }
+        }
       } catch (error) {
-        console.error('사용자 정보 로드 실패:', error);
+        alert('알 수 없는 오류가 발생했습니다.');
+        setCurrentUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -350,5 +353,6 @@ export const useAuth = () => {
     requireAuth,
     requirePermission,
     logout,
+    login, // 추가
   };
 }; 

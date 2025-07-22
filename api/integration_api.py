@@ -1,295 +1,568 @@
-from typing import Dict, Any, List
-from datetime import datetime, timedelta
+from flask import Blueprint, request, jsonify, current_app
+from flask_login import login_required, current_user
+import json
 import logging
-import requests
-from flask import Blueprint, jsonify, request
-args = None  # pyright: ignore
-config = None  # pyright: ignore
-form = None  # pyright: ignore
+from datetime import datetime, timedelta
+import traceback
 
-integration_bp = Blueprint('integration', __name__)
+# 통합 모듈 import
+from integration.workflow_engine import WorkflowEngine, WorkflowStatus, TaskType
+from integration.event_bus import EventBus, EventPriority
+from integration.api_gateway import ApiGateway, RequestMethod, AuthType
+from integration.microservice_integration import MicroserviceIntegration, ServiceStatus
+
+# Blueprint 생성
+integration_api = Blueprint('integration_api', __name__, url_prefix='/api/integration')
 
 # 로깅 설정
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 외부 시스템 설정 (실제 환경에서는 환경변수로 관리)
-EXTERNAL_SYSTEMS = {
-    'erp': {
-        'base_url': 'https://erp.example.com/api',
-        'api_key': 'erp_api_key_here',
-        'timeout': 30
-    },
-    'pos': {
-        'base_url': 'https://pos.example.com/api',
-        'api_key': 'pos_api_key_here',
-        'timeout': 15
-    },
-    'accounting': {
-        'base_url': 'https://accounting.example.com/api',
-        'api_key': 'accounting_api_key_here',
-        'timeout': 30
-    }
-}
+# 통합 모듈 인스턴스
+workflow_engine = WorkflowEngine()
+event_bus = EventBus()
+api_gateway = ApiGateway()
+microservice_integration = MicroserviceIntegration()
 
+# 워크플로우 API 엔드포인트
+@integration_api.route('/workflows', methods=['GET'])
+@login_required
+def get_workflows():
+    """워크플로우 목록 조회"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        status = request.args.get('status')
+        
+        # 상태 필터링
+        workflow_status = None
+        if status:
+            workflow_status = WorkflowStatus(status)
+        
+        workflows = workflow_engine.get_workflow_instances(
+            status=workflow_status,
+            limit=per_page,
+            offset=(page - 1) * per_page
+        )
+        
+        return jsonify({
+            'success': True,
+            'workflows': [asdict(wf) for wf in workflows],
+            'page': page,
+            'per_page': per_page
+        })
+        
+    except Exception as e:
+        logger.error(f"워크플로우 목록 조회 오류: {str(e)}")
+        return jsonify({'error': '워크플로우 목록 조회 중 오류가 발생했습니다'}), 500
 
-def external_api_call(system: str,  endpoint: str, method='GET', data=None, max_retries=3):
-    """외부 시스템 API 호출 (자동 재시도 및 장애 알림)"""
-    if system not in EXTERNAL_SYSTEMS:
-        raise ValueError(f"지원하지 않는 시스템: {system}")
-    config = EXTERNAL_SYSTEMS[system] if EXTERNAL_SYSTEMS is not None else None
-    url = f"{config['base_url'] if config is not None else None}/{endpoint}"
-    headers = {
-        'Authorization': f'Bearer {config["api_key"] if config is not None else None}',
-        'Content-Type': 'application/json'
-    }
-    last_exception = None
-    timeout = int(config.get() if config else None'timeout', 30) if config else None)  # 항상 int로 변환
-    for attempt in range(1, max_retries + 1):
-        try:
-            if method.upper() == 'GET':
-                response = requests.get() if requests else Noneurl, headers=headers, timeout=timeout) if requests else None
-            elif method.upper() == 'POST':
-                response = requests.post(url, headers=headers, json=data, timeout=timeout)
-            elif method.upper() == 'PUT':
-                response = requests.put(url, headers=headers, json=data, timeout=timeout)
-            else:
-                raise ValueError(f"지원하지 않는 HTTP 메서드: {method}")
-            response.raise_for_status()
-            logger.info(f"외부 API 호출 성공 - {system} (시도 {attempt}): {endpoint}")
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"외부 API 호출 실패 - {system} (시도 {attempt}): {e}")
-            last_exception = e
-            if attempt == max_retries:
-                logger.error(f"외부 API 최종 실패 - {system}: {e}")
-                # 관리자 알림 연동 (예: 슬랙, 이메일 등)
-                try:
-                    from api.modules.notification_system import create_notification
-                    create_notification(
-                        type='system_alert',
-                        title=f'외부 API 장애({system})',
-                        message=f'{endpoint} 호출 실패: {e}',
-                        priority='high'
-                    )
-                except Exception as notify_err:
-                    logger.error(f"관리자 알림 연동 실패: {notify_err}")
-            else:
-                import time
-                time.sleep(2)
-    raise last_exception
-
-
-@integration_bp.route('/api/integration/erp/sync', methods=['POST'])
-def sync_with_erp():
-    """ERP 시스템과 데이터 동기화"""
+@integration_api.route('/workflows', methods=['POST'])
+@login_required
+def create_workflow():
+    """워크플로우 정의 생성"""
     try:
         data = request.get_json()
-        sync_type = data.get() if data else None'type', 'all') if data else None
-        result = None  # 미정의 방지
-        if sync_type == 'inventory':
-            # 재고 데이터 동기화
-            inventory_data = get_local_inventory_data()
-            result = external_api_call('erp',  'inventory/sync',  'POST',  inventory_data)
-        elif sync_type == 'orders':
-            # 주문 데이터 동기화
-            orders_data = get_local_orders_data()
-            result = external_api_call('erp',  'orders/sync',  'POST',  orders_data)
-        elif sync_type == 'all':
-            # 전체 데이터 동기화
-            all_data = {
-                'inventory': get_local_inventory_data(),
-                'orders': get_local_orders_data(),
-                'staff': get_local_staff_data(),
-                'timestamp': datetime.now().isoformat()
-            }
-            result = external_api_call('erp',  'sync/all',  'POST',  all_data)
-        logger.info(f"ERP 동기화 완료: {sync_type}")
+        
+        workflow_id = workflow_engine.create_workflow_definition(
+            name=data.get('name'),
+            description=data.get('description'),
+            tasks=data.get('tasks', []),
+            variables=data.get('variables', {}),
+            triggers=data.get('triggers', []),
+            timeout=data.get('timeout', 3600),
+            retry_count=data.get('retry_count', 3),
+            retry_delay=data.get('retry_delay', 60)
+        )
+        
         return jsonify({
-            'message': 'ERP 동기화 완료',
-            'sync_type': sync_type,
+            'success': True,
+            'workflow_id': workflow_id,
+            'message': '워크플로우가 생성되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"워크플로우 생성 오류: {str(e)}")
+        return jsonify({'error': '워크플로우 생성 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/workflows/<workflow_id>/start', methods=['POST'])
+@login_required
+def start_workflow(workflow_id):
+    """워크플로우 실행 시작"""
+    try:
+        data = request.get_json() or {}
+        
+        instance_id = workflow_engine.start_workflow(
+            workflow_id=workflow_id,
+            variables=data.get('variables', {}),
+            created_by=current_user.id if current_user else 'system'
+        )
+        
+        return jsonify({
+            'success': True,
+            'instance_id': instance_id,
+            'message': '워크플로우가 시작되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"워크플로우 시작 오류: {str(e)}")
+        return jsonify({'error': '워크플로우 시작 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/workflows/instances/<instance_id>', methods=['GET'])
+@login_required
+def get_workflow_instance(instance_id):
+    """워크플로우 인스턴스 조회"""
+    try:
+        # 워크플로우 인스턴스 조회 로직 구현
+        instances = workflow_engine.get_workflow_instances()
+        instance = next((inst for inst in instances if inst.id == instance_id), None)
+        
+        if not instance:
+            return jsonify({'error': '워크플로우 인스턴스를 찾을 수 없습니다'}), 404
+        
+        return jsonify({
+            'success': True,
+            'instance': asdict(instance)
+        })
+        
+    except Exception as e:
+        logger.error(f"워크플로우 인스턴스 조회 오류: {str(e)}")
+        return jsonify({'error': '워크플로우 인스턴스 조회 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/workflows/instances/<instance_id>/cancel', methods=['POST'])
+@login_required
+def cancel_workflow(instance_id):
+    """워크플로우 취소"""
+    try:
+        success = workflow_engine.cancel_workflow(instance_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': '워크플로우가 취소되었습니다'
+            })
+        else:
+            return jsonify({'error': '워크플로우를 취소할 수 없습니다'}), 400
+        
+    except Exception as e:
+        logger.error(f"워크플로우 취소 오류: {str(e)}")
+        return jsonify({'error': '워크플로우 취소 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/workflows/statistics', methods=['GET'])
+@login_required
+def get_workflow_statistics():
+    """워크플로우 통계 조회"""
+    try:
+        stats = workflow_engine.get_workflow_statistics()
+        
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"워크플로우 통계 조회 오류: {str(e)}")
+        return jsonify({'error': '워크플로우 통계 조회 중 오류가 발생했습니다'}), 500
+
+# 이벤트 버스 API 엔드포인트
+@integration_api.route('/events', methods=['POST'])
+@login_required
+def publish_event():
+    """이벤트 발행"""
+    try:
+        data = request.get_json()
+        
+        event_id = event_bus.publish_event(
+            event_type=data.get('type'),
+            source=data.get('source'),
+            data=data.get('data', {}),
+            target=data.get('target'),
+            priority=EventPriority(data.get('priority', 'normal')),
+            expires_at=datetime.fromisoformat(data.get('expires_at')) if data.get('expires_at') else None,
+            metadata=data.get('metadata', {})
+        )
+        
+        return jsonify({
+            'success': True,
+            'event_id': event_id,
+            'message': '이벤트가 발행되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"이벤트 발행 오류: {str(e)}")
+        return jsonify({'error': '이벤트 발행 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/events', methods=['GET'])
+@login_required
+def get_events():
+    """이벤트 목록 조회"""
+    try:
+        event_type = request.args.get('type')
+        limit = request.args.get('limit', 100, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        events = event_bus.get_events(
+            event_type=event_type,
+            limit=limit,
+            offset=offset
+        )
+        
+        return jsonify({
+            'success': True,
+            'events': [asdict(event) for event in events]
+        })
+        
+    except Exception as e:
+        logger.error(f"이벤트 목록 조회 오류: {str(e)}")
+        return jsonify({'error': '이벤트 목록 조회 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/events/statistics', methods=['GET'])
+@login_required
+def get_event_statistics():
+    """이벤트 통계 조회"""
+    try:
+        stats = event_bus.get_event_statistics()
+        
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"이벤트 통계 조회 오류: {str(e)}")
+        return jsonify({'error': '이벤트 통계 조회 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/events/broadcast', methods=['POST'])
+@login_required
+def broadcast_message():
+    """브로드캐스트 메시지 전송"""
+    try:
+        data = request.get_json()
+        
+        event_bus.broadcast_message(
+            message=data.get('message'),
+            message_type=data.get('type', 'info'),
+            target_connections=data.get('target_connections')
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': '브로드캐스트 메시지가 전송되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"브로드캐스트 메시지 전송 오류: {str(e)}")
+        return jsonify({'error': '브로드캐스트 메시지 전송 중 오류가 발생했습니다'}), 500
+
+# API 게이트웨이 API 엔드포인트
+@integration_api.route('/gateway/routes', methods=['GET'])
+@login_required
+def get_gateway_routes():
+    """게이트웨이 라우트 목록 조회"""
+    try:
+        # 라우트 목록 조회 로직 구현
+        routes = list(api_gateway.routes.values())
+        
+        return jsonify({
+            'success': True,
+            'routes': [asdict(route) for route in routes]
+        })
+        
+    except Exception as e:
+        logger.error(f"게이트웨이 라우트 조회 오류: {str(e)}")
+        return jsonify({'error': '게이트웨이 라우트 조회 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/gateway/routes', methods=['POST'])
+@login_required
+def create_gateway_route():
+    """게이트웨이 라우트 생성"""
+    try:
+        data = request.get_json()
+        
+        route_id = api_gateway.add_route(
+            path=data.get('path'),
+            method=RequestMethod(data.get('method')),
+            target_url=data.get('target_url'),
+            auth_type=AuthType(data.get('auth_type', 'none')),
+            rate_limit=data.get('rate_limit', 100),
+            timeout=data.get('timeout', 30),
+            retry_count=data.get('retry_count', 3),
+            headers=data.get('headers', {}),
+            parameters=data.get('parameters', {})
+        )
+        
+        return jsonify({
+            'success': True,
+            'route_id': route_id,
+            'message': '게이트웨이 라우트가 생성되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"게이트웨이 라우트 생성 오류: {str(e)}")
+        return jsonify({'error': '게이트웨이 라우트 생성 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/gateway/api-keys', methods=['POST'])
+@login_required
+def create_api_key():
+    """API 키 생성"""
+    try:
+        data = request.get_json()
+        
+        api_key = api_gateway.create_api_key(
+            name=data.get('name'),
+            user_id=data.get('user_id'),
+            permissions=data.get('permissions', []),
+            rate_limit=data.get('rate_limit', 1000),
+            expires_at=datetime.fromisoformat(data.get('expires_at')) if data.get('expires_at') else None
+        )
+        
+        return jsonify({
+            'success': True,
+            'api_key': api_key,
+            'message': 'API 키가 생성되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"API 키 생성 오류: {str(e)}")
+        return jsonify({'error': 'API 키 생성 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/gateway/statistics', methods=['GET'])
+@login_required
+def get_gateway_statistics():
+    """게이트웨이 통계 조회"""
+    try:
+        stats = api_gateway.get_statistics()
+        
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"게이트웨이 통계 조회 오류: {str(e)}")
+        return jsonify({'error': '게이트웨이 통계 조회 중 오류가 발생했습니다'}), 500
+
+# 마이크로서비스 통합 API 엔드포인트
+@integration_api.route('/microservices', methods=['GET'])
+@login_required
+def get_microservices():
+    """마이크로서비스 목록 조회"""
+    try:
+        services = list(microservice_integration.services.values())
+        
+        return jsonify({
+            'success': True,
+            'services': [asdict(service) for service in services]
+        })
+        
+    except Exception as e:
+        logger.error(f"마이크로서비스 목록 조회 오류: {str(e)}")
+        return jsonify({'error': '마이크로서비스 목록 조회 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/microservices', methods=['POST'])
+@login_required
+def register_microservice():
+    """마이크로서비스 등록"""
+    try:
+        data = request.get_json()
+        
+        service_id = microservice_integration.register_service(
+            name=data.get('name'),
+            version=data.get('version'),
+            description=data.get('description'),
+            endpoints=data.get('endpoints', []),
+            health_check_interval=data.get('health_check_interval', 30),
+            timeout=data.get('timeout', 10),
+            retry_count=data.get('retry_count', 3),
+            circuit_breaker_config=data.get('circuit_breaker_config', {}),
+            load_balancer_config=data.get('load_balancer_config', {})
+        )
+        
+        return jsonify({
+            'success': True,
+            'service_id': service_id,
+            'message': '마이크로서비스가 등록되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"마이크로서비스 등록 오류: {str(e)}")
+        return jsonify({'error': '마이크로서비스 등록 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/microservices/<service_name>/instances', methods=['POST'])
+@login_required
+def register_service_instance(service_name):
+    """서비스 인스턴스 등록"""
+    try:
+        data = request.get_json()
+        
+        instance_id = microservice_integration.register_instance(
+            service_name=service_name,
+            host=data.get('host'),
+            port=data.get('port'),
+            protocol=data.get('protocol', 'http'),
+            health_check_url=data.get('health_check_url'),
+            metadata=data.get('metadata', {})
+        )
+        
+        return jsonify({
+            'success': True,
+            'instance_id': instance_id,
+            'message': '서비스 인스턴스가 등록되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"서비스 인스턴스 등록 오류: {str(e)}")
+        return jsonify({'error': '서비스 인스턴스 등록 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/microservices/<service_name>/status', methods=['GET'])
+@login_required
+def get_service_status(service_name):
+    """서비스 상태 조회"""
+    try:
+        status = microservice_integration.get_service_status(service_name)
+        
+        return jsonify({
+            'success': True,
+            'status': status
+        })
+        
+    except Exception as e:
+        logger.error(f"서비스 상태 조회 오류: {str(e)}")
+        return jsonify({'error': '서비스 상태 조회 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/microservices/status', methods=['GET'])
+@login_required
+def get_all_services_status():
+    """모든 서비스 상태 조회"""
+    try:
+        status = microservice_integration.get_all_services_status()
+        
+        return jsonify({
+            'success': True,
+            'status': status
+        })
+        
+    except Exception as e:
+        logger.error(f"전체 서비스 상태 조회 오류: {str(e)}")
+        return jsonify({'error': '전체 서비스 상태 조회 중 오류가 발생했습니다'}), 500
+
+@integration_api.route('/microservices/<service_name>/call', methods=['POST'])
+@login_required
+def call_service(service_name):
+    """서비스 호출"""
+    try:
+        data = request.get_json()
+        
+        result = microservice_integration.call_service(
+            service_name=service_name,
+            endpoint=data.get('endpoint'),
+            method=data.get('method', 'GET'),
+            data=data.get('data'),
+            headers=data.get('headers'),
+            timeout=data.get('timeout')
+        )
+        
+        return jsonify({
+            'success': True,
             'result': result
         })
+        
     except Exception as e:
-        logger.error(f"ERP 동기화 실패: {e}")
-        return jsonify({'error': 'ERP 동기화 실패', 'details': str(e)}), 500
+        logger.error(f"서비스 호출 오류: {str(e)}")
+        return jsonify({'error': f'서비스 호출 중 오류가 발생했습니다: {str(e)}'}), 500
 
-
-@integration_bp.route('/api/integration/pos/transactions', methods=['GET'])
-def get_pos_transactions():
-    """POS 시스템에서 거래 내역 조회"""
+@integration_api.route('/microservices/mesh', methods=['POST'])
+@login_required
+def add_service_mesh_config():
+    """서비스 메시 설정 추가"""
     try:
-        # 날짜 범위 파라미터
-        start_date = request.args.get() if args else None'start_date', (datetime.now() if args else None -
-                                      timedelta(days=7)).strftime('%Y-%m-%d'))
-        end_date = request.args.get() if args else None'end_date', datetime.now() if args else None.strftime('%Y-%m-%d'))
-        # POS API 호출
-        params = {
-            'start_date': start_date,
-            'end_date': end_date,
-            'limit': request.args.get() if args else None'limit', 100) if args else None
-        }
-        transactions = external_api_call('pos',  'transactions',  'GET',  params)
+        data = request.get_json()
+        
+        microservice_integration.add_service_mesh_config(
+            service_name=data.get('service_name'),
+            mesh_config=data.get('mesh_config', {}),
+            routing_rules=data.get('routing_rules', []),
+            security_policies=data.get('security_policies', [])
+        )
+        
         return jsonify({
-            'transactions': transactions,
-            'period': {'start_date': start_date, 'end_date': end_date}
+            'success': True,
+            'message': '서비스 메시 설정이 추가되었습니다'
         })
+        
     except Exception as e:
-        logger.error(f"POS 거래 내역 조회 실패: {e}")
-        return jsonify({'error': '거래 내역 조회 실패', 'details': str(e)}), 500
+        logger.error(f"서비스 메시 설정 추가 오류: {str(e)}")
+        return jsonify({'error': '서비스 메시 설정 추가 중 오류가 발생했습니다'}), 500
 
-
-@integration_bp.route('/api/integration/accounting/reports', methods=['GET'])
-def get_accounting_reports():
-    """회계 시스템에서 보고서 조회"""
+# 통합 시스템 전체 통계
+@integration_api.route('/statistics', methods=['GET'])
+@login_required
+def get_integration_statistics():
+    """통합 시스템 전체 통계 조회"""
     try:
-        report_type = request.args.get() if args else None'type', 'monthly') if args else None
-        year = request.args.get() if args else None'year', datetime.now() if args else None.year)
-        month = request.args.get() if args else None'month', datetime.now() if args else None.month)
-        # 회계 API 호출
-        params = {
-            'report_type': report_type,
-            'year': year,
-            'month': month
-        }
-        reports = external_api_call('accounting',  'reports',  'GET',  params)
-        return jsonify({
-            'reports': reports,
-            'period': {'year': year, 'month': month, 'type': report_type}
-        })
-    except Exception as e:
-        logger.error(f"회계 보고서 조회 실패: {e}")
-        return jsonify({'error': '보고서 조회 실패', 'details': str(e)}), 500
-
-
-@integration_bp.route('/api/integration/sync/all', methods=['POST'])
-def sync_all_systems():
-    """모든 외부 시스템과 동기화"""
-    try:
-        sync_results = {}
-        # ERP 동기화
-        try:
-            erp_result = external_api_call('erp',  'sync/all',  'POST',  get_all_local_data())
-            sync_results['erp'] if sync_results is not None else None = {'status': 'success', 'data': erp_result}
-        except Exception as e:
-            sync_results['erp'] if sync_results is not None else None = {'status': 'error', 'error': str(e)}
-        # POS 동기화
-        try:
-            pos_result = external_api_call('pos',  'sync',  'POST',  get_pos_sync_data())
-            sync_results['pos'] if sync_results is not None else None = {'status': 'success', 'data': pos_result}
-        except Exception as e:
-            sync_results['pos'] if sync_results is not None else None = {'status': 'error', 'error': str(e)}
-        # 회계 동기화
-        try:
-            accounting_result = external_api_call('accounting',  'sync',  'POST',  get_accounting_sync_data())
-            sync_results['accounting'] if sync_results is not None else None = {'status': 'success', 'data': accounting_result}
-        except Exception as e:
-            sync_results['accounting'] if sync_results is not None else None = {'status': 'error', 'error': str(e)}
-        # 동기화 결과 요약
-        successful_syncs = sum(1 for result in sync_results.value if sync_results is not None else Nones() if result['status'] if result is not None else None == 'success')
-        total_syncs = len(sync_results)
-        return jsonify({
-            'message': f'동기화 완료 ({successful_syncs}/{total_syncs})',
-            'results': sync_results,
+        # 각 시스템의 통계 수집
+        workflow_stats = workflow_engine.get_workflow_statistics()
+        event_stats = event_bus.get_event_statistics()
+        gateway_stats = api_gateway.get_statistics()
+        microservice_stats = microservice_integration.get_all_services_status()
+        
+        # 전체 통계 계산
+        total_stats = {
+            'workflows': workflow_stats,
+            'events': event_stats,
+            'gateway': gateway_stats,
+            'microservices': microservice_stats,
             'summary': {
-                'total_systems': total_syncs,
-                'successful': successful_syncs,
-                'failed': total_syncs - successful_syncs
+                'total_workflows': workflow_stats.get('total_workflows', 0),
+                'total_events': event_stats.get('total_events', 0),
+                'total_requests': gateway_stats.get('total_requests', 0),
+                'total_services': microservice_stats.get('summary', {}).get('total_services', 0),
+                'overall_health': 'healthy'  # 간단한 헬스 체크
             }
-        })
-    except Exception as e:
-        logger.error(f"전체 시스템 동기화 실패: {e}")
-        return jsonify({'error': '동기화 실패', 'details': str(e)}), 500
-
-
-@integration_bp.route('/api/integration/status', methods=['GET'])
-def get_integration_status():
-    """통합 시스템 상태 확인"""
-    try:
-        status = {}
-        for system_name, config in EXTERNAL_SYSTEMS.items() if EXTERNAL_SYSTEMS is not None else []:
-            try:
-                # 각 시스템의 상태 확인
-                health_check = external_api_call(system_name,  'health',  'GET')
-                status[system_name] if status is not None else None = {
-                    'status': 'connected',
-                    'response_time': health_check.get() if health_check else None'response_time', 'unknown') if health_check else None,
-                    'last_sync': health_check.get() if health_check else None'last_sync', 'unknown') if health_check else None
-                }
-            except Exception as e:
-                status[system_name] if status is not None else None = {
-                    'status': 'disconnected',
-                    'error': str(e)
-                }
+        }
+        
         return jsonify({
-            'integration_status': status,
-            'timestamp': datetime.now().isoformat()
+            'success': True,
+            'statistics': total_stats
         })
+        
     except Exception as e:
-        logger.error(f"통합 상태 확인 실패: {e}")
-        return jsonify({'error': '상태 확인 실패', 'details': str(e)}), 500
+        logger.error(f"통합 시스템 통계 조회 오류: {str(e)}")
+        return jsonify({'error': '통합 시스템 통계 조회 중 오류가 발생했습니다'}), 500
 
-# 헬퍼 함수들 (실제 환경에서는 데이터베이스에서 조회)
+# 시스템 정리 API
+@integration_api.route('/cleanup', methods=['POST'])
+@login_required
+def cleanup_systems():
+    """시스템 정리"""
+    try:
+        data = request.get_json() or {}
+        days = data.get('days', 30)
+        
+        # 각 시스템 정리
+        workflow_cleaned = workflow_engine.cleanup_old_workflows(days)
+        event_cleaned = event_bus.cleanup_old_events(days)
+        gateway_cleaned = api_gateway.cleanup_old_logs(days)
+        microservice_cleaned = microservice_integration.cleanup_old_instances(days)
+        
+        return jsonify({
+            'success': True,
+            'cleanup_results': {
+                'workflows': workflow_cleaned,
+                'events': event_cleaned,
+                'gateway_logs': gateway_cleaned,
+                'microservice_instances': microservice_cleaned
+            },
+            'message': '시스템 정리가 완료되었습니다'
+        })
+        
+    except Exception as e:
+        logger.error(f"시스템 정리 오류: {str(e)}")
+        return jsonify({'error': '시스템 정리 중 오류가 발생했습니다'}), 500
 
+# 에러 핸들러
+@integration_api.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': '요청한 리소스를 찾을 수 없습니다'}), 404
 
-def get_local_inventory_data():
-    """로컬 재고 데이터 조회"""
-    return {
-        'items': [
-            {'id': 1, 'name': '상품A', 'quantity': 100, 'price': 10000},
-            {'id': 2, 'name': '상품B', 'quantity': 50, 'price': 15000}
-        ],
-        'last_updated': datetime.now().isoformat()
-    }
-
-
-def get_local_orders_data():
-    """로컬 주문 데이터 조회"""
-    return {
-        'orders': [
-            {'id': 1, 'customer': '고객A', 'total': 25000, 'status': 'completed'},
-            {'id': 2, 'customer': '고객B', 'total': 30000, 'status': 'pending'}
-        ],
-        'last_updated': datetime.now().isoformat()
-    }
-
-
-def get_local_staff_data():
-    """로컬 직원 데이터 조회"""
-    return {
-        'staff': [
-            {'id': 1, 'name': '직원A', 'role': 'manager', 'status': 'active'},
-            {'id': 2, 'name': '직원B', 'role': 'staff', 'status': 'active'}
-        ],
-        'last_updated': datetime.now().isoformat()
-    }
-
-
-def get_all_local_data():
-    """모든 로컬 데이터 조회"""
-    return {
-        'inventory': get_local_inventory_data(),
-        'orders': get_local_orders_data(),
-        'staff': get_local_staff_data(),
-        'sync_timestamp': datetime.now().isoformat()
-    }
-
-
-def get_pos_sync_data():
-    """POS 동기화 데이터"""
-    return {
-        'transactions': get_local_orders_data()['orders'],
-        'sync_timestamp': datetime.now().isoformat()
-    }
-
-
-def get_accounting_sync_data():
-    """회계 동기화 데이터"""
-    orders = get_local_orders_data()['orders']
-    revenue = sum(int(order['total'] if order is not None else None) for order in orders if isinstance(order['total'] if order is not None else None,
-                  (int, float, str)) and str(order['total'] if order is not None else None).isdigit())  # pyright: ignore
-    return {
-        'revenue': revenue,
-        'transactions': orders,
-        'sync_timestamp': datetime.now().isoformat()
-    }  # noqa
+@integration_api.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': '내부 서버 오류가 발생했습니다'}), 500

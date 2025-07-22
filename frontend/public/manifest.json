@@ -1,7 +1,7 @@
 {
-  "name": "레스토랑 관리 시스템",
-  "short_name": "레스토랑 관리",
-  "description": "계층형 구조 기반 레스토랑 관리 시스템",
+  "name": "멀티테넌시 관리 시스템",
+  "short_name": "MTMS",
+  "description": "브랜드별 멀티테넌시 관리 시스템 - 직원 관리, 스케줄링, 출근체크",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -9,16 +9,53 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "ko",
-  "categories": ["business", "productivity"],
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
-      "src": "/icon-192x192.png",
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
@@ -26,54 +63,145 @@
   ],
   "shortcuts": [
     {
+      "name": "출근 체크",
+      "short_name": "출근",
+      "description": "빠른 출근 체크",
+      "url": "/employee/clock-in",
+      "icons": [
+        {
+          "src": "/icons/clock-in-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "퇴근 체크",
+      "short_name": "퇴근",
+      "description": "빠른 퇴근 체크",
+      "url": "/employee/clock-out",
+      "icons": [
+        {
+          "src": "/icons/clock-out-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "스케줄 확인",
+      "short_name": "스케줄",
+      "description": "오늘의 스케줄 확인",
+      "url": "/employee/schedule",
+      "icons": [
+        {
+          "src": "/icons/schedule-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "대시보드",
       "short_name": "대시보드",
-      "description": "메인 대시보드로 이동",
-      "url": "/dashboard",
+      "description": "관리자 대시보드",
+      "url": "/admin/dashboard",
       "icons": [
         {
-          "src": "/icon-192x192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "주문 관리",
-      "short_name": "주문",
-      "description": "주문 관리 페이지로 이동",
-      "url": "/orders",
-      "icons": [
-        {
-          "src": "/icon-192x192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "재고 관리",
-      "short_name": "재고",
-      "description": "재고 관리 페이지로 이동",
-      "url": "/inventory",
-      "icons": [
-        {
-          "src": "/icon-192x192.png",
-          "sizes": "192x192"
+          "src": "/icons/dashboard-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
         }
       ]
     }
   ],
   "screenshots": [
     {
-      "src": "/screenshot-wide.png",
+      "src": "/screenshots/desktop-dashboard.png",
       "sizes": "1280x720",
       "type": "image/png",
-      "form_factor": "wide"
+      "form_factor": "wide",
+      "label": "데스크톱 대시보드 화면"
     },
     {
-      "src": "/screenshot-narrow.png",
-      "sizes": "750x1334",
+      "src": "/screenshots/mobile-clock-in.png",
+      "sizes": "390x844",
       "type": "image/png",
-      "form_factor": "narrow"
+      "form_factor": "narrow",
+      "label": "모바일 출근 체크 화면"
+    },
+    {
+      "src": "/screenshots/mobile-schedule.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "모바일 스케줄 화면"
     }
+  ],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://your-domain.com/manifest.json"
+    }
+  ],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "handle_links": "preferred",
+  "protocol_handlers": [
+    {
+      "protocol": "web+mtms",
+      "url": "/?action=%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/upload",
+      "accept": {
+        "image/*": [".png", ".jpg", ".jpeg", ".gif"],
+        "application/pdf": [".pdf"],
+        "text/csv": [".csv"]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "application/pdf", "text/csv"]
+        }
+      ]
+    }
+  },
+  "background": {
+    "service_worker": "/sw.js",
+    "type": "module"
+  },
+  "permissions": [
+    "notifications",
+    "geolocation",
+    "camera",
+    "microphone"
+  ],
+  "features": [
+    "Cross Platform",
+    "Offline Support",
+    "Push Notifications",
+    "Real-time Updates",
+    "Employee Management",
+    "Schedule Management",
+    "Clock In/Out",
+    "Analytics Dashboard"
   ]
 } 
