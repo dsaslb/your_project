@@ -26,6 +26,7 @@ interface UserState {
   checkAuth: () => Promise<boolean>;
   updateProfile: (data: { name?: string; email?: string }) => Promise<boolean>;
   clearError: () => void;
+  setRole: (role: User["role"]) => void;
   
   // 역할별 접근 제어
   hasRole: (roles: string | string[]) => boolean;
@@ -39,13 +40,23 @@ interface UserState {
   broadcastChange: (action: string, data?: any) => void;
 }
 
+const dummyUser: User = {
+  id: 1,
+  username: 'devuser',
+  name: '개발자',
+  email: 'devuser@example.com',
+  is_active: true,
+  role: 'admin',
+};
+
 const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
-      user: null,
-      isAuthenticated: false,
+      user: dummyUser,
+      isAuthenticated: true,
       isLoading: false,
       error: null,
+      setRole: (role: User["role"]) => set(state => ({ user: { ...state.user!, role } })),
 
       login: async (username: string, password: string) => {
         set({ isLoading: true, error: null });

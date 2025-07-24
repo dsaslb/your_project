@@ -5,8 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToastStore } from '@/store/useToastStore'
+import { WebSocketProvider } from '@/components/WebSocketProvider'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+})
 
 export const metadata: Metadata = {
   title: 'Your Program',
@@ -29,8 +34,10 @@ export default function RootLayout({
     <html lang="ko">
       <body className={inter.className}>
         <QueryClientProvider client={queryClient}>
-          {children}
-          <ToastProvider />
+          <WebSocketProvider>
+            {children}
+            <ToastProvider />
+          </WebSocketProvider>
         </QueryClientProvider>
       </body>
     </html>

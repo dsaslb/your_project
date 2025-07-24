@@ -210,6 +210,10 @@ export const useOrderStore = create<OrderStore>()(
       
       // WebSocket 연결
       connectWebSocket: () => {
+        if (process.env.NODE_ENV === 'development') {
+          // 개발 환경에서는 WebSocket 연결을 시도하지 않음
+          return;
+        }
         try {
           const ws = new WebSocket('ws://localhost:5001/orders');
           

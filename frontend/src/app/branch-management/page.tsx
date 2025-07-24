@@ -14,79 +14,98 @@ import {
   Edit,
   Trash2,
   Search,
-  Filter
+  Filter,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Dialog } from "@/components/ui/dialog";
 
 export default function BranchManagement() {
-  // 더미 데이터
-  const branches = [
-    {
-      id: 1,
-      name: "강남점",
-      address: "서울시 강남구 테헤란로 123",
-      phone: "02-1234-5678",
-      email: "gangnam@your_program.com",
-      manager: "김철수",
-      employees: 28,
-      status: "active",
-      revenue: "₩350,000,000",
-      openDate: "2023-01-15"
-    },
-    {
-      id: 2,
-      name: "홍대점",
-      address: "서울시 마포구 홍대로 456",
-      phone: "02-2345-6789",
-      email: "hongdae@your_program.com",
-      manager: "이영희",
-      employees: 25,
-      status: "active",
-      revenue: "₩280,000,000",
-      openDate: "2023-03-20"
-    },
-    {
-      id: 3,
-      name: "부산점",
-      address: "부산시 해운대구 해운대로 789",
-      phone: "051-3456-7890",
-      email: "busan@your_program.com",
-      manager: "박민수",
-      employees: 22,
-      status: "active",
-      revenue: "₩220,000,000",
-      openDate: "2023-06-10"
-    },
-    {
-      id: 4,
-      name: "대구점",
-      address: "대구시 중구 동성로 321",
-      phone: "053-4567-8901",
-      email: "daegu@your_program.com",
-      manager: "정수진",
-      employees: 20,
-      status: "maintenance",
-      revenue: "₩200,000,000",
-      openDate: "2023-08-05"
-    },
-    {
-      id: 5,
-      name: "인천점",
-      address: "인천시 연수구 송도대로 654",
-      phone: "032-5678-9012",
-      email: "incheon@your_program.com",
-      manager: "최동현",
-      employees: 18,
-      status: "active",
-      revenue: "₩180,000,000",
-      openDate: "2023-10-12"
+  const [branches, setBranches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editBranch, setEditBranch] = useState<any>(null);
+  const [form, setForm] = useState<any>({ name: '', address: '', phone: '', email: '', manager: '', employees: 0, status: 'active', revenue: '', openDate: '' });
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // 목록 fetch
+  const fetchBranches = () => {
+    setLoading(true);
+    setError(null);
+    fetch("/api/branches")
+      .then(res => res.json())
+      .then(data => setBranches(data.branches || []))
+      .catch(() => setError("매장 목록을 불러오지 못했습니다."))
+      .finally(() => setLoading(false));
+  };
+  useEffect(fetchBranches, []);
+
+  // 생성/수정 핸들러
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    setSubmitLoading(true);
+    setSubmitError(null);
+    try {
+      const method = editBranch ? 'PUT' : 'POST';
+      const url = editBranch ? `/api/branches/${editBranch.id}` : '/api/branches';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error('저장 실패');
+      setModalOpen(false);
+      setEditBranch(null);
+      setForm({ name: '', address: '', phone: '', email: '', manager: '', employees: 0, status: 'active', revenue: '', openDate: '' });
+      fetchBranches();
+    } catch (err) {
+      setSubmitError('저장에 실패했습니다.');
+    } finally {
+      setSubmitLoading(false);
     }
-  ];
+  };
+
+  // 삭제 핸들러
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/branches/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('삭제 실패');
+      fetchBranches();
+    } catch (err) {
+      setError('삭제에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 폼 열기/닫기
+  const openCreate = () => {
+    setEditBranch(null);
+    setForm({ name: '', address: '', phone: '', email: '', manager: '', employees: 0, status: 'active', revenue: '', openDate: '' });
+    setModalOpen(true);
+  };
+  const openEdit = (branch: any) => {
+    setEditBranch(branch);
+    setForm({ ...branch });
+    setModalOpen(true);
+  };
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditBranch(null);
+    setForm({ name: '', address: '', phone: '', email: '', manager: '', employees: 0, status: 'active', revenue: '', openDate: '' });
+    setSubmitError(null);
+  };
 
   const stats = {
     totalBranches: branches.length,
     activeBranches: branches.filter(b => b.status === "active").length,
-    totalEmployees: branches.reduce((sum, b) => sum + b.employees, 0),
-    totalRevenue: branches.reduce((sum, b) => sum + parseInt(b.revenue.replace(/[₩,]/g, '')), 0)
+    totalEmployees: branches.reduce((sum, b) => sum + (b.employees || 0), 0),
+    totalRevenue: branches.reduce((sum, b) => sum + (typeof b.revenue === 'string' ? parseInt(b.revenue.replace(/[₩,]/g, '')) : (b.revenue || 0)), 0)
   };
 
   const getStatusBadge = (status: string) => {
@@ -114,7 +133,7 @@ export default function BranchManagement() {
             매장 정보 및 운영 현황 관리
           </p>
         </div>
-        <Button className="flex items-center space-x-2">
+        <Button className="flex items-center space-x-2" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           <span>새 매장 추가</span>
         </Button>
@@ -211,6 +230,8 @@ export default function BranchManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {loading && <div className="text-sm text-gray-500 mb-2">로딩 중...</div>}
+          {error && <div className="text-sm text-red-500 mb-2">{error}</div>}
           <div className="space-y-4">
             {branches.map((branch) => (
               <div key={branch.id} className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -249,10 +270,10 @@ export default function BranchManagement() {
                   </div>
                   {getStatusBadge(branch.status)}
                   <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => openEdit(branch)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => handleDelete(branch.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -262,6 +283,33 @@ export default function BranchManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 매장 생성/수정 모달 */}
+      <Dialog open={modalOpen} onOpenChange={closeModal}>
+        <div className={`fixed inset-0 z-50 flex items-center justify-center ${modalOpen ? '' : 'hidden'}`}> 
+          <div className="bg-white rounded-xl shadow-2xl p-6 min-w-[320px] max-w-md relative animate-fade-in">
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl" onClick={closeModal} aria-label="닫기"><X /></button>
+            <h2 className="text-lg font-bold mb-3 text-indigo-700">{editBranch ? '매장 수정' : '새 매장 추가'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <input className="w-full border rounded px-2 py-1" placeholder="매장명" value={form.name} onChange={e => setForm((f: any) => ({ ...f, name: e.target.value }))} required />
+              <input className="w-full border rounded px-2 py-1" placeholder="주소" value={form.address} onChange={e => setForm((f: any) => ({ ...f, address: e.target.value }))} required />
+              <input className="w-full border rounded px-2 py-1" placeholder="전화번호" value={form.phone} onChange={e => setForm((f: any) => ({ ...f, phone: e.target.value }))} required />
+              <input className="w-full border rounded px-2 py-1" placeholder="이메일" value={form.email} onChange={e => setForm((f: any) => ({ ...f, email: e.target.value }))} />
+              <input className="w-full border rounded px-2 py-1" placeholder="매니저" value={form.manager} onChange={e => setForm((f: any) => ({ ...f, manager: e.target.value }))} />
+              <input className="w-full border rounded px-2 py-1" type="number" placeholder="직원 수" value={form.employees} onChange={e => setForm((f: any) => ({ ...f, employees: Number(e.target.value) }))} />
+              <input className="w-full border rounded px-2 py-1" placeholder="월 매출(숫자만)" value={form.revenue} onChange={e => setForm((f: any) => ({ ...f, revenue: e.target.value }))} />
+              <input className="w-full border rounded px-2 py-1" placeholder="개점일(YYYY-MM-DD)" value={form.openDate} onChange={e => setForm((f: any) => ({ ...f, openDate: e.target.value }))} />
+              <select className="w-full border rounded px-2 py-1" value={form.status} onChange={e => setForm((f: any) => ({ ...f, status: e.target.value }))}>
+                <option value="active">운영 중</option>
+                <option value="maintenance">점검 중</option>
+                <option value="closed">폐점</option>
+              </select>
+              {submitError && <div className="text-red-500 text-sm">{submitError}</div>}
+              <button type="submit" className="w-full bg-blue-600 text-white rounded py-2 font-semibold mt-2" disabled={submitLoading}>{submitLoading ? '저장 중...' : (editBranch ? '수정' : '등록')}</button>
+            </form>
+          </div>
+        </div>
+      </Dialog>
 
       {/* 매장별 상세 통계 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -285,7 +333,7 @@ export default function BranchManagement() {
                     <div className="w-32 bg-gray-200 rounded-full h-2 mt-1">
                       <div 
                         className="bg-blue-600 h-2 rounded-full" 
-                        style={{width: `${(parseInt(branch.revenue.replace(/[₩,]/g, '')) / 350000000) * 100}%`}}
+                        style={{width: `${((typeof branch.revenue === 'string' ? parseInt(branch.revenue.replace(/[₩,]/g, '')) : (branch.revenue || 0)) / 350000000) * 100}%`}}
                       ></div>
                     </div>
                   </div>

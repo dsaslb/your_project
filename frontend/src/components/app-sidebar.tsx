@@ -1,4 +1,4 @@
-import { Calendar, ChefHat, Home, Settings, TrendingUp, Users, UtensilsCrossed, Wallet, Activity } from "lucide-react"
+import { Calendar, ChefHat, Home, Settings, TrendingUp, Users, UtensilsCrossed, Wallet, Activity, Building2 } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -17,7 +17,7 @@ import Link from "next/link"
 const menuItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: Home,
   },
   {

@@ -34,44 +34,9 @@ export default function EmployeeDashboard() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // 인증 상태 확인
-    const savedAuth = localStorage.getItem("authState")
-    if (savedAuth) {
-      const parsedAuth = JSON.parse(savedAuth)
-      setAuthState(parsedAuth)
-      
-      // 인증되지 않았거나 권한이 없는 경우 로그인 페이지로 리다이렉트
-      if (!parsedAuth.isAuthenticated) {
-        router.push("/login")
-        return
-      }
-      
-      // admin 또는 employee 계정만 접근 가능
-      const allowedUsers = ["admin", "employee"]
-      if (!allowedUsers.includes(parsedAuth.username)) {
-        router.push("/login")
-        return
-      }
-      
-      // admin이지만 다른 역할을 선택한 경우 해당 역할의 대시보드로 리다이렉트
-      if (parsedAuth.username === "admin" && parsedAuth.selectedRole && parsedAuth.selectedRole !== "employee") {
-        const roleRoutes = {
-          "brand-admin": "/brand-dashboard",
-          "store-manager": "/manager-dashboard"
-        }
-        const targetRoute = roleRoutes[parsedAuth.selectedRole as keyof typeof roleRoutes]
-        if (targetRoute) {
-          router.push(targetRoute)
-          return
-        }
-      }
-    } else {
-      router.push("/login")
-      return
-    }
-    
-    setIsLoading(false)
-  }, [router])
+    // 인증 우회: 항상 접근 허용
+    setIsLoading(false);
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("authState")

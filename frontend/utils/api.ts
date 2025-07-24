@@ -1,4 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
+import { toast } from 'sonner';
+import Router from 'next/router';
+import useUserStore from '@/store/useUserStore';
 
 // API 기본 설정
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -28,22 +31,15 @@ apiClient.interceptors.request.use(
 
 // 응답 인터셉터 (에러 처리)
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  (error: AxiosError) => {
-    // 401 에러 시 토큰 제거 및 로그인 페이지로 리다이렉트
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+  response => response,
+  error => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      // 세션 만료 처리
+      const { logout } = useUserStore.getState();
+      if (logout) logout();
+      toast.error('세션이 만료되었습니다. 다시 로그인 해주세요.');
+      Router.push('/login');
     }
-    
-    // 500 에러 시 서버 오류 메시지
-    if (error.response?.status === 500) {
-      console.error('서버 오류:', error.response.data);
-    }
-    
     return Promise.reject(error);
   }
 );

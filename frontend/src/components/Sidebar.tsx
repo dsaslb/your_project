@@ -6,10 +6,29 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { 
+  Menu, 
+  X, 
+  ChevronDown, 
+  ChevronRight,
+  Home,
+  Building2,
+  Users,
+  Settings,
+  BarChart3,
+  ShoppingCart,
+  Calendar,
+  UserCheck,
+  Store,
+  Package,
+  FileText,
+  Bell,
+  HelpCircle
+} from 'lucide-react';
 import useUserStore from '@/store/useUserStore';
 import { useOrderStore } from '@/store/useOrderStore';
 import { usePluginMenus } from '@/hooks/usePluginMenus';
+import ClientOnly from './ClientOnly';
 
 interface MenuItem {
   title: string;
@@ -70,7 +89,7 @@ export default function Sidebar() {
       {
         title: '대시보드',
         href: '/dashboard',
-        icon: <div className="w-4 h-4 bg-blue-500 rounded" />,
+        icon: <Home className="w-4 h-4" />,
         roles: ['super_admin', 'brand_manager', 'store_manager', 'employee']
       }
     ];
@@ -83,21 +102,21 @@ export default function Sidebar() {
         return menu.roles.includes(userRole);
       });
 
-      // 플러그인 메뉴를 그룹별로 구성
-      const pluginGroups: Record<string, MenuItem[]> = {};
-      userPluginMenus.forEach(menu => {
-        const parent = menu.parent || 'plugins';
-        if (!pluginGroups[parent]) {
-          pluginGroups[parent] = [];
-        }
-        pluginGroups[parent].push({
-          title: menu.title,
-          href: menu.path,
-          icon: <div className="w-4 h-4 bg-purple-500 rounded" />,
-          badge: menu.badge,
-          roles: menu.roles
+              // 플러그인 메뉴를 그룹별로 구성
+        const pluginGroups: Record<string, MenuItem[]> = {};
+        userPluginMenus.forEach(menu => {
+          const parent = menu.parent || 'plugins';
+          if (!pluginGroups[parent]) {
+            pluginGroups[parent] = [];
+          }
+          pluginGroups[parent].push({
+            title: menu.title,
+            href: menu.path,
+            icon: <Package className="w-4 h-4" />,
+            badge: menu.badge,
+            roles: menu.roles
+          });
         });
-      });
 
       // 플러그인 그룹을 메뉴에 추가
       Object.entries(pluginGroups).forEach(([groupName, groupMenus]) => {
@@ -108,7 +127,7 @@ export default function Sidebar() {
           // 여러 메뉴인 경우 그룹으로 추가
           baseItems.push({
             title: groupName === 'plugins' ? '플러그인' : groupName,
-            icon: <div className="w-4 h-4 bg-purple-500 rounded" />,
+            icon: <Package className="w-4 h-4" />,
             children: groupMenus,
             roles: groupMenus.flatMap(menu => menu.roles || [])
           });
@@ -121,26 +140,26 @@ export default function Sidebar() {
       baseItems.push(
         {
           title: '시스템 관리',
-          icon: <div className="w-4 h-4 bg-red-500 rounded" />,
+          icon: <Settings className="w-4 h-4" />,
           children: [
             {
-              title: '전체 대시보드',
-              href: '/super-admin',
+              title: '관리자 대시보드',
+              href: '/admin-dashboard',
+              roles: ['super_admin']
+            },
+            {
+              title: '브랜드 관리',
+              href: '/admin/brand-management',
               roles: ['super_admin']
             },
             {
               title: '매장 관리',
-              href: '/branch-management',
+              href: '/admin/store-management',
               roles: ['super_admin']
             },
             {
-              title: '사용자 관리',
-              href: '/staff',
-              roles: ['super_admin']
-            },
-            {
-              title: '권한 관리',
-              href: '/admin-monitor',
+              title: '직원 관리',
+              href: '/admin/employee-management',
               roles: ['super_admin']
             }
           ],
@@ -148,31 +167,21 @@ export default function Sidebar() {
         },
         {
           title: '고급 기능',
-          icon: <div className="w-4 h-4 bg-purple-500 rounded" />,
+          icon: <BarChart3 className="w-4 h-4" />,
           children: [
             {
-              title: 'AI 예측',
-              href: '/ai-prediction',
+              title: '모듈 마켓플레이스',
+              href: '/admin/module-marketplace',
               roles: ['super_admin']
             },
             {
-              title: '실시간 모니터링',
-              href: '/realtime-monitoring',
+              title: '플러그인 관리',
+              href: '/admin/plugin-management',
               roles: ['super_admin']
             },
             {
-              title: '플러그인 성능',
-              href: '/plugin-performance',
-              roles: ['super_admin']
-            },
-            {
-              title: '알림 관리',
-              href: '/notification-management',
-              roles: ['super_admin']
-            },
-            {
-              title: '보안 감사',
-              href: '/security-audit',
+              title: '피드백 관리',
+              href: '/admin/feedback-management',
               roles: ['super_admin']
             }
           ],
@@ -186,21 +195,21 @@ export default function Sidebar() {
       baseItems.push(
         {
           title: '브랜드 관리',
-          icon: <div className="w-4 h-4 bg-green-500 rounded" />,
+          icon: <Building2 className="w-4 h-4" />,
           children: [
             {
               title: '브랜드 대시보드',
-              href: '/brand-dashboard',
+              href: '/brand-dashboard/1',
               roles: ['super_admin', 'brand_manager']
             },
             {
-              title: '매장별 통계',
-              href: '/analytics',
+              title: '브랜드별 매출',
+              href: '/brand-dashboard/1/sales',
               roles: ['super_admin', 'brand_manager']
             },
             {
-              title: '성과 분석',
-              href: '/performance',
+              title: '브랜드별 개선요청',
+              href: '/brand-dashboard/1/improvements',
               roles: ['super_admin', 'brand_manager']
             }
           ],
@@ -208,8 +217,8 @@ export default function Sidebar() {
         },
         {
           title: '모듈/플러그인 관리',
-          href: '/admin-dashboard/modules',
-          icon: <div className="w-4 h-4 bg-indigo-500 rounded" />,
+          href: '/admin/module-management',
+          icon: <Package className="w-4 h-4" />,
           roles: ['super_admin', 'brand_manager']
         }
       );
@@ -220,11 +229,11 @@ export default function Sidebar() {
       baseItems.push(
         {
           title: '매장 운영',
-          icon: <div className="w-4 h-4 bg-orange-500 rounded" />,
+          icon: <Store className="w-4 h-4" />,
           children: [
             {
-              title: '매장 대시보드',
-              href: '/store-dashboard',
+              title: '매장 관리자 대시보드',
+              href: '/manager-dashboard',
               roles: ['super_admin', 'brand_manager', 'store_manager']
             },
             {
@@ -253,7 +262,7 @@ export default function Sidebar() {
         },
         {
           title: '업무 관리',
-          icon: <div className="w-4 h-4 bg-yellow-500 rounded" />,
+          icon: <Calendar className="w-4 h-4" />,
           children: [
             {
               title: '출근 관리',
@@ -281,7 +290,7 @@ export default function Sidebar() {
       baseItems.push(
         {
           title: '직원 기능',
-          icon: <div className="w-4 h-4 bg-blue-500 rounded" />,
+          icon: <Users className="w-4 h-4" />,
           children: [
             {
               title: '직원 대시보드',
@@ -308,21 +317,24 @@ export default function Sidebar() {
     baseItems.push(
       {
         title: '공통 기능',
-        icon: <div className="w-4 h-4 bg-gray-500 rounded" />,
+        icon: <Settings className="w-4 h-4" />,
         children: [
           {
             title: '알림',
             href: '/notifications',
-            roles: ['super_admin', 'brand_manager', 'store_manager', 'employee']
-          },
-          {
-            title: '채팅',
-            href: '/chat',
+            icon: <Bell className="w-4 h-4" />,
             roles: ['super_admin', 'brand_manager', 'store_manager', 'employee']
           },
           {
             title: '설정',
             href: '/settings',
+            icon: <Settings className="w-4 h-4" />,
+            roles: ['super_admin', 'brand_manager', 'store_manager', 'employee']
+          },
+          {
+            title: '도움말',
+            href: '/help',
+            icon: <HelpCircle className="w-4 h-4" />,
             roles: ['super_admin', 'brand_manager', 'store_manager', 'employee']
           }
         ],
@@ -335,7 +347,7 @@ export default function Sidebar() {
       baseItems.push({
         title: '운영 리포트/경고',
         href: '/enhanced-alerts',
-        icon: <div className="w-4 h-4 bg-orange-500 rounded" />,
+        icon: <FileText className="w-4 h-4" />,
         roles: ['super_admin', 'brand_manager', 'store_manager', 'admin']
       });
     }
@@ -353,63 +365,83 @@ export default function Sidebar() {
       return null;
     }
 
-    return (
-      <div key={item.title}>
-        <div
-          className={cn(
-            'flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md cursor-pointer transition-colors',
-            level === 0 ? 'hover:bg-gray-100 dark:hover:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700',
-            isActiveItem && 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-            level > 0 && 'ml-4'
-          )}
-          onClick={() => {
-            if (hasChildren) {
-              toggleExpanded(item.title);
-            } else if (item.href) {
-              setIsOpen(false);
-            }
-          }}
-        >
-          <div className="flex items-center space-x-3">
-            {item.icon}
-            <span>{item.title}</span>
-            {item.badge && (
-              <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
-                {item.badge}
-              </span>
+    if (hasChildren) {
+      return (
+        <div key={item.title}>
+          <div
+            className={cn(
+              'flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md cursor-pointer transition-colors',
+              level === 0 ? 'hover:bg-gray-100 dark:hover:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700',
+              level > 0 && 'ml-4'
             )}
-          </div>
-          {hasChildren && (
+            onClick={() => toggleExpanded(item.title)}
+          >
+            <div className="flex items-center space-x-3">
+              {item.icon}
+              <span>{item.title}</span>
+              {item.badge && (
+                <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
+                  {item.badge}
+                </span>
+              )}
+            </div>
             <ChevronDown
               className={cn(
                 'w-4 h-4 transition-transform',
                 isExpanded && 'rotate-180'
               )}
             />
+          </div>
+          
+          {isExpanded && (
+            <div className="mt-1 space-y-1">
+              {item.children!.map(child => renderMenuItem(child, level + 1))}
+            </div>
           )}
         </div>
-        
-        {hasChildren && isExpanded && (
-          <div className="mt-1 space-y-1">
-            {item.children!.map(child => renderMenuItem(child, level + 1))}
-          </div>
-        )}
-        
-        {!hasChildren && item.href && (
-          <Link href={item.href} className="block">
-            <div
-              className={cn(
-                'flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer transition-colors',
-                level === 0 ? 'hover:bg-gray-100 dark:hover:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700',
-                isActiveItem && 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-                level > 0 && 'ml-4'
-              )}
-            >
+      );
+    }
+
+    // 링크가 있는 메뉴 아이템
+    if (item.href) {
+      return (
+        <Link key={item.title} href={item.href} className="block" onClick={() => setIsOpen(false)}>
+          <div
+            className={cn(
+              'flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer transition-colors',
+              level === 0 ? 'hover:bg-gray-100 dark:hover:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700',
+              isActiveItem && 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+              level > 0 && 'ml-4'
+            )}
+          >
+            <div className="flex items-center space-x-3">
               {item.icon}
-              <span className="ml-3">{item.title}</span>
+              <span>{item.title}</span>
+              {item.badge && (
+                <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
+                  {item.badge}
+                </span>
+              )}
             </div>
-          </Link>
-        )}
+          </div>
+        </Link>
+      );
+    }
+
+    // 링크가 없는 메뉴 아이템 (그룹 헤더)
+    return (
+      <div key={item.title}>
+        <div
+          className={cn(
+            'flex items-center px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400',
+            level > 0 && 'ml-4'
+          )}
+        >
+          <div className="flex items-center space-x-3">
+            {item.icon}
+            <span>{item.title}</span>
+          </div>
+        </div>
       </div>
     );
   };
@@ -421,7 +453,7 @@ export default function Sidebar() {
   }
 
   return (
-    <>
+    <ClientOnly>
       {/* 모바일 사이드바 */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
@@ -469,6 +501,6 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-    </>
+    </ClientOnly>
   );
 }

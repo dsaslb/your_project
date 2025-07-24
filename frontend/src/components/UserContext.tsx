@@ -18,28 +18,8 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-
-  // localStorage에서 자동 로드 기능을 임시로 비활성화
-  // useEffect(() => {
-  //   const stored = localStorage.getItem("user");
-  //   if (stored) setUser(JSON.parse(stored));
-  // }, []);
-
-  const login = (user: User) => {
-    setUser(user);
-    localStorage.setItem("user", JSON.stringify(user));
-  };
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-  };
-
-  return (
-    <UserContext.Provider value={{ user, login, logout }}>
-      {children}
-    </UserContext.Provider>
-  );
+  // 인증 우회: 항상 children 렌더
+  return <>{children}</>;
 }
 
 export function useUser() {

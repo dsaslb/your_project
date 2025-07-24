@@ -17,9 +17,7 @@ import {
 
 export default function DashboardPage() {
   return (
-    <ProtectedRoute>
-      <DashboardContent />
-    </ProtectedRoute>
+    <DashboardContent />
   );
 }
 

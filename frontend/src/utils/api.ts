@@ -1,7 +1,7 @@
 // API 호출을 위한 공통 유틸리티
 import { useState } from 'react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.45.44:5000';
 
 export interface ApiResponse<T = any> {
   success: boolean;

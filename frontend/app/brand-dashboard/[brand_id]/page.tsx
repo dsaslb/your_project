@@ -37,12 +37,28 @@ export default function BrandDashboardPage() {
           fetch(`/api/admin/brand/${brandId}/sales`),
           fetch(`/api/admin/brand/${brandId}/improvements`),
         ]);
+        
+        // 각 응답에 대한 에러 처리 개선
         setStores(storesRes.ok ? (await storesRes.json()).stores || [] : []);
         setEmployees(employeesRes.ok ? (await employeesRes.json()).employees || [] : []);
         setSales(salesRes.ok ? (await salesRes.json()).sales || [] : []);
         setImprovements(improvementsRes.ok ? (await improvementsRes.json()).improvements || [] : []);
+        
+        // 개발 환경에서 API 응답 로깅
+        if (process.env.NODE_ENV === 'development') {
+          console.log('API Responses:', {
+            stores: storesRes.status,
+            employees: employeesRes.status,
+            sales: salesRes.status,
+            improvements: improvementsRes.status
+          });
+        }
       } catch (e) {
-        setStores([]); setEmployees([]); setSales([]); setImprovements([]);
+        console.error('브랜드 대시보드 데이터 로딩 오류:', e);
+        setStores([]); 
+        setEmployees([]); 
+        setSales([]); 
+        setImprovements([]);
       } finally {
         setLoading(false);
       }

@@ -108,6 +108,15 @@ export const useAuth = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false); // 기본값 false로 변경
 
+  // 개발용: 인증 우회 더미 유저
+  const dummyUser = {
+    id: 1,
+    username: 'devuser',
+    role: 'admin',
+    permissions: { all: { view: true, edit: true, create: true, delete: true, approve: true } },
+    grade: 'A',
+  };
+
   // 권한 확인 함수
   const hasPermission = (module: string, action: string): boolean => {
     if (!currentUser || !currentUser.permissions) {
@@ -243,16 +252,12 @@ export const useAuth = () => {
 
   // 로그인 상태 확인
   const isAuthenticated = (): boolean => {
-    return !!currentUser;
+    return true; // 항상 인증된 것처럼 처리
   };
 
   // 로그인 체크 및 리다이렉트
   const requireAuth = (redirectTo: string = '/login') => {
-    if (!isAuthenticated()) {
-      router.push(redirectTo);
-      return false;
-    }
-    return true;
+    return true; // 항상 통과
   };
 
   // 권한 체크 및 리다이렉트
@@ -297,38 +302,13 @@ export const useAuth = () => {
 
   // 초기 로드 시 사용자 정보 확인
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const { authApi } = await import('@/utils/api');
-        const result = await authApi.me();
-
-        if (result.success && result.data) {
-          setCurrentUser(result.data);
-        } else {
-          // 네트워크 에러와 진짜 비로그인 구분
-          if (result.error && result.error.includes('네트워크')) {
-            alert('서버에 연결할 수 없습니다. 관리자에게 문의하세요.\n(네트워크 오류: 인증 상태 확인 불가)');
-            setCurrentUser(null); // 기본 권한 부여하지 않음
-          } else {
-            // 진짜 비로그인(401/403 등): 로그인 페이지로 이동
-            console.warn('API 호출 실패, 로그인 화면으로 이동:', result.error);
-            setCurrentUser(null);
-            router.push('/login');
-          }
-        }
-      } catch (error) {
-        alert('알 수 없는 오류가 발생했습니다.');
-        setCurrentUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadUser();
+    // 개발용: 항상 더미 유저로 세팅
+    setCurrentUser(dummyUser);
+    setIsLoading(false);
   }, []);
 
   return {
-    currentUser,
+    currentUser: currentUser || dummyUser,
     isLoading,
     isAuthenticated,
     hasPermission,
@@ -353,6 +333,6 @@ export const useAuth = () => {
     requireAuth,
     requirePermission,
     logout,
-    login, // 추가
+    login,
   };
 }; 
