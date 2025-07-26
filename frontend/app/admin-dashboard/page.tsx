@@ -48,6 +48,8 @@ import { useMediaQuery } from 'react-responsive';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import { Line, Pie } from 'react-chartjs-2'; // Chart.js 차트 컴포넌트만 사용
 import { useBrands } from '../../src/hooks/useApi';
+import RealtimeStats from './realtime-stats';
+import AnalyticsCharts from './analytics-charts';
 
 // Chart.js 스케일/플러그인 등록 (category 오류 방지)
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, ChartTooltip, Legend, PointElement, LineElement, Filler);
@@ -111,6 +113,9 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [brandStats, setBrandStats] = useState<any[]>([]);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   // 실시간 KPI 변화 데이터 (예시: 최근 7일)
   const [kpiHistory, setKpiHistory] = useState<any>({
     dates: [], brands: [], stores: [], users: [], orders: []
@@ -164,15 +169,53 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/admin/dashboard')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) setDashboard(data);
-        else setError(data.error || '데이터 로드 실패');
+    const loadData = () => {
+      // 대시보드 데이터와 브랜드 통계 데이터를 병렬로 가져오기
+      Promise.all([
+        fetch('/api/admin/dashboard').then(res => res.json()),
+        fetch('/api/admin/brand_stats_real').then(res => res.json())
+      ])
+      .then(([dashboardData, brandStatsData]) => {
+        if (dashboardData.success) setDashboard(dashboardData);
+        else setError(dashboardData.error || '데이터 로드 실패');
+        
+        if (brandStatsData.brand_stats) setBrandStats(brandStatsData.brand_stats);
+        setLastUpdate(new Date());
       })
       .catch(() => setError('네트워크 오류'))
       .finally(() => setLoading(false));
-  }, []);
+    };
+
+    loadData();
+
+    // 자동 새로고침 설정 (1분마다)
+    if (autoRefresh) {
+      const interval = setInterval(loadData, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
+
+  // 필터링 및 정렬 기능
+  const filteredBrandStats = brandStats.filter(brand => {
+    if (brandFilter !== 'all' && brand.brand_name !== brandFilter) return false;
+    if (search && !brand.brand_name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return sortOrder === 'asc' ? a.brand_name.localeCompare(b.brand_name) : b.brand_name.localeCompare(a.brand_name);
+      case 'employee_count':
+        return sortOrder === 'asc' ? a.employee_count - b.employee_count : b.employee_count - a.employee_count;
+      case 'manager_count':
+        return sortOrder === 'asc' ? a.manager_count - b.manager_count : b.manager_count - a.manager_count;
+      case 'store_count':
+        return sortOrder === 'asc' ? a.store_count - b.store_count : b.store_count - a.store_count;
+      case 'total_count':
+        return sortOrder === 'asc' ? a.total_count - b.total_count : b.total_count - a.total_count;
+      default:
+        return 0;
+    }
+  });
 
   if (loading) return <div className="dark:bg-slate-900 min-h-screen flex items-center justify-center text-lg">대시보드 로딩 중...</div>;
   if (error) return <div className="text-red-500 dark:text-red-400">{error}</div>;
@@ -245,10 +288,38 @@ export default function AdminDashboard() {
           placeholder="상품/액션 검색"
           className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white"
         />
-        <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white">
-          <option value="all">전체 브랜드</option>
-          {charts.brand_stats.map((b: any) => <option key={b.brand_name} value={b.brand_name}>{b.brand_name}</option>)}
-        </select>
+        <div className="flex gap-2 items-center">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="브랜드명 검색..."
+            className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white"
+          />
+          <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white">
+            <option value="all">전체 브랜드</option>
+            {brandStats.map((b: any) => <option key={b.brand_name} value={b.brand_name}>{b.brand_name}</option>)}
+          </select>
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white">
+            <option value="name">브랜드명</option>
+            <option value="employee_count">직원 수</option>
+            <option value="manager_count">매니저 수</option>
+            <option value="store_count">매장 수</option>
+            <option value="total_count">총 인원</option>
+          </select>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white"
+          >
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </button>
+          <button
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`px-2 py-1 border rounded ${autoRefresh ? 'bg-green-500 text-white' : 'dark:bg-slate-800 dark:text-white'}`}
+          >
+            {autoRefresh ? '자동 새로고침 ON' : '자동 새로고침 OFF'}
+          </button>
+        </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-2 py-1 border rounded dark:bg-slate-800 dark:text-white">
           <option value="all">전체 상태</option>
           <option value="pending">대기</option>
@@ -260,11 +331,11 @@ export default function AdminDashboard() {
         <h2 className="font-bold mb-2 text-slate-900 dark:text-white">브랜드별 매장/직원/주문 통계</h2>
         <Bar
           data={{
-            labels: charts.brand_stats.map((b: any) => b.brand_name),
+            labels: brandStats.map((b: any) => b.brand_name),
             datasets: [
-              { label: '매장 수', data: charts.brand_stats.map((b: any) => b.store_count), backgroundColor: 'rgba(59,130,246,0.5)' },
-              { label: '직원 수', data: charts.brand_stats.map((b: any) => b.employee_count), backgroundColor: 'rgba(16,185,129,0.5)' },
-              { label: '주문 수', data: charts.brand_stats.map((b: any) => b.order_count), backgroundColor: 'rgba(251,191,36,0.5)' },
+              { label: '매장 수', data: brandStats.map((b: any) => b.store_count), backgroundColor: 'rgba(59,130,246,0.5)' },
+              { label: '직원 수', data: brandStats.map((b: any) => b.employee_count), backgroundColor: 'rgba(16,185,129,0.5)' },
+              { label: '매니저 수', data: brandStats.map((b: any) => b.manager_count), backgroundColor: 'rgba(251,191,36,0.5)' },
             ]
           }}
           options={{ responsive: true, plugins: { legend: { position: isMobile ? 'bottom' : 'top' } } }}
@@ -821,6 +892,15 @@ function AdminDashboardContent() {
               />
               */}
           </div>
+
+          {/* 새로운 브랜드 통계 섹션 */}
+          <div className="mt-12">
+            <h2 className="text-xl font-bold mb-4">브랜드 통계 분석</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <RealtimeStats />
+              <AnalyticsCharts />
+            </div>
+          </div>
           {/* 알림 상세 모달 */}
           {selectedAlert && (
             <div
@@ -936,10 +1016,7 @@ function RecentSystemAlerts() {
               <li
                 key={idx}
                 role="listitem"
-                className={
-                  (alert.priority === 'high' ? 'text-red-600 font-bold flex items-center ' : '') +
-                  (isNew ? ' bg-yellow-100 animate-pulse' : '')
-                }
+                className={alert.priority === 'high' ? 'text-red-600 font-bold flex items-center' : '' + (isNew ? ' bg-yellow-100 animate-pulse' : '')}
                 aria-live={isNew ? 'assertive' : undefined}
               >
                 {alert.priority === 'high' && (

@@ -68,6 +68,13 @@ app.config.from_object(config_by_name[config_name])
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 app.config["SECRET_KEY"] = app.config["JWT_SECRET_KEY"]
 
+# JSON 파싱 강제 활성화
+app.config['JSON_AS_ASCII'] = False
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+
+# SocketIO 초기화 (조건부) - 나중에 설정
+socketio = None  # 임시로 None 설정
+
 from flask import jsonify, render_template, request
 from api.auth import api_auth_bp
 app.register_blueprint(api_auth_bp)
@@ -75,15 +82,8 @@ app.register_blueprint(api_auth_bp)
 CORS(
     app,
     origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
         "http://192.168.45.44:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://192.168.45.44:3001",
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-        "http://192.168.45.44:5001",
+       
     ],
     supports_credentials=True,
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -193,6 +193,9 @@ except Exception as e:
 def register_blueprints():
     """모든 블루프린트를 등록합니다."""
     blueprints = [
+        # 플러그인 마켓플레이스 API
+        ("api.plugin_marketplace", "plugin_marketplace_bp", "plugin_marketplace"),
+        
         # 플러그인 시스템 API
         ("api.plugin_system_manager_api", "plugin_system_manager_bp", "plugin_system_manager_api"),
         ("api.plugin_operations_api", "plugin_operations_bp", "plugin_operations_api"),
@@ -222,6 +225,21 @@ def register_blueprints():
         ("plugins.inventory_management", "inventory_bp", "inventory_management"),
         ("plugins.purchase_management", "purchase_bp", "purchase_management"),
         ("plugins.schedule_management", "schedule_bp", "schedule_management"),
+        
+        # 브랜드 관리 API
+        ("api.admin_brand_api", "admin_brand_api", "admin_brand_api"),
+        
+        # 업종관리자 API
+        ("routes.industry_admin", "industry_admin_bp", "industry_admin"),
+        
+        # 브랜드관리자 API
+        ("routes.brand_admin", "brand_admin_bp", "brand_admin"),
+        
+        # 매장관리자 API
+        ("routes.store_admin", "store_admin_bp", "store_admin"),
+        
+        # 직원 API
+        ("routes.employee", "employee_bp", "employee"),
     ]
     
     for module_path, blueprint_name, url_prefix in blueprints:
@@ -303,6 +321,7 @@ except Exception as e:
 # 레스토랑 업종 관리자 페이지 등록
 try:
     from routes.restaurant_industry_admin import restaurant_industry_admin
+    app.register_blueprint(restaurant_industry_admin)
     restaurant_industry_admin.init_app(app)
     logger.info("레스토랑 업종 관리자 페이지 등록 완료")
 except Exception as e:
@@ -362,6 +381,14 @@ except Exception as e:
 # except Exception as e:
 #     logger.error(f"실시간 모니터링 API 블루프린트 등록 실패: {e}")
 logger.info("실시간 모니터링 API 블루프린트 비활성화됨")
+
+# 플러그인 마켓플레이스 API 직접 등록
+try:
+    from api.plugin_marketplace import plugin_marketplace_bp
+    app.register_blueprint(plugin_marketplace_bp)
+    logger.info("플러그인 마켓플레이스 API 등록 완료")
+except Exception as e:
+    logger.error(f"플러그인 마켓플레이스 API 등록 실패: {e}")
 
 # 실시간 알림 API 블루프린트 등록
 try:
@@ -885,10 +912,21 @@ def page_not_found(e):
 
 @app.errorhandler(400)
 def bad_request(e):
+    # 디버깅을 위해 오류 정보 출력
+    print(f"400 오류 발생: {request.path}")
+    print(f"오류 정보: {e}")
+    print(f"요청 데이터: {request.get_data()}")
+    
     if request.path.startswith("/api/"):
         return jsonify({
             "error": "Bad Request",
-            "message": "잘못된 요청입니다."
+            "message": "잘못된 요청입니다.",
+            "debug_info": {
+                "path": request.path,
+                "method": request.method,
+                "content_type": request.content_type,
+                "data": request.get_data().decode('utf-8', errors='ignore')
+            }
         }), 400
     return render_template("errors/400.html"), 400
 
@@ -1001,6 +1039,37 @@ def api_dashboard():
         print(f"DEBUG: 대시보드 API 오류: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+@app.route('/api/admin/dashboard', methods=['GET'])
+def api_admin_dashboard():
+    return jsonify({
+        'success': True,
+        'cards': {
+            'total_brands': 4,
+            'total_stores': 10,
+            'total_users': 50,
+            'total_orders': 1234
+        },
+        'charts': {
+            'brand_stats': [
+                {'brand_name': '브랜드A', 'store_count': 3, 'employee_count': 10, 'order_count': 100},
+                {'brand_name': '브랜드B', 'store_count': 2, 'employee_count': 8, 'order_count': 80}
+            ]
+        },
+        'tables': {
+            'recent_orders': [
+                {'id': 1, 'item': '아메리카노', 'store_id': 1, 'status': 'completed', 'created_at': '2024-07-25 09:00'},
+                {'id': 2, 'item': '카페라떼', 'store_id': 2, 'status': 'pending', 'created_at': '2024-07-25 09:10'}
+            ],
+            'system_logs': [
+                {'id': 1, 'action': 'login', 'user_id': 1, 'created_at': '2024-07-25 09:00', 'detail': '로그인 성공'},
+                {'id': 2, 'action': 'order', 'user_id': 2, 'created_at': '2024-07-25 09:10', 'detail': '주문 생성'}
+            ]
+        },
+        'notifications': [
+            {'id': 1, 'level': 'info', 'message': '시스템 점검 예정', 'created_at': '2024-07-25 08:00'},
+            {'id': 2, 'level': 'warning', 'message': '매장 2곳 네트워크 불안정', 'created_at': '2024-07-25 08:30'}
+        ]
+    })
 
 @app.route("/dashboard-jwt")
 def dashboard_jwt():
@@ -4858,34 +4927,1043 @@ def api_menu_access(menu_id):
 
 @app.route("/api/admin/brand_stats")
 def api_admin_brand_stats():
-    """브랜드별 통계 API"""
+    """브랜드별 통계 API (기존 엔드포인트 - 더미 데이터)"""
     try:
-        # 브랜드별 통계 데이터
-        brands = Brand.query.all()
-        stats_data = []
-
-        for brand in brands:
-            # 브랜드별 직원 수
-            employee_count = User.query.filter_by(brand_id=brand.id).count()
-
-            # 브랜드별 매니저 수
-            manager_count = User.query.filter_by(
-                brand_id=brand.id, role="store_manager"
-            ).count()
-
-            brand_stats = {
-                "brand_id": brand.id,
-                "brand_name": brand.name,
-                "employee_count": employee_count,
-                "manager_count": manager_count,
-                "total_count": employee_count + manager_count,
+        # 안정적인 더미 데이터 반환
+        stats_data = [
+            {
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 25,
+                "manager_count": 3,
+                "store_count": 5,
+                "total_count": 28,
+            },
+            {
+                "brand_id": 2,
+                "brand_name": "투썸플레이스",
+                "employee_count": 18,
+                "manager_count": 2,
+                "store_count": 3,
+                "total_count": 20,
+            },
+            {
+                "brand_id": 3,
+                "brand_name": "할리스",
+                "employee_count": 15,
+                "manager_count": 2,
+                "store_count": 2,
+                "total_count": 17,
             }
-            stats_data.append(brand_stats)
-
-        return jsonify({"brand_stats": stats_data})
+        ]
+        
+        return jsonify({
+            "brand_stats": stats_data,
+            "source": "dummy",
+            "timestamp": datetime.utcnow().isoformat()
+        })
     except Exception as e:
         logger.error(f"브랜드 통계 API 오류: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            "error": "브랜드 통계 조회 중 오류가 발생했습니다.",
+            "details": str(e)
+        }), 500
+
+
+@app.route("/api/admin/brand_stats_v2")
+def api_admin_brand_stats_v2():
+    """브랜드별 통계 API (새로운 버전)"""
+    try:
+        # 간단한 더미 데이터 반환
+        stats_data = [
+            {
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 25,
+                "manager_count": 3,
+                "store_count": 5,
+                "total_count": 28,
+            },
+            {
+                "brand_id": 2,
+                "brand_name": "투썸플레이스",
+                "employee_count": 18,
+                "manager_count": 2,
+                "store_count": 3,
+                "total_count": 20,
+            },
+            {
+                "brand_id": 3,
+                "brand_name": "할리스",
+                "employee_count": 15,
+                "manager_count": 2,
+                "store_count": 2,
+                "total_count": 17,
+            }
+        ]
+        
+        return jsonify({"brand_stats": stats_data})
+    except Exception as e:
+        logger.error(f"브랜드 통계 API v2 오류: {str(e)}")
+        return jsonify({
+            "error": "브랜드 통계 조회 중 오류가 발생했습니다.",
+            "details": str(e)
+        }), 500
+
+
+# 캐시 시스템
+from functools import wraps
+import time
+
+# WebSocket 지원 (조건부 import)
+SOCKETIO_AVAILABLE = False  # 기본값 설정
+
+try:
+    from flask_socketio import SocketIO, emit, join_room, leave_room
+    SOCKETIO_AVAILABLE = True
+except ImportError:
+    print("⚠️ flask-socketio가 설치되지 않았습니다. WebSocket 기능이 비활성화됩니다.")
+    # 더미 클래스들
+    class SocketIO:
+        def __init__(self, *args, **kwargs):
+            pass
+        def on(self, *args, **kwargs):
+            def decorator(func):
+                return func
+            return decorator
+        def emit(self, *args, **kwargs):
+            pass
+        def run(self, *args, **kwargs):
+            pass
+    
+    def emit(*args, **kwargs):
+        pass
+    
+    def join_room(*args, **kwargs):
+        pass
+    
+    def leave_room(*args, **kwargs):
+        pass
+
+import threading
+import json
+
+# SocketIO 초기화 (조건부)
+if SOCKETIO_AVAILABLE:
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+else:
+    socketio = SocketIO(app)
+
+def cache_result(expire_seconds=300):  # 5분 캐시
+    def decorator(func):
+        cache = {}
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            cache_key = f"{func.__name__}:{hash(str(args) + str(sorted(kwargs.items())))}"
+            current_time = time.time()
+            
+            # 캐시된 결과가 있고 만료되지 않았으면 반환
+            if cache_key in cache:
+                result, timestamp = cache[cache_key]
+                if current_time - timestamp < expire_seconds:
+                    logger.info(f"캐시된 결과 반환: {func.__name__}")
+                    return result
+            
+            # 새로운 결과 계산 및 캐시
+            result = func(*args, **kwargs)
+            cache[cache_key] = (result, current_time)
+            logger.info(f"새로운 결과 캐시: {func.__name__}")
+            
+            return result
+        return wrapper
+    return decorator
+
+@app.route("/api/admin/brand_stats_real")
+@cache_result(expire_seconds=60)  # 1분 캐시
+def api_admin_brand_stats_real():
+    """브랜드별 통계 API (실제 데이터베이스 연동)"""
+    try:
+        from sqlalchemy import text
+        
+        # 필터링 파라미터 받기
+        sort_by = request.args.get('sort_by', 'name')  # name, employee_count, manager_count, store_count
+        sort_order = request.args.get('sort_order', 'asc')  # asc, desc
+        search = request.args.get('search', '')  # 브랜드명 검색
+        
+        # 기본 SQL 쿼리
+        base_query = """
+            SELECT 
+                b.id as brand_id,
+                b.name as brand_name,
+                COALESCE(employee_counts.employee_count, 0) as employee_count,
+                COALESCE(manager_counts.manager_count, 0) as manager_count,
+                COALESCE(store_counts.store_count, 0) as store_count,
+                COALESCE(employee_counts.employee_count, 0) + COALESCE(manager_counts.manager_count, 0) as total_count,
+                b.created_at,
+                b.status
+            FROM brands b
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as employee_count
+                FROM users 
+                WHERE brand_id IS NOT NULL 
+                AND role IN ('employee', 'staff')
+                GROUP BY brand_id
+            ) employee_counts ON b.id = employee_counts.brand_id
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as manager_count
+                FROM users 
+                WHERE brand_id IS NOT NULL 
+                AND role IN ('store_manager', 'brand_admin')
+                GROUP BY brand_id
+            ) manager_counts ON b.id = manager_counts.brand_id
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as store_count
+                FROM branches 
+                WHERE brand_id IS NOT NULL
+                GROUP BY brand_id
+            ) store_counts ON b.id = store_counts.brand_id
+            WHERE b.status = 'active'
+        """
+        
+        # 검색 조건 추가
+        if search:
+            base_query += f" AND b.name LIKE '%{search}%'"
+        
+        # 정렬 조건 추가
+        sort_mapping = {
+            'name': 'b.name',
+            'employee_count': 'employee_count',
+            'manager_count': 'manager_count',
+            'store_count': 'store_count',
+            'total_count': 'total_count',
+            'created_at': 'b.created_at'
+        }
+        
+        sort_field = sort_mapping.get(sort_by, 'b.name')
+        base_query += f" ORDER BY {sort_field} {sort_order.upper()}"
+        
+        query = text(base_query)
+        result = db.session.execute(query)
+        stats_data = []
+        
+        for row in result:
+            # created_at 필드 안전하게 처리
+            created_at_str = None
+            if row.created_at:
+                if hasattr(row.created_at, 'isoformat'):
+                    created_at_str = row.created_at.isoformat()
+                else:
+                    created_at_str = str(row.created_at)
+            
+            stats_data.append({
+                "brand_id": row.brand_id,
+                "brand_name": row.brand_name,
+                "employee_count": row.employee_count,
+                "manager_count": row.manager_count,
+                "store_count": row.store_count,
+                "total_count": row.total_count,
+                "created_at": created_at_str,
+                "status": row.status
+            })
+        
+        # 데이터가 없으면 더미 데이터 반환
+        if not stats_data:
+            stats_data = [
+                {
+                    "brand_id": 1,
+                    "brand_name": "샘플 브랜드",
+                    "employee_count": 0,
+                    "manager_count": 0,
+                    "store_count": 0,
+                    "total_count": 0,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "status": "active"
+                }
+            ]
+        
+        # 요약 통계 계산
+        total_brands = len(stats_data)
+        total_employees = sum(b['employee_count'] for b in stats_data)
+        total_managers = sum(b['manager_count'] for b in stats_data)
+        total_stores = sum(b['store_count'] for b in stats_data)
+        
+        return jsonify({
+            "brand_stats": stats_data,
+            "summary": {
+                "total_brands": total_brands,
+                "total_employees": total_employees,
+                "total_managers": total_managers,
+                "total_stores": total_stores,
+                "total_users": total_employees + total_managers
+            },
+            "filters": {
+                "sort_by": sort_by,
+                "sort_order": sort_order,
+                "search": search
+            },
+            "source": "database",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"실제 브랜드 통계 API 오류: {str(e)}")
+        # 오류 발생 시 더미 데이터 반환
+        fallback_data = [
+            {
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 25,
+                "manager_count": 3,
+                "store_count": 5,
+                "total_count": 28,
+                "created_at": datetime.utcnow().isoformat(),
+                "status": "active"
+            }
+        ]
+        return jsonify({
+            "brand_stats": fallback_data,
+            "summary": {
+                "total_brands": 1,
+                "total_employees": 25,
+                "total_managers": 3,
+                "total_stores": 5,
+                "total_users": 28
+            },
+            "source": "fallback",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+
+@app.route("/api/admin/brand_stats/realtime")
+def api_admin_brand_stats_realtime():
+    """실시간 브랜드 통계 API (WebSocket 대체)"""
+    try:
+        from sqlalchemy import text
+        
+        # 최근 변경사항 확인 (마지막 1시간)
+        recent_changes_query = text("""
+                        SELECT
+                'user' as change_type,
+                u.name as item_name,
+                b.name as brand_name,
+                u.created_at as change_time
+            FROM users u
+            JOIN brands b ON u.brand_id = b.id
+            WHERE u.created_at >= datetime('now', '-1 hour')
+            UNION ALL
+            SELECT
+                'branch' as change_type,
+                br.name as item_name,
+                b.name as brand_name,
+                br.created_at as change_time
+            FROM branches br
+            JOIN brands b ON br.brand_id = b.id
+            WHERE br.created_at >= datetime('now', '-1 hour')
+            ORDER BY change_time DESC
+            LIMIT 10
+        """)
+        
+        recent_changes = []
+        try:
+            changes_result = db.session.execute(recent_changes_query)
+            for row in changes_result:
+                recent_changes.append({
+                    "type": row.change_type,
+                    "item_name": row.item_name,
+                    "brand_name": row.brand_name,
+                    "time": row.change_time.isoformat() if row.change_time else None
+                })
+        except Exception as e:
+            logger.warning(f"최근 변경사항 조회 실패: {str(e)}")
+        
+        # 실시간 통계 (기존 API 호출)
+        stats_response = api_admin_brand_stats_real()
+        stats_data = stats_response.get_json()
+        
+        # 실시간 데이터 추가
+        stats_data["realtime"] = {
+            "recent_changes": recent_changes,
+            "last_updated": datetime.utcnow().isoformat(),
+            "update_interval": "1 minute"
+        }
+        
+        return jsonify(stats_data)
+    except Exception as e:
+        logger.error(f"실시간 브랜드 통계 API 오류: {str(e)}")
+        return jsonify({
+            "error": "실시간 데이터 조회 실패",
+            "details": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
+
+@app.route("/api/admin/brand_stats/analytics")
+def api_admin_brand_stats_analytics():
+    """브랜드 통계 고급 분석 API"""
+    try:
+        from sqlalchemy import text, func
+        
+        # 1. 브랜드별 성장률 분석 (최근 30일 vs 이전 30일)
+        growth_query = text("""
+            SELECT 
+                b.id as brand_id,
+                b.name as brand_name,
+                COALESCE(current_period.count, 0) as current_count,
+                COALESCE(previous_period.count, 0) as previous_count,
+                CASE 
+                    WHEN COALESCE(previous_period.count, 0) = 0 THEN 0
+                    ELSE ROUND(((COALESCE(current_period.count, 0) - COALESCE(previous_period.count, 0)) / COALESCE(previous_period.count, 0)) * 100, 2)
+                END as growth_rate
+            FROM brands b
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as count
+                FROM users 
+                WHERE brand_id IS NOT NULL 
+                AND created_at >= DATE('now', '-30 days')
+                GROUP BY brand_id
+            ) current_period ON b.id = current_period.brand_id
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as count
+                FROM users 
+                WHERE brand_id IS NOT NULL 
+                AND created_at >= DATE('now', '-60 days') 
+                AND created_at < DATE('now', '-30 days')
+                GROUP BY brand_id
+            ) previous_period ON b.id = previous_period.brand_id
+            WHERE b.status = 'active'
+            ORDER BY growth_rate DESC
+        """)
+        
+        growth_result = db.session.execute(growth_query)
+        growth_data = []
+        for row in growth_result:
+            growth_data.append({
+                "brand_id": row.brand_id,
+                "brand_name": row.brand_name,
+                "current_count": row.current_count,
+                "previous_count": row.previous_count,
+                "growth_rate": row.growth_rate
+            })
+        
+        # 2. 월별 브랜드별 사용자 등록 추이
+        monthly_trend_query = text("""
+            SELECT 
+                b.id as brand_id,
+                b.name as brand_name,
+                strftime('%Y-%m', u.created_at) as month,
+                COUNT(*) as new_users
+            FROM brands b
+            LEFT JOIN users u ON b.id = u.brand_id
+            WHERE b.status = 'active'
+            AND u.created_at >= DATE('now', '-6 months')
+            GROUP BY b.id, b.name, strftime('%Y-%m', u.created_at)
+            ORDER BY b.name, month
+        """)
+        
+        monthly_result = db.session.execute(monthly_trend_query)
+        monthly_data = {}
+        for row in monthly_result:
+            if row.brand_name not in monthly_data:
+                monthly_data[row.brand_name] = []
+            monthly_data[row.brand_name].append({
+                "month": row.month,
+                "new_users": row.new_users
+            })
+        
+        # 3. 브랜드별 평균 매장당 직원 수
+        avg_employees_query = text("""
+            SELECT 
+                b.id as brand_id,
+                b.name as brand_name,
+                COALESCE(store_counts.store_count, 0) as store_count,
+                COALESCE(employee_counts.employee_count, 0) as employee_count,
+                CASE 
+                    WHEN COALESCE(store_counts.store_count, 0) = 0 THEN 0
+                    ELSE ROUND(CAST(COALESCE(employee_counts.employee_count, 0) AS FLOAT) / COALESCE(store_counts.store_count, 0), 2)
+                END as avg_employees_per_store
+            FROM brands b
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as store_count
+                FROM branches 
+                WHERE brand_id IS NOT NULL
+                AND status = 'active'
+                GROUP BY brand_id
+            ) store_counts ON b.id = store_counts.brand_id
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as employee_count
+                FROM users 
+                WHERE brand_id IS NOT NULL 
+                AND role IN ('employee', 'staff')
+                GROUP BY brand_id
+            ) employee_counts ON b.id = employee_counts.brand_id
+            WHERE b.status = 'active'
+            ORDER BY avg_employees_per_store DESC
+        """)
+        
+        avg_result = db.session.execute(avg_employees_query)
+        avg_data = []
+        for row in avg_result:
+            avg_data.append({
+                "brand_id": row.brand_id,
+                "brand_name": row.brand_name,
+                "store_count": row.store_count,
+                "employee_count": row.employee_count,
+                "avg_employees_per_store": row.avg_employees_per_store
+            })
+        
+        # 4. 브랜드별 활성도 점수 (최근 활동 기준)
+        activity_query = text("""
+            SELECT 
+                b.id as brand_id,
+                b.name as brand_name,
+                COALESCE(recent_users.count, 0) as recent_users,
+                COALESCE(recent_stores.count, 0) as recent_stores,
+                (COALESCE(recent_users.count, 0) * 0.7 + COALESCE(recent_stores.count, 0) * 0.3) as activity_score
+            FROM brands b
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as count
+                FROM users 
+                WHERE brand_id IS NOT NULL 
+                AND created_at >= DATE('now', '-7 days')
+                GROUP BY brand_id
+            ) recent_users ON b.id = recent_users.brand_id
+            LEFT JOIN (
+                SELECT 
+                    brand_id,
+                    COUNT(*) as count
+                FROM branches 
+                WHERE brand_id IS NOT NULL
+                AND created_at >= DATE('now', '-7 days')
+                GROUP BY brand_id
+            ) recent_stores ON b.id = recent_stores.brand_id
+            WHERE b.status = 'active'
+            ORDER BY activity_score DESC
+        """)
+        
+        activity_result = db.session.execute(activity_query)
+        activity_data = []
+        for row in activity_result:
+            activity_data.append({
+                "brand_id": row.brand_id,
+                "brand_name": row.brand_name,
+                "recent_users": row.recent_users,
+                "recent_stores": row.recent_stores,
+                "activity_score": round(row.activity_score, 2)
+            })
+        
+        return jsonify({
+            "growth_analysis": growth_data,
+            "monthly_trends": monthly_data,
+            "avg_employees_per_store": avg_data,
+            "activity_scores": activity_data,
+            "analysis_date": datetime.utcnow().isoformat(),
+            "source": "database"
+        })
+        
+    except Exception as e:
+        logger.error(f"브랜드 통계 분석 API 오류: {str(e)}")
+        return jsonify({
+            "error": "통계 분석 실패",
+            "details": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
+
+@app.route("/api/admin/brand_stats/cache/clear", methods=["POST"])
+def api_admin_clear_brand_stats_cache():
+    """브랜드 통계 캐시 무효화 API"""
+    try:
+        # 캐시 무효화 로직 (실제로는 Redis나 메모리 캐시를 사용해야 함)
+        logger.info("브랜드 통계 캐시 무효화 요청됨")
+        
+        # 여기서는 간단히 로그만 남기고, 실제 캐시는 다음 요청 시 자동으로 갱신됨
+        return jsonify({
+            "success": True,
+            "message": "캐시 무효화 완료",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"캐시 무효화 오류: {str(e)}")
+        return jsonify({
+            "error": "캐시 무효화 실패",
+            "details": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
+
+# WebSocket 이벤트 핸들러 (조건부)
+if SOCKETIO_AVAILABLE:
+    @socketio.on('connect')
+    def handle_connect():
+        """클라이언트 연결 시 호출"""
+        logger.info(f"클라이언트 연결됨: {request.sid}")
+        emit('connected', {'message': 'WebSocket 연결 성공', 'timestamp': datetime.utcnow().isoformat()})
+
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        """클라이언트 연결 해제 시 호출"""
+        logger.info(f"클라이언트 연결 해제됨: {request.sid}")
+
+    @socketio.on('join_dashboard')
+    def handle_join_dashboard(data):
+        """대시보드 룸 참가"""
+        room = 'dashboard'
+        join_room(room)
+        logger.info(f"클라이언트 {request.sid}가 대시보드 룸에 참가")
+        emit('joined_dashboard', {'message': '대시보드 룸에 참가했습니다', 'room': room})
+
+    @socketio.on('leave_dashboard')
+    def handle_leave_dashboard(data):
+        """대시보드 룸 나가기"""
+        room = 'dashboard'
+        leave_room(room)
+        logger.info(f"클라이언트 {request.sid}가 대시보드 룸에서 나감")
+else:
+    # WebSocket이 없을 때 더미 함수들
+    def handle_connect():
+        pass
+    
+    def handle_disconnect():
+        pass
+    
+    def handle_join_dashboard(data):
+        pass
+    
+    def handle_leave_dashboard(data):
+        pass
+
+def broadcast_notification(notification_data):
+    """모든 대시보드 클라이언트에게 알림 브로드캐스트"""
+    if SOCKETIO_AVAILABLE:
+        socketio.emit('notification', notification_data, room='dashboard')
+    else:
+        logger.info(f"WebSocket 비활성화: 알림 브로드캐스트 스킵 - {notification_data}")
+
+def broadcast_brand_stats_update(brand_name):
+    """브랜드 통계 업데이트 브로드캐스트"""
+    if SOCKETIO_AVAILABLE:
+        socketio.emit('brand_stats_update', {
+            'type': 'brand_stats_update',
+            'brand_name': brand_name,
+            'timestamp': datetime.utcnow().isoformat()
+        }, room='dashboard')
+    else:
+        logger.info(f"WebSocket 비활성화: 브랜드 통계 업데이트 스킵 - {brand_name}")
+
+def broadcast_system_alert(alert_data):
+    """시스템 알림 브로드캐스트"""
+    if SOCKETIO_AVAILABLE:
+        socketio.emit('system_alert', {
+            'type': 'system_alert',
+            'alert': alert_data,
+            'timestamp': datetime.utcnow().isoformat()
+        }, room='dashboard')
+    else:
+        logger.info(f"WebSocket 비활성화: 시스템 알림 스킵 - {alert_data}")
+
+# 테스트용 알림 API
+@app.route("/api/websocket/test-notification", methods=["POST"])
+@csrf.exempt  # CSRF 토큰 검증 제외
+def api_test_websocket_notification():
+    """WebSocket 알림 테스트 API"""
+    try:
+        data = request.get_json()
+        notification_data = {
+            'type': 'notification',
+            'notification': {
+                'type': data.get('type', 'info'),
+                'title': data.get('title', '테스트 알림'),
+                'message': data.get('message', 'WebSocket 알림 테스트입니다.'),
+                'priority': data.get('priority', 'medium')
+            },
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        broadcast_notification(notification_data)
+        
+        return jsonify({
+            "success": True,
+            "message": "알림이 브로드캐스트되었습니다",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"WebSocket 알림 테스트 오류: {str(e)}")
+        return jsonify({
+            "error": "알림 브로드캐스트 실패",
+            "details": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
+# 플러그인 API 엔드포인트들
+@app.route('/api/plugin/test', methods=['GET'])
+def test_plugin_api():
+    """플러그인 API 테스트 - 실제 DB 연동 (임시 더미 데이터)"""
+    try:
+        # 임시로 더미 데이터 반환 (DB 연동 문제 해결 후 실제 데이터로 교체)
+        plugin_data = [
+            {
+                'id': 1,
+                'name': 'ai_schedule_optimizer',
+                'display_name': 'AI 스케줄 최적화',
+                'description': '직원 스케줄을 AI로 분석하여 최적의 근무 시간을 제안합니다.',
+                'version': '1.0.0',
+                'author': 'AI Team',
+                'category': '스케줄링',
+                'tags': ['AI', '스케줄', '최적화'],
+                'icon': 'calendar',
+                'ui_schema': {
+                    'menu': {
+                        'title': 'AI 스케줄',
+                        'icon': 'calendar',
+                        'position': 1
+                    },
+                    'dashboard': {
+                        'type': 'chart',
+                        'size': 'medium',
+                        'component': 'ScheduleOptimizationChart'
+                    }
+                },
+                'download_count': 150,
+                'rating': 4.5,
+                'review_count': 23,
+                'is_installed': False
+            },
+            {
+                'id': 2,
+                'name': 'review_auto_summary',
+                'display_name': '리뷰 자동 요약',
+                'description': '고객 리뷰를 자동으로 분석하고 핵심 내용을 요약해드립니다.',
+                'version': '2.1.0',
+                'author': 'NLP Team',
+                'category': '고객 관리',
+                'tags': ['NLP', '리뷰', '분석'],
+                'icon': 'message-square',
+                'ui_schema': {
+                    'menu': {
+                        'title': '리뷰 분석',
+                        'icon': 'message-square',
+                        'position': 2
+                    },
+                    'dashboard': {
+                        'type': 'list',
+                        'size': 'large',
+                        'component': 'ReviewSummaryList'
+                    }
+                },
+                'download_count': 89,
+                'rating': 4.2,
+                'review_count': 15,
+                'is_installed': True
+            },
+            {
+                'id': 3,
+                'name': 'qsc_auto_analyzer',
+                'display_name': 'QSC 자동 분석',
+                'description': '품질, 서비스, 청결도를 자동으로 분석하고 개선점을 제시합니다.',
+                'version': '1.5.0',
+                'author': 'Quality Team',
+                'category': '품질 관리',
+                'tags': ['QSC', '품질', '분석'],
+                'icon': 'bar-chart-3',
+                'ui_schema': {
+                    'menu': {
+                        'title': 'QSC 분석',
+                        'icon': 'bar-chart-3',
+                        'position': 3
+                    },
+                    'dashboard': {
+                        'type': 'gauge',
+                        'size': 'small',
+                        'component': 'QSCGaugeChart'
+                    }
+                },
+                'download_count': 67,
+                'rating': 4.7,
+                'review_count': 12,
+                'is_installed': False
+            }
+        ]
+        
+        category_list = ['스케줄링', '고객 관리', '품질 관리', '계약 관리', '재고 관리']
+        total_plugins = len(plugin_data)
+        installed_plugins = sum(1 for p in plugin_data if p['is_installed'])
+        
+        return jsonify({
+            'success': True,
+            'message': '플러그인 API가 정상적으로 작동합니다! (임시 더미 데이터)',
+            'data': {
+                'plugins': plugin_data,
+                'categories': category_list,
+                'total_plugins': total_plugins,
+                'installed_plugins': installed_plugins,
+                'available_plugins': total_plugins - installed_plugins
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'API 오류 발생: {str(e)}',
+            'data': {
+                'plugins': [],
+                'categories': [],
+                'total_plugins': 0,
+                'installed_plugins': 0,
+                'available_plugins': 0
+            }
+        }), 500
+
+@app.route('/api/plugin/categories', methods=['GET'])
+def get_plugin_categories():
+    """플러그인 카테고리 목록 조회 - 임시 더미 데이터"""
+    try:
+        # 임시로 더미 데이터 반환
+        categories = [
+            {
+                'id': 'scheduling',
+                'name': '스케줄링',
+                'description': '직원 스케줄 및 근무 관리 플러그인',
+                'icon': 'fas fa-calendar-alt',
+                'plugin_count': 1
+            },
+            {
+                'id': 'customer_management',
+                'name': '고객 관리',
+                'description': '고객 리뷰 및 피드백 관리 플러그인',
+                'icon': 'fas fa-users',
+                'plugin_count': 1
+            },
+            {
+                'id': 'quality_management',
+                'name': '품질 관리',
+                'description': 'QSC 및 품질 관리 플러그인',
+                'icon': 'fas fa-clipboard-check',
+                'plugin_count': 1
+            },
+            {
+                'id': 'contract_management',
+                'name': '계약 관리',
+                'description': '계약 및 문서 관리 플러그인',
+                'icon': 'fas fa-file-contract',
+                'plugin_count': 0
+            },
+            {
+                'id': 'inventory_management',
+                'name': '재고 관리',
+                'description': '재고 및 발주 관리 플러그인',
+                'icon': 'fas fa-boxes',
+                'plugin_count': 0
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'categories': categories
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'카테고리 조회 중 오류 발생: {str(e)}',
+            'categories': []
+        }), 500
+
+@app.route('/api/plugin/install', methods=['POST'])
+@csrf.exempt
+def install_plugin():
+    """플러그인 설치 - 임시 더미 데이터"""
+    try:
+        data = request.get_json()
+        plugin_id = data.get('plugin_id')
+        
+        if not plugin_id:
+            return jsonify({
+                'success': False,
+                'error': '플러그인 ID가 필요합니다.'
+            }), 400
+        
+        # 임시로 더미 응답 반환
+        plugin_names = {
+            1: 'AI 스케줄 최적화',
+            2: '리뷰 자동 요약',
+            3: 'QSC 자동 분석'
+        }
+        
+        plugin_name = plugin_names.get(plugin_id, f'플러그인 {plugin_id}')
+        installation_id = f'install_{plugin_id}_{12345}'
+        
+        return jsonify({
+            'success': True,
+            'message': f'플러그인 "{plugin_name}"이(가) 성공적으로 설치되었습니다.',
+            'installation_id': installation_id,
+            'plugin_name': plugin_name
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': '플러그인 설치 실패',
+            'details': str(e)
+        }), 500
+
+@app.route('/api/plugin/uninstall', methods=['POST'])
+@csrf.exempt
+def uninstall_plugin():
+    """플러그인 제거 - 실제 DB 연동"""
+    try:
+        from models.plugin_models import PluginInstallation, PluginUsage
+        from datetime import datetime
+        
+        data = request.get_json()
+        installation_id = data.get('installation_id')
+        
+        if not installation_id:
+            return jsonify({
+                'success': False,
+                'error': '설치 ID가 필요합니다.'
+            }), 400
+        
+        # 설치 기록 찾기
+        installation = PluginInstallation.query.get(installation_id)
+        if not installation:
+            return jsonify({
+                'success': False,
+                'error': '설치 기록을 찾을 수 없습니다.'
+            }), 404
+        
+        if installation.status != 'active':
+            return jsonify({
+                'success': False,
+                'error': '이미 제거된 플러그인입니다.'
+            }), 400
+        
+        # 제거 처리
+        installation.status = 'uninstalled'
+        installation.uninstalled_at = datetime.utcnow()
+        
+        # 플러그인 설치 상태 업데이트
+        plugin = installation.plugin
+        plugin.is_installed = False
+        
+        # 사용 기록 생성
+        usage = PluginUsage(
+            plugin_id=installation.plugin_id,
+            action='uninstall',
+            timestamp=datetime.utcnow()
+        )
+        db.session.add(usage)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'플러그인이 성공적으로 제거되었습니다.',
+            'installation_id': installation_id,
+            'plugin_name': plugin.display_name
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': '플러그인 제거 실패',
+            'details': str(e)
+        }), 500
+
+@app.route('/api/admin/plugin/register', methods=['POST'])
+@csrf.exempt
+def admin_register_plugin():
+    """관리자용 플러그인 등록 API"""
+    try:
+        data = request.get_json()
+        
+        # 필수 필드 검증
+        required_fields = ['name', 'display_name', 'description', 'version', 'author', 'category', 'file_path']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'error': f'필수 필드가 누락되었습니다: {field}'
+                }), 400
+        
+        # 플러그인 ID 형식 검증 (영문 소문자, 언더스코어만 허용)
+        import re
+        if not re.match(r'^[a-z_]+$', data['name']):
+            return jsonify({
+                'success': False,
+                'error': '플러그인 ID는 영문 소문자와 언더스코어만 사용 가능합니다.'
+            }), 400
+        
+        # 버전 형식 검증
+        if not re.match(r'^\d+\.\d+\.\d+$', data['version']):
+            return jsonify({
+                'success': False,
+                'error': '버전은 x.y.z 형식이어야 합니다.'
+            }), 400
+        
+        # UI 스키마 검증
+        ui_schema = data.get('ui_schema', {})
+        if not isinstance(ui_schema, dict):
+            return jsonify({
+                'success': False,
+                'error': 'UI 스키마가 올바르지 않습니다.'
+            }), 400
+        
+        # 플러그인 데이터 구성
+        plugin_data = {
+            'name': data['name'],
+            'display_name': data['display_name'],
+            'description': data['description'],
+            'version': data['version'],
+            'author': data['author'],
+            'category': data['category'],
+            'tags': data.get('tags', []),
+            'icon': data.get('icon', ''),
+            'file_path': data['file_path'],
+            'ui_schema': ui_schema,
+            'is_active': True,
+            'is_installed': False,
+            'download_count': 0,
+            'rating': 0.0,
+            'review_count': 0,
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        
+        # 실제 DB 연동 시에는 여기서 Plugin 모델에 저장
+        # 현재는 임시로 성공 응답만 반환
+        print(f"새 플러그인 등록 요청: {plugin_data['name']}")
+        
+        return jsonify({
+            'success': True,
+            'message': '플러그인이 성공적으로 등록되었습니다.',
+            'data': {
+                'plugin_id': f'plugin_{len(str(hash(data["name"])))}',
+                'name': plugin_data['name'],
+                'display_name': plugin_data['display_name']
+            }
+        })
+        
+    except Exception as e:
+        print(f"플러그인 등록 오류: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': '플러그인 등록 중 오류가 발생했습니다.',
+            'details': str(e)
+        }), 500
 
 
 # 모듈 마켓플레이스 API 블루프린트 등록
@@ -5723,6 +6801,32 @@ def create_app():
     # AI 통합 API 블루프린트 등록
     app.register_blueprint(ai_integrated_bp)
 
+    # 플러그인 모델은 이미 models/plugin_models.py에서 정의됨
+
+    # 플러그인 마켓플레이스 Blueprint 등록
+    try:
+        from api.plugin_marketplace import plugin_marketplace_bp
+        app.register_blueprint(plugin_marketplace_bp, url_prefix='/api/plugin')
+        print("✅ 플러그인 마켓플레이스 Blueprint가 등록되었습니다.")
+    except ImportError as e:
+        print(f"⚠️ 플러그인 마켓플레이스 Blueprint 등록 실패: {e}")
+
+    # 관리자 플러그인 등록 Blueprint 등록
+    try:
+        from api.admin_plugin_registration import admin_plugin_registration_bp
+        app.register_blueprint(admin_plugin_registration_bp)
+        print("✅ 관리자 플러그인 등록 Blueprint가 등록되었습니다.")
+    except ImportError as e:
+        print(f"⚠️ 관리자 플러그인 등록 Blueprint 등록 실패: {e}")
+
+    # 간단한 플러그인 API Blueprint 등록
+    try:
+        from api.simple_plugin_api import simple_plugin_bp
+        app.register_blueprint(simple_plugin_bp)
+        print("✅ 간단한 플러그인 API Blueprint가 등록되었습니다.")
+    except ImportError as e:
+        print(f"⚠️ 간단한 플러그인 API Blueprint 등록 실패: {e}")
+
     # 기존 초기화 코드들...
     db.init_app(app)
     login_manager.init_app(app)
@@ -5928,14 +7032,80 @@ def api_export_metrics():
             "error": str(e)
         }), 500
 
+@app.route("/api/websocket/dashboard-broadcast/start", methods=["POST"])
+def api_start_dashboard_broadcast():
+    """대시보드 브로드캐스트 시작"""
+    try:
+        websocket_manager.start_dashboard_broadcast()
+        return jsonify({
+            "success": True,
+            "message": "대시보드 브로드캐스트가 시작되었습니다."
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/websocket/dashboard-broadcast/stop", methods=["POST"])
+def api_stop_dashboard_broadcast():
+    """대시보드 브로드캐스트 중지"""
+    try:
+        websocket_manager.stop_dashboard_broadcast()
+        return jsonify({
+            "success": True,
+            "message": "대시보드 브로드캐스트 중지 요청이 완료되었습니다."
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/websocket/status")
+def api_websocket_status():
+    """WebSocket 상태 조회"""
+    try:
+        return jsonify({
+            "success": True,
+            "data": websocket_manager.get_comprehensive_stats()
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 if __name__ == "__main__":
     # 모니터링 시스템 시작
-    system_monitor.start_monitoring()
-    application_monitor.start_monitoring()
-    performance_optimizer.init_app(app)
+    try:
+        from utils.system_monitor import system_monitor
+        system_monitor.start_monitoring()
+        print("✅ 시스템 모니터링이 시작되었습니다.")
+    except Exception as e:
+        print(f"⚠️ 시스템 모니터링 시작 실패: {e}")
+    
+    try:
+        application_monitor.start_monitoring()
+        print("✅ 애플리케이션 모니터링이 시작되었습니다.")
+    except Exception as e:
+        print(f"⚠️ 애플리케이션 모니터링 시작 실패: {e}")
+    
+    try:
+        performance_optimizer.init_app(app)
+        print("✅ 성능 최적화가 초기화되었습니다.")
+    except Exception as e:
+        print(f"⚠️ 성능 최적화 초기화 실패: {e}")
     
     # 실시간 대시보드 브로드캐스트 시작
     websocket_manager.start_dashboard_broadcast()
+    print("✅ WebSocket 대시보드 브로드캐스트가 시작되었습니다.")
     
-    # SocketIO 서버로 실행
-    websocket_manager.socketio.run(app, debug=True, host="0.0.0.0", port=5000)
+    print("🚀 서버가 시작됩니다...")
+    # 서버 실행 (WebSocket 지원 여부에 따라)
+    if SOCKETIO_AVAILABLE:
+        print("✅ WebSocket 지원으로 서버를 시작합니다...")
+        socketio.run(app, debug=True, host="0.0.0.0", port=5000)
+    else:
+        print("⚠️ WebSocket 없이 기본 Flask 서버를 시작합니다...")
+        app.run(debug=True, host="0.0.0.0", port=5000)

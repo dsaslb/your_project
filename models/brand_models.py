@@ -11,6 +11,7 @@ class Brand(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     status = db.Column(db.String(20), default='active')  # active, inactive, deleted
+    industry_id = db.Column(db.Integer, db.ForeignKey('industries.id'), nullable=True)  # 업종 연동
     
     def to_dict(self):
         return {

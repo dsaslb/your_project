@@ -358,58 +358,11 @@ def create_sample_stores():
 # 1. 브랜드별 통계
 
 
-@admin_dashboard_api.route('/brand_stats')
-def brand_stats():
-    """브랜드 통계 API"""
-    try:
-        # 샘플 데이터 생성 (데이터베이스에 데이터가 없는 경우)
-        create_sample_brands()
-        create_sample_stores()
-        create_sample_users()
-        create_sample_orders()
-
-        # 전체 브랜드 수
-        total_brands = Brand.query.count()
-        active_brands = Brand.query.filter_by(status='active').count()
-
-        # 브랜드별 통계 데이터 (프론트엔드에서 기대하는 구조)
-        stats = []
-        for brand in Brand.query.all():
-            # 브랜드별 매장 수
-            store_count = Branch.query.filter_by(brand_id=brand.id, status='active').count()
-
-            # 브랜드별 직원 수
-            employee_count = User.query.join(Branch).filter(
-                Branch.brand_id == brand.id,
-                User.status == 'approved'
-            ).count()
-
-            # 브랜드별 주문 수 (최근 30일)
-            thirty_days_ago = datetime.now() - timedelta(days=30)
-            order_count = Order.query.join(Branch).filter(
-                Branch.brand_id == brand.id,
-                Order.created_at >= thirty_days_ago
-            ).count()
-
-            stats.append({
-                'brand_name': brand.name,
-                'brand_code': brand.code,
-                'store_count': store_count,
-                'employee_count': employee_count,
-                'order_count': order_count,
-                'status': brand.status
-            })
-
-        return jsonify({
-            'success': True,
-            'stats': stats
-        })
-
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'브랜드 통계 조회 실패: {str(e)}'
-        }), 500
+# @admin_dashboard_api.route('/brand_stats')
+# def brand_stats():
+#     """브랜드 통계 API (비활성화 - app.py의 /api/admin/brand_stats와 충돌)"""
+#     # 이 엔드포인트는 app.py의 /api/admin/brand_stats로 대체됨
+#     pass
 
 # 2. 매장별 통계
 

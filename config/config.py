@@ -4,7 +4,7 @@ from datetime import timedelta
 
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY") or "your-secret-key-here"
+    SECRET_KEY = "your-very-strong-secret-key"  # 환경 변수 무시, 항상 고정
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get("DATABASE_URL") or "sqlite:///C:/your_program/instance/your_program.db"
     )
@@ -27,6 +27,8 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(hours=2)
     SESSION_COOKIE_SECURE = False  # 개발 환경
     SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_DOMAIN = None  # 개발환경: None 또는 ''로 설정 (localhost/127.0.0.1/192.168.45.44 모두 지원)
 
     # 로깅 설정
     LOG_LEVEL = "INFO"

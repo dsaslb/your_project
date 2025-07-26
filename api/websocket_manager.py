@@ -31,8 +31,8 @@ class WebSocketManager:
             app,
             cors_allowed_origins="*",
             async_mode='threading',
-            logger=True,
-            engineio_logger=True
+            logger=False,  # SocketIO 로그 비활성화
+            engineio_logger=False  # Engine.IO 로그 비활성화
         )
         
         self._register_events()
@@ -311,19 +311,70 @@ class WebSocketManager:
                 for room, clients in self.rooms.items()
             }
         }
+    
+    def get_comprehensive_stats(self) -> Dict[str, Any]:
+        """종합 통계 반환"""
+        stats = {
+            'connected_clients': self.get_connected_clients_count(),
+            'connected_users': self.get_connected_users(),
+            'room_info': self.get_room_info(),
+            'broadcast_active': hasattr(self, '_dashboard_broadcast_thread') and 
+                              self._dashboard_broadcast_thread.is_alive(),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # 시스템 모니터링에 통계 전달
+        try:
+            from utils.system_monitor import system_monitor
+            system_monitor.update_websocket_stats(stats)
+        except ImportError:
+            pass  # 시스템 모니터링이 없어도 계속 작동
+        
+        return stats
 
     def start_dashboard_broadcast(self):
+        """대시보드 통계 브로드캐스트 시작 (개선된 버전)"""
         def emit_dashboard_stats():
-            while True:
-                stats = {
-                    'active_users': random.randint(10, 100),
-                    'orders': random.randint(100, 200),
-                    'timestamp': datetime.now().isoformat()
-                }
-                self.socketio.emit('dashboard_stats', stats)
-                self.socketio.sleep(5)
-        t = threading.Thread(target=emit_dashboard_stats, daemon=True)
-        t.start()
+            self._stop_broadcast = False
+            while not getattr(self, '_stop_broadcast', False):
+                try:
+                    # 연결된 클라이언트가 있을 때만 브로드캐스트
+                    if self.get_connected_clients_count() > 0:
+                        stats = {
+                            'active_users': self.get_connected_clients_count(),
+                            'orders': random.randint(100, 200),
+                            'timestamp': datetime.now().isoformat()
+                        }
+                        self.socketio.emit('dashboard_stats', stats)
+                        logger.debug(f"대시보드 통계 브로드캐스트: {stats['active_users']}명 연결")
+                    else:
+                        logger.debug("연결된 클라이언트가 없어 브로드캐스트 건너뜀")
+                    
+                    # 30초마다 실행 (5초에서 변경)
+                    self.socketio.sleep(30)
+                except Exception as e:
+                    logger.error(f"대시보드 브로드캐스트 오류: {e}")
+                    self.socketio.sleep(60)  # 오류 시 1분 대기
+            
+            logger.info("대시보드 브로드캐스트가 중지되었습니다.")
+        
+        # 이미 실행 중인지 확인
+        if hasattr(self, '_dashboard_broadcast_thread') and self._dashboard_broadcast_thread.is_alive():
+            logger.info("대시보드 브로드캐스트가 이미 실행 중입니다.")
+            return
+        
+        self._dashboard_broadcast_thread = threading.Thread(target=emit_dashboard_stats, daemon=True)
+        self._dashboard_broadcast_thread.start()
+        logger.info("대시보드 브로드캐스트가 시작되었습니다.")
+    
+    def stop_dashboard_broadcast(self):
+        """대시보드 통계 브로드캐스트 중지"""
+        if hasattr(self, '_dashboard_broadcast_thread') and self._dashboard_broadcast_thread.is_alive():
+            # 스레드 중지 플래그 설정
+            self._stop_broadcast = True
+            logger.info("대시보드 브로드캐스트 중지 요청됨")
+        else:
+            logger.info("실행 중인 대시보드 브로드캐스트가 없습니다.")
 
 # 전역 WebSocket 매니저 인스턴스
 websocket_manager = WebSocketManager() 

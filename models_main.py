@@ -137,6 +137,9 @@ class Branch(db.Model):
     brand_id = db.Column(
         db.Integer, db.ForeignKey("brands.id"), nullable=True, index=True
     )
+    manager_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=True, index=True
+    )  # 매장 관리자 ID
     store_code = db.Column(db.String(20), unique=True)  # 매장 코드
     store_type = db.Column(
         db.String(20), default="franchise"
@@ -154,6 +157,7 @@ class Branch(db.Model):
 
     # 관계 설정
     industry = db.relationship("Industry")
+    manager = db.relationship("User", backref="managed_branches", foreign_keys=[manager_id], overlaps="branch,users")
 
     def __repr__(self):
         return f"<Branch {self.name}>"
@@ -292,7 +296,7 @@ class User(db.Model, UserMixin):
     delegation_expires = db.Column(db.DateTime, nullable=True)
 
     # 관계 설정
-    branch = db.relationship("Branch", backref="users")
+    branch = db.relationship("Branch", backref="users", foreign_keys=[branch_id], overlaps="manager,managed_branches")
     industry = db.relationship("Industry", backref="users")
     delegated_users = db.relationship(
         "User",
@@ -1371,6 +1375,7 @@ class Order(db.Model):
     supplier = db.Column(db.String(100))  # 공급업체
     unit_price = db.Column(db.Integer)  # 단가
     total_cost = db.Column(db.Integer)  # 총 비용
+    total_amount = db.Column(db.Integer)  # 총 금액 (주문 총액)
 
     # 관계 설정
     user = db.relationship("User", foreign_keys=[ordered_by])
@@ -2019,10 +2024,11 @@ class Staff(db.Model):
         db.String(20), default="active", index=True
     )  # active, on_leave, inactive
     avatar = db.Column(db.String(255))  # 프로필 이미지 경로
-    join_date = db.Column(db.Date, nullable=False)
+    hire_date = db.Column(db.Date, nullable=False)
     salary = db.Column(db.String(50))  # 급여 정보
     department = db.Column(db.String(100))
-    your_program_id = db.Column(
+    password_hash = db.Column(db.String(255))  # 비밀번호 해시
+    branch_id = db.Column(
         db.Integer, db.ForeignKey("branches.id"), nullable=False, index=True
     )
     user_id = db.Column(
@@ -2034,7 +2040,7 @@ class Staff(db.Model):
     )
 
     # 관계 설정
-    your_program = db.relationship("Branch", backref="staff")
+    branch = db.relationship("Branch", backref="staff")
     user = db.relationship("User", backref="staff_profile")
     contracts = db.relationship(
         "Contract", back_populates="staff", cascade="all, delete-orphan"

@@ -99,6 +99,23 @@
         </div>
         <span class="text-sm text-green-600 font-semibold">실행 중</span>
       </div>
+      
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div class="flex items-center space-x-3">
+          <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+          <span class="font-medium text-gray-900 dark:text-white">WebSocket 서버</span>
+        </div>
+        <span class="text-sm text-green-600 font-semibold" id="websocketStatus">실행 중</span>
+      </div>
+      
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div class="flex items-center space-x-3">
+          <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+          <span class="font-medium text-gray-900 dark:text-white">시스템 모니터링</span>
+        </div>
+        <span class="text-sm text-green-600 font-semibold" id="monitoringStatus">실행 중</span>
+      </div>
+      </div>
       <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
         <div class="flex items-center space-x-3">
           <div class="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -139,6 +156,43 @@
     <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">🧠 메모리 사용률 추이</h2>
     <div class="h-64 flex items-center justify-center">
       <canvas id="memoryChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- WebSocket 통계 -->
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">🔌 WebSocket 통계</h2>
+    <button onclick="refreshWebSocketStats()" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+      새로고침
+    </button>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+      <div class="text-2xl font-bold text-blue-600" id="connectedClients">0</div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">연결된 클라이언트</div>
+    </div>
+    <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+      <div class="text-2xl font-bold text-green-600" id="connectedUsers">0</div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">연결된 사용자</div>
+    </div>
+    <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+      <div class="text-2xl font-bold text-purple-600" id="totalRooms">0</div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">활성 룸</div>
+    </div>
+    <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+      <div class="text-2xl font-bold text-yellow-600" id="broadcastStatus">비활성</div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">브로드캐스트</div>
+      <button onclick="toggleBroadcast()" class="mt-2 text-xs bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700">
+        토글
+      </button>
+    </div>
+  </div>
+  <div class="mt-4">
+    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">룸별 클라이언트 수</h3>
+    <div id="roomDetails" class="text-sm text-gray-600 dark:text-gray-400">
+      로딩 중...
     </div>
   </div>
 </div>
@@ -213,6 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('📊 시스템 모니터링 페이지 로드됨');
   initializeCharts();
   loadSystemData();
+  loadWebSocketStats();
   startRealTimeUpdates();
 });
 
@@ -336,6 +391,7 @@ function updateSystemStats(stats) {
 function startRealTimeUpdates() {
   setInterval(() => {
     loadSystemData();
+    loadWebSocketStats();
   }, 10000); // 10초마다 업데이트
 }
 
@@ -382,6 +438,76 @@ function loadSystemAlerts() {
     })
     .catch(error => {
       console.error('시스템 알림 로드 실패:', error);
+    });
+}
+
+// WebSocket 통계 로드
+function loadWebSocketStats() {
+  fetch('/api/websocket/status')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        displayWebSocketStats(data.data);
+      }
+    })
+    .catch(error => {
+      console.error('WebSocket 통계 로드 실패:', error);
+    });
+}
+
+// WebSocket 통계 표시
+function displayWebSocketStats(stats) {
+  document.getElementById('connectedClients').textContent = stats.connected_clients || 0;
+  document.getElementById('connectedUsers').textContent = stats.connected_users ? stats.connected_users.length : 0;
+  document.getElementById('totalRooms').textContent = stats.room_info ? stats.room_info.total_rooms : 0;
+  
+  const broadcastStatus = document.getElementById('broadcastStatus');
+  if (stats.broadcast_active) {
+    broadcastStatus.textContent = '활성';
+    broadcastStatus.className = 'text-2xl font-bold text-green-600';
+  } else {
+    broadcastStatus.textContent = '비활성';
+    broadcastStatus.className = 'text-2xl font-bold text-gray-600';
+  }
+  
+  // 룸별 상세 정보 표시
+  const roomDetails = document.getElementById('roomDetails');
+  if (stats.room_info && stats.room_info.rooms) {
+    const roomList = Object.entries(stats.room_info.rooms)
+      .map(([room, info]) => `${room}: ${info.client_count}명`)
+      .join(', ');
+    roomDetails.textContent = roomList || '활성 룸 없음';
+  } else {
+    roomDetails.textContent = '룸 정보 없음';
+  }
+}
+
+// WebSocket 통계 새로고침
+function refreshWebSocketStats() {
+  loadWebSocketStats();
+}
+
+// 브로드캐스트 토글
+function toggleBroadcast() {
+  const broadcastStatus = document.getElementById('broadcastStatus');
+  const isActive = broadcastStatus.textContent === '활성';
+  
+  const url = isActive ? '/api/websocket/dashboard-broadcast/stop' : '/api/websocket/dashboard-broadcast/start';
+  const method = 'POST';
+  
+  fetch(url, { method })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message);
+        loadWebSocketStats(); // 상태 새로고침
+      } else {
+        alert('브로드캐스트 제어에 실패했습니다: ' + data.error);
+      }
+    })
+    .catch(error => {
+      console.error('브로드캐스트 토글 오류:', error);
+      alert('오류가 발생했습니다.');
     });
 }
 

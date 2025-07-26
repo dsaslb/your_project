@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { 
   Building2, 
   Store, 
@@ -14,7 +20,11 @@ import {
   Crown,
   BarChart3,
   Settings,
-  Bell
+  Bell,
+  Plus,
+  UserPlus,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 
 interface IndustryStats {
@@ -39,6 +49,17 @@ interface Industry {
   lastUpdated: string;
 }
 
+interface BrandFormData {
+  brand_name: string;
+  brand_description: string;
+  brand_contact_email: string;
+  brand_contact_phone: string;
+  brand_address: string;
+  admin_name: string;
+  admin_email: string;
+  admin_phone: string;
+}
+
 export default function IndustryDashboard() {
   const [stats, setStats] = useState<IndustryStats>({
     totalIndustries: 0,
@@ -52,6 +73,18 @@ export default function IndustryDashboard() {
 
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<BrandFormData>({
+    brand_name: '',
+    brand_description: '',
+    brand_contact_email: '',
+    brand_contact_phone: '',
+    brand_address: '',
+    admin_name: '',
+    admin_email: '',
+    admin_phone: ''
+  });
 
   useEffect(() => {
     // 로그인 시에만 데이터 fetch (실시간 아님)
@@ -103,23 +136,116 @@ export default function IndustryDashboard() {
             };
           }
           acc[industryType].brandsCount++;
-          acc[industryType].storesCount += brand.stores_count || 0;
-          acc[industryType].employeesCount += brand.employees_count || 0;
+          acc[industryType].storesCount += brand.store_count || 0;
+          acc[industryType].employeesCount += brand.employee_count || 0;
           acc[industryType].revenue += brand.revenue || 0;
           return acc;
-        }, {}) || {};
+        }, {});
 
-        setIndustries(Object.values(groupedIndustries));
-      } else {
-        // API 호출 실패 시 기본 데이터 사용
-        console.warn('업종 데이터 API 호출 실패:', brandsResult.error);
-        setIndustries([]);
+        setIndustries(Object.values(groupedIndustries || {}));
       }
     } catch (error) {
       console.error('업종 데이터 로드 오류:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleInputChange = (field: keyof BrandFormData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const validateForm = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (!formData.brand_name.trim()) errors.push('브랜드명을 입력해주세요.');
+    if (!formData.brand_description.trim()) errors.push('브랜드 설명을 입력해주세요.');
+    if (!formData.admin_name.trim()) errors.push('관리자 이름을 입력해주세요.');
+    if (!formData.admin_email.trim()) errors.push('관리자 이메일을 입력해주세요.');
+    if (!formData.admin_phone.trim()) errors.push('관리자 연락처를 입력해주세요.');
+    
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (formData.admin_email && !emailRegex.test(formData.admin_email)) {
+      errors.push('올바른 이메일 형식을 입력해주세요.');
+    }
+    
+    // 전화번호 형식 검증
+    const phoneRegex = /^[0-9-+\s()]{10,15}$/;
+    if (formData.admin_phone && !phoneRegex.test(formData.admin_phone)) {
+      errors.push('올바른 전화번호 형식을 입력해주세요.');
+    }
+
+    return { isValid: errors.length === 0, errors };
+  };
+
+  const handleSubmit = async () => {
+    const validation = validateForm();
+    if (!validation.isValid) {
+      validation.errors.forEach(error => toast.error(error));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/industry/create_brand_with_admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('브랜드와 브랜드관리자 계정이 성공적으로 생성되었습니다!', {
+          description: `임시 비밀번호: ${result.data.temp_password}`,
+          duration: 10000,
+        });
+        
+        // 폼 초기화
+        setFormData({
+          brand_name: '',
+          brand_description: '',
+          brand_contact_email: '',
+          brand_contact_phone: '',
+          brand_address: '',
+          admin_name: '',
+          admin_email: '',
+          admin_phone: ''
+        });
+        
+        // 다이얼로그 닫기
+        setIsCreateDialogOpen(false);
+        
+        // 데이터 새로고침
+        await loadIndustryData();
+      } else {
+        toast.error(result.error || '브랜드 생성 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('브랜드 생성 오류:', error);
+      toast.error('네트워크 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      brand_name: '',
+      brand_description: '',
+      brand_contact_email: '',
+      brand_contact_phone: '',
+      brand_address: '',
+      admin_name: '',
+      admin_email: '',
+      admin_phone: ''
+    });
   };
 
   const getIndustryIcon = (type: string) => {
@@ -164,6 +290,175 @@ export default function IndustryDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Plus className="h-4 w-4 mr-2" />
+                    브랜드 + 관리자 생성
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <UserPlus className="h-5 w-5" />
+                      브랜드 및 브랜드관리자 계정 생성
+                    </DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="space-y-6">
+                    {/* 브랜드 정보 섹션 */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                        브랜드 정보
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="brand_name">브랜드명 *</Label>
+                          <Input
+                            id="brand_name"
+                            value={formData.brand_name}
+                            onChange={(e) => handleInputChange('brand_name', e.target.value)}
+                            placeholder="브랜드명을 입력하세요"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="brand_contact_email">브랜드 이메일</Label>
+                          <Input
+                            id="brand_contact_email"
+                            type="email"
+                            value={formData.brand_contact_email}
+                            onChange={(e) => handleInputChange('brand_contact_email', e.target.value)}
+                            placeholder="브랜드 연락처 이메일"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="brand_description">브랜드 설명 *</Label>
+                        <Textarea
+                          id="brand_description"
+                          value={formData.brand_description}
+                          onChange={(e) => handleInputChange('brand_description', e.target.value)}
+                          placeholder="브랜드에 대한 설명을 입력하세요"
+                          rows={3}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="brand_contact_phone">브랜드 연락처</Label>
+                          <Input
+                            id="brand_contact_phone"
+                            value={formData.brand_contact_phone}
+                            onChange={(e) => handleInputChange('brand_contact_phone', e.target.value)}
+                            placeholder="브랜드 연락처 전화번호"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="brand_address">브랜드 주소</Label>
+                          <Input
+                            id="brand_address"
+                            value={formData.brand_address}
+                            onChange={(e) => handleInputChange('brand_address', e.target.value)}
+                            placeholder="브랜드 주소"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 브랜드관리자 정보 섹션 */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                        브랜드관리자 정보
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="admin_name">관리자 이름 *</Label>
+                          <Input
+                            id="admin_name"
+                            value={formData.admin_name}
+                            onChange={(e) => handleInputChange('admin_name', e.target.value)}
+                            placeholder="관리자 이름을 입력하세요"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="admin_email">관리자 이메일 *</Label>
+                          <Input
+                            id="admin_email"
+                            type="email"
+                            value={formData.admin_email}
+                            onChange={(e) => handleInputChange('admin_email', e.target.value)}
+                            placeholder="관리자 이메일을 입력하세요"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="admin_phone">관리자 연락처 *</Label>
+                        <Input
+                          id="admin_phone"
+                          value={formData.admin_phone}
+                          onChange={(e) => handleInputChange('admin_phone', e.target.value)}
+                          placeholder="관리자 전화번호를 입력하세요"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* 안내 메시지 */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div className="text-sm text-blue-800">
+                          <p className="font-medium mb-1">생성 완료 후 안내사항:</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            <li>브랜드관리자 계정이 자동으로 생성됩니다</li>
+                            <li>임시 비밀번호가 발급되어 화면에 표시됩니다</li>
+                            <li>브랜드관리자는 브랜드 전용 대시보드에 접근할 수 있습니다</li>
+                            <li>추후 로그인 기능이 구현되면 정식 로그인이 가능합니다</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        resetForm();
+                        setIsCreateDialogOpen(false);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      취소
+                    </Button>
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          생성 중...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          브랜드 + 관리자 생성
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              
               <Badge variant="outline" className="text-green-400 border-green-400">
                 <Activity className="h-4 w-4 mr-1" />
                 실시간 모니터링

@@ -87,6 +87,32 @@ def get_brands_api():
         return jsonify({'error': '브랜드 목록 로딩 실패'}), 500
 
 
+@restaurant_industry_admin.route('/api/admin/restaurant/industry/brands', methods=['POST'])
+@login_required
+def add_brand_api():
+    if current_user.role not in ['admin', 'super_admin']:
+        return jsonify({'error': '권한 없음'}), 403
+    data = request.get_json()
+    print("DEBUG POST DATA:", data) 
+    name = data.get('name')
+    description = data.get('description')
+    manager = data.get('manager')
+    # 필수값 체크
+    if not name or not manager or not manager.get('name') or not manager.get('email'):
+        return jsonify({'error': '필수값 누락'}), 400
+    try:
+        # 브랜드 생성
+        new_brand = Brand(name=name, description=description)
+        db.session.add(new_brand)
+        db.session.commit()
+        # (선택) 관리자 계정 생성 로직 추가 가능
+        return jsonify({'success': True, 'brand_id': new_brand.id})
+    except Exception as e:
+        logger.error(f"브랜드 추가 오류: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': '브랜드 저장 실패', 'detail': str(e)}), 500
+
+
 @restaurant_industry_admin.route('/api/admin/restaurant/industry/branches')
 @login_required
 def get_branches_api():
