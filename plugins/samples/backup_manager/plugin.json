@@ -1,0 +1,27 @@
+{
+  "plugin_id": "backup_manager",
+  "name": "백업 관리 플러그인",
+  "version": "1.0.0",
+  "description": "자동 백업 및 복원 기능을 제공하는 유틸리티 플러그인입니다.",
+  "author": "Utility Team",
+  "category": "utility",
+  "dependencies": [],
+  "permissions": [
+    "read",
+    "write"
+  ],
+  "entry_point": "main.py",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "debug_mode": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  }
+}
