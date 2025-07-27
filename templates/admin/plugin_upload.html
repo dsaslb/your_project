@@ -1,0 +1,180 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}플러그인 업로드{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- 헤더 -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">플러그인 업로드</h1>
+            <p class="text-gray-600">새로운 플러그인을 업로드하여 마켓플레이스에 등록합니다.</p>
+        </div>
+
+        <!-- 업로드 폼 -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                <!-- 기본 정보 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">플러그인 이름 *</label>
+                        <input type="text" id="name" name="name" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="display_name" class="block text-sm font-medium text-gray-700 mb-2">표시 이름 *</label>
+                        <input type="text" id="display_name" name="display_name" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="version" class="block text-sm font-medium text-gray-700 mb-2">버전 *</label>
+                        <input type="text" id="version" name="version" required placeholder="1.0.0"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="author" class="block text-sm font-medium text-gray-700 mb-2">개발자 *</label>
+                        <input type="text" id="author" name="author" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700 mb-2">카테고리 *</label>
+                        <select id="category" name="category" required 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">카테고리 선택</option>
+                            <option value="ai">AI/자동화</option>
+                            <option value="analytics">분석/통계</option>
+                            <option value="schedule">스케줄 관리</option>
+                            <option value="qsc">QSC 관리</option>
+                            <option value="communication">커뮤니케이션</option>
+                            <option value="reporting">리포팅</option>
+                            <option value="other">기타</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="icon" class="block text-sm font-medium text-gray-700 mb-2">아이콘</label>
+                        <input type="text" id="icon" name="icon" placeholder="📅" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <!-- 설명 -->
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-2">설명 *</label>
+                    <textarea id="description" name="description" rows="4" required
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="플러그인의 기능과 특징을 설명해주세요."></textarea>
+                </div>
+
+                <!-- 태그 -->
+                <div>
+                    <label for="tags" class="block text-sm font-medium text-gray-700 mb-2">태그</label>
+                    <input type="text" id="tags" name="tags" placeholder="ai, schedule, automation (쉼표로 구분)"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- UI 스키마 -->
+                <div>
+                    <label for="ui_schema" class="block text-sm font-medium text-gray-700 mb-2">UI 스키마 (JSON) *</label>
+                    <textarea id="ui_schema" name="ui_schema" rows="8" required
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                              placeholder='{
+  "menu": {
+    "title": "AI 스케줄 추천",
+    "icon": "Calendar",
+    "position": 1
+  },
+  "dashboard": {
+    "type": "card",
+    "title": "스케줄 최적화",
+    "description": "AI가 추천한 최적 스케줄",
+    "component": "ScheduleOptimizer",
+    "size": "medium"
+  }
+}'></textarea>
+                    <p class="text-sm text-gray-500 mt-1">플러그인의 메뉴와 대시보드 구성을 정의하는 JSON 스키마입니다.</p>
+                </div>
+
+                <!-- 파일 업로드 -->
+                <div>
+                    <label for="plugin_file" class="block text-sm font-medium text-gray-700 mb-2">플러그인 파일 *</label>
+                    <input type="file" id="plugin_file" name="plugin_file" required accept=".py,.zip,.json"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-sm text-gray-500 mt-1">Python 파일(.py), 압축 파일(.zip), 또는 설정 파일(.json)을 업로드하세요.</p>
+                </div>
+
+                <!-- 설치 대상 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">설치 대상</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="install_targets" value="industry" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-700">업종 관리자</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" name="install_targets" value="brand" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-700">브랜드 관리자</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" name="install_targets" value="store" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-700">매장 관리자</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 버튼 -->
+                <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                    <button type="button" onclick="history.back()" 
+                            class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        취소
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        플러그인 업로드
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const uiSchemaTextarea = document.getElementById('ui_schema');
+    
+    // JSON 유효성 검사
+    uiSchemaTextarea.addEventListener('blur', function() {
+        try {
+            JSON.parse(this.value);
+            this.classList.remove('border-red-500');
+            this.classList.add('border-gray-300');
+        } catch (e) {
+            this.classList.remove('border-gray-300');
+            this.classList.add('border-red-500');
+            alert('UI 스키마가 유효한 JSON 형식이 아닙니다.');
+        }
+    });
+    
+    // 폼 제출 처리
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // JSON 유효성 검사
+        try {
+            JSON.parse(uiSchemaTextarea.value);
+        } catch (e) {
+            alert('UI 스키마가 유효한 JSON 형식이 아닙니다.');
+            return;
+        }
+        
+        // 폼 제출
+        this.submit();
+    });
+});
+</script>
+{% endblock %} 

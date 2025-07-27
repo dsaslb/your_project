@@ -3120,52 +3120,8 @@ class ModuleApproval(db.Model):
         return f"<ModuleApproval {self.module_id} - {self.action}>"
 
 
-# 플러그인 리뷰 및 피드백 모델
-class PluginReview(db.Model):
-    """플러그인 리뷰 모델"""
-
-    __tablename__ = "plugin_reviews"
-
-    id = db.Column(db.Integer, primary_key=True)
-    plugin_id = db.Column(db.String(100), db.ForeignKey("modules.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    version = db.Column(db.String(20), nullable=False)
-    rating = db.Column(db.Integer, nullable=False)  # 1-5 별점
-    title = db.Column(db.String(200), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    is_public = db.Column(db.Boolean, default=True)
-    status = db.Column(db.String(20), default="active")  # active, hidden, deleted
-    helpful_count = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
-
-    # 관계
-    plugin = db.relationship("Module", backref="reviews")
-    user = db.relationship("User", backref="plugin_reviews")
-    responses = db.relationship(
-        "PluginReviewResponse", backref="review", cascade="all, delete-orphan"
-    )
-
-
-class PluginReviewResponse(db.Model):
-    """플러그인 리뷰 응답 모델 (개발자/관리자 답변)"""
-
-    __tablename__ = "plugin_review_responses"
-
-    id = db.Column(db.Integer, primary_key=True)
-    review_id = db.Column(
-        db.Integer, db.ForeignKey("plugin_reviews.id"), nullable=False
-    )
-    responder_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    responder_type = db.Column(db.String(20), nullable=False)  # developer, admin
-    content = db.Column(db.Text, nullable=False)
-    is_public = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # 관계
-    responder = db.relationship("User", backref="plugin_responses")
+# 플러그인 리뷰 및 피드백 모델 (models/plugin_models.py로 이동됨)
+# PluginReview와 PluginReviewResponse는 models/plugin_models.py에서 정의됨
 
 
 class PluginBugReport(db.Model):

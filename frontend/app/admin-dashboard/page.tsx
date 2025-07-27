@@ -111,6 +111,8 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState('');
   const [brandFilter, setBrandFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [brandStats, setBrandStats] = useState<any[]>([]);
@@ -1016,7 +1018,7 @@ function RecentSystemAlerts() {
               <li
                 key={idx}
                 role="listitem"
-                className={alert.priority === 'high' ? 'text-red-600 font-bold flex items-center' : '' + (isNew ? ' bg-yellow-100 animate-pulse' : '')}
+                className={`${alert.priority === 'high' ? 'text-red-600 font-bold flex items-center' : ''}${isNew ? ' bg-yellow-100 animate-pulse' : ''}`}
                 aria-live={isNew ? 'assertive' : undefined}
               >
                 {alert.priority === 'high' && (
@@ -1083,7 +1085,7 @@ function BrandManagerSection() {
   const [form, setForm] = useState({
     name: '',
     description: '',
-    manager: { name: '', email: '', password: '' },
+    manager: { name: '', email: '', phone: '', password: '' },
   });
   const [saving, setSaving] = useState(false);
 
@@ -1157,7 +1159,7 @@ function BrandManagerSection() {
     setForm({
       name: brand.name,
       description: brand.description,
-      manager: brand.manager || { name: '', email: '', password: '' },
+      manager: brand.manager || { name: '', email: '', phone: '', password: '' },
     });
     setShowModal(true);
   };
@@ -1165,7 +1167,7 @@ function BrandManagerSection() {
   // 브랜드 추가 모달 열기
   const openAdd = () => {
     setEditBrand(null);
-    setForm({ name: '', description: '', manager: { name: '', email: '', password: '' } });
+    setForm({ name: '', description: '', manager: { name: '', email: '', phone: '', password: '' } });
     setShowModal(true);
   };
 

@@ -1,6 +1,7 @@
 import json
 from sqlalchemy import desc
-from models_main import db, PluginReview, PluginBugReport, PluginFeatureRequest, Module, User
+from models_main import db, PluginBugReport, PluginFeatureRequest, Module, User
+from models.plugin_models import PluginReview
 from datetime import datetime
 from flask_login import login_required, current_user
 from flask import Blueprint, request, jsonify, current_app

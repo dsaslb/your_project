@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 import jwt
 from flask import Flask, flash, jsonify, redirect, render_template, request
+from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from flask_login import current_user, login_required, login_user
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Gauge
@@ -67,6 +68,9 @@ app = Flask(__name__)
 app.config.from_object(config_by_name[config_name])
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 app.config["SECRET_KEY"] = app.config["JWT_SECRET_KEY"]
+
+# 플러그인 목록 (실제로는 DB에서 관리)
+plugins = []
 
 # JSON 파싱 강제 활성화
 app.config['JSON_AS_ASCII'] = False
@@ -3529,20 +3533,7 @@ def api_admin_reply_feedback(feedback_id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/module-marketplace")
-def admin_module_marketplace():
-    return render_template("admin/module_marketplace.html")
 
-
-@app.route("/admin/module-management")
-def admin_module_management():
-    return render_template("admin/module_management.html")
-
-
-@app.route("/admin/module-details/<module_id>")
-def admin_module_details(module_id):
-    """모듈 상세 정보 페이지"""
-    return render_template("admin/module_details.html", module_id=module_id)
 
 
 @app.route("/api/marketplace/modules")
@@ -4656,7 +4647,191 @@ def admin_plugin_customization_dashboard():
 @login_required
 def admin_plugin_management():
     """플러그인 관리 페이지"""
-    return render_template("admin/plugin_management.html")
+    # 플러그인 통계 데이터 생성
+    stats = {
+        'activePlugins': 5,  # 활성 플러그인 수
+        'permissionSets': 12,  # 권한 설정 수
+        'testSuccessRate': 95,  # 테스트 성공률
+        'systemStatus': '정상'  # 시스템 상태
+    }
+    
+    # 샘플 플러그인 데이터
+    plugins = [
+        {
+            'id': 1,
+            'name': 'AI 스케줄 추천',
+            'description': '직원 스케줄을 AI가 자동으로 최적화해주는 플러그인',
+            'icon': '📅',
+            'status': 'active',
+            'activatedTargets': '3개 브랜드, 15개 매장',
+            'lastTestResult': '2024-01-15 성공'
+        },
+        {
+            'id': 2,
+            'name': '리뷰 자동 요약',
+            'description': '고객 리뷰를 자동으로 분석하고 요약해주는 플러그인',
+            'icon': '📝',
+            'status': 'active',
+            'activatedTargets': '2개 브랜드, 8개 매장',
+            'lastTestResult': '2024-01-14 성공'
+        },
+        {
+            'id': 3,
+            'name': 'QSC 자동 평가',
+            'description': 'QSC 평가를 자동으로 수행하고 리포트를 생성하는 플러그인',
+            'icon': '⭐',
+            'status': 'inactive',
+            'activatedTargets': '1개 브랜드, 5개 매장',
+            'lastTestResult': '2024-01-13 실패'
+        }
+    ]
+    
+    return render_template("admin/plugin_management.html", stats=stats, plugins=plugins)
+
+@app.route("/plugin-marketplace")
+@login_required
+def plugin_marketplace():
+    """플러그인 마켓플레이스 페이지"""
+    return render_template("plugin_marketplace.html")
+
+@app.route("/admin/plugin-upload", methods=["GET", "POST"])
+@login_required
+def admin_plugin_upload():
+    """플러그인 업로드 페이지"""
+    if request.method == "POST":
+        try:
+            # 폼 데이터 받기
+            name = request.form.get('name')
+            display_name = request.form.get('display_name')
+            version = request.form.get('version')
+            author = request.form.get('author')
+            category = request.form.get('category')
+            description = request.form.get('description')
+            tags = request.form.get('tags', '').split(',') if request.form.get('tags') else []
+            icon = request.form.get('icon', '📦')
+            ui_schema = request.form.get('ui_schema')
+            install_targets = request.form.getlist('install_targets')
+            
+            # 파일 업로드 처리
+            if 'plugin_file' not in request.files:
+                flash('플러그인 파일을 선택해주세요.', 'error')
+                return redirect(request.url)
+            
+            file = request.files['plugin_file']
+            if file.filename == '':
+                flash('플러그인 파일을 선택해주세요.', 'error')
+                return redirect(request.url)
+            
+            # 파일 저장
+            filename = secure_filename(file.filename)
+            file_path = os.path.join('plugins', 'uploaded', filename)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            file.save(file_path)
+            
+            # UI 스키마 파싱
+            try:
+                ui_schema_json = json.loads(ui_schema)
+            except json.JSONDecodeError:
+                flash('UI 스키마가 유효한 JSON 형식이 아닙니다.', 'error')
+                return redirect(request.url)
+            
+            # 플러그인 정보 저장 (실제로는 DB에 저장)
+            plugin_info = {
+                'id': len(plugins) + 1,
+                'name': name,
+                'display_name': display_name,
+                'version': version,
+                'author': author,
+                'category': category,
+                'description': description,
+                'tags': [tag.strip() for tag in tags],
+                'icon': icon,
+                'ui_schema': ui_schema_json,
+                'file_path': file_path,
+                'install_targets': install_targets,
+                'uploaded_by': current_user.username,
+                'uploaded_at': datetime.now().isoformat(),
+                'status': 'pending'  # 승인 대기
+            }
+            
+            # 플러그인 목록에 추가 (실제로는 DB에 저장)
+            plugins.append(plugin_info)
+            
+            flash(f'플러그인 "{display_name}"이 성공적으로 업로드되었습니다. 승인 후 마켓플레이스에 등록됩니다.', 'success')
+            return redirect(url_for('admin_plugin_management'))
+            
+        except Exception as e:
+            flash(f'플러그인 업로드 중 오류가 발생했습니다: {str(e)}', 'error')
+            return redirect(request.url)
+    
+    return render_template("admin/plugin_upload.html")
+
+@app.route("/admin/plugin-approval")
+@login_required
+def admin_plugin_approval():
+    """플러그인 승인 관리 페이지"""
+    # 승인 대기 플러그인
+    pending_plugins = [p for p in plugins if p.get('status') == 'pending']
+    
+    # 승인된 플러그인
+    approved_plugins = [p for p in plugins if p.get('status') == 'approved']
+    
+    return render_template("admin/plugin_approval.html", 
+                         pending_plugins=pending_plugins, 
+                         approved_plugins=approved_plugins)
+
+@app.route("/api/admin/plugin/<int:plugin_id>/details")
+@login_required
+def api_admin_plugin_details(plugin_id):
+    """플러그인 상세 정보 API"""
+    plugin = next((p for p in plugins if p['id'] == plugin_id), None)
+    if plugin:
+        return jsonify(plugin)
+    else:
+        return jsonify({'error': 'Plugin not found'}), 404
+
+@app.route("/api/admin/plugin/<int:plugin_id>/approve", methods=["POST"])
+@login_required
+def api_admin_approve_plugin(plugin_id):
+    """플러그인 승인 API"""
+    plugin = next((p for p in plugins if p['id'] == plugin_id), None)
+    if plugin:
+        plugin['status'] = 'approved'
+        plugin['approved_at'] = datetime.now().isoformat()
+        plugin['approved_by'] = current_user.username
+        return jsonify({'success': True, 'message': 'Plugin approved successfully'})
+    else:
+        return jsonify({'success': False, 'message': 'Plugin not found'}), 404
+
+@app.route("/api/admin/plugin/<int:plugin_id>/reject", methods=["POST"])
+@login_required
+def api_admin_reject_plugin(plugin_id):
+    """플러그인 거부 API"""
+    data = request.get_json()
+    reason = data.get('reason', 'No reason provided')
+    
+    plugin = next((p for p in plugins if p['id'] == plugin_id), None)
+    if plugin:
+        plugin['status'] = 'rejected'
+        plugin['rejected_at'] = datetime.now().isoformat()
+        plugin['rejected_by'] = current_user.username
+        plugin['rejection_reason'] = reason
+        return jsonify({'success': True, 'message': 'Plugin rejected successfully'})
+    else:
+        return jsonify({'success': False, 'message': 'Plugin not found'}), 404
+
+@app.route("/api/admin/plugin/<int:plugin_id>/deactivate", methods=["POST"])
+@login_required
+def api_admin_deactivate_plugin(plugin_id):
+    """플러그인 비활성화 API"""
+    plugin = next((p for p in plugins if p['id'] == plugin_id), None)
+    if plugin:
+        plugin['status'] = 'inactive'
+        plugin['deactivated_at'] = datetime.now().isoformat()
+        plugin['deactivated_by'] = current_user.username
+        return jsonify({'success': True, 'message': 'Plugin deactivated successfully'})
+    else:
+        return jsonify({'success': False, 'message': 'Plugin not found'}), 404
 
 
 @app.route("/api/admin/users")

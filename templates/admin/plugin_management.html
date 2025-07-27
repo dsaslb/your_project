@@ -19,6 +19,14 @@
                         <h1 class="text-2xl font-bold text-gray-900">플러그인 관리</h1>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <a href="{{ url_for('admin_plugin_upload') }}" 
+                           class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            플러그인 업로드
+                        </a>
+                        <a href="{{ url_for('admin_plugin_approval') }}" 
+                           class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700">
+                            승인 관리
+                        </a>
                         <button @click="refreshData" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
                             새로고침
                         </button>

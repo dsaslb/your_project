@@ -93,13 +93,36 @@ class PluginReview(db.Model):
     title = Column(String(200))
     content = Column(Text)
     is_verified = Column(Boolean, default=False)  # 실제 사용자 확인
+    is_public = Column(Boolean, default=True)
+    status = Column(String(20), default="active")  # active, hidden, deleted
+    helpful_count = Column(Integer, default=0)
     
     # 관계
     plugin = relationship("Plugin", back_populates="reviews")
     user = relationship("User")
+    responses = relationship("PluginReviewResponse", back_populates="review", cascade="all, delete-orphan")
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PluginReviewResponse(db.Model):
+    """플러그인 리뷰 응답 모델 (개발자/관리자 답변)"""
+    __tablename__ = 'plugin_review_responses'
+    __table_args__ = {'extend_existing': True}
+    
+    id = Column(Integer, primary_key=True)
+    review_id = Column(Integer, ForeignKey('plugin_reviews.id'), nullable=False)
+    responder_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    responder_type = Column(String(20), nullable=False)  # developer, admin
+    content = Column(Text, nullable=False)
+    is_public = Column(Boolean, default=True)
+    
+    # 관계
+    review = relationship("PluginReview", back_populates="responses")
+    responder = relationship("User")
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class PluginUpdate(db.Model):
     """플러그인 업데이트 기록 테이블"""
