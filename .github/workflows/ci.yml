@@ -40,7 +40,7 @@ jobs:
         python -m pytest tests/ -v --cov=. --cov-report=xml
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: unittests
@@ -75,7 +75,7 @@ jobs:
         tar -czf dist/app.tar.gz --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' .
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: app-build
         path: dist/
@@ -93,31 +93,31 @@ jobs:
       with:
         args: --severity-threshold=high
 
-  deploy-staging:
-    needs: [test, build]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to staging
-      run: |
-        echo "Deploying to staging environment..."
-        # 여기에 스테이징 배포 스크립트 추가
+  # deploy-staging:
+  #   needs: [test, build]
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/develop'
+  #   environment: staging
+  #   
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   
+  #   - name: Deploy to staging
+  #     run: |
+  #       echo "Deploying to staging environment..."
+  #       # 여기에 스테이징 배포 스크립트 추가
 
-  deploy-production:
-    needs: [test, build, security-scan]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to production
-      run: |
-        echo "Deploying to production environment..."
-        # 여기에 프로덕션 배포 스크립트 추가 
+  # deploy-production:
+  #   needs: [test, build, security-scan]
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
+  #   
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   
+  #   - name: Deploy to production
+  #     run: |
+  #       echo "Deploying to production environment..."
+  #       # 여기에 프로덕션 배포 스크립트 추가 
 
