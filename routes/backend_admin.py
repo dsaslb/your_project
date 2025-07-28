@@ -92,7 +92,7 @@ def system_monitoring():
         return redirect(url_for('auth.login'))
     
     # 시스템 로그 조회
-    system_logs = SystemLog.query.order_by(SystemLog.timestamp.desc()).limit(100).all()
+    system_logs = SystemLog.query.order_by(SystemLog.created_at.desc()).limit(100).all()
     return render_template('admin/cyberpunk_system_monitoring.html', logs=system_logs)
 
 @backend_admin_bp.route('/admin/backend/security')
@@ -105,9 +105,9 @@ def security_management():
     # 보안 관련 로그 조회
     security_logs = SystemLog.query.filter(
         SystemLog.level.in_(['warning', 'critical'])
-    ).order_by(SystemLog.timestamp.desc()).limit(50).all()
+    ).order_by(SystemLog.created_at.desc()).limit(50).all()
     
-    return render_template('admin/security_management.html', logs=security_logs)
+    return render_template('admin/cyberpunk_security_management.html', logs=security_logs)
 
 @backend_admin_bp.route('/admin/backend/events')
 @login_required
@@ -117,10 +117,10 @@ def events_monitoring():
         return redirect(url_for('auth.login'))
     
     # 최근 이벤트 조회
-    recent_events = ActionLog.query.order_by(ActionLog.timestamp.desc()).limit(50).all()
+    recent_events = ActionLog.query.order_by(ActionLog.created_at.desc()).limit(50).all()
     notifications = Notification.query.filter_by(is_admin_only=True).order_by(Notification.created_at.desc()).limit(20).all()
     
-    return render_template('admin/events_monitoring.html', events=recent_events, notifications=notifications)
+    return render_template('admin/cyberpunk_events_monitoring.html', events=recent_events, notifications=notifications)
 
 @backend_admin_bp.route('/admin/backend/docs')
 @login_required
@@ -267,7 +267,7 @@ def get_system_logs():
         if level:
             query = query.filter(SystemLog.level == level)
         
-        logs = query.order_by(SystemLog.timestamp.desc()).paginate(
+        logs = query.order_by(SystemLog.created_at.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
         
@@ -299,8 +299,8 @@ def get_security_alerts():
         yesterday = datetime.utcnow() - timedelta(days=1)
         alerts = SystemLog.query.filter(
             SystemLog.level.in_(['warning', 'critical']),
-            SystemLog.timestamp >= yesterday
-        ).order_by(SystemLog.timestamp.desc()).limit(20).all()
+                    SystemLog.created_at >= yesterday
+    ).order_by(SystemLog.created_at.desc()).limit(20).all()
         
         return jsonify({
             'alerts': [{
@@ -326,8 +326,8 @@ def get_recent_events():
         # 최근 24시간 이벤트
         yesterday = datetime.utcnow() - timedelta(days=1)
         events = ActionLog.query.filter(
-            ActionLog.timestamp >= yesterday
-        ).order_by(ActionLog.timestamp.desc()).limit(30).all()
+                    ActionLog.created_at >= yesterday
+    ).order_by(ActionLog.created_at.desc()).limit(30).all()
         
         return jsonify({
             'success': True,
@@ -500,4 +500,186 @@ def get_module_projects():
         })
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
+
+# 업종 관리 API 엔드포인트들
+@backend_admin_bp.route('/api/admin/industries', methods=['GET'])
+@login_required
+def get_industries():
+    """업종 목록 조회"""
+    if not current_user.has_permission('system_management', 'view'):
+        return jsonify({'error': '권한이 없습니다.'}), 403
+    
+    try:
+        from models_main import Industry
+        
+        industries = Industry.query.filter_by(is_active=True).order_by(Industry.name).all()
+        
+        industries_data = []
+        for industry in industries:
+            industries_data.append({
+                'id': industry.id,
+                'name': industry.name,
+                'code': industry.code,
+                'description': industry.description,
+                'icon': industry.icon,
+                'color': industry.color,
+                'is_active': industry.is_active,
+                'created_at': industry.created_at.isoformat() if industry.created_at else None,
+                'updated_at': industry.updated_at.isoformat() if industry.updated_at else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'industries': industries_data
+        })
+        
+    except Exception as e:
+        print(f"업종 목록 조회 오류: {e}")
+        return jsonify({'error': '업종 목록 조회에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/admin/industries', methods=['POST'])
+@login_required
+def create_industry():
+    """업종 생성"""
+    if not current_user.has_permission('system_management', 'create'):
+        return jsonify({'error': '권한이 없습니다.'}), 403
+    
+    try:
+        from models_main import Industry, db
+        
+        data = request.get_json()
+        
+        # 필수 필드 검증
+        if not data.get('name') or not data.get('code'):
+            return jsonify({'error': '업종명과 코드는 필수입니다.'}), 400
+        
+        # 중복 검사
+        existing_industry = Industry.query.filter(
+            (Industry.name == data['name']) | (Industry.code == data['code'])
+        ).first()
+        
+        if existing_industry:
+            return jsonify({'error': '이미 존재하는 업종명 또는 코드입니다.'}), 400
+        
+        # 새 업종 생성
+        new_industry = Industry(
+            name=data['name'],
+            code=data['code'],
+            description=data.get('description', ''),
+            icon=data.get('icon', ''),
+            color=data.get('color', '#4ecdc4'),
+            is_active=data.get('is_active', True)
+        )
+        
+        db.session.add(new_industry)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '업종이 성공적으로 생성되었습니다.',
+            'industry': {
+                'id': new_industry.id,
+                'name': new_industry.name,
+                'code': new_industry.code,
+                'description': new_industry.description,
+                'icon': new_industry.icon,
+                'color': new_industry.color,
+                'is_active': new_industry.is_active,
+                'created_at': new_industry.created_at.isoformat() if new_industry.created_at else None
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"업종 생성 오류: {e}")
+        return jsonify({'error': '업종 생성에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/admin/industries/<int:industry_id>', methods=['PUT'])
+@login_required
+def update_industry(industry_id):
+    """업종 수정"""
+    if not current_user.has_permission('system_management', 'edit'):
+        return jsonify({'error': '권한이 없습니다.'}), 403
+    
+    try:
+        from models_main import Industry, db
+        
+        industry = Industry.query.get_or_404(industry_id)
+        data = request.get_json()
+        
+        # 필수 필드 검증
+        if not data.get('name') or not data.get('code'):
+            return jsonify({'error': '업종명과 코드는 필수입니다.'}), 400
+        
+        # 중복 검사 (자신 제외)
+        existing_industry = Industry.query.filter(
+            (Industry.name == data['name']) | (Industry.code == data['code']),
+            Industry.id != industry_id
+        ).first()
+        
+        if existing_industry:
+            return jsonify({'error': '이미 존재하는 업종명 또는 코드입니다.'}), 400
+        
+        # 업종 정보 업데이트
+        industry.name = data['name']
+        industry.code = data['code']
+        industry.description = data.get('description', industry.description)
+        industry.icon = data.get('icon', industry.icon)
+        industry.color = data.get('color', industry.color)
+        industry.is_active = data.get('is_active', industry.is_active)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '업종이 성공적으로 수정되었습니다.',
+            'industry': {
+                'id': industry.id,
+                'name': industry.name,
+                'code': industry.code,
+                'description': industry.description,
+                'icon': industry.icon,
+                'color': industry.color,
+                'is_active': industry.is_active,
+                'updated_at': industry.updated_at.isoformat() if industry.updated_at else None
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"업종 수정 오류: {e}")
+        return jsonify({'error': '업종 수정에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/admin/industries/<int:industry_id>', methods=['DELETE'])
+@login_required
+def delete_industry(industry_id):
+    """업종 삭제"""
+    if not current_user.has_permission('system_management', 'delete'):
+        return jsonify({'error': '권한이 없습니다.'}), 403
+    
+    try:
+        from models_main import Industry, db
+        
+        industry = Industry.query.get_or_404(industry_id)
+        
+        # 관련 데이터가 있는지 확인
+        if industry.brands_list.count() > 0:
+            return jsonify({'error': '이 업종에 속한 브랜드가 있어 삭제할 수 없습니다.'}), 400
+        
+        if industry.users.count() > 0:
+            return jsonify({'error': '이 업종에 속한 사용자가 있어 삭제할 수 없습니다.'}), 400
+        
+        # 업종 삭제 (실제 삭제 대신 비활성화)
+        industry.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '업종이 성공적으로 비활성화되었습니다.'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"업종 삭제 오류: {e}")
+        return jsonify({'error': '업종 삭제에 실패했습니다.'}), 500 
