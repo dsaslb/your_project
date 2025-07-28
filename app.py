@@ -69,6 +69,9 @@ from api.realtime_notifications_enhanced import realtime_notifications_bp
 # 백엔드 관리자 Blueprint import
 from routes.backend_admin import backend_admin_bp
 
+# 캐시 매니저 import
+from utils.cache_manager import cache_manager
+
 # 환경 설정
 config_name = os.getenv("FLASK_ENV", "default")
 
@@ -128,8 +131,14 @@ def initialize_extensions():
     except Exception as e:
         logger.error(f"확장 모듈 초기화 실패: {e}")
         return None
+        
+        # 추가 확장 모듈 초기화
         limiter.init_app(app)
         cache.init_app(app)
+        
+        # 캐시 매니저 초기화
+        cache_manager.init_app(app)
+        
         logger.info("Flask 확장 모듈 초기화 완료")
     except Exception as e:
         logger.error(f"Flask 확장 모듈 초기화 실패: {e}")
@@ -252,7 +261,7 @@ def register_blueprints():
         ("api.realtime_notifications_enhanced", "realtime_notifications_bp", "realtime_notifications_enhanced"),
         
         # 백엔드 관리자 Blueprint
-        ("routes.backend_admin", "backend_admin_bp", "backend_admin"),
+        ("routes.backend_admin", "backend_admin_bp", None),
         
         # 브랜드관리자 API
         ("routes.brand_admin", "brand_admin_bp", "brand_admin"),
@@ -268,10 +277,14 @@ def register_blueprints():
         try:
             module = __import__(module_path, fromlist=[blueprint_name])
             blueprint = getattr(module, blueprint_name)
-            app.register_blueprint(blueprint, name=url_prefix)
-            logger.info(f"{url_prefix} 블루프린트 등록 완료")
+            if url_prefix:
+                app.register_blueprint(blueprint, name=url_prefix)
+                logger.info(f"{url_prefix} 블루프린트 등록 완료")
+            else:
+                app.register_blueprint(blueprint)
+                logger.info(f"{blueprint_name} 블루프린트 등록 완료 (URL prefix 없음)")
         except Exception as e:
-            logger.error(f"{url_prefix} 블루프린트 등록 실패: {e}")
+            logger.error(f"{url_prefix or blueprint_name} 블루프린트 등록 실패: {e}")
 
 # 블루프린트 등록
 register_blueprints()
@@ -7245,6 +7258,52 @@ def api_websocket_status():
             "success": False,
             "error": str(e)
         }), 500
+
+# 계층별 관리 라우트 직접 추가
+@app.route('/admin/backend/hierarchy-management')
+@login_required
+def hierarchy_management():
+    """계층별 관리 메인 페이지"""
+    if not current_user.has_permission('system_management', 'view'):
+        flash('접근 권한이 없습니다.', 'error')
+        return redirect(url_for('index'))
+    return render_template('admin/cyberpunk_hierarchy_management.html')
+
+@app.route('/admin/backend/industry-management')
+@login_required
+def industry_management():
+    """업종 관리 페이지"""
+    if not current_user.has_permission('system_management', 'view'):
+        flash('접근 권한이 없습니다.', 'error')
+        return redirect(url_for('index'))
+    return render_template('admin/cyberpunk_industry_management.html')
+
+@app.route('/admin/backend/brand-management')
+@login_required
+def brand_management():
+    """브랜드 관리 페이지"""
+    if not current_user.has_permission('system_management', 'view'):
+        flash('접근 권한이 없습니다.', 'error')
+        return redirect(url_for('index'))
+    return render_template('admin/cyberpunk_brand_management.html')
+
+@app.route('/admin/backend/branch-management')
+@login_required
+def branch_management():
+    """매장 관리 페이지"""
+    if not current_user.has_permission('system_management', 'view'):
+        flash('접근 권한이 없습니다.', 'error')
+        return redirect(url_for('index'))
+    return render_template('admin/cyberpunk_branch_management.html')
+
+@app.route('/admin/backend/employee-management')
+@login_required
+def employee_management():
+    """직원 관리 페이지"""
+    if not current_user.has_permission('system_management', 'view'):
+        flash('접근 권한이 없습니다.', 'error')
+        return redirect(url_for('index'))
+    return render_template('admin/cyberpunk_employee_management.html')
 
 if __name__ == "__main__":
     # 모니터링 시스템 시작

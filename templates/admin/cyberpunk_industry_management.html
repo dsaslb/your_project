@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>업종 관리 - 사이버펑크</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        .cyber-font { font-family: 'Orbitron', monospace; }
+        .cyber-text { font-family: 'Rajdhani', sans-serif; }
+        .cyber-bg { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%); }
+        .cyber-orange { color: #ff6b35; }
+        .cyber-orange-glow { color: #ff6b35; text-shadow: 0 0 10px #ff6b35, 0 0 20px #ff6b35; }
+        .cyber-blue { color: #4ecdc4; }
+        .cyber-blue-glow { color: #4ecdc4; text-shadow: 0 0 10px #4ecdc4, 0 0 20px #4ecdc4; }
+        .cyber-red { color: #ff4757; }
+        .cyber-red-glow { color: #ff4757; text-shadow: 0 0 10px #ff4757, 0 0 20px #ff4757; }
+        .cyber-green { color: #2ed573; }
+        .cyber-green-glow { color: #2ed573; text-shadow: 0 0 10px #2ed573, 0 0 20px #2ed573; }
+        .cyber-yellow { color: #ffa502; }
+        .cyber-yellow-glow { color: #ffa502; text-shadow: 0 0 10px #ffa502, 0 0 20px #ffa502; }
+        .cyber-text-dim { color: #a0a0a0; }
+        .cyber-border { border: 1px solid #333; }
+        .cyber-border-orange { border: 1px solid #ff6b35; }
+        .cyber-border-blue { border: 1px solid #4ecdc4; }
+        .cyber-card { background: rgba(26, 26, 46, 0.8); border: 1px solid #333; backdrop-filter: blur(10px); }
+        .cyber-card:hover { border-color: #ff6b35; box-shadow: 0 0 20px rgba(255, 107, 53, 0.3); }
+        .cyber-button { background: linear-gradient(45deg, #ff6b35, #ff8c42); border: none; color: white; transition: all 0.3s; }
+        .cyber-button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4); }
+        .cyber-input { background: rgba(26, 26, 46, 0.8); border: 1px solid #333; color: #e0e0e0; }
+        .cyber-input:focus { border-color: #ff6b35; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3); }
+        .cyber-table { background: rgba(26, 26, 46, 0.6); border: 1px solid #333; }
+        .cyber-table th { background: rgba(255, 107, 53, 0.2); border-bottom: 1px solid #ff6b35; }
+        .cyber-table td { border-bottom: 1px solid #333; }
+        .cyber-table tr:hover { background: rgba(255, 107, 53, 0.1); }
+        .cyber-modal { background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); }
+        .cyber-modal-content { background: rgba(26, 26, 46, 0.95); border: 1px solid #ff6b35; }
+        .cyber-status-active { color: #2ed573; }
+        .cyber-status-inactive { color: #ff4757; }
+        .cyber-badge { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .cyber-badge-industry { background: rgba(255, 107, 53, 0.2); color: #ff6b35; border: 1px solid #ff6b35; }
+    </style>
+</head>
+<body class="cyber-bg min-h-screen cyber-text text-gray-300">
+    <!-- 헤더 -->
+    <header class="cyber-card p-4 mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="cyber-font text-3xl font-bold cyber-orange-glow">업종 관리</h1>
+                <p class="cyber-text-dim">업종 정보 생성, 수정, 삭제 관리</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="add-industry-btn" class="cyber-button px-4 py-2 rounded flex items-center space-x-2">
+                    <i data-feather="plus" class="w-4 h-4"></i>
+                    <span>새 업종 추가</span>
+                </button>
+                <a href="/admin/backend/hierarchy-management" class="cyber-button px-4 py-2 rounded flex items-center space-x-2">
+                    <i data-feather="arrow-left" class="w-4 h-4"></i>
+                    <span>뒤로가기</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 검색 및 필터 -->
+    <div class="cyber-card p-4 mb-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="search-input" placeholder="업종명 검색..." class="cyber-input px-3 py-2 rounded">
+                    <button id="search-btn" class="cyber-button px-4 py-2 rounded">
+                        <i data-feather="search" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <select id="status-filter" class="cyber-input px-3 py-2 rounded">
+                    <option value="">전체 상태</option>
+                    <option value="active">활성</option>
+                    <option value="inactive">비활성</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="refresh-btn" class="cyber-button px-3 py-2 rounded">
+                    <i data-feather="refresh-cw" class="w-4 h-4"></i>
+                </button>
+                <span id="total-count" class="cyber-text-dim">총 0개</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 업종 목록 테이블 -->
+    <div class="cyber-card p-6">
+        <div class="overflow-x-auto">
+            <table class="cyber-table w-full">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-3 text-left">업종명</th>
+                        <th class="px-4 py-3 text-left">코드</th>
+                        <th class="px-4 py-3 text-left">설명</th>
+                        <th class="px-4 py-3 text-left">브랜드 수</th>
+                        <th class="px-4 py-3 text-left">상태</th>
+                        <th class="px-4 py-3 text-left">생성일</th>
+                        <th class="px-4 py-3 text-center">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="industry-table-body">
+                    <!-- 업종 목록이 여기에 동적으로 로드됩니다 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 업종 추가/수정 모달 -->
+    <div id="industry-modal" class="cyber-modal fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="cyber-modal-content p-8 rounded-lg w-full max-w-md">
+            <div class="flex items-center justify-between mb-6">
+                <h3 id="modal-title" class="cyber-font text-xl font-bold cyber-orange-glow">새 업종 추가</h3>
+                <button id="close-modal" class="text-gray-400 hover:text-white">
+                    <i data-feather="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <form id="industry-form" class="space-y-4">
+                <input type="hidden" id="industry-id" name="id">
+                
+                <div>
+                    <label for="industry-name" class="block cyber-text-dim text-sm mb-2">업종명 *</label>
+                    <input type="text" id="industry-name" name="name" required class="cyber-input w-full px-3 py-2 rounded">
+                </div>
+                
+                <div>
+                    <label for="industry-code" class="block cyber-text-dim text-sm mb-2">코드 *</label>
+                    <input type="text" id="industry-code" name="code" required class="cyber-input w-full px-3 py-2 rounded">
+                </div>
+                
+                <div>
+                    <label for="industry-description" class="block cyber-text-dim text-sm mb-2">설명</label>
+                    <textarea id="industry-description" name="description" rows="3" class="cyber-input w-full px-3 py-2 rounded"></textarea>
+                </div>
+                
+                <div>
+                    <label for="industry-icon" class="block cyber-text-dim text-sm mb-2">아이콘</label>
+                    <input type="text" id="industry-icon" name="icon" placeholder="🏭" class="cyber-input w-full px-3 py-2 rounded">
+                </div>
+                
+                <div>
+                    <label for="industry-color" class="block cyber-text-dim text-sm mb-2">색상</label>
+                    <input type="color" id="industry-color" name="color" value="#ff6b35" class="cyber-input w-full px-3 py-2 rounded">
+                </div>
+                
+                <div>
+                    <label for="industry-status" class="block cyber-text-dim text-sm mb-2">상태</label>
+                    <select id="industry-status" name="is_active" class="cyber-input w-full px-3 py-2 rounded">
+                        <option value="true">활성</option>
+                        <option value="false">비활성</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-center justify-end space-x-3 pt-4">
+                    <button type="button" id="cancel-btn" class="cyber-button px-4 py-2 rounded bg-gray-600 hover:bg-gray-700">
+                        취소
+                    </button>
+                    <button type="submit" id="save-btn" class="cyber-button px-4 py-2 rounded">
+                        저장
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 삭제 확인 모달 -->
+    <div id="delete-modal" class="cyber-modal fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="cyber-modal-content p-8 rounded-lg w-full max-w-md">
+            <div class="text-center">
+                <i data-feather="alert-triangle" class="w-16 h-16 cyber-red mx-auto mb-4"></i>
+                <h3 class="cyber-font text-xl font-bold cyber-red-glow mb-4">업종 삭제 확인</h3>
+                <p class="cyber-text-dim mb-6">정말로 이 업종을 삭제하시겠습니까?</p>
+                <p class="cyber-text-dim text-sm mb-6">관련된 모든 브랜드와 매장도 함께 삭제됩니다.</p>
+                
+                <div class="flex items-center justify-center space-x-3">
+                    <button id="cancel-delete" class="cyber-button px-4 py-2 rounded bg-gray-600 hover:bg-gray-700">
+                        취소
+                    </button>
+                    <button id="confirm-delete" class="cyber-button px-4 py-2 rounded bg-red-600 hover:bg-red-700">
+                        삭제
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="cyber-card p-8 text-center">
+            <div class="mb-4">
+                <i data-feather="loader" class="w-8 h-8 cyber-orange mx-auto animate-spin"></i>
+            </div>
+            <p class="cyber-font">처리 중...</p>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let industries = [];
+        let currentIndustryId = null;
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+            loadIndustries();
+            setupEventListeners();
+        });
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 새 업종 추가 버튼
+            document.getElementById('add-industry-btn').addEventListener('click', function() {
+                openModal();
+            });
+
+            // 모달 닫기
+            document.getElementById('close-modal').addEventListener('click', closeModal);
+            document.getElementById('cancel-btn').addEventListener('click', closeModal);
+
+            // 폼 제출
+            document.getElementById('industry-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveIndustry();
+            });
+
+            // 검색
+            document.getElementById('search-btn').addEventListener('click', function() {
+                filterIndustries();
+            });
+
+            // 상태 필터
+            document.getElementById('status-filter').addEventListener('change', function() {
+                filterIndustries();
+            });
+
+            // 새로고침
+            document.getElementById('refresh-btn').addEventListener('click', function() {
+                loadIndustries();
+            });
+
+            // 삭제 모달
+            document.getElementById('cancel-delete').addEventListener('click', closeDeleteModal);
+            document.getElementById('confirm-delete').addEventListener('click', deleteIndustry);
+        }
+
+        // 업종 목록 로드
+        async function loadIndustries() {
+            showLoading();
+            try {
+                const response = await fetch('/api/admin/industries');
+                const result = await response.json();
+                
+                if (result.success) {
+                    industries = result.industries;
+                    renderIndustries();
+                    updateTotalCount();
+                } else {
+                    showError('업종 목록 로드에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('업종 목록 로드 오류:', error);
+                showError('네트워크 오류가 발생했습니다.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 업종 목록 렌더링
+        function renderIndustries() {
+            const tbody = document.getElementById('industry-table-body');
+            
+            if (!industries || industries.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center cyber-text-dim">
+                            업종이 없습니다.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            industries.forEach(industry => {
+                html += `
+                    <tr class="hover:bg-opacity-10 hover:bg-orange-500">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center space-x-3">
+                                <span class="cyber-badge cyber-badge-industry">${industry.icon || '🏭'}</span>
+                                <span class="cyber-font font-semibold">${industry.name}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 cyber-text-dim">${industry.code}</td>
+                        <td class="px-4 py-3 cyber-text-dim">${industry.description || '-'}</td>
+                        <td class="px-4 py-3 cyber-text-dim">${industry.brand_count || 0}개</td>
+                        <td class="px-4 py-3">
+                            <span class="cyber-status-${industry.is_active ? 'active' : 'inactive'}">
+                                ● ${industry.is_active ? '활성' : '비활성'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 cyber-text-dim">${formatDate(industry.created_at)}</td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button onclick="editIndustry(${industry.id})" class="cyber-button px-2 py-1 rounded text-sm">
+                                    <i data-feather="edit" class="w-3 h-3"></i>
+                                </button>
+                                <button onclick="confirmDelete(${industry.id})" class="cyber-button px-2 py-1 rounded text-sm bg-red-600 hover:bg-red-700">
+                                    <i data-feather="trash-2" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            feather.replace();
+        }
+
+        // 업종 필터링
+        function filterIndustries() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            
+            const filtered = industries.filter(industry => {
+                const matchesSearch = industry.name.toLowerCase().includes(searchTerm) ||
+                                    industry.code.toLowerCase().includes(searchTerm);
+                const matchesStatus = !statusFilter || 
+                                    (statusFilter === 'active' && industry.is_active) ||
+                                    (statusFilter === 'inactive' && !industry.is_active);
+                
+                return matchesSearch && matchesStatus;
+            });
+
+            renderFilteredIndustries(filtered);
+        }
+
+        // 필터링된 업종 렌더링
+        function renderFilteredIndustries(filteredIndustries) {
+            const tbody = document.getElementById('industry-table-body');
+            
+            if (!filteredIndustries || filteredIndustries.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center cyber-text-dim">
+                            검색 결과가 없습니다.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            filteredIndustries.forEach(industry => {
+                html += `
+                    <tr class="hover:bg-opacity-10 hover:bg-orange-500">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center space-x-3">
+                                <span class="cyber-badge cyber-badge-industry">${industry.icon || '🏭'}</span>
+                                <span class="cyber-font font-semibold">${industry.name}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 cyber-text-dim">${industry.code}</td>
+                        <td class="px-4 py-3 cyber-text-dim">${industry.description || '-'}</td>
+                        <td class="px-4 py-3 cyber-text-dim">${industry.brand_count || 0}개</td>
+                        <td class="px-4 py-3">
+                            <span class="cyber-status-${industry.is_active ? 'active' : 'inactive'}">
+                                ● ${industry.is_active ? '활성' : '비활성'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 cyber-text-dim">${formatDate(industry.created_at)}</td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button onclick="editIndustry(${industry.id})" class="cyber-button px-2 py-1 rounded text-sm">
+                                    <i data-feather="edit" class="w-3 h-3"></i>
+                                </button>
+                                <button onclick="confirmDelete(${industry.id})" class="cyber-button px-2 py-1 rounded text-sm bg-red-600 hover:bg-red-700">
+                                    <i data-feather="trash-2" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            feather.replace();
+        }
+
+        // 모달 열기
+        function openModal(industry = null) {
+            const modal = document.getElementById('industry-modal');
+            const title = document.getElementById('modal-title');
+            const form = document.getElementById('industry-form');
+            
+            if (industry) {
+                title.textContent = '업종 수정';
+                currentIndustryId = industry.id;
+                
+                // 폼에 데이터 채우기
+                document.getElementById('industry-id').value = industry.id;
+                document.getElementById('industry-name').value = industry.name;
+                document.getElementById('industry-code').value = industry.code;
+                document.getElementById('industry-description').value = industry.description || '';
+                document.getElementById('industry-icon').value = industry.icon || '';
+                document.getElementById('industry-color').value = industry.color || '#ff6b35';
+                document.getElementById('industry-status').value = industry.is_active.toString();
+            } else {
+                title.textContent = '새 업종 추가';
+                currentIndustryId = null;
+                form.reset();
+                document.getElementById('industry-color').value = '#ff6b35';
+                document.getElementById('industry-status').value = 'true';
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        // 모달 닫기
+        function closeModal() {
+            document.getElementById('industry-modal').classList.add('hidden');
+            currentIndustryId = null;
+        }
+
+        // 업종 저장
+        async function saveIndustry() {
+            const formData = new FormData(document.getElementById('industry-form'));
+            const data = {
+                name: formData.get('name'),
+                code: formData.get('code'),
+                description: formData.get('description'),
+                icon: formData.get('icon'),
+                color: formData.get('color'),
+                is_active: formData.get('is_active') === 'true'
+            };
+
+            showLoading();
+            try {
+                const url = currentIndustryId ? 
+                    `/api/admin/industries/${currentIndustryId}` : 
+                    '/api/admin/industries';
+                
+                const method = currentIndustryId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess(currentIndustryId ? '업종이 수정되었습니다.' : '업종이 추가되었습니다.');
+                    closeModal();
+                    loadIndustries();
+                } else {
+                    showError(result.error || '저장에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('업종 저장 오류:', error);
+                showError('네트워크 오류가 발생했습니다.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 업종 수정
+        function editIndustry(id) {
+            const industry = industries.find(i => i.id === id);
+            if (industry) {
+                openModal(industry);
+            }
+        }
+
+        // 삭제 확인
+        function confirmDelete(id) {
+            currentIndustryId = id;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        // 삭제 모달 닫기
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            currentIndustryId = null;
+        }
+
+        // 업종 삭제
+        async function deleteIndustry() {
+            if (!currentIndustryId) return;
+            
+            showLoading();
+            try {
+                const response = await fetch(`/api/admin/industries/${currentIndustryId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess('업종이 삭제되었습니다.');
+                    closeDeleteModal();
+                    loadIndustries();
+                } else {
+                    showError(result.error || '삭제에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('업종 삭제 오류:', error);
+                showError('네트워크 오류가 발생했습니다.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 총 개수 업데이트
+        function updateTotalCount() {
+            document.getElementById('total-count').textContent = `총 ${industries.length}개`;
+        }
+
+        // 유틸리티 함수들
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 cyber-card p-4 cyber-green-glow z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function showError(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 cyber-card p-4 cyber-red-glow z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString();
+        }
+    </script>
+</body>
+</html> 

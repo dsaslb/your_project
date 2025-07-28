@@ -1,182 +1,327 @@
-from datetime import datetime, timedelta
-import logging
-from functools import wraps
-from typing import Any, Optional, Dict, List
-import hashlib
-import json
-import time
-from typing import Optional
-from flask import request
-args = None  # pyright: ignore
+"""
+공통 데이터 캐싱 매니저
+- Redis 캐시 연동
+- 메모리 캐시 (Flask g 객체 활용)
+- 계층별 데이터 분리 저장
+"""
 
-logger = logging.getLogger(__name__)
+import json
+import pickle
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Union
+from functools import wraps
+import hashlib
+
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    print("Redis not available, using memory cache only")
+
+from flask import g, current_app, request
 
 
 class CacheManager:
-    """고성능 캐싱 시스템"""
-
-    def __init__(self):
-        self._cache = {}
-        self._cache_stats = {
-            'hits': 0,
-            'misses': 0,
-            'sets': 0,
-            'deletes': 0
-        }
-        self._default_ttl = 300  # 5분 기본 TTL
-
-    def _generate_key(self,  prefix: str,  *args,  **kwargs) -> str:
-        """캐시 키 생성"""
-        key_data = f"{prefix}:{args}:{sorted(kwargs.items() if kwargs is not None else [])}"
-        return hashlib.md5(key_data.encode()).hexdigest()
-
-    def get(self, key: str) -> Optional[Any] if Optional is not None else None:
+    """공통 데이터 캐싱 매니저"""
+    
+    def __init__(self, app=None):
+        self.app = app
+        self.redis_client = None
+        self.memory_cache = {}
+        
+        if app is not None:
+            self.init_app(app)
+    
+    def init_app(self, app):
+        """Flask 앱 초기화"""
+        self.app = app
+        
+        # Redis 연결 설정
+        if REDIS_AVAILABLE and app.config.get('REDIS_URL'):
+            try:
+                self.redis_client = redis.from_url(app.config['REDIS_URL'])
+                self.redis_client.ping()  # 연결 테스트
+                print("✅ Redis 캐시 연결 성공")
+            except Exception as e:
+                print(f"⚠️ Redis 연결 실패, 메모리 캐시만 사용: {e}")
+                self.redis_client = None
+        
+        # Flask g 객체에 캐시 매니저 등록
+        app.before_request(self._before_request)
+        app.teardown_appcontext(self._teardown_appcontext)
+    
+    def _before_request(self):
+        """요청 전 공통 데이터 로드"""
+        g.cache_manager = self
+        g.common_data = {}
+        
+        # 로그인한 사용자 정보 캐시
+        if hasattr(g, 'user') and g.user:
+            g.common_data['user_info'] = self.get_user_info(g.user.id)
+        
+        # 관리자 공통 데이터
+        if hasattr(g, 'user') and g.user and g.user.is_admin():
+            g.common_data['admin_stats'] = self.get_admin_stats()
+            g.common_data['system_status'] = self.get_system_status()
+    
+    def _teardown_appcontext(self, exception=None):
+        """요청 후 정리"""
+        if hasattr(g, 'common_data'):
+            del g.common_data
+    
+    def get(self, key: str, default: Any = None) -> Any:
         """캐시에서 데이터 조회"""
-        if key in self._cache:
-            item = self._cache[key] if _cache is not None else None
-            if item['expires_at'] if item is not None else None > datetime.now():
-                self._cache_stats['hits'] if _cache_stats is not None else None += 1
-                return item['data'] if item is not None else None
+        # 1. 메모리 캐시 확인
+        if key in self.memory_cache:
+            data, expiry = self.memory_cache[key]
+            if expiry > datetime.now():
+                return data
             else:
-                # 만료된 항목 제거
-                del self._cache[key] if _cache is not None else None
-
-        self._cache_stats['misses'] if _cache_stats is not None else None += 1
-        return None
-
-    def set(self,  key: str,  data: Any, ttl=None) -> None:
+                del self.memory_cache[key]
+        
+        # 2. Redis 캐시 확인
+        if self.redis_client:
+            try:
+                data = self.redis_client.get(key)
+                if data:
+                    return pickle.loads(data)
+            except Exception as e:
+                print(f"Redis 조회 오류: {e}")
+        
+        return default
+    
+    def set(self, key: str, value: Any, expire: int = 3600) -> bool:
         """캐시에 데이터 저장"""
-        ttl = ttl or self._default_ttl
-        expires_at = datetime.now() + timedelta(seconds=ttl)
-
-        self._cache[key] if _cache is not None else None = {
-            'data': data,
-            'expires_at': expires_at,
-            'created_at': datetime.now()
-        }
-        self._cache_stats['sets'] if _cache_stats is not None else None += 1
-
-        # 캐시 크기 제한 (메모리 보호)
-        if len(self._cache) > 1000:
-            self._cleanup_expired()
-
+        expiry = datetime.now() + timedelta(seconds=expire)
+        
+        # 1. 메모리 캐시 저장
+        self.memory_cache[key] = (value, expiry)
+        
+        # 2. Redis 캐시 저장
+        if self.redis_client:
+            try:
+                self.redis_client.setex(key, expire, pickle.dumps(value))
+                return True
+            except Exception as e:
+                print(f"Redis 저장 오류: {e}")
+                return False
+        
+        return True
+    
     def delete(self, key: str) -> bool:
         """캐시에서 데이터 삭제"""
-        if key in self._cache:
-            del self._cache[key] if _cache is not None else None
-            self._cache_stats['deletes'] if _cache_stats is not None else None += 1
-            return True
-        return False
-
-    def clear(self) -> None:
-        """전체 캐시 삭제"""
-        self._cache.clear()
-        logger.info("캐시가 완전히 삭제되었습니다.")
-
-    def _cleanup_expired(self) -> None:
-        """만료된 캐시 항목 정리"""
-        now = datetime.now()
-        expired_keys = [
-            key for key, item in self._cache.items() if _cache is not None else []
-            if item['expires_at'] if item is not None else None <= now
-        ]
-
-        for key in expired_keys if expired_keys is not None:
-            del self._cache[key] if _cache is not None else None
-
-        if expired_keys:
-            logger.info(f"{len(expired_keys)}개의 만료된 캐시 항목이 정리되었습니다.")
-
-    def get_stats(self) -> Dict[str, Any] if Dict is not None else None:
-        """캐시 통계 반환"""
-        total_requests = self._cache_stats['hits'] if _cache_stats is not None else None + self._cache_stats['misses'] if _cache_stats is not None else None
-        hit_rate = (self._cache_stats['hits'] if _cache_stats is not None else None / total_requests * 100) if total_requests > 0 else 0
-
+        # 메모리 캐시에서 삭제
+        self.memory_cache.pop(key, None)
+        
+        # Redis 캐시에서 삭제
+        if self.redis_client:
+            try:
+                self.redis_client.delete(key)
+                return True
+            except Exception as e:
+                print(f"Redis 삭제 오류: {e}")
+                return False
+        
+        return True
+    
+    def clear_pattern(self, pattern: str) -> bool:
+        """패턴에 맞는 캐시 모두 삭제"""
+        # 메모리 캐시에서 패턴 매칭 삭제
+        keys_to_delete = [k for k in self.memory_cache.keys() if pattern in k]
+        for key in keys_to_delete:
+            del self.memory_cache[key]
+        
+        # Redis 캐시에서 패턴 매칭 삭제
+        if self.redis_client:
+            try:
+                keys = self.redis_client.keys(pattern)
+                if keys:
+                    self.redis_client.delete(*keys)
+                return True
+            except Exception as e:
+                print(f"Redis 패턴 삭제 오류: {e}")
+                return False
+        
+        return True
+    
+    def get_user_info(self, user_id: int) -> Dict:
+        """사용자 정보 캐시 조회"""
+        cache_key = f"user_info:{user_id}"
+        user_info = self.get(cache_key)
+        
+        if not user_info:
+            from models_main import User
+            user = User.query.get(user_id)
+            if user:
+                user_info = {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'role': user.role,
+                    'grade': user.grade,
+                    'permissions': user.get_permissions(),
+                    'branch_id': user.branch_id,
+                    'brand_id': user.brand_id,
+                    'industry_id': user.industry_id
+                }
+                self.set(cache_key, user_info, 1800)  # 30분 캐시
+        
+        return user_info
+    
+    def get_admin_stats(self) -> Dict:
+        """관리자 통계 데이터 캐시 조회"""
+        cache_key = "admin_stats"
+        stats = self.get(cache_key)
+        
+        if not stats:
+            from models_main import User, Brand, Branch, Industry
+            from sqlalchemy import func
+            
+            stats = {
+                'total_users': User.query.count(),
+                'total_brands': Brand.query.count(),
+                'total_branches': Branch.query.count(),
+                'total_industries': Industry.query.count(),
+                'active_users': User.query.filter_by(status='approved').count(),
+                'pending_users': User.query.filter_by(status='pending').count(),
+                'updated_at': datetime.now().isoformat()
+            }
+            self.set(cache_key, stats, 300)  # 5분 캐시
+        
+        return stats
+    
+    def get_system_status(self) -> Dict:
+        """시스템 상태 캐시 조회"""
+        cache_key = "system_status"
+        status = self.get(cache_key)
+        
+        if not status:
+            import psutil
+            import os
+            
+            status = {
+                'cpu_percent': psutil.cpu_percent(),
+                'memory_percent': psutil.virtual_memory().percent,
+                'disk_percent': psutil.disk_usage('/').percent,
+                'uptime': datetime.now() - datetime.fromtimestamp(psutil.boot_time()),
+                'updated_at': datetime.now().isoformat()
+            }
+            self.set(cache_key, status, 60)  # 1분 캐시
+        
+        return status
+    
+    def get_industry_tree(self, industry_id: Optional[int] = None) -> Dict:
+        """업종별 계층 구조 트리 캐시 조회"""
+        cache_key = f"industry_tree:{industry_id or 'all'}"
+        tree = self.get(cache_key)
+        
+        if not tree:
+            from models_main import Industry, Brand, Branch, User
+            
+            if industry_id:
+                # 특정 업종 트리
+                industry = Industry.query.get(industry_id)
+                if industry:
+                    tree = self._build_industry_tree(industry)
+            else:
+                # 전체 업종 트리
+                industries = Industry.query.filter_by(is_active=True).all()
+                tree = {
+                    'industries': [self._build_industry_tree(industry) for industry in industries]
+                }
+            
+            self.set(cache_key, tree, 1800)  # 30분 캐시
+        
+        return tree
+    
+    def _build_industry_tree(self, industry) -> Dict:
+        """업종별 트리 구조 생성"""
+        from models_main import Brand, Branch, User
+        
+        brands = Brand.query.filter_by(industry_id=industry.id).all()
+        brand_trees = []
+        
+        for brand in brands:
+            branches = Branch.query.filter_by(brand_id=brand.id).all()
+            branch_trees = []
+            
+            for branch in branches:
+                users = User.query.filter_by(branch_id=branch.id).all()
+                branch_trees.append({
+                    'id': branch.id,
+                    'name': branch.name,
+                    'store_code': branch.store_code,
+                    'status': branch.status,
+                    'users': [{
+                        'id': user.id,
+                        'username': user.username,
+                        'role': user.role,
+                        'status': user.status
+                    } for user in users]
+                })
+            
+            brand_trees.append({
+                'id': brand.id,
+                'name': brand.name,
+                'code': brand.code,
+                'status': brand.status,
+                'branches': branch_trees
+            })
+        
         return {
-            'cache_size': len(self._cache),
-            'hits': self._cache_stats['hits'] if _cache_stats is not None else None,
-            'misses': self._cache_stats['misses'] if _cache_stats is not None else None,
-            'sets': self._cache_stats['sets'] if _cache_stats is not None else None,
-            'deletes': self._cache_stats['deletes'] if _cache_stats is not None else None,
-            'hit_rate': round(hit_rate, 2),
-            'total_requests': total_requests
+            'id': industry.id,
+            'name': industry.name,
+            'code': industry.code,
+            'color': industry.color,
+            'brands': brand_trees
         }
+    
+    def invalidate_user_cache(self, user_id: int):
+        """사용자 관련 캐시 무효화"""
+        self.delete(f"user_info:{user_id}")
+        self.clear_pattern(f"user_*:{user_id}")
+    
+    def invalidate_industry_cache(self, industry_id: Optional[int] = None):
+        """업종 관련 캐시 무효화"""
+        if industry_id:
+            self.delete(f"industry_tree:{industry_id}")
+        else:
+            self.clear_pattern("industry_tree:*")
+    
+    def invalidate_admin_cache(self):
+        """관리자 관련 캐시 무효화"""
+        self.delete("admin_stats")
+        self.delete("system_status")
 
-    def invalidate_pattern(self, pattern: str) -> int:
-        """패턴에 맞는 캐시 항목들 삭제"""
-        deleted_count = 0
-        keys_to_delete = [key for key in self._cache.keys() if pattern in key]
 
-        for key in keys_to_delete if keys_to_delete is not None:
-            del self._cache[key] if _cache is not None else None
-            deleted_count += 1
-
-        logger.info(f"패턴 '{pattern}'에 맞는 {deleted_count}개의 캐시 항목이 삭제되었습니다.")
-        return deleted_count
-
-
-# 전역 캐시 인스턴스
-cache_manager = CacheManager()
-
-
-def cached(prefix: str, ttl: Optional[int] if Optional is not None else None = None):
+# 캐시 데코레이터
+def cached(expire: int = 3600, key_prefix: str = ""):
     """캐시 데코레이터"""
     def decorator(func):
         @wraps(func)
-        def wrapper(*args,  **kwargs):
+        def wrapper(*args, **kwargs):
             # 캐시 키 생성
-            cache_key = cache_manager._generate_key(prefix,  *args,  **kwargs)
-
+            cache_key = f"{key_prefix}:{func.__name__}:{hashlib.md5(str(args) + str(kwargs).encode()).hexdigest()}"
+            
             # 캐시에서 조회
-            cached_result = cache_manager.get() if cache_manager else Nonecache_key) if cache_manager else None
-            if cached_result is not None:
-                return cached_result
-
+            cache_manager = getattr(g, 'cache_manager', None)
+            if cache_manager:
+                cached_result = cache_manager.get(cache_key)
+                if cached_result is not None:
+                    return cached_result
+            
             # 함수 실행
             result = func(*args, **kwargs)
-
-            # 결과 캐싱
-            cache_manager.set(cache_key,  result,  ttl)
-
+            
+            # 캐시에 저장
+            if cache_manager:
+                cache_manager.set(cache_key, result, expire)
+            
             return result
         return wrapper
     return decorator
 
 
-def cache_invalidate(prefix: str):
-    """캐시 무효화 데코레이터"""
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args,  **kwargs):
-            result = func(*args, **kwargs)
-            cache_manager.invalidate_pattern(prefix)
-            return result
-        return wrapper
-    return decorator
-
-# 특정 기능별 캐시 헬퍼 함수들
-
-
-class CacheHelpers:
-    """캐시 헬퍼 클래스"""
-
-    @staticmethod
-    def user_data_key(user_id: int) -> str:
-        return f"user:{user_id}:data"
-
-    @staticmethod
-    def attendance_data_key(user_id: int, date: str) -> str:
-        return f"attendance:{user_id}:{date}"
-
-    @staticmethod
-    def dashboard_stats_key(branch_id: Optional[int] if Optional is not None else None = None) -> str:
-        return f"dashboard:stats:{branch_id or 'all'}"
-
-    @staticmethod
-    def notification_count_key(user_id: int) -> str:
-        return f"notification:count:{user_id}"
-
-    @staticmethod
-    def ai_analysis_key(analysis_type: str, params: Dict) -> str:
-        param_str = json.dumps(params, sort_keys=True)
-        return f"ai:analysis:{analysis_type}:{hashlib.md5(param_str.encode()).hexdigest()}"
+# 전역 캐시 매니저 인스턴스
+cache_manager = CacheManager()

@@ -296,7 +296,7 @@
                     <span class="badge user-role ms-2">
                         {{ current_user.role if current_user else 'Guest' }}
                     </span>
-                    <a href="{{ url_for('logout') }}" class="btn btn-sm logout-btn ms-2">
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-sm logout-btn ms-2">
                         <i class="fas fa-sign-out-alt"></i> 로그아웃
                     </a>
                 </div>

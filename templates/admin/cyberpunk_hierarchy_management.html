@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계층별 관리 시스템 - 사이버펑크</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        .cyber-font { font-family: 'Orbitron', monospace; }
+        .cyber-text { font-family: 'Rajdhani', sans-serif; }
+        .cyber-bg { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%); }
+        .cyber-orange { color: #ff6b35; }
+        .cyber-orange-glow { color: #ff6b35; text-shadow: 0 0 10px #ff6b35, 0 0 20px #ff6b35; }
+        .cyber-blue { color: #4ecdc4; }
+        .cyber-blue-glow { color: #4ecdc4; text-shadow: 0 0 10px #4ecdc4, 0 0 20px #4ecdc4; }
+        .cyber-red { color: #ff4757; }
+        .cyber-red-glow { color: #ff4757; text-shadow: 0 0 10px #ff4757, 0 0 20px #ff4757; }
+        .cyber-green { color: #2ed573; }
+        .cyber-green-glow { color: #2ed573; text-shadow: 0 0 10px #2ed573, 0 0 20px #2ed573; }
+        .cyber-yellow { color: #ffa502; }
+        .cyber-yellow-glow { color: #ffa502; text-shadow: 0 0 10px #ffa502, 0 0 20px #ffa502; }
+        .cyber-text-dim { color: #a0a0a0; }
+        .cyber-border { border: 1px solid #333; }
+        .cyber-border-orange { border: 1px solid #ff6b35; }
+        .cyber-border-blue { border: 1px solid #4ecdc4; }
+        .cyber-border-green { border: 1px solid #2ed573; }
+        .cyber-border-red { border: 1px solid #ff4757; }
+        .cyber-card { background: rgba(26, 26, 46, 0.8); border: 1px solid #333; backdrop-filter: blur(10px); }
+        .cyber-card:hover { border-color: #ff6b35; box-shadow: 0 0 20px rgba(255, 107, 53, 0.3); }
+        .cyber-button { background: linear-gradient(45deg, #ff6b35, #ff8c42); border: none; color: white; transition: all 0.3s; }
+        .cyber-button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4); }
+        .cyber-input { background: rgba(26, 26, 46, 0.8); border: 1px solid #333; color: #e0e0e0; }
+        .cyber-input:focus { border-color: #ff6b35; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3); }
+        .cyber-table { background: rgba(26, 26, 46, 0.6); border: 1px solid #333; }
+        .cyber-table th { background: rgba(255, 107, 53, 0.2); border-bottom: 1px solid #ff6b35; }
+        .cyber-table td { border-bottom: 1px solid #333; }
+        .cyber-table tr:hover { background: rgba(255, 107, 53, 0.1); }
+        .cyber-scanner { position: relative; overflow: hidden; }
+        .cyber-scanner::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #ff6b35, transparent); animation: scan 2s linear infinite; }
+        @keyframes scan { 0% { left: -100%; } 100% { left: 100%; } }
+        .cyber-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .cyber-tree-node { transition: all 0.3s; }
+        .cyber-tree-node:hover { background: rgba(255, 107, 53, 0.1); transform: translateX(5px); }
+        .cyber-tree-toggle { cursor: pointer; transition: transform 0.3s; }
+        .cyber-tree-toggle.expanded { transform: rotate(90deg); }
+        .cyber-status-active { color: #2ed573; }
+        .cyber-status-pending { color: #ffa502; }
+        .cyber-status-inactive { color: #ff4757; }
+        .cyber-badge { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .cyber-badge-industry { background: rgba(255, 107, 53, 0.2); color: #ff6b35; border: 1px solid #ff6b35; }
+        .cyber-badge-brand { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; border: 1px solid #4ecdc4; }
+        .cyber-badge-branch { background: rgba(46, 213, 115, 0.2); color: #2ed573; border: 1px solid #2ed573; }
+        .cyber-badge-user { background: rgba(255, 71, 87, 0.2); color: #ff4757; border: 1px solid #ff4757; }
+    </style>
+</head>
+<body class="cyber-bg min-h-screen cyber-text text-gray-300">
+    <!-- 헤더 -->
+    <header class="cyber-card p-4 mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="cyber-font text-3xl font-bold cyber-orange-glow">계층별 관리 시스템</h1>
+                <p class="cyber-text-dim">업종 → 브랜드 → 매장 → 직원 계층 구조 관리</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="refresh-btn" class="cyber-button px-4 py-2 rounded flex items-center space-x-2">
+                    <i data-feather="refresh-cw" class="w-4 h-4"></i>
+                    <span>새로고침</span>
+                </button>
+                <button id="cache-clear-btn" class="cyber-button px-4 py-2 rounded flex items-center space-x-2">
+                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                    <span>캐시 초기화</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 통계 카드 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="cyber-card p-6 cyber-scanner">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="cyber-text-dim text-sm">총 업종</p>
+                    <p class="cyber-font text-2xl font-bold cyber-orange" id="total-industries">-</p>
+                </div>
+                <div class="cyber-badge cyber-badge-industry">업종</div>
+            </div>
+        </div>
+        <div class="cyber-card p-6 cyber-scanner">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="cyber-text-dim text-sm">총 브랜드</p>
+                    <p class="cyber-font text-2xl font-bold cyber-blue" id="total-brands">-</p>
+                </div>
+                <div class="cyber-badge cyber-badge-brand">브랜드</div>
+            </div>
+        </div>
+        <div class="cyber-card p-6 cyber-scanner">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="cyber-text-dim text-sm">총 매장</p>
+                    <p class="cyber-font text-2xl font-bold cyber-green" id="total-branches">-</p>
+                </div>
+                <div class="cyber-badge cyber-badge-branch">매장</div>
+            </div>
+        </div>
+        <div class="cyber-card p-6 cyber-scanner">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="cyber-text-dim text-sm">총 직원</p>
+                    <p class="cyber-font text-2xl font-bold cyber-red" id="total-users">-</p>
+                </div>
+                <div class="cyber-badge cyber-badge-user">직원</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 계층 트리 뷰 -->
+        <div class="lg:col-span-2">
+            <div class="cyber-card p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="cyber-font text-xl font-bold cyber-blue-glow">계층 트리 구조</h2>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="search-input" placeholder="검색..." class="cyber-input px-3 py-1 rounded text-sm">
+                            <button id="search-btn" class="cyber-button px-3 py-1 rounded text-sm">
+                                <i data-feather="search" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <select id="filter-status" class="cyber-input px-3 py-1 rounded text-sm">
+                            <option value="">전체 상태</option>
+                            <option value="active">활성</option>
+                            <option value="inactive">비활성</option>
+                            <option value="pending">대기</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="hierarchy-tree" class="space-y-2 max-h-96 overflow-y-auto">
+                    <!-- 트리 구조가 여기에 동적으로 로드됩니다 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 관리 메뉴 -->
+        <div class="space-y-6">
+            <!-- 빠른 관리 메뉴 -->
+            <div class="cyber-card p-6">
+                <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">빠른 관리</h3>
+                <div class="space-y-3">
+                    <a href="/admin/backend/industry-management" class="block cyber-button px-4 py-3 rounded text-center hover:bg-opacity-80 transition-all">
+                        <i data-feather="layers" class="w-5 h-5 inline mr-2"></i>
+                        업종 관리
+                    </a>
+                    <a href="/admin/backend/brand-management" class="block cyber-button px-4 py-3 rounded text-center hover:bg-opacity-80 transition-all">
+                        <i data-feather="briefcase" class="w-5 h-5 inline mr-2"></i>
+                        브랜드 관리
+                    </a>
+                    <a href="/admin/backend/branch-management" class="block cyber-button px-4 py-3 rounded text-center hover:bg-opacity-80 transition-all">
+                        <i data-feather="home" class="w-5 h-5 inline mr-2"></i>
+                        매장 관리
+                    </a>
+                    <a href="/admin/backend/employee-management" class="block cyber-button px-4 py-3 rounded text-center hover:bg-opacity-80 transition-all">
+                        <i data-feather="users" class="w-5 h-5 inline mr-2"></i>
+                        직원 관리
+                    </a>
+                </div>
+            </div>
+
+            <!-- 최근 변경 이력 -->
+            <div class="cyber-card p-6">
+                <h3 class="cyber-font text-lg font-bold cyber-yellow-glow mb-4">최근 변경 이력</h3>
+                <div id="changelog-list" class="space-y-2 max-h-64 overflow-y-auto">
+                    <!-- 변경 이력이 여기에 동적으로 로드됩니다 -->
+                </div>
+            </div>
+
+            <!-- 실시간 상태 -->
+            <div class="cyber-card p-6">
+                <h3 class="cyber-font text-lg font-bold cyber-green-glow mb-4">실시간 상태</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="cyber-text-dim">시스템 상태</span>
+                        <span class="cyber-status-active cyber-pulse">● 온라인</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="cyber-text-dim">마지막 업데이트</span>
+                        <span id="last-updated" class="text-sm">-</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="cyber-text-dim">캐시 상태</span>
+                        <span id="cache-status" class="text-sm cyber-status-active">● 활성</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="cyber-card p-8 text-center">
+            <div class="cyber-pulse mb-4">
+                <i data-feather="loader" class="w-8 h-8 cyber-orange mx-auto animate-spin"></i>
+            </div>
+            <p class="cyber-font">데이터를 로딩 중...</p>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let hierarchyData = null;
+        let searchTerm = '';
+        let statusFilter = '';
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+            loadHierarchyData();
+            loadChangelog();
+            setupEventListeners();
+            startAutoRefresh();
+        });
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 새로고침 버튼
+            document.getElementById('refresh-btn').addEventListener('click', function() {
+                loadHierarchyData();
+                loadChangelog();
+            });
+
+            // 캐시 초기화 버튼
+            document.getElementById('cache-clear-btn').addEventListener('click', function() {
+                clearCache();
+            });
+
+            // 검색
+            document.getElementById('search-btn').addEventListener('click', function() {
+                searchTerm = document.getElementById('search-input').value;
+                renderHierarchyTree();
+            });
+
+            // 상태 필터
+            document.getElementById('filter-status').addEventListener('change', function() {
+                statusFilter = this.value;
+                renderHierarchyTree();
+            });
+        }
+
+        // 계층 데이터 로드
+        async function loadHierarchyData() {
+            showLoading();
+            try {
+                const response = await fetch('/api/admin/hierarchy/tree');
+                const result = await response.json();
+                
+                if (result.success) {
+                    hierarchyData = result.data;
+                    updateStatistics(result.metadata);
+                    renderHierarchyTree();
+                    updateLastUpdated();
+                } else {
+                    showError('계층 데이터 로드에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('계층 데이터 로드 오류:', error);
+                showError('네트워크 오류가 발생했습니다.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 통계 업데이트
+        function updateStatistics(metadata) {
+            document.getElementById('total-industries').textContent = metadata.total_industries || 0;
+            document.getElementById('total-brands').textContent = metadata.total_brands || 0;
+            document.getElementById('total-branches').textContent = metadata.total_branches || 0;
+            document.getElementById('total-users').textContent = metadata.total_users || 0;
+        }
+
+        // 계층 트리 렌더링
+        function renderHierarchyTree() {
+            const treeContainer = document.getElementById('hierarchy-tree');
+            if (!hierarchyData || !hierarchyData.industries) {
+                treeContainer.innerHTML = '<p class="cyber-text-dim text-center py-8">데이터가 없습니다.</p>';
+                return;
+            }
+
+            let html = '';
+            hierarchyData.industries.forEach(industry => {
+                if (shouldShowItem(industry.name, industry.status)) {
+                    html += renderIndustryNode(industry);
+                }
+            });
+
+            treeContainer.innerHTML = html;
+            feather.replace();
+        }
+
+        // 업종 노드 렌더링
+        function renderIndustryNode(industry) {
+            let html = `
+                <div class="cyber-tree-node p-3 cyber-border rounded">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <span class="cyber-badge cyber-badge-industry">${industry.icon || '🏭'}</span>
+                            <div>
+                                <div class="cyber-font font-semibold">${industry.name}</div>
+                                <div class="cyber-text-dim text-sm">브랜드: ${industry.brand_count || 0}개</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="cyber-status-${industry.status || 'active'}">●</span>
+                            <button class="cyber-tree-toggle" onclick="toggleNode('industry-${industry.id}')">
+                                <i data-feather="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="industry-${industry.id}" class="hidden mt-3 ml-6 space-y-2">
+            `;
+
+            if (industry.brands) {
+                industry.brands.forEach(brand => {
+                    if (shouldShowItem(brand.name, brand.status)) {
+                        html += renderBrandNode(brand);
+                    }
+                });
+            }
+
+            html += '</div></div>';
+            return html;
+        }
+
+        // 브랜드 노드 렌더링
+        function renderBrandNode(brand) {
+            let html = `
+                <div class="cyber-tree-node p-2 cyber-border rounded">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <span class="cyber-badge cyber-badge-brand">🏢</span>
+                            <div>
+                                <div class="cyber-font font-semibold text-sm">${brand.name}</div>
+                                <div class="cyber-text-dim text-xs">매장: ${brand.branch_count || 0}개</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="cyber-status-${brand.status || 'active'}">●</span>
+                            <button class="cyber-tree-toggle" onclick="toggleNode('brand-${brand.id}')">
+                                <i data-feather="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="brand-${brand.id}" class="hidden mt-2 ml-4 space-y-1">
+            `;
+
+            if (brand.branches) {
+                brand.branches.forEach(branch => {
+                    if (shouldShowItem(branch.name, branch.status)) {
+                        html += renderBranchNode(branch);
+                    }
+                });
+            }
+
+            html += '</div></div>';
+            return html;
+        }
+
+        // 매장 노드 렌더링
+        function renderBranchNode(branch) {
+            let html = `
+                <div class="cyber-tree-node p-2 cyber-border rounded">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <span class="cyber-badge cyber-badge-branch">🏪</span>
+                            <div>
+                                <div class="cyber-font font-semibold text-sm">${branch.name}</div>
+                                <div class="cyber-text-dim text-xs">직원: ${branch.user_count || 0}명</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="cyber-status-${branch.status || 'active'}">●</span>
+                            <button class="cyber-tree-toggle" onclick="toggleNode('branch-${branch.id}')">
+                                <i data-feather="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="branch-${branch.id}" class="hidden mt-2 ml-4 space-y-1">
+            `;
+
+            if (branch.users) {
+                branch.users.forEach(user => {
+                    if (shouldShowItem(user.username, user.status)) {
+                        html += renderUserNode(user);
+                    }
+                });
+            }
+
+            html += '</div></div>';
+            return html;
+        }
+
+        // 직원 노드 렌더링
+        function renderUserNode(user) {
+            return `
+                <div class="cyber-tree-node p-2 cyber-border rounded">
+                    <div class="flex items-center space-x-3">
+                        <span class="cyber-badge cyber-badge-user">👤</span>
+                        <div>
+                            <div class="cyber-font font-semibold text-sm">${user.username}</div>
+                            <div class="cyber-text-dim text-xs">${user.role || '직원'}</div>
+                        </div>
+                        <span class="cyber-status-${user.status || 'active'}">●</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 노드 토글
+        function toggleNode(nodeId) {
+            const node = document.getElementById(nodeId);
+            const toggle = node.previousElementSibling.querySelector('.cyber-tree-toggle');
+            
+            if (node.classList.contains('hidden')) {
+                node.classList.remove('hidden');
+                toggle.classList.add('expanded');
+            } else {
+                node.classList.add('hidden');
+                toggle.classList.remove('expanded');
+            }
+        }
+
+        // 아이템 표시 여부 확인
+        function shouldShowItem(name, status) {
+            const matchesSearch = !searchTerm || name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = !statusFilter || status === statusFilter;
+            return matchesSearch && matchesStatus;
+        }
+
+        // 변경 이력 로드
+        async function loadChangelog() {
+            try {
+                const response = await fetch('/api/admin/hierarchy/changelog');
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderChangelog(result.data);
+                }
+            } catch (error) {
+                console.error('변경 이력 로드 오류:', error);
+            }
+        }
+
+        // 변경 이력 렌더링
+        function renderChangelog(changelog) {
+            const container = document.getElementById('changelog-list');
+            
+            if (!changelog || changelog.length === 0) {
+                container.innerHTML = '<p class="cyber-text-dim text-center py-4">변경 이력이 없습니다.</p>';
+                return;
+            }
+
+            let html = '';
+            changelog.slice(0, 10).forEach(log => {
+                const actionIcon = {
+                    'create': 'plus',
+                    'update': 'edit',
+                    'delete': 'trash-2'
+                }[log.action_type] || 'activity';
+
+                const actionColor = {
+                    'create': 'cyber-green',
+                    'update': 'cyber-blue',
+                    'delete': 'cyber-red'
+                }[log.action_type] || 'cyber-text-dim';
+
+                html += `
+                    <div class="flex items-center space-x-2 p-2 cyber-border rounded">
+                        <i data-feather="${actionIcon}" class="w-3 h-3 ${actionColor}"></i>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs cyber-font">${log.table_name} ${log.action_type}</div>
+                            <div class="text-xs cyber-text-dim">${formatDate(log.created_at)}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            feather.replace();
+        }
+
+        // 캐시 초기화
+        async function clearCache() {
+            try {
+                const response = await fetch('/api/admin/hierarchy/cache/clear', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess('캐시가 성공적으로 초기화되었습니다.');
+                    loadHierarchyData();
+                } else {
+                    showError('캐시 초기화에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('캐시 초기화 오류:', error);
+                showError('네트워크 오류가 발생했습니다.');
+            }
+        }
+
+        // 자동 새로고침
+        function startAutoRefresh() {
+            setInterval(() => {
+                loadHierarchyData();
+                loadChangelog();
+            }, 30000); // 30초마다
+        }
+
+        // 유틸리티 함수들
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            // 토스트 메시지 표시
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 cyber-card p-4 cyber-green-glow z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function showError(message) {
+            // 토스트 메시지 표시
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 cyber-card p-4 cyber-red-glow z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function updateLastUpdated() {
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+    </script>
+</body>
+</html> 
