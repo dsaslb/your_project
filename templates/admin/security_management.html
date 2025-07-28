@@ -3,239 +3,302 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>보안 관리 - 관리자 대시보드</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/tailwind.css">
+    <title>보안 관리</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body class="bg-gray-50">
-    <div id="app" class="min-h-screen">
+    <div class="min-h-screen">
         <!-- 헤더 -->
         <header class="bg-white shadow-sm border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-4">
-                    <div class="flex items-center">
-                        <h1 class="text-2xl font-bold text-gray-900">
-                            <i class="fas fa-shield-alt text-blue-600 mr-2"></i>
-                            보안 관리
-                        </h1>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <button @click="refreshData" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                            <i class="fas fa-sync-alt mr-2"></i>새로고침
-                        </button>
-                        <a href="/admin_dashboard" class="text-gray-600 hover:text-gray-900">
-                            <i class="fas fa-arrow-left mr-2"></i>대시보드로
-                        </a>
-                    </div>
+            <div class="flex items-center justify-between px-6 py-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">보안 관리</h2>
+                    <p class="text-gray-600">접근 제어, 로그, 정책, 샌드박스 관리</p>
                 </div>
+                <a href="/admin/backend" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    뒤로가기
+                </a>
             </div>
         </header>
 
         <!-- 메인 콘텐츠 -->
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- 로딩 상태 -->
-            <div v-if="loading" class="flex justify-center items-center py-12">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <main class="p-6">
+            <!-- 보안 상태 카드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-100 rounded-full">
+                            <i data-feather="shield" class="w-6 h-6 text-green-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">보안 상태</p>
+                            <p class="text-2xl font-bold text-gray-900" id="security-status">정상</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <i data-feather="users" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">활성 세션</p>
+                            <p class="text-2xl font-bold text-gray-900" id="active-sessions">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-yellow-100 rounded-full">
+                            <i data-feather="alert-triangle" class="w-6 h-6 text-yellow-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">보안 경고</p>
+                            <p class="text-2xl font-bold text-gray-900" id="security-alerts">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-purple-100 rounded-full">
+                            <i data-feather="box" class="w-6 h-6 text-purple-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">샌드박스</p>
+                            <p class="text-2xl font-bold text-gray-900" id="sandbox-count">0</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- 메인 콘텐츠 -->
-            <div v-else class="space-y-8">
-                <!-- 보안 상태 카드 -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-chart-line text-green-600 mr-2"></i>
-                        보안 상태
-                    </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-green-50 p-4 rounded-lg">
-                            <div class="flex items-center">
-                                <i class="fas fa-shield-alt text-green-600 text-2xl mr-3"></i>
-                                <div>
-                                    <p class="text-sm text-green-600">보안 상태</p>
-                                    <p class="text-lg font-semibold text-green-800">{{ securityStatus.status }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-blue-50 p-4 rounded-lg">
-                            <div class="flex items-center">
-                                <i class="fas fa-key text-blue-600 text-2xl mr-3"></i>
-                                <div>
-                                    <p class="text-sm text-blue-600">활성 토큰</p>
-                                    <p class="text-lg font-semibold text-blue-800">{{ securityStatus.active_tokens }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-purple-50 p-4 rounded-lg">
-                            <div class="flex items-center">
-                                <i class="fas fa-database text-purple-600 text-2xl mr-3"></i>
-                                <div>
-                                    <p class="text-sm text-purple-600">Redis 연결</p>
-                                    <p class="text-lg font-semibold text-purple-800">{{ securityStatus.redis_connection }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-orange-50 p-4 rounded-lg">
-                            <div class="flex items-center">
-                                <i class="fas fa-memory text-orange-600 text-2xl mr-3"></i>
-                                <div>
-                                    <p class="text-sm text-orange-600">메모리 사용량</p>
-                                    <p class="text-lg font-semibold text-orange-800">{{ securityStatus.memory_usage }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <!-- 보안 관리 탭 -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="border-b">
+                    <nav class="flex space-x-8 px-6">
+                        <button id="tab-access" class="py-4 px-1 border-b-2 border-blue-500 text-blue-600 font-medium text-sm">
+                            접근 제어
+                        </button>
+                        <button id="tab-logs" class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                            보안 로그
+                        </button>
+                        <button id="tab-policy" class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                            보안 정책
+                        </button>
+                        <button id="tab-sandbox" class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                            샌드박스
+                        </button>
+                    </nav>
                 </div>
 
-                <!-- JWT 토큰 관리 -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-key text-blue-600 mr-2"></i>
-                        JWT 토큰 관리
-                    </h2>
-                    <div class="space-y-4">
-                        <div class="flex space-x-4">
-                            <button @click="generateToken" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                                <i class="fas fa-plus mr-2"></i>토큰 생성
-                            </button>
-                            <button @click="revokeToken" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
-                                <i class="fas fa-trash mr-2"></i>토큰 무효화
-                            </button>
-                        </div>
-                        <div v-if="generatedToken" class="bg-gray-50 p-4 rounded-lg">
-                            <p class="text-sm text-gray-600 mb-2">생성된 토큰:</p>
-                            <code class="text-xs bg-gray-100 p-2 rounded block break-all">{{ generatedToken }}</code>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 데이터 암호화 -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-lock text-purple-600 mr-2"></i>
-                        데이터 암호화
-                    </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- 암호화 -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-3">텍스트 암호화</h3>
-                            <div class="space-y-3">
-                                <textarea v-model="encryptText" placeholder="암호화할 텍스트를 입력하세요" 
-                                          class="w-full p-3 border border-gray-300 rounded-lg resize-none" rows="4"></textarea>
-                                <button @click="encryptData" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700">
-                                    <i class="fas fa-lock mr-2"></i>암호화
-                                </button>
-                                <div v-if="encryptedData" class="bg-gray-50 p-3 rounded-lg">
-                                    <p class="text-sm text-gray-600 mb-2">암호화된 데이터:</p>
-                                    <code class="text-xs bg-gray-100 p-2 rounded block break-all">{{ encryptedData }}</code>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 복호화 -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-3">텍스트 복호화</h3>
-                            <div class="space-y-3">
-                                <textarea v-model="decryptText" placeholder="복호화할 데이터를 입력하세요" 
-                                          class="w-full p-3 border border-gray-300 rounded-lg resize-none" rows="4"></textarea>
-                                <button @click="decryptData" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
-                                    <i class="fas fa-unlock mr-2"></i>복호화
-                                </button>
-                                <div v-if="decryptedData" class="bg-gray-50 p-3 rounded-lg">
-                                    <p class="text-sm text-gray-600 mb-2">복호화된 데이터:</p>
-                                    <code class="text-xs bg-gray-100 p-2 rounded block break-all">{{ decryptedData }}</code>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 해시 생성 및 검증 -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-hashtag text-orange-600 mr-2"></i>
-                        해시 생성 및 검증
-                    </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- 해시 생성 -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-3">해시 생성</h3>
-                            <div class="space-y-3">
-                                <input v-model="hashText" type="text" placeholder="해시할 텍스트를 입력하세요" 
-                                       class="w-full p-3 border border-gray-300 rounded-lg">
-                                <button @click="generateHash" class="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700">
-                                    <i class="fas fa-hashtag mr-2"></i>해시 생성
-                                </button>
-                                <div v-if="hashResult" class="bg-gray-50 p-3 rounded-lg space-y-2">
+                <!-- 탭 콘텐츠 -->
+                <div class="p-6">
+                    <!-- 접근 제어 탭 -->
+                    <div id="access-content" class="tab-content">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">접근 제어 설정</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-4">
                                     <div>
-                                        <p class="text-sm text-gray-600">해시:</p>
-                                        <code class="text-xs bg-gray-100 p-2 rounded block break-all">{{ hashResult.hash }}</code>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">IP 화이트리스트</label>
+                                        <textarea id="ip-whitelist" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="허용할 IP 주소를 한 줄에 하나씩 입력하세요..."></textarea>
                                     </div>
                                     <div>
-                                        <p class="text-sm text-gray-600">솔트:</p>
-                                        <code class="text-xs bg-gray-100 p-2 rounded block break-all">{{ hashResult.salt }}</code>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">세션 타임아웃 (분)</label>
+                                        <input type="number" id="session-timeout" value="60" min="5" max="1440" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">2단계 인증</label>
+                                        <div class="space-y-2">
+                                            <label class="flex items-center">
+                                                <input type="checkbox" id="mfa-enabled" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                <span class="ml-2 text-sm text-gray-700">관리자 계정에 2단계 인증 필수</span>
+                                            </label>
+                                            <label class="flex items-center">
+                                                <input type="checkbox" id="mfa-optional" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                <span class="ml-2 text-sm text-gray-700">일반 사용자에게 2단계 인증 선택 제공</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">로그인 시도 제한</label>
+                                        <input type="number" id="login-attempts" value="5" min="3" max="10" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <p class="text-xs text-gray-500 mt-1">최대 로그인 실패 횟수</p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <!-- 해시 검증 -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-3">해시 검증</h3>
-                            <div class="space-y-3">
-                                <input v-model="verifyText" type="text" placeholder="검증할 텍스트를 입력하세요" 
-                                       class="w-full p-3 border border-gray-300 rounded-lg">
-                                <input v-model="verifyHash" type="text" placeholder="해시를 입력하세요" 
-                                       class="w-full p-3 border border-gray-300 rounded-lg">
-                                <input v-model="verifySalt" type="text" placeholder="솔트를 입력하세요" 
-                                       class="w-full p-3 border border-gray-300 rounded-lg">
-                                <button @click="verifyHashData" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
-                                    <i class="fas fa-check mr-2"></i>해시 검증
+                            <div class="mt-6">
+                                <button id="save-access-settings" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                    설정 저장
                                 </button>
-                                <div v-if="verifyResult !== null" class="bg-gray-50 p-3 rounded-lg">
-                                    <p class="text-sm text-gray-600 mb-2">검증 결과:</p>
-                                    <span :class="verifyResult ? 'text-green-600' : 'text-red-600'" class="font-semibold">
-                                        {{ verifyResult ? '유효한 해시입니다' : '유효하지 않은 해시입니다' }}
-                                    </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 보안 로그 탭 -->
+                    <div id="logs-content" class="tab-content hidden">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">보안 로그</h3>
+                            <div class="flex space-x-4 mb-4">
+                                <select id="log-type-filter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">전체 이벤트</option>
+                                    <option value="login">로그인</option>
+                                    <option value="logout">로그아웃</option>
+                                    <option value="permission">권한 변경</option>
+                                    <option value="access">접근 시도</option>
+                                    <option value="security">보안 이벤트</option>
+                                </select>
+                                <select id="log-severity-filter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">전체 레벨</option>
+                                    <option value="low">낮음</option>
+                                    <option value="medium">보통</option>
+                                    <option value="high">높음</option>
+                                    <option value="critical">치명적</option>
+                                </select>
+                                <button id="refresh-security-logs" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                    새로고침
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시간</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이벤트</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">사용자</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP 주소</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">위험도</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상세정보</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="security-logs-table" class="bg-white divide-y divide-gray-200">
+                                        <!-- 보안 로그가 여기에 동적으로 로드됩니다 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 보안 정책 탭 -->
+                    <div id="policy-content" class="tab-content hidden">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">보안 정책 설정</h3>
+                            <div class="space-y-6">
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">비밀번호 정책</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">최소 길이</label>
+                                            <input type="number" id="min-password-length" value="8" min="6" max="20" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">만료 기간 (일)</label>
+                                            <input type="number" id="password-expiry" value="90" min="30" max="365" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 space-y-2">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="require-uppercase" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <span class="ml-2 text-sm text-gray-700">대문자 포함 필수</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="require-lowercase" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <span class="ml-2 text-sm text-gray-700">소문자 포함 필수</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="require-numbers" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <span class="ml-2 text-sm text-gray-700">숫자 포함 필수</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="require-symbols" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span class="ml-2 text-sm text-gray-700">특수문자 포함 필수</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">데이터 보호</h4>
+                                    <div class="space-y-2">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="encrypt-sensitive-data" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <span class="ml-2 text-sm text-gray-700">민감한 데이터 암호화</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="audit-data-access" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <span class="ml-2 text-sm text-gray-700">데이터 접근 감사 로그</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="backup-encryption" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <span class="ml-2 text-sm text-gray-700">백업 데이터 암호화</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <button id="save-security-policy" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                        정책 저장
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 감사 로그 -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-clipboard-list text-red-600 mr-2"></i>
-                        보안 감사 로그
-                    </h2>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">사용자</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP 주소</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시간</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <tr v-for="log in auditLogs" :key="log.id">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ log.user_id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ log.action }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ log.ip_address }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span :class="log.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
-                                              class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-                                            {{ log.status }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(log.timestamp) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <!-- 샌드박스 탭 -->
+                    <div id="sandbox-content" class="tab-content hidden">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">플러그인 샌드박스 관리</h3>
+                            <div class="space-y-6">
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">샌드박스 설정</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">샌드박스 활성화</label>
+                                            <div class="space-y-2">
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" id="sandbox-enabled" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                                    <span class="ml-2 text-sm text-gray-700">모든 플러그인을 샌드박스에서 실행</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">메모리 제한 (MB)</label>
+                                            <input type="number" id="sandbox-memory-limit" value="512" min="128" max="2048" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">실행 중인 샌드박스</h4>
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">플러그인</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">메모리 사용량</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">실행 시간</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="sandbox-table" class="bg-white divide-y divide-gray-200">
+                                                <!-- 샌드박스 목록이 여기에 동적으로 로드됩니다 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <button id="save-sandbox-settings" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                        샌드박스 설정 저장
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -243,152 +306,226 @@
     </div>
 
     <script>
-        const { createApp } = Vue;
+        // Feather 아이콘 초기화
+        feather.replace();
 
-        createApp({
-            data() {
-                return {
-                    loading: true,
-                    securityStatus: {
-                        status: 'unknown',
-                        active_tokens: 0,
-                        redis_connection: 'unknown',
-                        memory_usage: 0
-                    },
-                    generatedToken: '',
-                    encryptText: '',
-                    encryptedData: '',
-                    decryptText: '',
-                    decryptedData: '',
-                    hashText: '',
-                    hashResult: null,
-                    verifyText: '',
-                    verifyHash: '',
-                    verifySalt: '',
-                    verifyResult: null,
-                    auditLogs: []
-                }
-            },
-            mounted() {
-                this.loadSecurityStatus();
-                this.loadAuditLogs();
-            },
-            methods: {
-                async loadSecurityStatus() {
-                    try {
-                        const response = await axios.get('/api/security/status');
-                        this.securityStatus = response.data.security_status;
-                    } catch (error) {
-                        console.error('보안 상태 로드 실패:', error);
-                    }
-                },
-                async loadAuditLogs() {
-                    try {
-                        const response = await axios.get('/api/security/audit-log');
-                        this.auditLogs = response.data.audit_logs;
-                    } catch (error) {
-                        console.error('감사 로그 로드 실패:', error);
-                    } finally {
-                        this.loading = false;
-                    }
-                },
-                async generateToken() {
-                    try {
-                        const response = await axios.post('/api/security/auth/login', {
-                            username: 'admin',
-                            password: 'password'
-                        });
-                        this.generatedToken = response.data.token;
-                    } catch (error) {
-                        console.error('토큰 생성 실패:', error);
-                    }
-                },
-                async revokeToken() {
-                    if (!this.generatedToken) {
-                        alert('먼저 토큰을 생성해주세요.');
-                        return;
-                    }
-                    try {
-                        await axios.post('/api/security/auth/logout', {}, {
-                            headers: { 'Authorization': `Bearer ${this.generatedToken}` }
-                        });
-                        this.generatedToken = '';
-                        alert('토큰이 무효화되었습니다.');
-                    } catch (error) {
-                        console.error('토큰 무효화 실패:', error);
-                    }
-                },
-                async encryptData() {
-                    if (!this.encryptText) {
-                        alert('암호화할 텍스트를 입력해주세요.');
-                        return;
-                    }
-                    try {
-                        const response = await axios.post('/api/security/encrypt', {
-                            text: this.encryptText
-                        });
-                        this.encryptedData = response.data.encrypted_data;
-                    } catch (error) {
-                        console.error('암호화 실패:', error);
-                    }
-                },
-                async decryptData() {
-                    if (!this.decryptText) {
-                        alert('복호화할 데이터를 입력해주세요.');
-                        return;
-                    }
-                    try {
-                        const response = await axios.post('/api/security/decrypt', {
-                            encrypted_data: this.decryptText
-                        });
-                        this.decryptedData = response.data.decrypted_data;
-                    } catch (error) {
-                        console.error('복호화 실패:', error);
-                    }
-                },
-                async generateHash() {
-                    if (!this.hashText) {
-                        alert('해시할 텍스트를 입력해주세요.');
-                        return;
-                    }
-                    try {
-                        const response = await axios.post('/api/security/hash', {
-                            text: this.hashText
-                        });
-                        this.hashResult = {
-                            hash: response.data.hash,
-                            salt: response.data.salt
-                        };
-                    } catch (error) {
-                        console.error('해시 생성 실패:', error);
-                    }
-                },
-                async verifyHashData() {
-                    if (!this.verifyText || !this.verifyHash || !this.verifySalt) {
-                        alert('모든 필드를 입력해주세요.');
-                        return;
-                    }
-                    try {
-                        const response = await axios.post('/api/security/verify-hash', {
-                            text: this.verifyText,
-                            hash: this.verifyHash,
-                            salt: this.verifySalt
-                        });
-                        this.verifyResult = response.data.is_valid;
-                    } catch (error) {
-                        console.error('해시 검증 실패:', error);
-                    }
-                },
-                refreshData() {
-                    this.loading = true;
-                    this.loadSecurityStatus();
-                    this.loadAuditLogs();
-                },
-                formatDate(dateString) {
-                    return new Date(dateString).toLocaleString('ko-KR');
-                }
+        // 탭 전환
+        document.getElementById('tab-access').addEventListener('click', () => switchTab('access'));
+        document.getElementById('tab-logs').addEventListener('click', () => switchTab('logs'));
+        document.getElementById('tab-policy').addEventListener('click', () => switchTab('policy'));
+        document.getElementById('tab-sandbox').addEventListener('click', () => switchTab('sandbox'));
+
+        // 탭 전환 함수
+        function switchTab(tabName) {
+            // 모든 탭 콘텐츠 숨기기
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // 모든 탭 버튼 비활성화
+            document.querySelectorAll('nav button').forEach(button => {
+                button.classList.remove('border-blue-500', 'text-blue-600');
+                button.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            // 선택된 탭 활성화
+            document.getElementById(`${tabName}-content`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById(`tab-${tabName}`).classList.add('border-blue-500', 'text-blue-600');
+
+            // 탭별 데이터 로드
+            if (tabName === 'logs') {
+                loadSecurityLogs();
+            } else if (tabName === 'sandbox') {
+                loadSandboxStatus();
             }
-        }).mount('#app');
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSecurityStatus();
+            loadSecurityLogs();
+            loadSandboxStatus();
+        });
+
+        // 보안 상태 로드
+        function loadSecurityStatus() {
+            fetch('/api/backend/security/alerts')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('security-alerts').textContent = data.alerts ? data.alerts.length : 0;
+                    
+                    // 보안 상태 판단
+                    const criticalAlerts = data.alerts ? data.alerts.filter(alert => alert.level === 'critical').length : 0;
+                    if (criticalAlerts > 0) {
+                        document.getElementById('security-status').textContent = '위험';
+                        document.getElementById('security-status').className = 'text-2xl font-bold text-red-600';
+                    } else {
+                        document.getElementById('security-status').textContent = '정상';
+                        document.getElementById('security-status').className = 'text-2xl font-bold text-green-600';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading security status:', error);
+                });
+        }
+
+        // 보안 로그 로드
+        function loadSecurityLogs() {
+            const type = document.getElementById('log-type-filter').value;
+            const severity = document.getElementById('log-severity-filter').value;
+            
+            fetch(`/api/backend/security/logs?type=${type}&severity=${severity}`)
+                .then(response => response.json())
+                .then(data => {
+                    renderSecurityLogs(data.logs || []);
+                })
+                .catch(error => {
+                    console.error('Error loading security logs:', error);
+                });
+        }
+
+        // 보안 로그 렌더링
+        function renderSecurityLogs(logs) {
+            const tbody = document.getElementById('security-logs-table');
+            tbody.innerHTML = '';
+
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                const severityClass = getSeverityClass(log.severity || 'medium');
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${formatDateTime(log.timestamp)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${log.event_type || 'N/A'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${log.user_id || 'N/A'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${log.ip_address || 'N/A'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${severityClass}">
+                            ${getSeverityText(log.severity || 'medium')}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                        ${log.details || 'N/A'}
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // 위험도별 스타일 클래스
+        function getSeverityClass(severity) {
+            switch(severity.toLowerCase()) {
+                case 'low': return 'bg-green-100 text-green-800';
+                case 'medium': return 'bg-yellow-100 text-yellow-800';
+                case 'high': return 'bg-orange-100 text-orange-800';
+                case 'critical': return 'bg-red-100 text-red-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // 위험도별 텍스트
+        function getSeverityText(severity) {
+            switch(severity.toLowerCase()) {
+                case 'low': return '낮음';
+                case 'medium': return '보통';
+                case 'high': return '높음';
+                case 'critical': return '치명적';
+                default: return '알 수 없음';
+            }
+        }
+
+        // 샌드박스 상태 로드
+        function loadSandboxStatus() {
+            // 샌드박스 상태를 시뮬레이션 (실제 API가 있다면 여기서 호출)
+            const sandboxData = [
+                {
+                    plugin: 'attendance_plugin',
+                    status: '실행 중',
+                    memory: '128MB',
+                    runtime: '2시간 15분'
+                },
+                {
+                    plugin: 'inventory_plugin',
+                    status: '대기 중',
+                    memory: '64MB',
+                    runtime: '45분'
+                }
+            ];
+            
+            renderSandboxTable(sandboxData);
+            document.getElementById('sandbox-count').textContent = sandboxData.length;
+        }
+
+        // 샌드박스 테이블 렌더링
+        function renderSandboxTable(sandboxes) {
+            const tbody = document.getElementById('sandbox-table');
+            tbody.innerHTML = '';
+
+            sandboxes.forEach(sandbox => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                const statusClass = sandbox.status === '실행 중' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${sandbox.plugin}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
+                            ${sandbox.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${sandbox.memory}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${sandbox.runtime}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-red-600 hover:text-red-900">중지</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // 이벤트 리스너
+        document.getElementById('refresh-security-logs').addEventListener('click', loadSecurityLogs);
+        document.getElementById('log-type-filter').addEventListener('change', loadSecurityLogs);
+        document.getElementById('log-severity-filter').addEventListener('change', loadSecurityLogs);
+
+        // 설정 저장 이벤트
+        document.getElementById('save-access-settings').addEventListener('click', function() {
+            alert('접근 제어 설정이 저장되었습니다.');
+        });
+
+        document.getElementById('save-security-policy').addEventListener('click', function() {
+            alert('보안 정책이 저장되었습니다.');
+        });
+
+        document.getElementById('save-sandbox-settings').addEventListener('click', function() {
+            alert('샌드박스 설정이 저장되었습니다.');
+        });
+
+        // 날짜/시간 포맷팅
+        function formatDateTime(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleString('ko-KR');
+        }
     </script>
 </body>
 </html> 

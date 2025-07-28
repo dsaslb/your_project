@@ -1226,6 +1226,7 @@ class SystemLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     action = db.Column(db.String(100), nullable=False)
     detail = db.Column(db.String(500), nullable=True)
+    level = db.Column(db.String(20), default="info", index=True)  # info, warning, error, critical
     ip_address = db.Column(db.String(45), nullable=True)
     user_agent = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.now())
@@ -3894,3 +3895,113 @@ class PluginTestResult(db.Model):
     
     def __repr__(self):
         return f'<PluginTestResult {self.plugin_id} - {self.test_name} - {self.status}>'
+
+class IndustryAdmin(db.Model):
+    """업종별 관리자 모델"""
+    __tablename__ = "industry_admins"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    industry_id = db.Column(db.Integer, db.ForeignKey("industries.id"), nullable=False, index=True)
+    
+    # 개인정보 (보안/암호화)
+    full_name = db.Column(db.String(100), nullable=False)
+    contact_email = db.Column(db.String(120), nullable=False, unique=True)
+    contact_phone = db.Column(db.String(20), nullable=False)
+    business_license = db.Column(db.String(50), nullable=True)  # 사업자등록번호
+    company_name = db.Column(db.String(200), nullable=True)  # 회사명
+    
+    # 상태 관리
+    status = db.Column(db.String(20), default="pending", index=True)  # pending, approved, rejected, inactive
+    approval_date = db.Column(db.DateTime, nullable=True)
+    approved_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)
+    
+    # 활동로그/상태변경 이력
+    last_activity = db.Column(db.DateTime, nullable=True)
+    login_count = db.Column(db.Integer, default=0)
+    
+    # 보안 설정
+    two_factor_enabled = db.Column(db.Boolean, default=False)
+    ip_whitelist = db.Column(db.JSON, nullable=True)  # 허용 IP 목록
+    session_timeout = db.Column(db.Integer, default=3600)  # 세션 타임아웃 (초)
+    
+    # 메타데이터
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    user = db.relationship("User", foreign_keys=[user_id], backref="industry_admin_profile")
+    industry = db.relationship("Industry", backref="industry_admins")
+    approver = db.relationship("User", foreign_keys=[approved_by], backref="approved_industry_admins")
+    
+    def __repr__(self):
+        return f"<IndustryAdmin {self.full_name} - {self.industry.name if self.industry else 'Unknown'}>"
+    
+    @property
+    def is_approved(self):
+        return self.status == "approved"
+    
+    @property
+    def is_pending(self):
+        return self.status == "pending"
+    
+    @property
+    def is_rejected(self):
+        return self.status == "rejected"
+    
+    @property
+    def is_inactive(self):
+        return self.status == "inactive"
+    
+    def approve(self, approved_by_user_id, approval_notes=None):
+        """업종별 관리자 승인"""
+        self.status = "approved"
+        self.approval_date = datetime.utcnow()
+        self.approved_by = approved_by_user_id
+        self.updated_at = datetime.utcnow()
+        
+        # 사용자 권한 업데이트
+        if self.user:
+            self.user.role = "industry_admin"
+            self.user.status = "approved"
+            # 업종별 관리자 권한 설정
+            self.user.permissions.update({
+                "industry_management": {
+                    "view": True, "create": True, "edit": True, "delete": True, "approve": True
+                },
+                "brand_management": {
+                    "view": True, "create": True, "edit": True, "delete": False, "approve": True
+                },
+                "store_management": {
+                    "view": True, "create": True, "edit": True, "delete": False, "approve": True
+                },
+                "employee_management": {
+                    "view": True, "create": True, "edit": True, "delete": False, "approve": True
+                }
+            })
+    
+    def reject(self, rejected_by_user_id, rejection_reason):
+        """업종별 관리자 거절"""
+        self.status = "rejected"
+        self.rejection_reason = rejection_reason
+        self.updated_at = datetime.utcnow()
+        
+        # 사용자 상태 업데이트
+        if self.user:
+            self.user.status = "rejected"
+    
+    def deactivate(self, deactivated_by_user_id, deactivation_reason=None):
+        """업종별 관리자 비활성화"""
+        self.status = "inactive"
+        self.updated_at = datetime.utcnow()
+        
+        # 사용자 상태 업데이트
+        if self.user:
+            self.user.status = "suspended"
+    
+    def update_activity(self):
+        """활동 시간 업데이트"""
+        self.last_activity = datetime.utcnow()
+        self.login_count += 1
+        self.updated_at = datetime.utcnow()

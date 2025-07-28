@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시스템 모니터링 - 백엔드 관리자</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        
+        .cyber-bg {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        
+        .cyber-card {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid #ff6b35;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .cyber-border {
+            border-color: #ff6b35;
+        }
+        
+        .cyber-border-b {
+            border-bottom-color: #ff6b35;
+        }
+        
+        .cyber-orange {
+            color: #ff6b35;
+        }
+        
+        .cyber-orange-glow {
+            color: #ff6b35;
+            text-shadow: 0 0 10px rgba(255, 107, 53, 0.8);
+        }
+        
+        .cyber-green {
+            color: #00ff88;
+        }
+        
+        .cyber-blue {
+            color: #00d4ff;
+        }
+        
+        .cyber-red {
+            color: #ff4757;
+        }
+        
+        .cyber-purple {
+            color: #a855f7;
+        }
+        
+        .cyber-text-dim {
+            color: #888;
+        }
+        
+        .cyber-font {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .cyber-text {
+            font-family: 'Rajdhani', sans-serif;
+        }
+        
+        .cyber-button {
+            background: linear-gradient(45deg, #ff6b35, #ff8c42);
+            border: 1px solid #ff6b35;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .cyber-button:hover {
+            background: linear-gradient(45deg, #ff8c42, #ff6b35);
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .cyber-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .cyber-status.online {
+            background: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+        }
+        
+        .cyber-status.offline {
+            background: #ff4757;
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.6);
+        }
+        
+        .cyber-status.warning {
+            background: #ffa500;
+            box-shadow: 0 0 10px rgba(255, 165, 0, 0.6);
+        }
+        
+        .cyber-scanner {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cyber-scanner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ff6b35, transparent);
+            animation: scan 3s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .cyber-terminal {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff88;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .cyber-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .cyber-scope {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b35, #00ff88, #00d4ff, #ff6b35);
+            border-radius: 2px;
+            margin-bottom: 16px;
+            animation: scope 2s ease-in-out infinite;
+        }
+        
+        @keyframes scope {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-fill.cpu {
+            background: linear-gradient(90deg, #00ff88, #00d4ff);
+        }
+        
+        .progress-fill.memory {
+            background: linear-gradient(90deg, #ff6b35, #ff8c42);
+        }
+        
+        .progress-fill.disk {
+            background: linear-gradient(90deg, #a855f7, #c084fc);
+        }
+        
+        .progress-fill.network {
+            background: linear-gradient(90deg, #ff4757, #ff6b7a);
+        }
+    </style>
+</head>
+<body class="cyber-bg text-white min-h-screen">
+    <div class="flex h-screen">
+        <!-- 사이드바 -->
+        <div class="w-64 cyber-card border-r cyber-border">
+            <div class="p-4">
+                <h1 class="cyber-font text-xl font-bold cyber-orange-glow">백엔드 관리자</h1>
+                <p class="cyber-text-dim text-sm">시스템 운영 관리</p>
+            </div>
+            
+            <nav class="mt-8">
+                <div class="px-4 py-2">
+                    <h3 class="cyber-font text-xs font-semibold cyber-text-dim uppercase tracking-wider">관리자 기능</h3>
+                </div>
+                
+                <a href="/admin/backend" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="monitor" class="w-5 h-5 mr-3"></i>
+                    대시보드
+                </a>
+                
+                <a href="/admin/backend/industry-admin" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                    업종별 관리자 승인/관리
+                </a>
+                
+                <a href="/admin/backend/plugin-marketplace" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="package" class="w-5 h-5 mr-3"></i>
+                    플러그인 마켓플레이스
+                </a>
+                
+                <a href="/admin/backend/plugin-management" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="settings" class="w-5 h-5 mr-3"></i>
+                    플러그인 관리/개발
+                </a>
+                
+                <a href="/admin/backend/module-development" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="code" class="w-5 h-5 mr-3"></i>
+                    모듈 개발 시스템
+                </a>
+                
+                <a href="/admin/backend/system-monitoring" class="flex items-center px-4 py-3 cyber-orange-glow cyber-border-orange bg-opacity-20">
+                    <i data-feather="activity" class="w-5 h-5 mr-3"></i>
+                    시스템/서버 운영/모니터링
+                </a>
+                
+                <a href="/admin/backend/security" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="shield" class="w-5 h-5 mr-3"></i>
+                    보안 관리
+                </a>
+                
+                <a href="/admin/backend/events" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="bell" class="w-5 h-5 mr-3"></i>
+                    실시간 이벤트/알림
+                </a>
+            </nav>
+
+            <!-- 시스템 상태 -->
+            <div class="mt-auto pt-8 cyber-card p-4">
+                <div class="flex items-center mb-2">
+                    <span class="cyber-status online"></span>
+                    <span class="cyber-green font-semibold">시스템 정상</span>
+                </div>
+                <div class="cyber-text-dim text-sm space-y-1">
+                    <div>가동시간: <span class="cyber-green" id="uptime">72:14:33</span></div>
+                    <div>활성 사용자: <span class="cyber-blue" id="active-agents">847명</span></div>
+                    <div>진행 작업: <span class="cyber-orange" id="ongoing-missions">23개</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col">
+            <!-- 헤더 -->
+            <header class="cyber-bg-card cyber-border-b cyber-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="cyber-font text-3xl font-bold cyber-orange-glow">시스템 모니터링</h2>
+                        <p class="cyber-text-dim">실시간 시스템 상태 및 성능 모니터링</p>
+                    </div>
+                    <div class="flex items-center space-x-6">
+                        <div class="cyber-text-dim">
+                            마지막 업데이트: <span class="cyber-green" id="last-update">2025/06/05 20:00 UTC</span>
+                        </div>
+                        <a href="/admin/backend" class="cyber-button">
+                            <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i>
+                            뒤로가기
+                        </a>
+                        <button class="cyber-button" onclick="toggleMonitoring()">
+                            <i data-feather="play" class="w-4 h-4 mr-2" id="monitor-icon"></i>
+                            <span id="monitor-text">모니터링 시작</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="flex-1 p-6 overflow-auto">
+                <!-- 시스템 성능 카드 -->
+                <div class="cyber-grid mb-8">
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">CPU 사용률</h3>
+                        <div class="text-center mb-4">
+                            <div class="cyber-font text-4xl font-bold cyber-green" id="cpu-usage">67%</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill cpu" id="cpu-progress" style="width: 67%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">메모리 사용률</h3>
+                        <div class="text-center mb-4">
+                            <div class="cyber-font text-4xl font-bold cyber-blue" id="memory-usage">84%</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill memory" id="memory-progress" style="width: 84%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">디스크 사용률</h3>
+                        <div class="text-center mb-4">
+                            <div class="cyber-font text-4xl font-bold cyber-purple" id="disk-usage">45%</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill disk" id="disk-progress" style="width: 45%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">네트워크 부하</h3>
+                        <div class="text-center mb-4">
+                            <div class="cyber-font text-4xl font-bold cyber-red" id="network-usage">23%</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill network" id="network-progress" style="width: 23%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 성능 차트 -->
+                <div class="cyber-card p-6 mb-6">
+                    <h3 class="cyber-font text-xl font-bold cyber-orange-glow mb-6">시스템 성능 추이</h3>
+                    <div class="cyber-scope"></div>
+                    <canvas id="performance-chart" width="800" height="300"></canvas>
+                </div>
+
+                <!-- 시스템 로그 -->
+                <div class="cyber-card p-6">
+                    <h3 class="cyber-font text-xl font-bold cyber-orange-glow mb-6">실시간 시스템 로그</h3>
+                    <div class="cyber-scope"></div>
+                    <div class="cyber-terminal" id="system-logs">
+                        <div class="mb-2">
+                            <span class="cyber-text-dim">[2025-06-25 20:15:32]</span>
+                            <span class="cyber-green">[INFO]</span> 시스템 모니터링 시작됨
+                        </div>
+                        <div class="mb-2">
+                            <span class="cyber-text-dim">[2025-06-25 20:15:30]</span>
+                            <span class="cyber-blue">[DEBUG]</span> CPU 사용률: 67% (정상 범위)
+                        </div>
+                        <div class="mb-2">
+                            <span class="cyber-text-dim">[2025-06-25 20:15:28]</span>
+                            <span class="cyber-orange">[WARNING]</span> 메모리 사용률이 80%를 초과함
+                        </div>
+                        <div class="mb-2">
+                            <span class="cyber-text-dim">[2025-06-25 20:15:25]</span>
+                            <span class="cyber-green">[INFO]</span> 데이터베이스 연결 정상
+                        </div>
+                        <div class="mb-2">
+                            <span class="cyber-text-dim">[2025-06-25 20:15:22]</span>
+                            <span class="cyber-blue">[DEBUG]</span> 네트워크 응답시간: 45ms
+                        </div>
+                        <div class="mb-2">
+                            <span class="cyber-text-dim">[2025-06-25 20:15:20]</span>
+                            <span class="cyber-green">[INFO]</span> 백업 작업 완료
+                        </div>
+                        <div class="mb-2">
+                            <span class="cyber-text-dim">[2025-06-25 20:15:18]</span>
+                            <span class="cyber-purple">[NOTICE]</span> 새로운 플러그인 업데이트 확인됨
+                        </div>
+                        <div class="mb-2">
+                            <span class="cyber-text-dim">[2025-06-25 20:15:15]</span>
+                            <span class="cyber-green">[INFO]</span> 보안 스캔 완료 - 위협 없음
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 서비스 상태 -->
+                <div class="cyber-card p-6 mt-6">
+                    <h3 class="cyber-font text-xl font-bold cyber-orange-glow mb-6">서비스 상태</h3>
+                    <div class="cyber-scope"></div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center justify-between p-3 cyber-card border cyber-border">
+                            <div class="flex items-center">
+                                <span class="cyber-status online"></span>
+                                <span class="cyber-font font-bold cyber-green">웹 서버</span>
+                            </div>
+                            <span class="cyber-text-dim">포트 5000</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 cyber-card border cyber-border">
+                            <div class="flex items-center">
+                                <span class="cyber-status online"></span>
+                                <span class="cyber-font font-bold cyber-green">데이터베이스</span>
+                            </div>
+                            <span class="cyber-text-dim">PostgreSQL</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 cyber-card border cyber-border">
+                            <div class="flex items-center">
+                                <span class="cyber-status online"></span>
+                                <span class="cyber-font font-bold cyber-green">Redis 캐시</span>
+                            </div>
+                            <span class="cyber-text-dim">포트 6379</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 cyber-card border cyber-border">
+                            <div class="flex items-center">
+                                <span class="cyber-status warning"></span>
+                                <span class="cyber-font font-bold cyber-orange">이메일 서비스</span>
+                            </div>
+                            <span class="cyber-text-dim">연결 지연</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 cyber-card border cyber-border">
+                            <div class="flex items-center">
+                                <span class="cyber-status online"></span>
+                                <span class="cyber-font font-bold cyber-green">파일 스토리지</span>
+                            </div>
+                            <span class="cyber-text-dim">정상</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 cyber-card border cyber-border">
+                            <div class="flex items-center">
+                                <span class="cyber-status online"></span>
+                                <span class="cyber-font font-bold cyber-green">백업 서비스</span>
+                            </div>
+                            <span class="cyber-text-dim">자동 백업</span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        // 성능 차트 초기화
+        const ctx = document.getElementById('performance-chart').getContext('2d');
+        const performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['20:10', '20:11', '20:12', '20:13', '20:14', '20:15'],
+                datasets: [{
+                    label: 'CPU 사용률',
+                    data: [65, 68, 72, 70, 67, 69],
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4
+                }, {
+                    label: '메모리 사용률',
+                    data: [82, 85, 87, 84, 86, 84],
+                    borderColor: '#ff6b35',
+                    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4
+                }, {
+                    label: '네트워크 부하',
+                    data: [20, 25, 30, 22, 28, 23],
+                    borderColor: '#00d4ff',
+                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e0e0e0',
+                            font: {
+                                family: 'Rajdhani, sans-serif'
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: '#888'
+                        },
+                        grid: {
+                            color: '#333'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#888'
+                        },
+                        grid: {
+                            color: '#333'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 모니터링 상태
+        let monitoringActive = false;
+        let monitoringInterval;
+
+        function toggleMonitoring() {
+            const button = document.getElementById('monitor-text');
+            const icon = document.getElementById('monitor-icon');
+            
+            if (monitoringActive) {
+                // 모니터링 중지
+                clearInterval(monitoringInterval);
+                monitoringActive = false;
+                button.textContent = '모니터링 시작';
+                icon.setAttribute('data-feather', 'play');
+                feather.replace();
+            } else {
+                // 모니터링 시작
+                monitoringActive = true;
+                button.textContent = '모니터링 중지';
+                icon.setAttribute('data-feather', 'square');
+                feather.replace();
+                
+                // 2초마다 데이터 업데이트
+                monitoringInterval = setInterval(updateSystemData, 2000);
+            }
+        }
+
+        function updateSystemData() {
+            // CPU 사용률 업데이트
+            const cpuUsage = Math.floor(Math.random() * 30 + 50);
+            document.getElementById('cpu-usage').textContent = cpuUsage + '%';
+            document.getElementById('cpu-progress').style.width = cpuUsage + '%';
+            
+            // 메모리 사용률 업데이트
+            const memoryUsage = Math.floor(Math.random() * 20 + 70);
+            document.getElementById('memory-usage').textContent = memoryUsage + '%';
+            document.getElementById('memory-progress').style.width = memoryUsage + '%';
+            
+            // 디스크 사용률 업데이트
+            const diskUsage = Math.floor(Math.random() * 20 + 40);
+            document.getElementById('disk-usage').textContent = diskUsage + '%';
+            document.getElementById('disk-progress').style.width = diskUsage + '%';
+            
+            // 네트워크 부하 업데이트
+            const networkUsage = Math.floor(Math.random() * 40 + 10);
+            document.getElementById('network-usage').textContent = networkUsage + '%';
+            document.getElementById('network-progress').style.width = networkUsage + '%';
+            
+            // 마지막 업데이트 시간
+            const now = new Date();
+            document.getElementById('last-update').textContent = now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR') + ' UTC';
+        }
+
+        // 초기 업데이트
+        updateSystemData();
+    </script>
+</body>
+</html> 

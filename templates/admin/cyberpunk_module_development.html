@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBERPUNK MODULE DEVELOPMENT - 백엔드 관리자</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --cyber-bg: #0a0a0a;
+            --cyber-card: #1a1a1a;
+            --cyber-border: #333;
+            --cyber-text: #e0e0e0;
+            --cyber-text-dim: #888;
+            --cyber-orange: #ff6b35;
+            --cyber-orange-glow: #ff6b35;
+            --cyber-green: #00ff88;
+            --cyber-red: #ff4757;
+            --cyber-blue: #3742fa;
+            --cyber-purple: #5f27cd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--cyber-bg);
+            color: var(--cyber-text);
+            overflow-x: hidden;
+        }
+
+        .cyber-font {
+            font-family: 'Orbitron', monospace;
+        }
+
+        .cyber-card {
+            background: var(--cyber-card);
+            border: 1px solid var(--cyber-border);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyber-orange), var(--cyber-green), var(--cyber-blue));
+        }
+
+        .cyber-glow {
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .cyber-orange {
+            color: var(--cyber-orange);
+        }
+
+        .cyber-orange-glow {
+            color: var(--cyber-orange);
+            text-shadow: 0 0 10px var(--cyber-orange-glow);
+        }
+
+        .cyber-green {
+            color: var(--cyber-green);
+        }
+
+        .cyber-red {
+            color: var(--cyber-red);
+        }
+
+        .cyber-blue {
+            color: var(--cyber-blue);
+        }
+
+        .cyber-purple {
+            color: var(--cyber-purple);
+        }
+
+        .cyber-border {
+            border: 1px solid var(--cyber-border);
+        }
+
+        .cyber-border-orange {
+            border: 1px solid var(--cyber-orange);
+        }
+
+        .cyber-bg-card {
+            background: var(--cyber-card);
+        }
+
+        .cyber-bg-dark {
+            background: var(--cyber-bg);
+        }
+
+        .cyber-text-dim {
+            color: var(--cyber-text-dim);
+        }
+
+        .cyber-button {
+            background: transparent;
+            border: 1px solid var(--cyber-orange);
+            color: var(--cyber-orange);
+            padding: 8px 16px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-button:hover {
+            background: var(--cyber-orange);
+            color: var(--cyber-bg);
+            box-shadow: 0 0 20px var(--cyber-orange);
+        }
+
+        .cyber-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .cyber-button:hover::before {
+            left: 100%;
+        }
+
+        .cyber-component {
+            background: var(--cyber-card);
+            border: 1px solid var(--cyber-border);
+            padding: 12px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .cyber-component:hover {
+            border-color: var(--cyber-orange);
+            box-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
+        }
+
+        .cyber-component.selected {
+            border-color: var(--cyber-green);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        }
+
+        .cyber-canvas {
+            background: var(--cyber-bg);
+            border: 2px dashed var(--cyber-border);
+            min-height: 600px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-canvas.has-components {
+            border-color: var(--cyber-green);
+            border-style: solid;
+        }
+
+        .cyber-drop-zone {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--cyber-text-dim);
+            text-align: center;
+        }
+
+        .cyber-drop-zone.has-components {
+            display: none;
+        }
+
+        .cyber-property-input {
+            background: var(--cyber-bg);
+            border: 1px solid var(--cyber-border);
+            color: var(--cyber-text);
+            padding: 8px 12px;
+            font-family: 'Rajdhani', sans-serif;
+            width: 100%;
+        }
+
+        .cyber-property-input:focus {
+            border-color: var(--cyber-orange);
+            outline: none;
+            box-shadow: 0 0 5px rgba(255, 107, 53, 0.3);
+        }
+
+        .cyber-tab {
+            background: transparent;
+            border: 1px solid var(--cyber-border);
+            color: var(--cyber-text-dim);
+            padding: 8px 16px;
+            font-family: 'Rajdhani', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cyber-tab.active {
+            border-color: var(--cyber-orange);
+            color: var(--cyber-orange);
+            background: rgba(255, 107, 53, 0.1);
+        }
+
+        .cyber-scanner {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-scanner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.1), transparent);
+            animation: scan 3s infinite;
+        }
+
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .cyber-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="cyber-bg-dark">
+    <!-- 사이버펑크 스타일 사이드바 -->
+    <div class="flex h-screen">
+        <div class="w-80 cyber-bg-card cyber-border-r cyber-border p-6">
+            <div class="mb-8">
+                <h1 class="cyber-font text-2xl font-bold cyber-orange-glow mb-2">TACTICAL OPS</h1>
+                <p class="cyber-text-dim text-sm">v2.1.7 CLASSIFIED</p>
+            </div>
+            
+            <nav class="space-y-2">
+                <a href="/admin/backend" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="monitor" class="w-5 h-5 mr-3"></i>
+                    COMMAND CENTER
+                </a>
+                
+                <a href="/admin/backend/industry-admin" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                    AGENT NETWORK
+                </a>
+                
+                <a href="/admin/backend/plugin-marketplace" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="package" class="w-5 h-5 mr-3"></i>
+                    OPERATIONS
+                </a>
+                
+                <a href="/admin/backend/plugin-management" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="settings" class="w-5 h-5 mr-3"></i>
+                    INTELLIGENCE
+                </a>
+                
+                <a href="/admin/backend/module-development" class="flex items-center px-4 py-3 cyber-orange-glow cyber-border-orange bg-opacity-20">
+                    <i data-feather="code" class="w-5 h-5 mr-3"></i>
+                    SYSTEMS
+                </a>
+                
+                <a href="/admin/backend/system-monitoring" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="activity" class="w-5 h-5 mr-3"></i>
+                    MONITORING
+                </a>
+                
+                <a href="/admin/backend/security" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="shield" class="w-5 h-5 mr-3"></i>
+                    SECURITY
+                </a>
+                
+                <a href="/admin/backend/events" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="bell" class="w-5 h-5 mr-3"></i>
+                    ALERTS
+                </a>
+            </nav>
+
+            <!-- 시스템 상태 -->
+            <div class="mt-auto pt-8 cyber-card p-4">
+                <div class="flex items-center mb-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 cyber-pulse"></span>
+                    <span class="cyber-green font-semibold">SYSTEM ONLINE</span>
+                </div>
+                <div class="cyber-text-dim text-sm space-y-1">
+                    <div>UPTIME: <span class="cyber-green" id="uptime">72:14:33</span></div>
+                    <div>AGENTS: <span class="cyber-blue" id="active-agents">847 ACTIVE</span></div>
+                    <div>MISSIONS: <span class="cyber-orange" id="ongoing-missions">23 ONGOING</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 flex flex-col">
+            <!-- 헤더 -->
+            <header class="cyber-bg-card cyber-border-b cyber-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="cyber-font text-3xl font-bold cyber-orange-glow">MODULE DEVELOPMENT</h2>
+                        <p class="cyber-text-dim">VISUAL COMPONENT BUILDER</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button class="cyber-button" id="preview-mode">
+                            <i data-feather="eye" class="w-4 h-4 mr-2"></i>
+                            PREVIEW
+                        </button>
+                        <button class="cyber-button" id="save-project">
+                            <i data-feather="save" class="w-4 h-4 mr-2"></i>
+                            SAVE
+                        </button>
+                        <button class="cyber-button" id="deploy-module" style="background: var(--cyber-green); color: var(--cyber-bg); border-color: var(--cyber-green);">
+                            <i data-feather="play" class="w-4 h-4 mr-2"></i>
+                            DEPLOY
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 메인 작업 영역 -->
+            <div class="flex-1 flex">
+                <!-- 좌측 컴포넌트 팔레트 -->
+                <div class="w-80 cyber-bg-card cyber-border-r cyber-border p-6">
+                    <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">COMPONENT LIBRARY</h3>
+                    
+                    <!-- 기본 컴포넌트 -->
+                    <div class="mb-6">
+                        <h4 class="cyber-text-dim text-sm mb-3">BASIC COMPONENTS</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="cyber-component" data-type="button" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">🔘</div>
+                                    <div class="cyber-text-dim text-xs">BUTTON</div>
+                                </div>
+                            </div>
+                            <div class="cyber-component" data-type="card" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">🃏</div>
+                                    <div class="cyber-text-dim text-xs">CARD</div>
+                                </div>
+                            </div>
+                            <div class="cyber-component" data-type="input" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">📝</div>
+                                    <div class="cyber-text-dim text-xs">INPUT</div>
+                                </div>
+                            </div>
+                            <div class="cyber-component" data-type="table" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">📊</div>
+                                    <div class="cyber-text-dim text-xs">TABLE</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 고급 컴포넌트 -->
+                    <div class="mb-6">
+                        <h4 class="cyber-text-dim text-sm mb-3">ADVANCED COMPONENTS</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="cyber-component" data-type="chart" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">📈</div>
+                                    <div class="cyber-text-dim text-xs">CHART</div>
+                                </div>
+                            </div>
+                            <div class="cyber-component" data-type="modal" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">🪟</div>
+                                    <div class="cyber-text-dim text-xs">MODAL</div>
+                                </div>
+                            </div>
+                            <div class="cyber-component" data-type="tabs" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">📑</div>
+                                    <div class="cyber-text-dim text-xs">TABS</div>
+                                </div>
+                            </div>
+                            <div class="cyber-component" data-type="calendar" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">📅</div>
+                                    <div class="cyber-text-dim text-xs">CALENDAR</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 레이아웃 컴포넌트 -->
+                    <div>
+                        <h4 class="cyber-text-dim text-sm mb-3">LAYOUT</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="cyber-component" data-type="container" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">📦</div>
+                                    <div class="cyber-text-dim text-xs">CONTAINER</div>
+                                </div>
+                            </div>
+                            <div class="cyber-component" data-type="grid" draggable="true">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">⊞</div>
+                                    <div class="cyber-text-dim text-xs">GRID</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 중앙 캔버스 -->
+                <div class="flex-1 flex flex-col">
+                    <!-- 캔버스 툴바 -->
+                    <div class="cyber-bg-card cyber-border-b cyber-border p-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center space-x-2">
+                                    <span class="cyber-text-dim">PREVIEW:</span>
+                                    <button class="cyber-tab active" data-mode="desktop">
+                                        <i data-feather="monitor" class="w-3 h-3 mr-1"></i>
+                                        DESKTOP
+                                    </button>
+                                    <button class="cyber-tab" data-mode="tablet">
+                                        <i data-feather="tablet" class="w-3 h-3 mr-1"></i>
+                                        TABLET
+                                    </button>
+                                    <button class="cyber-tab" data-mode="mobile">
+                                        <i data-feather="smartphone" class="w-3 h-3 mr-1"></i>
+                                        MOBILE
+                                    </button>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="cyber-text-dim">THEME:</span>
+                                    <button class="cyber-tab active" data-theme="dark">
+                                        <i data-feather="moon" class="w-3 h-3 mr-1"></i>
+                                        DARK
+                                    </button>
+                                    <button class="cyber-tab" data-theme="light">
+                                        <i data-feather="sun" class="w-3 h-3 mr-1"></i>
+                                        LIGHT
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button class="cyber-button" id="undo-btn">
+                                    <i data-feather="rotate-ccw" class="w-4 h-4"></i>
+                                </button>
+                                <button class="cyber-button" id="redo-btn">
+                                    <i data-feather="rotate-cw" class="w-4 h-4"></i>
+                                </button>
+                                <button class="cyber-button" id="clear-canvas">
+                                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 캔버스 영역 -->
+                    <div class="flex-1 p-6 overflow-auto">
+                        <div id="canvas-container" class="cyber-canvas mx-auto" style="max-width: 1200px;">
+                            <div id="canvas" class="relative w-full h-full min-h-[600px] p-8">
+                                <div id="drop-zone" class="cyber-drop-zone">
+                                    <div class="text-center">
+                                        <i data-feather="plus-circle" class="w-16 h-16 mx-auto mb-4 cyber-text-dim"></i>
+                                        <p class="cyber-font text-lg font-medium cyber-text-dim mb-2">DRAG COMPONENTS HERE</p>
+                                        <p class="cyber-text-dim">Select components from the left panel to build your module</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 우측 속성 패널 -->
+                <div class="w-80 cyber-bg-card cyber-border-l cyber-border p-6">
+                    <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">PROPERTY EDITOR</h3>
+                    
+                    <!-- 탭 네비게이션 -->
+                    <div class="flex cyber-border-b cyber-border mb-4">
+                        <button class="cyber-tab active" data-tab="properties">PROPERTIES</button>
+                        <button class="cyber-tab" data-tab="styles">STYLES</button>
+                        <button class="cyber-tab" data-tab="data">DATA</button>
+                        <button class="cyber-tab" data-tab="events">EVENTS</button>
+                    </div>
+
+                    <!-- 속성 편집 영역 -->
+                    <div id="properties-panel">
+                        <div class="text-center cyber-text-dim py-8">
+                            <i data-feather="settings" class="w-12 h-12 mx-auto mb-4 cyber-text-dim"></i>
+                            <p>Select a component to edit properties</p>
+                        </div>
+                    </div>
+
+                    <!-- 프로젝트 정보 -->
+                    <div class="cyber-border-t cyber-border pt-4 mt-6">
+                        <h4 class="cyber-text-dim text-sm mb-3">PROJECT INFO</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="cyber-text-dim text-xs">PROJECT NAME</label>
+                                <input type="text" id="project-name" class="cyber-property-input mt-1" placeholder="NEW PROJECT">
+                            </div>
+                            <div>
+                                <label class="cyber-text-dim text-xs">DESCRIPTION</label>
+                                <textarea id="project-description" class="cyber-property-input mt-1" rows="3" placeholder="Project description"></textarea>
+                            </div>
+                            <div>
+                                <label class="cyber-text-dim text-xs">MODULE TYPE</label>
+                                <select id="module-type" class="cyber-property-input mt-1">
+                                    <option value="general">GENERAL MODULE</option>
+                                    <option value="dashboard">DASHBOARD</option>
+                                    <option value="form">FORM</option>
+                                    <option value="report">REPORT</option>
+                                    <option value="widget">WIDGET</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        // 전역 변수
+        let selectedComponent = null;
+        let components = [];
+        let componentCounter = 0;
+
+        // 컴포넌트 템플릿
+        const componentTemplates = {
+            button: {
+                type: 'button',
+                name: 'BUTTON',
+                properties: {
+                    text: 'CLICK ME',
+                    variant: 'primary',
+                    size: 'medium',
+                    disabled: false
+                },
+                styles: {
+                    backgroundColor: '#ff6b35',
+                    color: '#0a0a0a',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    cursor: 'pointer'
+                }
+            },
+            card: {
+                type: 'card',
+                name: 'CARD',
+                properties: {
+                    title: 'CARD TITLE',
+                    content: 'Card content goes here',
+                    showHeader: true,
+                    showFooter: false
+                },
+                styles: {
+                    backgroundColor: '#1a1a1a',
+                    border: '1px solid #333',
+                    borderRadius: '4px',
+                    padding: '16px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }
+            },
+            input: {
+                type: 'input',
+                name: 'INPUT',
+                properties: {
+                    label: 'LABEL',
+                    placeholder: 'Enter text...',
+                    type: 'text',
+                    required: false
+                },
+                styles: {
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #333',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    backgroundColor: '#0a0a0a',
+                    color: '#e0e0e0'
+                }
+            }
+        };
+
+        // 드래그 앤 드롭 초기화
+        function initializeDragAndDrop() {
+            const canvas = document.getElementById('canvas');
+            const dropZone = document.getElementById('drop-zone');
+
+            // 컴포넌트 아이템 드래그 이벤트
+            document.querySelectorAll('.cyber-component').forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', item.dataset.type);
+                });
+            });
+
+            // 캔버스 드롭 이벤트
+            canvas.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.display = 'none';
+            });
+
+            canvas.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                if (!canvas.contains(e.relatedTarget)) {
+                    dropZone.style.display = 'flex';
+                }
+            });
+
+            canvas.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const componentType = e.dataTransfer.getData('text/plain');
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                addComponent(componentType, x, y);
+                dropZone.style.display = 'none';
+            });
+        }
+
+        // 컴포넌트 추가
+        function addComponent(type, x, y) {
+            const template = componentTemplates[type];
+            if (!template) return;
+
+            const component = {
+                id: `component-${++componentCounter}`,
+                ...template,
+                position: { x, y },
+                size: { width: 200, height: 100 }
+            };
+
+            components.push(component);
+            renderComponent(component);
+            updatePropertiesPanel(component);
+        }
+
+        // 컴포넌트 렌더링
+        function renderComponent(component) {
+            const canvas = document.getElementById('canvas');
+            const existingElement = document.getElementById(component.id);
+            
+            if (existingElement) {
+                existingElement.remove();
+            }
+
+            const element = document.createElement('div');
+            element.id = component.id;
+            element.className = 'absolute cursor-pointer cyber-border cyber-border-orange';
+            element.style.left = component.position.x + 'px';
+            element.style.top = component.position.y + 'px';
+            element.style.width = component.size.width + 'px';
+            element.style.height = component.size.height + 'px';
+
+            // 컴포넌트별 렌더링
+            switch (component.type) {
+                case 'button':
+                    element.innerHTML = `
+                        <button style="${getStyleString(component.styles)}" onclick="selectComponent('${component.id}')">
+                            ${component.properties.text}
+                        </button>
+                    `;
+                    break;
+                case 'card':
+                    element.innerHTML = `
+                        <div style="${getStyleString(component.styles)}" onclick="selectComponent('${component.id}')">
+                            ${component.properties.showHeader ? `<h3 class="font-semibold mb-2 cyber-orange">${component.properties.title}</h3>` : ''}
+                            <p class="cyber-text-dim">${component.properties.content}</p>
+                        </div>
+                    `;
+                    break;
+                case 'input':
+                    element.innerHTML = `
+                        <div onclick="selectComponent('${component.id}')">
+                            <label class="block cyber-text-dim text-sm mb-1">${component.properties.label}</label>
+                            <input type="${component.properties.type}" placeholder="${component.properties.placeholder}" 
+                                   style="${getStyleString(component.styles)}">
+                        </div>
+                    `;
+                    break;
+            }
+
+            canvas.appendChild(element);
+        }
+
+        // 스타일 문자열 변환
+        function getStyleString(styles) {
+            return Object.entries(styles).map(([key, value]) => `${key}: ${value}`).join('; ');
+        }
+
+        // 컴포넌트 선택
+        function selectComponent(id) {
+            selectedComponent = components.find(c => c.id === id);
+            updatePropertiesPanel(selectedComponent);
+            
+            // 선택 표시
+            document.querySelectorAll('[id^="component-"]').forEach(el => {
+                el.classList.remove('cyber-border-green');
+                el.classList.add('cyber-border-orange');
+            });
+            
+            const element = document.getElementById(id);
+            if (element) {
+                element.classList.remove('cyber-border-orange');
+                element.classList.add('cyber-border-green');
+            }
+        }
+
+        // 속성 패널 업데이트
+        function updatePropertiesPanel(component) {
+            const panel = document.getElementById('properties-panel');
+            
+            if (!component) {
+                panel.innerHTML = `
+                    <div class="text-center cyber-text-dim py-8">
+                        <i data-feather="settings" class="w-12 h-12 mx-auto mb-4 cyber-text-dim"></i>
+                        <p>Select a component to edit properties</p>
+                    </div>
+                `;
+                feather.replace();
+                return;
+            }
+
+            let html = `<div class="space-y-4">`;
+            
+            // 컴포넌트별 속성 편집기
+            switch (component.type) {
+                case 'button':
+                    html += `
+                        <div>
+                            <label class="cyber-text-dim text-xs">TEXT</label>
+                            <input type="text" value="${component.properties.text}" 
+                                   onchange="updateComponentProperty('${component.id}', 'text', this.value)"
+                                   class="cyber-property-input mt-1">
+                        </div>
+                        <div>
+                            <label class="cyber-text-dim text-xs">SIZE</label>
+                            <select onchange="updateComponentProperty('${component.id}', 'size', this.value)"
+                                    class="cyber-property-input mt-1">
+                                <option value="small" ${component.properties.size === 'small' ? 'selected' : ''}>SMALL</option>
+                                <option value="medium" ${component.properties.size === 'medium' ? 'selected' : ''}>MEDIUM</option>
+                                <option value="large" ${component.properties.size === 'large' ? 'selected' : ''}>LARGE</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                case 'card':
+                    html += `
+                        <div>
+                            <label class="cyber-text-dim text-xs">TITLE</label>
+                            <input type="text" value="${component.properties.title}" 
+                                   onchange="updateComponentProperty('${component.id}', 'title', this.value)"
+                                   class="cyber-property-input mt-1">
+                        </div>
+                        <div>
+                            <label class="cyber-text-dim text-xs">CONTENT</label>
+                            <textarea onchange="updateComponentProperty('${component.id}', 'content', this.value)"
+                                      class="cyber-property-input mt-1" rows="3">${component.properties.content}</textarea>
+                        </div>
+                    `;
+                    break;
+                case 'input':
+                    html += `
+                        <div>
+                            <label class="cyber-text-dim text-xs">LABEL</label>
+                            <input type="text" value="${component.properties.label}" 
+                                   onchange="updateComponentProperty('${component.id}', 'label', this.value)"
+                                   class="cyber-property-input mt-1">
+                        </div>
+                        <div>
+                            <label class="cyber-text-dim text-xs">PLACEHOLDER</label>
+                            <input type="text" value="${component.properties.placeholder}" 
+                                   onchange="updateComponentProperty('${component.id}', 'placeholder', this.value)"
+                                   class="cyber-property-input mt-1">
+                        </div>
+                    `;
+                    break;
+            }
+
+            html += `</div>`;
+            panel.innerHTML = html;
+        }
+
+        // 컴포넌트 속성 업데이트
+        function updateComponentProperty(id, property, value) {
+            const component = components.find(c => c.id === id);
+            if (component) {
+                component.properties[property] = value;
+                renderComponent(component);
+            }
+        }
+
+        // 미리보기 모드
+        function initializePreviewModes() {
+            const container = document.getElementById('canvas-container');
+            
+            document.querySelectorAll('[data-mode]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    
+                    // 탭 활성화
+                    document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    // 컨테이너 크기 조정
+                    switch (mode) {
+                        case 'desktop':
+                            container.style.maxWidth = '1200px';
+                            break;
+                        case 'tablet':
+                            container.style.maxWidth = '768px';
+                            break;
+                        case 'mobile':
+                            container.style.maxWidth = '375px';
+                            break;
+                    }
+                });
+            });
+        }
+
+        // 테마 전환
+        function initializeThemes() {
+            document.querySelectorAll('[data-theme]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const theme = btn.dataset.theme;
+                    
+                    // 탭 활성화
+                    document.querySelectorAll('[data-theme]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    // 테마 적용
+                    document.body.className = theme === 'light' ? 'bg-white text-black' : 'cyber-bg-dark';
+                });
+            });
+        }
+
+        // 프로젝트 저장
+        function saveProject() {
+            const projectData = {
+                name: document.getElementById('project-name').value || 'NEW PROJECT',
+                description: document.getElementById('project-description').value || '',
+                type: document.getElementById('module-type').value || 'general',
+                components: components,
+                created_at: new Date().toISOString()
+            };
+            
+            // 서버에 저장 요청
+            fetch('/api/backend/module/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(projectData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('PROJECT SAVED SUCCESSFULLY');
+                } else {
+                    alert('SAVE FAILED');
+                }
+            })
+            .catch(error => {
+                console.error('Save error:', error);
+                alert('SAVE ERROR');
+            });
+        }
+
+        // 모듈 배포
+        function deployModule() {
+            if (components.length === 0) {
+                alert('NO COMPONENTS TO DEPLOY');
+                return;
+            }
+
+            if (!confirm('DEPLOY THIS MODULE?')) {
+                return;
+            }
+
+            const projectData = {
+                name: document.getElementById('project-name').value || 'NEW MODULE',
+                description: document.getElementById('project-description').value || '',
+                type: document.getElementById('module-type').value || 'general',
+                components: components
+            };
+            
+            fetch('/api/backend/module/deploy', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(projectData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('MODULE DEPLOYED SUCCESSFULLY');
+                } else {
+                    alert('DEPLOY FAILED');
+                }
+            })
+            .catch(error => {
+                console.error('Deploy error:', error);
+                alert('DEPLOY ERROR');
+            });
+        }
+
+        // 이벤트 리스너 등록
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDragAndDrop();
+            initializePreviewModes();
+            initializeThemes();
+            
+            // 버튼 이벤트
+            document.getElementById('save-project').addEventListener('click', saveProject);
+            document.getElementById('deploy-module').addEventListener('click', deployModule);
+            document.getElementById('clear-canvas').addEventListener('click', () => {
+                if (confirm('CLEAR CANVAS?')) {
+                    components = [];
+                    document.getElementById('canvas').innerHTML = `
+                        <div id="drop-zone" class="cyber-drop-zone">
+                            <div class="text-center">
+                                <i data-feather="plus-circle" class="w-16 h-16 mx-auto mb-4 cyber-text-dim"></i>
+                                <p class="cyber-font text-lg font-medium cyber-text-dim mb-2">DRAG COMPONENTS HERE</p>
+                                <p class="cyber-text-dim">Select components from the left panel to build your module</p>
+                            </div>
+                        </div>
+                    `;
+                    feather.replace();
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

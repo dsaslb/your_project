@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBERPUNK DASHBOARD - 백엔드 관리자</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --cyber-bg: #0a0a0a;
+            --cyber-card: #1a1a1a;
+            --cyber-border: #333;
+            --cyber-text: #e0e0e0;
+            --cyber-text-dim: #888;
+            --cyber-orange: #ff6b35;
+            --cyber-orange-glow: #ff6b35;
+            --cyber-green: #00ff88;
+            --cyber-red: #ff4757;
+            --cyber-blue: #3742fa;
+            --cyber-purple: #5f27cd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--cyber-bg);
+            color: var(--cyber-text);
+            overflow-x: hidden;
+        }
+
+        .cyber-font {
+            font-family: 'Orbitron', monospace;
+        }
+
+        .cyber-card {
+            background: var(--cyber-card);
+            border: 1px solid var(--cyber-border);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyber-orange), var(--cyber-green), var(--cyber-blue));
+        }
+
+        .cyber-glow {
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .cyber-orange {
+            color: var(--cyber-orange);
+        }
+
+        .cyber-orange-glow {
+            color: var(--cyber-orange);
+            text-shadow: 0 0 10px var(--cyber-orange-glow);
+        }
+
+        .cyber-green {
+            color: var(--cyber-green);
+        }
+
+        .cyber-red {
+            color: var(--cyber-red);
+        }
+
+        .cyber-blue {
+            color: var(--cyber-blue);
+        }
+
+        .cyber-purple {
+            color: var(--cyber-purple);
+        }
+
+        .cyber-border {
+            border: 1px solid var(--cyber-border);
+        }
+
+        .cyber-border-orange {
+            border: 1px solid var(--cyber-orange);
+        }
+
+        .cyber-bg-card {
+            background: var(--cyber-card);
+        }
+
+        .cyber-bg-dark {
+            background: var(--cyber-bg);
+        }
+
+        .cyber-text-dim {
+            color: var(--cyber-text-dim);
+        }
+
+        .cyber-scanner {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-scanner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.1), transparent);
+            animation: scan 3s infinite;
+        }
+
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .cyber-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .cyber-glitch {
+            position: relative;
+        }
+
+        .cyber-glitch::before,
+        .cyber-glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .cyber-glitch::before {
+            animation: glitch-1 2s infinite;
+            color: var(--cyber-red);
+            z-index: -1;
+        }
+
+        .cyber-glitch::after {
+            animation: glitch-2 2s infinite;
+            color: var(--cyber-blue);
+            z-index: -2;
+        }
+
+        @keyframes glitch-1 {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+        }
+
+        @keyframes glitch-2 {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(2px, -2px); }
+            40% { transform: translate(2px, 2px); }
+            60% { transform: translate(-2px, -2px); }
+            80% { transform: translate(-2px, 2px); }
+        }
+
+        .cyber-button {
+            background: transparent;
+            border: 1px solid var(--cyber-orange);
+            color: var(--cyber-orange);
+            padding: 8px 16px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-button:hover {
+            background: var(--cyber-orange);
+            color: var(--cyber-bg);
+            box-shadow: 0 0 20px var(--cyber-orange);
+        }
+
+        .cyber-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .cyber-button:hover::before {
+            left: 100%;
+        }
+
+        .cyber-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .cyber-status.online {
+            background: var(--cyber-green);
+            box-shadow: 0 0 10px var(--cyber-green);
+        }
+
+        .cyber-status.offline {
+            background: var(--cyber-red);
+            box-shadow: 0 0 10px var(--cyber-red);
+        }
+
+        .cyber-status.warning {
+            background: var(--cyber-orange);
+            box-shadow: 0 0 10px var(--cyber-orange);
+        }
+
+        .cyber-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .cyber-scope {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+        }
+
+        .cyber-scope::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border: 2px solid var(--cyber-orange);
+            border-radius: 50%;
+            animation: scope-pulse 2s infinite;
+        }
+
+        .cyber-scope::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 80%;
+            border: 1px solid var(--cyber-green);
+            border-radius: 50%;
+            animation: scope-pulse 2s infinite 0.5s;
+        }
+
+        @keyframes scope-pulse {
+            0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .cyber-terminal {
+            background: var(--cyber-bg);
+            border: 1px solid var(--cyber-green);
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--cyber-green);
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+        }
+
+        .cyber-terminal::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .cyber-terminal::-webkit-scrollbar-track {
+            background: var(--cyber-bg);
+        }
+
+        .cyber-terminal::-webkit-scrollbar-thumb {
+            background: var(--cyber-green);
+            border-radius: 4px;
+        }
+
+        .cyber-matrix {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.1;
+            z-index: -1;
+        }
+
+        .cyber-matrix::before {
+            content: '01';
+            position: absolute;
+            color: var(--cyber-green);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            animation: matrix-fall 10s infinite linear;
+        }
+
+        @keyframes matrix-fall {
+            0% { top: -100%; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+<body class="cyber-bg-dark">
+    <!-- 사이버펑크 스타일 사이드바 -->
+    <div class="flex h-screen">
+        <div class="w-80 cyber-bg-card cyber-border-r cyber-border p-6">
+            <div class="mb-8">
+                <h1 class="cyber-font text-2xl font-bold cyber-orange-glow mb-2">TACTICAL OPS</h1>
+                <p class="cyber-text-dim text-sm">v2.1.7 CLASSIFIED</p>
+            </div>
+            
+            <nav class="space-y-2">
+                <a href="/admin/backend" class="flex items-center px-4 py-3 cyber-orange-glow cyber-border-orange bg-opacity-20">
+                    <i data-feather="monitor" class="w-5 h-5 mr-3"></i>
+                    대시보드
+                </a>
+                
+                <a href="/admin/backend/industry-admin" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                    업종별 관리자 승인/관리
+                </a>
+                
+                <a href="/admin/backend/plugin-marketplace" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="package" class="w-5 h-5 mr-3"></i>
+                    플러그인 마켓플레이스
+                </a>
+                
+                <a href="/admin/backend/plugin-management" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="settings" class="w-5 h-5 mr-3"></i>
+                    플러그인 관리/개발
+                </a>
+                
+                <a href="/admin/backend/module-development" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="code" class="w-5 h-5 mr-3"></i>
+                    모듈 개발 시스템
+                </a>
+                
+                <a href="/admin/backend/system-monitoring" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="activity" class="w-5 h-5 mr-3"></i>
+                    시스템/서버 운영/모니터링
+                </a>
+                
+                <a href="/admin/backend/security" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="shield" class="w-5 h-5 mr-3"></i>
+                    보안 관리
+                </a>
+                
+                <a href="/admin/backend/events" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="bell" class="w-5 h-5 mr-3"></i>
+                    실시간 이벤트/알림
+                </a>
+            </nav>
+
+            <!-- 시스템 상태 -->
+            <div class="mt-auto pt-8 cyber-card p-4">
+                <div class="flex items-center mb-2">
+                    <span class="cyber-status online"></span>
+                    <span class="cyber-green font-semibold">시스템 정상</span>
+                </div>
+                <div class="cyber-text-dim text-sm space-y-1">
+                    <div>가동시간: <span class="cyber-green" id="uptime">72:14:33</span></div>
+                    <div>활성 사용자: <span class="cyber-blue" id="active-agents">847명</span></div>
+                    <div>진행 작업: <span class="cyber-orange" id="ongoing-missions">23개</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 flex flex-col">
+            <!-- 헤더 -->
+            <header class="cyber-bg-card cyber-border-b cyber-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="cyber-font text-3xl font-bold cyber-orange-glow">백엔드 관리자 대시보드</h2>
+                        <p class="cyber-text-dim">시스템 운영 및 관리</p>
+                    </div>
+                    <div class="flex items-center space-x-6">
+                        <div class="cyber-text-dim">
+                            마지막 업데이트: <span class="cyber-green" id="last-update">2025/06/05 20:00 UTC</span>
+                        </div>
+                        <button class="cyber-button">
+                            <i data-feather="refresh-cw" class="w-4 h-4 mr-2"></i>
+                            새로고침
+                        </button>
+                        <button class="cyber-button">
+                            <i data-feather="bell" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 메인 대시보드 -->
+            <main class="flex-1 p-6 overflow-auto">
+                <div class="cyber-grid">
+                    <!-- AGENT ALLOCATION -->
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">사용자 현황</h3>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="text-center">
+                                <div class="cyber-font text-2xl font-bold cyber-green" id="active-field">190</div>
+                                <div class="cyber-text-dim text-sm">업종별 관리자</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="cyber-font text-2xl font-bold cyber-blue" id="undercover">990</div>
+                                <div class="cyber-text-dim text-sm">브랜드 관리자</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="cyber-font text-2xl font-bold cyber-purple" id="training">290</div>
+                                <div class="cyber-text-dim text-sm">매장 관리자</div>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="cyber-text-dim">스타벅스 관리자</span>
+                                <span class="cyber-status online"></span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="cyber-text-dim">배스킨라빈스 관리자</span>
+                                <span class="cyber-status warning"></span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="cyber-text-dim">투썸플레이스 관리자</span>
+                                <span class="cyber-status online"></span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="cyber-text-dim">할리스 관리자</span>
+                                <span class="cyber-status offline"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACTIVITY LOG -->
+                    <div class="cyber-card p-6">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">시스템 로그</h3>
+                        <div class="cyber-terminal" id="activity-log">
+                            <div class="mb-2">
+                                <span class="cyber-text-dim">2025/06/25 09:29</span>
+                                <span class="cyber-green">스타벅스 관리자</span> 로그인 완료
+                            </div>
+                            <div class="mb-2">
+                                <span class="cyber-text-dim">2025/06/25 09:15</span>
+                                <span class="cyber-green">배스킨라빈스 관리자</span> 플러그인 설치 요청
+                            </div>
+                            <div class="mb-2">
+                                <span class="cyber-text-dim">2025/06/25 09:02</span>
+                                시스템 백업 성공적으로 완료
+                            </div>
+                            <div class="mb-2">
+                                <span class="cyber-text-dim">2025/06/25 08:45</span>
+                                <span class="cyber-red">경고:</span> 무단 접근 시도 감지됨
+                            </div>
+                            <div class="mb-2">
+                                <span class="cyber-text-dim">2025/06/25 08:30</span>
+                                <span class="cyber-green">투썸플레이스 관리자</span> 대시보드 접속
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENCRYPTED CHAT ACTIVITY -->
+                    <div class="cyber-card p-6">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">실시간 알림</h3>
+                        <div class="cyber-scope"></div>
+                        <div class="cyber-terminal" id="chat-log">
+                            <div class="mb-2">
+                                <span class="cyber-text-dim">2025-06-17 14:23 UTC</span>
+                            </div>
+                            <div class="mb-1">
+                                <span class="cyber-green">[시스템]</span> ::: 초기화 >> ^^^ 보안 채널 로딩
+                            </div>
+                            <div class="mb-1">
+                                <span class="cyber-blue">[알림]</span> 새로운 플러그인 업데이트 사용 가능
+                            </div>
+                            <div class="mb-1">
+                                <span class="cyber-orange">[보안]</span> 보안 정책 업데이트 완료
+                            </div>
+                            <div class="mb-1">
+                                <span class="cyber-green">[관리자]</span> 시스템 상태: 정상 운영
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MISSION ACTIVITY OVERVIEW -->
+                    <div class="cyber-card p-6">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">시스템 활동 현황</h3>
+                        <canvas id="mission-chart" width="400" height="200"></canvas>
+                    </div>
+
+                    <!-- MISSION INFORMATION -->
+                    <div class="cyber-card p-6">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">플러그인 현황</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex items-center mb-2">
+                                    <span class="cyber-status online"></span>
+                                    <span class="cyber-green font-semibold">활성 플러그인</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 text-sm">
+                                    <div>
+                                        <span class="cyber-text-dim">출근관리:</span>
+                                        <span class="cyber-red">190</span>
+                                    </div>
+                                    <div>
+                                        <span class="cyber-text-dim">재고관리:</span>
+                                        <span class="cyber-orange">426</span>
+                                    </div>
+                                    <div>
+                                        <span class="cyber-text-dim">매출관리:</span>
+                                        <span class="cyber-green">920</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex items-center mb-2">
+                                    <span class="cyber-status offline"></span>
+                                    <span class="cyber-red font-semibold">비활성 플러그인</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 text-sm">
+                                    <div>
+                                        <span class="cyber-text-dim">고급분석:</span>
+                                        <span class="cyber-red">45</span>
+                                    </div>
+                                    <div>
+                                        <span class="cyber-text-dim">자동화:</span>
+                                        <span class="cyber-orange">89</span>
+                                    </div>
+                                    <div>
+                                        <span class="cyber-text-dim">보고서:</span>
+                                        <span class="cyber-green">156</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SYSTEM PERFORMANCE -->
+                    <div class="cyber-card p-6">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">시스템 성능</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="cyber-text-dim">CPU 사용률</span>
+                                    <span class="cyber-green" id="cpu-usage">67%</span>
+                                </div>
+                                <div class="w-full bg-gray-800 rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: 67%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="cyber-text-dim">메모리 사용률</span>
+                                    <span class="cyber-blue" id="memory-usage">84%</span>
+                                </div>
+                                <div class="w-full bg-gray-800 rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: 84%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="cyber-text-dim">네트워크 부하</span>
+                                    <span class="cyber-orange" id="network-load">23%</span>
+                                </div>
+                                <div class="w-full bg-gray-800 rounded-full h-2">
+                                    <div class="bg-orange-500 h-2 rounded-full" style="width: 23%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        // 미션 차트 초기화
+        const ctx = document.getElementById('mission-chart').getContext('2d');
+        const missionChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['1월 28일', '2월 7일', '2월 14일', '2월 21일', '2월 28일'],
+                datasets: [{
+                    label: '활성 사용자',
+                    data: [320, 380, 420, 450, 480],
+                    borderColor: '#ff6b35',
+                    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4
+                }, {
+                    label: '시스템 로드',
+                    data: [180, 220, 200, 180, 150],
+                    borderColor: '#ff4757',
+                    backgroundColor: 'rgba(255, 71, 87, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e0e0e0',
+                            font: {
+                                family: 'Rajdhani, sans-serif'
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: '#888'
+                        },
+                        grid: {
+                            color: '#333'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#888'
+                        },
+                        grid: {
+                            color: '#333'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 실시간 데이터 업데이트
+        function updateDashboard() {
+            // 업타임 업데이트
+            const now = new Date();
+            const uptime = document.getElementById('uptime');
+            uptime.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+            // 마지막 업데이트 시간
+            const lastUpdate = document.getElementById('last-update');
+            lastUpdate.textContent = now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR') + ' UTC';
+
+            // 시스템 성능 업데이트
+            document.getElementById('cpu-usage').textContent = Math.floor(Math.random() * 30 + 50) + '%';
+            document.getElementById('memory-usage').textContent = Math.floor(Math.random() * 20 + 70) + '%';
+            document.getElementById('network-load').textContent = Math.floor(Math.random() * 40 + 10) + '%';
+        }
+
+        // 1초마다 업데이트
+        setInterval(updateDashboard, 1000);
+
+        // 초기 업데이트
+        updateDashboard();
+
+        // 활동 로그 자동 스크롤
+        const activityLog = document.getElementById('activity-log');
+        activityLog.scrollTop = activityLog.scrollHeight;
+
+        // 채팅 로그 자동 스크롤
+        const chatLog = document.getElementById('chat-log');
+        chatLog.scrollTop = chatLog.scrollHeight;
+    </script>
+</body>
+</html> 

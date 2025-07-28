@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>플러그인 관리 - 백엔드 관리자</title>
+    <title>모듈 프로젝트 목록 - 백엔드 관리자</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
 </head>
@@ -36,9 +36,14 @@
                     플러그인 마켓플레이스
                 </a>
                 
-                <a href="/admin/backend/plugin-management" class="flex items-center px-4 py-3 bg-accent text-accent-foreground">
+                <a href="/admin/backend/plugin-management" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
                     <i data-feather="settings" class="w-5 h-5 mr-3"></i>
                     플러그인 관리/개발
+                </a>
+                
+                <a href="/admin/backend/module-development" class="flex items-center px-4 py-3 bg-accent text-accent-foreground">
+                    <i data-feather="code" class="w-5 h-5 mr-3"></i>
+                    모듈 개발 시스템
                 </a>
                 
                 <a href="/admin/backend/system-monitoring" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -69,25 +74,25 @@
             <header class="bg-card border-b border-border shadow-sm">
                 <div class="flex items-center justify-between px-6 py-4">
                     <div>
-                        <h2 class="text-2xl font-bold text-card-foreground">플러그인 관리</h2>
-                        <p class="text-muted-foreground">설치된 플러그인 관리 및 개발</p>
+                        <h2 class="text-2xl font-bold text-card-foreground">모듈 프로젝트 목록</h2>
+                        <p class="text-muted-foreground">개발 중인 모듈 프로젝트들을 관리하세요</p>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <a href="/admin/backend" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
-                            <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i>
-                            뒤로가기
-                        </a>
+                        <button onclick="window.location.href='/admin/backend/module-development'" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                            <i data-feather="plus" class="w-4 h-4 mr-2"></i>
+                            새 프로젝트
+                        </button>
                     </div>
                 </div>
             </header>
 
             <!-- 메인 콘텐츠 -->
             <main class="p-6">
-                <!-- 플러그인 통계 -->
+                <!-- 프로젝트 통계 -->
                 <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
                     <div class="rounded-xl border bg-card text-card-foreground shadow">
                         <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                            <h3 class="tracking-tight text-sm font-medium">총 플러그인</h3>
+                            <h3 class="tracking-tight text-sm font-medium">총 프로젝트</h3>
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width="24"
@@ -100,19 +105,43 @@
                                 stroke-linejoin="round"
                                 class="h-4 w-4 text-muted-foreground"
                             >
-                                <rect width="20" height="14" x="2" y="5" rx="2" />
-                                <path d="M2 10h20" />
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                <polyline points="14,2 14,8 20,8" />
                             </svg>
                         </div>
                         <div class="p-6 pt-0">
-                            <div class="text-2xl font-bold" id="total-plugins">0</div>
-                            <p class="text-xs text-muted-foreground">설치된 플러그인</p>
+                            <div class="text-2xl font-bold" id="total-projects">0</div>
+                            <p class="text-xs text-muted-foreground">전체 프로젝트</p>
                         </div>
                     </div>
 
                     <div class="rounded-xl border bg-card text-card-foreground shadow">
                         <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                            <h3 class="tracking-tight text-sm font-medium">활성 플러그인</h3>
+                            <h3 class="tracking-tight text-sm font-medium">개발 중</h3>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="h-4 w-4 text-blue-600"
+                            >
+                                <path d="M12 2v20M2 12h20" />
+                            </svg>
+                        </div>
+                        <div class="p-6 pt-0">
+                            <div class="text-2xl font-bold text-blue-600" id="in-development">0</div>
+                            <p class="text-xs text-muted-foreground">개발 진행 중</p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border bg-card text-card-foreground shadow">
+                        <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                            <h3 class="tracking-tight text-sm font-medium">배포 완료</h3>
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width="24"
@@ -130,38 +159,14 @@
                             </svg>
                         </div>
                         <div class="p-6 pt-0">
-                            <div class="text-2xl font-bold text-green-600" id="active-plugins">0</div>
-                            <p class="text-xs text-muted-foreground">현재 활성화</p>
+                            <div class="text-2xl font-bold text-green-600" id="deployed">0</div>
+                            <p class="text-xs text-muted-foreground">배포 완료</p>
                         </div>
                     </div>
 
                     <div class="rounded-xl border bg-card text-card-foreground shadow">
                         <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                            <h3 class="tracking-tight text-sm font-medium">비활성 플러그인</h3>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                class="h-4 w-4 text-yellow-600"
-                            >
-                                <path d="M18.364 18.364A9 9 0 1 1 5.636 5.636a9 9 0 0 1 12.728 12.728zM12 8v4m0 4h.01" />
-                            </svg>
-                        </div>
-                        <div class="p-6 pt-0">
-                            <div class="text-2xl font-bold text-yellow-600" id="inactive-plugins">0</div>
-                            <p class="text-xs text-muted-foreground">비활성화됨</p>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border bg-card text-card-foreground shadow">
-                        <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                            <h3 class="tracking-tight text-sm font-medium">업데이트 필요</h3>
+                            <h3 class="tracking-tight text-sm font-medium">최근 업데이트</h3>
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width="24"
@@ -180,57 +185,39 @@
                             </svg>
                         </div>
                         <div class="p-6 pt-0">
-                            <div class="text-2xl font-bold text-orange-600" id="update-needed">0</div>
-                            <p class="text-xs text-muted-foreground">업데이트 대기</p>
+                            <div class="text-2xl font-bold text-orange-600" id="recent-updates">0</div>
+                            <p class="text-xs text-muted-foreground">최근 7일</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- 플러그인 목록 -->
+                <!-- 프로젝트 목록 -->
                 <div class="rounded-xl border bg-card text-card-foreground shadow">
                     <div class="p-6">
                         <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-lg font-semibold">설치된 플러그인 목록</h3>
+                            <h3 class="text-lg font-semibold">프로젝트 목록</h3>
                             <div class="flex space-x-2">
-                                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                                <button onclick="loadProjects()" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
                                     <i data-feather="refresh-cw" class="w-4 h-4 mr-2"></i>
                                     새로고침
-                                </button>
-                                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
-                                    <i data-feather="plus" class="w-4 h-4 mr-2"></i>
-                                    새 플러그인
                                 </button>
                             </div>
                         </div>
 
-                        <!-- 플러그인 테이블 -->
-                        <div class="rounded-md border">
-                            <div class="relative w-full overflow-auto">
-                                <table class="w-full caption-bottom text-sm">
-                                    <thead class="[&_tr]:border-b">
-                                        <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                                            <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                                                플러그인명
-                                            </th>
-                                            <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                                                버전
-                                            </th>
-                                            <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                                                상태
-                                            </th>
-                                            <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                                                설치일
-                                            </th>
-                                            <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                                                액션
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="[&_tr:last-child]:border-0" id="plugins-table-body">
-                                        <!-- 플러그인 목록이 여기에 동적으로 추가됩니다 -->
-                                    </tbody>
-                                </table>
-                            </div>
+                        <!-- 프로젝트 그리드 -->
+                        <div id="projects-grid" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            <!-- 프로젝트 카드들이 여기에 동적으로 추가됩니다 -->
+                        </div>
+
+                        <!-- 빈 상태 -->
+                        <div id="empty-state" class="text-center py-12 hidden">
+                            <i data-feather="folder" class="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50"></i>
+                            <h3 class="text-lg font-medium text-muted-foreground mb-2">프로젝트가 없습니다</h3>
+                            <p class="text-muted-foreground mb-4">새로운 모듈 프로젝트를 시작해보세요</p>
+                            <button onclick="window.location.href='/admin/backend/module-development'" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                                <i data-feather="plus" class="w-4 h-4 mr-2"></i>
+                                첫 프로젝트 만들기
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -242,130 +229,161 @@
         // Feather 아이콘 초기화
         feather.replace();
 
-        // 플러그인 목록 로드
-        async function loadPlugins() {
+        // 프로젝트 목록 로드
+        async function loadProjects() {
             try {
-                const response = await fetch('/api/backend/plugins/list');
+                const response = await fetch('/api/backend/module/projects');
                 const data = await response.json();
                 
                 if (data.success) {
-                    updatePluginStats(data.plugins);
-                    renderPluginTable(data.plugins);
+                    updateProjectStats(data.projects);
+                    renderProjects(data.projects);
                 }
             } catch (error) {
-                console.error('플러그인 목록 로드 실패:', error);
+                console.error('프로젝트 목록 로드 실패:', error);
             }
         }
 
-        // 플러그인 통계 업데이트
-        function updatePluginStats(plugins) {
-            const total = plugins.length;
-            const active = plugins.filter(p => p.is_active).length;
-            const inactive = total - active;
-            const updateNeeded = plugins.filter(p => p.needs_update).length;
+        // 프로젝트 통계 업데이트
+        function updateProjectStats(projects) {
+            const total = projects.length;
+            const inDevelopment = projects.filter(p => p.status === 'development').length;
+            const deployed = projects.filter(p => p.status === 'deployed').length;
+            const recentUpdates = projects.filter(p => {
+                const updateDate = new Date(p.updated_at || p.created_at);
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return updateDate > weekAgo;
+            }).length;
 
-            document.getElementById('total-plugins').textContent = total;
-            document.getElementById('active-plugins').textContent = active;
-            document.getElementById('inactive-plugins').textContent = inactive;
-            document.getElementById('update-needed').textContent = updateNeeded;
+            document.getElementById('total-projects').textContent = total;
+            document.getElementById('in-development').textContent = inDevelopment;
+            document.getElementById('deployed').textContent = deployed;
+            document.getElementById('recent-updates').textContent = recentUpdates;
         }
 
-        // 플러그인 테이블 렌더링
-        function renderPluginTable(plugins) {
-            const tbody = document.getElementById('plugins-table-body');
-            tbody.innerHTML = '';
+        // 프로젝트 렌더링
+        function renderProjects(projects) {
+            const grid = document.getElementById('projects-grid');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (projects.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            grid.innerHTML = '';
 
-            plugins.forEach(plugin => {
-                const row = document.createElement('tr');
-                row.className = 'border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted';
-                
-                const statusBadge = plugin.is_active 
-                    ? '<span class="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">활성</span>'
-                    : '<span class="inline-flex items-center rounded-md bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">비활성</span>';
-
-                row.innerHTML = `
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                        <div>
-                            <p class="font-medium">${plugin.name}</p>
-                            <p class="text-xs text-muted-foreground">${plugin.description || '설명 없음'}</p>
-                        </div>
-                    </td>
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                        ${plugin.version}
-                    </td>
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                        ${statusBadge}
-                    </td>
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                        ${new Date(plugin.installed_at).toLocaleDateString()}
-                    </td>
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                        <div class="flex space-x-2">
-                            <button onclick="togglePlugin('${plugin.id}')" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
-                                ${plugin.is_active ? '비활성화' : '활성화'}
-                            </button>
-                            <button onclick="uninstallPlugin('${plugin.id}')" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-8 px-3">
-                                제거
-                            </button>
-                        </div>
-                    </td>
-                `;
-                
-                tbody.appendChild(row);
+            projects.forEach(project => {
+                const card = createProjectCard(project);
+                grid.appendChild(card);
             });
         }
 
-        // 플러그인 활성화/비활성화
-        async function togglePlugin(pluginId) {
-            try {
-                const response = await fetch(`/api/backend/plugin/toggle/${pluginId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    loadPlugins(); // 목록 새로고침
-                } else {
-                    alert('플러그인 상태 변경에 실패했습니다.');
-                }
-            } catch (error) {
-                console.error('플러그인 토글 실패:', error);
-                alert('플러그인 상태 변경에 실패했습니다.');
+        // 프로젝트 카드 생성
+        function createProjectCard(project) {
+            const card = document.createElement('div');
+            card.className = 'rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow';
+            
+            const statusBadge = getStatusBadge(project.status || 'development');
+            const typeIcon = getTypeIcon(project.type || 'general');
+            const componentCount = project.components ? project.components.length : 0;
+            
+            card.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-2xl">${typeIcon}</div>
+                            <div>
+                                <h4 class="font-semibold text-card-foreground">${project.name}</h4>
+                                <p class="text-sm text-muted-foreground">${project.type || 'general'}</p>
+                            </div>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                    
+                    <p class="text-sm text-muted-foreground mb-4 line-clamp-2">${project.description || '설명이 없습니다.'}</p>
+                    
+                    <div class="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                        <span>컴포넌트: ${componentCount}개</span>
+                        <span>${formatDate(project.created_at)}</span>
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <button onclick="editProject('${project.id}')" class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
+                            <i data-feather="edit" class="w-3 h-3 mr-1"></i>
+                            편집
+                        </button>
+                        <button onclick="duplicateProject('${project.id}')" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
+                            <i data-feather="copy" class="w-3 h-3"></i>
+                        </button>
+                        <button onclick="deleteProject('${project.id}')" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
+                            <i data-feather="trash-2" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // 상태 배지 생성
+        function getStatusBadge(status) {
+            const badges = {
+                development: '<span class="inline-flex items-center rounded-md bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">개발 중</span>',
+                deployed: '<span class="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">배포됨</span>',
+                archived: '<span class="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-900 dark:text-gray-300">보관됨</span>'
+            };
+            return badges[status] || badges.development;
+        }
+
+        // 타입 아이콘 생성
+        function getTypeIcon(type) {
+            const icons = {
+                general: '📦',
+                dashboard: '📊',
+                form: '📝',
+                report: '📋',
+                widget: '🎛️'
+            };
+            return icons[type] || icons.general;
+        }
+
+        // 날짜 포맷
+        function formatDate(dateString) {
+            if (!dateString) return '날짜 없음';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR');
+        }
+
+        // 프로젝트 편집
+        function editProject(projectId) {
+            // 프로젝트 데이터를 세션스토리지에 저장하고 편집 페이지로 이동
+            sessionStorage.setItem('currentProjectId', projectId);
+            window.location.href = '/admin/backend/module-development';
+        }
+
+        // 프로젝트 복제
+        function duplicateProject(projectId) {
+            if (confirm('이 프로젝트를 복제하시겠습니까?')) {
+                // TODO: 프로젝트 복제 로직 구현
+                alert('프로젝트 복제 기능은 준비 중입니다.');
             }
         }
 
-        // 플러그인 제거
-        async function uninstallPlugin(pluginId) {
-            if (!confirm('정말로 이 플러그인을 제거하시겠습니까?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/backend/plugin/uninstall/${pluginId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    loadPlugins(); // 목록 새로고침
-                } else {
-                    alert('플러그인 제거에 실패했습니다.');
-                }
-            } catch (error) {
-                console.error('플러그인 제거 실패:', error);
-                alert('플러그인 제거에 실패했습니다.');
+        // 프로젝트 삭제
+        function deleteProject(projectId) {
+            if (confirm('정말로 이 프로젝트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                // TODO: 프로젝트 삭제 로직 구현
+                alert('프로젝트 삭제 기능은 준비 중입니다.');
             }
         }
 
-        // 페이지 로드 시 플러그인 목록 로드
+        // 페이지 로드 시 프로젝트 목록 로드
         document.addEventListener('DOMContentLoaded', function() {
-            loadPlugins();
+            loadProjects();
         });
     </script>
 
@@ -506,6 +524,13 @@
 
         .disabled\:pointer-events-none:disabled {
             pointer-events: none;
+        }
+
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
     </style>
 </body>

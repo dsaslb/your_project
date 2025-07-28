@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>플러그인 관리 - 백엔드 관리자</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        
+        .cyber-bg {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        
+        .cyber-card {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid #ff6b35;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .cyber-border {
+            border-color: #ff6b35;
+        }
+        
+        .cyber-border-b {
+            border-bottom-color: #ff6b35;
+        }
+        
+        .cyber-orange {
+            color: #ff6b35;
+        }
+        
+        .cyber-orange-glow {
+            color: #ff6b35;
+            text-shadow: 0 0 10px rgba(255, 107, 53, 0.8);
+        }
+        
+        .cyber-green {
+            color: #00ff88;
+        }
+        
+        .cyber-blue {
+            color: #00d4ff;
+        }
+        
+        .cyber-red {
+            color: #ff4757;
+        }
+        
+        .cyber-purple {
+            color: #a855f7;
+        }
+        
+        .cyber-text-dim {
+            color: #888;
+        }
+        
+        .cyber-font {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .cyber-text {
+            font-family: 'Rajdhani', sans-serif;
+        }
+        
+        .cyber-button {
+            background: linear-gradient(45deg, #ff6b35, #ff8c42);
+            border: 1px solid #ff6b35;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .cyber-button:hover {
+            background: linear-gradient(45deg, #ff8c42, #ff6b35);
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .cyber-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .cyber-status.online {
+            background: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+        }
+        
+        .cyber-status.offline {
+            background: #ff4757;
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.6);
+        }
+        
+        .cyber-status.warning {
+            background: #ffa500;
+            box-shadow: 0 0 10px rgba(255, 165, 0, 0.6);
+        }
+        
+        .cyber-scanner {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cyber-scanner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ff6b35, transparent);
+            animation: scan 3s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .cyber-terminal {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff88;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .cyber-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .cyber-scope {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b35, #00ff88, #00d4ff, #ff6b35);
+            border-radius: 2px;
+            margin-bottom: 16px;
+            animation: scope 2s ease-in-out infinite;
+        }
+        
+        @keyframes scope {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="cyber-bg text-white min-h-screen">
+    <div class="flex h-screen">
+        <!-- 사이드바 -->
+        <div class="w-64 cyber-card border-r cyber-border">
+            <div class="p-4">
+                <h1 class="cyber-font text-xl font-bold cyber-orange-glow">백엔드 관리자</h1>
+                <p class="cyber-text-dim text-sm">시스템 운영 관리</p>
+            </div>
+            
+            <nav class="mt-8">
+                <div class="px-4 py-2">
+                    <h3 class="cyber-font text-xs font-semibold cyber-text-dim uppercase tracking-wider">관리자 기능</h3>
+                </div>
+                
+                <a href="/admin/backend" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="monitor" class="w-5 h-5 mr-3"></i>
+                    대시보드
+                </a>
+                
+                <a href="/admin/backend/industry-admin" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                    업종별 관리자 승인/관리
+                </a>
+                
+                <a href="/admin/backend/plugin-marketplace" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="package" class="w-5 h-5 mr-3"></i>
+                    플러그인 마켓플레이스
+                </a>
+                
+                <a href="/admin/backend/plugin-management" class="flex items-center px-4 py-3 cyber-orange-glow cyber-border-orange bg-opacity-20">
+                    <i data-feather="settings" class="w-5 h-5 mr-3"></i>
+                    플러그인 관리/개발
+                </a>
+                
+                <a href="/admin/backend/module-development" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="code" class="w-5 h-5 mr-3"></i>
+                    모듈 개발 시스템
+                </a>
+                
+                <a href="/admin/backend/system-monitoring" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="activity" class="w-5 h-5 mr-3"></i>
+                    시스템/서버 운영/모니터링
+                </a>
+                
+                <a href="/admin/backend/security" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="shield" class="w-5 h-5 mr-3"></i>
+                    보안 관리
+                </a>
+                
+                <a href="/admin/backend/events" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="bell" class="w-5 h-5 mr-3"></i>
+                    실시간 이벤트/알림
+                </a>
+            </nav>
+
+            <!-- 시스템 상태 -->
+            <div class="mt-auto pt-8 cyber-card p-4">
+                <div class="flex items-center mb-2">
+                    <span class="cyber-status online"></span>
+                    <span class="cyber-green font-semibold">시스템 정상</span>
+                </div>
+                <div class="cyber-text-dim text-sm space-y-1">
+                    <div>가동시간: <span class="cyber-green" id="uptime">72:14:33</span></div>
+                    <div>활성 사용자: <span class="cyber-blue" id="active-agents">847명</span></div>
+                    <div>진행 작업: <span class="cyber-orange" id="ongoing-missions">23개</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col">
+            <!-- 헤더 -->
+            <header class="cyber-bg-card cyber-border-b cyber-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="cyber-font text-3xl font-bold cyber-orange-glow">플러그인 관리</h2>
+                        <p class="cyber-text-dim">설치된 플러그인 관리 및 개발</p>
+                    </div>
+                    <div class="flex items-center space-x-6">
+                        <div class="cyber-text-dim">
+                            마지막 업데이트: <span class="cyber-green" id="last-update">2025/06/05 20:00 UTC</span>
+                        </div>
+                        <a href="/admin/backend" class="cyber-button">
+                            <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i>
+                            뒤로가기
+                        </a>
+                        <button class="cyber-button">
+                            <i data-feather="refresh-cw" class="w-4 h-4 mr-2"></i>
+                            새로고침
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="flex-1 p-6 overflow-auto">
+                <!-- 플러그인 통계 -->
+                <div class="cyber-grid mb-8">
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">총 플러그인</h3>
+                        <div class="text-center">
+                            <div class="cyber-font text-4xl font-bold cyber-green" id="total-plugins">156</div>
+                            <div class="cyber-text-dim text-sm mt-2">설치된 플러그인</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">활성 플러그인</h3>
+                        <div class="text-center">
+                            <div class="cyber-font text-4xl font-bold cyber-blue" id="active-plugins">142</div>
+                            <div class="cyber-text-dim text-sm mt-2">정상 작동</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">비활성 플러그인</h3>
+                        <div class="text-center">
+                            <div class="cyber-font text-4xl font-bold cyber-red" id="inactive-plugins">14</div>
+                            <div class="cyber-text-dim text-sm mt-2">중지됨</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cyber-card p-6 cyber-scanner">
+                        <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">오류 플러그인</h3>
+                        <div class="text-center">
+                            <div class="cyber-font text-4xl font-bold cyber-purple" id="error-plugins">3</div>
+                            <div class="cyber-text-dim text-sm mt-2">오류 발생</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 플러그인 목록 -->
+                <div class="cyber-card p-6">
+                    <h3 class="cyber-font text-xl font-bold cyber-orange-glow mb-6">플러그인 목록</h3>
+                    <div class="cyber-scope"></div>
+                    
+                    <div class="space-y-4" id="plugin-list">
+                        <!-- 출근 관리 플러그인 -->
+                        <div class="cyber-card p-4 border cyber-border">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span class="cyber-status online"></span>
+                                    <div>
+                                        <h4 class="cyber-font font-bold cyber-green">출근 관리 플러그인</h4>
+                                        <p class="cyber-text-dim text-sm">직원 출근/퇴근 관리 및 근태 통계</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="cyber-text-dim text-sm">v2.1.4</span>
+                                    <button class="cyber-button text-xs">
+                                        <i data-feather="settings" class="w-3 h-3 mr-1"></i>
+                                        설정
+                                    </button>
+                                    <button class="cyber-button text-xs bg-red-600 hover:bg-red-700">
+                                        <i data-feather="power" class="w-3 h-3 mr-1"></i>
+                                        비활성화
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 재고 관리 플러그인 -->
+                        <div class="cyber-card p-4 border cyber-border">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span class="cyber-status online"></span>
+                                    <div>
+                                        <h4 class="cyber-font font-bold cyber-green">재고 관리 플러그인</h4>
+                                        <p class="cyber-text-dim text-sm">실시간 재고 추적 및 발주 관리</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="cyber-text-dim text-sm">v1.8.2</span>
+                                    <button class="cyber-button text-xs">
+                                        <i data-feather="settings" class="w-3 h-3 mr-1"></i>
+                                        설정
+                                    </button>
+                                    <button class="cyber-button text-xs bg-red-600 hover:bg-red-700">
+                                        <i data-feather="power" class="w-3 h-3 mr-1"></i>
+                                        비활성화
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 매출 분석 플러그인 -->
+                        <div class="cyber-card p-4 border cyber-border">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span class="cyber-status warning"></span>
+                                    <div>
+                                        <h4 class="cyber-font font-bold cyber-orange">매출 분석 플러그인</h4>
+                                        <p class="cyber-text-dim text-sm">매출 데이터 분석 및 리포트 생성</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="cyber-text-dim text-sm">v3.0.1</span>
+                                    <button class="cyber-button text-xs">
+                                        <i data-feather="settings" class="w-3 h-3 mr-1"></i>
+                                        설정
+                                    </button>
+                                    <button class="cyber-button text-xs bg-green-600 hover:bg-green-700">
+                                        <i data-feather="play" class="w-3 h-3 mr-1"></i>
+                                        활성화
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 고객 관리 플러그인 -->
+                        <div class="cyber-card p-4 border cyber-border">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span class="cyber-status offline"></span>
+                                    <div>
+                                        <h4 class="cyber-font font-bold cyber-red">고객 관리 플러그인</h4>
+                                        <p class="cyber-text-dim text-sm">고객 정보 관리 및 마케팅 도구</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="cyber-text-dim text-sm">v2.5.0</span>
+                                    <button class="cyber-button text-xs">
+                                        <i data-feather="settings" class="w-3 h-3 mr-1"></i>
+                                        설정
+                                    </button>
+                                    <button class="cyber-button text-xs bg-green-600 hover:bg-green-700">
+                                        <i data-feather="play" class="w-3 h-3 mr-1"></i>
+                                        활성화
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 플러그인 개발 도구 -->
+                <div class="cyber-card p-6 mt-6">
+                    <h3 class="cyber-font text-xl font-bold cyber-orange-glow mb-6">플러그인 개발 도구</h3>
+                    <div class="cyber-scope"></div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="cyber-card p-4 border cyber-border">
+                            <h4 class="cyber-font font-bold cyber-blue mb-4">새 플러그인 생성</h4>
+                            <div class="space-y-3">
+                                <input type="text" placeholder="플러그인 이름" class="w-full p-2 bg-gray-800 border cyber-border rounded text-white">
+                                <textarea placeholder="플러그인 설명" class="w-full p-2 bg-gray-800 border cyber-border rounded text-white" rows="3"></textarea>
+                                <button class="cyber-button w-full">
+                                    <i data-feather="plus" class="w-4 h-4 mr-2"></i>
+                                    플러그인 생성
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="cyber-card p-4 border cyber-border">
+                            <h4 class="cyber-font font-bold cyber-purple mb-4">플러그인 업로드</h4>
+                            <div class="space-y-3">
+                                <div class="border-2 border-dashed cyber-border p-4 text-center">
+                                    <i data-feather="upload" class="w-8 h-8 mx-auto mb-2 cyber-text-dim"></i>
+                                    <p class="cyber-text-dim">플러그인 파일을 드래그하거나 클릭하여 업로드</p>
+                                </div>
+                                <button class="cyber-button w-full">
+                                    <i data-feather="upload" class="w-4 h-4 mr-2"></i>
+                                    파일 선택
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        // 실시간 데이터 업데이트
+        function updatePluginData() {
+            const now = new Date();
+            const lastUpdate = document.getElementById('last-update');
+            lastUpdate.textContent = now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR') + ' UTC';
+        }
+
+        // 5초마다 업데이트
+        setInterval(updatePluginData, 5000);
+
+        // 초기 업데이트
+        updatePluginData();
+    </script>
+</body>
+</html> 

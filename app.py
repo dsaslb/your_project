@@ -60,6 +60,15 @@ from models_main import (
 # from core.backend.plugin_feedback_system import PluginFeedbackSystem
 # from core.backend.plugin_testing_system import PluginTestingSystem
 
+# 새로운 백엔드 시스템 import
+from api.industry_admin_management import industry_admin_bp
+from api.plugin_marketplace_enhanced import plugin_marketplace_bp
+from api.system_monitoring_enhanced import system_monitoring_bp
+from api.realtime_notifications_enhanced import realtime_notifications_bp
+
+# 백엔드 관리자 Blueprint import
+from routes.backend_admin import backend_admin_bp
+
 # 환경 설정
 config_name = os.getenv("FLASK_ENV", "default")
 
@@ -236,6 +245,15 @@ def register_blueprints():
         # 업종관리자 API
         ("routes.industry_admin", "industry_admin_bp", "industry_admin"),
         
+        # 새로운 백엔드 시스템 API
+        ("api.industry_admin_management", "industry_admin_bp", "industry_admin_management"),
+        ("api.plugin_marketplace_enhanced", "plugin_marketplace_bp", "plugin_marketplace_enhanced"),
+        ("api.system_monitoring_enhanced", "system_monitoring_bp", "system_monitoring_enhanced"),
+        ("api.realtime_notifications_enhanced", "realtime_notifications_bp", "realtime_notifications_enhanced"),
+        
+        # 백엔드 관리자 Blueprint
+        ("routes.backend_admin", "backend_admin_bp", "backend_admin"),
+        
         # 브랜드관리자 API
         ("routes.brand_admin", "brand_admin_bp", "brand_admin"),
         
@@ -258,13 +276,13 @@ def register_blueprints():
 # 블루프린트 등록
 register_blueprints()
 
-# 레스토랑 특화 대시보드 라우트 등록
-try:
-    from routes.restaurant_enhanced_dashboard import restaurant_dashboard
-    restaurant_dashboard.init_app(app)
-    logger.info("레스토랑 특화 대시보드 라우트 등록 완료")
-except Exception as e:
-    logger.error(f"레스토랑 특화 대시보드 라우트 등록 실패: {e}")
+# 레스토랑 특화 대시보드 라우트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.restaurant_enhanced_dashboard import restaurant_dashboard
+#     restaurant_dashboard.init_app(app)
+#     logger.info("레스토랑 특화 대시보드 라우트 등록 완료")
+# except Exception as e:
+#     logger.error(f"레스토랑 특화 대시보드 라우트 등록 실패: {e}")
 
 # 레스토랑 분석 API 등록
 try:
@@ -290,13 +308,13 @@ try:
 except Exception as e:
     logger.error(f"레스토랑 자동화 API 등록 실패: {e}")
 
-# 모바일 레스토랑 대시보드 등록
-try:
-    from routes.mobile_restaurant_dashboard import mobile_restaurant_dashboard
-    mobile_restaurant_dashboard.init_app(app)
-    logger.info("모바일 레스토랑 대시보드 등록 완료")
-except Exception as e:
-    logger.error(f"모바일 레스토랑 대시보드 등록 실패: {e}")
+# 모바일 레스토랑 대시보드 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.mobile_restaurant_dashboard import mobile_restaurant_dashboard
+#     mobile_restaurant_dashboard.init_app(app)
+#     logger.info("모바일 레스토랑 대시보드 등록 완료")
+# except Exception as e:
+#     logger.error(f"모바일 레스토랑 대시보드 등록 실패: {e}")
 
 # 레스토랑 고급 분석 API 등록
 try:
@@ -306,30 +324,30 @@ try:
 except Exception as e:
     logger.error(f"레스토랑 고급 분석 API 등록 실패: {e}")
 
-# 레스토랑 계층적 대시보드 등록
-try:
-    from routes.restaurant_hierarchical_dashboard import restaurant_hierarchical
-    restaurant_hierarchical.init_app(app)
-    logger.info("레스토랑 계층적 대시보드 등록 완료")
-except Exception as e:
-    logger.error(f"레스토랑 계층적 대시보드 등록 실패: {e}")
+# 레스토랑 계층적 대시보드 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.restaurant_hierarchical_dashboard import restaurant_hierarchical
+#     restaurant_hierarchical.init_app(app)
+#     logger.info("레스토랑 계층적 대시보드 등록 완료")
+# except Exception as e:
+#     logger.error(f"레스토랑 계층적 대시보드 등록 실패: {e}")
 
-# 합 대시보드 등록
-try:
-    from routes.comprehensive_dashboard import comprehensive_dashboard_bp
-    app.register_blueprint(comprehensive_dashboard_bp)
-    logger.info("합 대시보드 등록 완료")
-except Exception as e:
-    logger.error(f"합 대시보드 등록 실패: {e}")
+# 합 대시보드 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.comprehensive_dashboard import comprehensive_dashboard_bp
+#     app.register_blueprint(comprehensive_dashboard_bp)
+#     logger.info("합 대시보드 등록 완료")
+# except Exception as e:
+#     logger.error(f"합 대시보드 등록 실패: {e}")
 
-# 레스토랑 업종 관리자 페이지 등록
-try:
-    from routes.restaurant_industry_admin import restaurant_industry_admin
-    app.register_blueprint(restaurant_industry_admin)
-    restaurant_industry_admin.init_app(app)
-    logger.info("레스토랑 업종 관리자 페이지 등록 완료")
-except Exception as e:
-    logger.error(f"레스토랑 업종 관리자 페이지 등록 실패: {e}")
+# 레스토랑 업종 관리자 페이지 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.restaurant_industry_admin import restaurant_industry_admin
+#     app.register_blueprint(restaurant_industry_admin)
+#     restaurant_industry_admin.init_app(app)
+#     logger.info("레스토랑 업종 관리자 페이지 등록 완료")
+# except Exception as e:
+#     logger.error(f"레스토랑 업종 관리자 페이지 등록 실패: {e}")
 
 # 알림 관리 API 블루프린트 등록
 try:
@@ -349,14 +367,13 @@ try:
 except Exception as e:
     logger.error(f"AI 예측 분석 API 블루프린트 등록 실패: {e}")
 
-# 성능 최적화 API 블루프린트 등록
-try:
-    from routes.performance_optimization import performance_bp
-
-    app.register_blueprint(performance_bp, name="performance_optimization")
-    logger.info("성능 최적화 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"성능 최적화 API 블루프린트 등록 실패: {e}")
+# 성능 최적화 API 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.performance_optimization import performance_bp
+#     app.register_blueprint(performance_bp, name="performance_optimization")
+#     logger.info("성능 최적화 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"성능 최적화 API 블루프린트 등록 실패: {e}")
 
 # 통합 대시보드 API 블루프린트 등록
 try:
@@ -386,13 +403,13 @@ except Exception as e:
 #     logger.error(f"실시간 모니터링 API 블루프린트 등록 실패: {e}")
 logger.info("실시간 모니터링 API 블루프린트 비활성화됨")
 
-# 플러그인 마켓플레이스 API 직접 등록
-try:
-    from api.plugin_marketplace import plugin_marketplace_bp
-    app.register_blueprint(plugin_marketplace_bp)
-    logger.info("플러그인 마켓플레이스 API 등록 완료")
-except Exception as e:
-    logger.error(f"플러그인 마켓플레이스 API 등록 실패: {e}")
+# 플러그인 마켓플레이스 API 직접 등록 (비활성화 - 중복 등록 방지)
+# try:
+#     from api.plugin_marketplace import plugin_marketplace_bp
+#     app.register_blueprint(plugin_marketplace_bp)
+#     logger.info("플러그인 마켓플레이스 API 등록 완료")
+# except Exception as e:
+#     logger.error(f"플러그인 마켓플레이스 API 등록 실패: {e}")
 
 # 실시간 알림 API 블루프린트 등록
 try:
@@ -495,7 +512,7 @@ except Exception as e:
 
 # 브랜드 온보딩 라우트 블루프린트 등록
 try:
-    from routes.brand_onboarding_routes import brand_onboarding_routes_bp
+    # from routes.brand_onboarding_routes import brand_onboarding_routes_bp
 
     app.register_blueprint(brand_onboarding_routes_bp, name="brand_onboarding_routes")
     logger.info("브랜드 온보딩 라우트 블루프린트 등록 완료")
@@ -555,7 +572,7 @@ try:
     logger.info("고급 보안 시스템 API 블루프린트 등록 완료")
     
     # 보안 대시보드 Blueprint 등록
-    from routes.security_dashboard import security_dashboard
+    # from routes.security_dashboard import security_dashboard
     app.register_blueprint(security_dashboard, name="security_dashboard")
     logger.info("보안 대시보드 블루프린트 등록 완료")
 except Exception as e:
@@ -588,25 +605,21 @@ try:
 except Exception as e:
     logger.error(f"출퇴근 관리 데모 API 블루프린트 등록 실패: {e}")
 
-# 모듈 마켓플레이스 라우트 블루프린트 등록
-try:
-    from routes.module_marketplace_routes import module_marketplace_routes_bp
+# 모듈 마켓플레이스 라우트 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.module_marketplace_routes import module_marketplace_routes_bp
+#     app.register_blueprint(module_marketplace_routes_bp, name="module_marketplace_routes")
+#     logger.info("모듈 마켓플레이스 라우트 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"모듈 마켓플레이스 라우트 블루프린트 등록 실패: {e}")
 
-    app.register_blueprint(
-        module_marketplace_routes_bp, name="module_marketplace_routes"
-    )
-    logger.info("모듈 마켓플레이스 라우트 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"모듈 마켓플레이스 라우트 블루프린트 등록 실패: {e}")
-
-# 마켓플레이스 데모 API 블루프린트 등록
-try:
-    from routes.marketplace_demo import marketplace_demo_bp
-
-    app.register_blueprint(marketplace_demo_bp, name="marketplace_demo")
-    logger.info("마켓플레이스 데모 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"마켓플레이스 데모 API 블루프린트 등록 실패: {e}")
+# 마켓플레이스 데모 API 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.marketplace_demo import marketplace_demo_bp
+#     app.register_blueprint(marketplace_demo_bp, name="marketplace_demo")
+#     logger.info("마켓플레이스 데모 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"마켓플레이스 데모 API 블루프린트 등록 실패: {e}")
 
 # 출퇴근 관리 API 블루프린트 등록
 try:
@@ -617,14 +630,13 @@ try:
 except Exception as e:
     logger.error(f"출퇴근 관리 API 블루프린트 등록 실패: {e}")
 
-# 모듈 관리 API 블루프린트 등록
-try:
-    from routes.module_management import module_management_bp
-
-    app.register_blueprint(module_management_bp, name="module_management_api")
-    logger.info("모듈 관리 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"모듈 관리 API 블루프린트 등록 실패: {e}")
+# 모듈 관리 API 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.module_management import module_management_bp
+#     app.register_blueprint(module_management_bp, name="module_management_api")
+#     logger.info("모듈 관리 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"모듈 관리 API 블루프린트 등록 실패: {e}")
 
 # 플러그인 마이크로서비스 API 블루프린트 등록
 try:
@@ -654,49 +666,37 @@ try:
 except Exception as e:
     logger.error(f"플러그인 설정 관리 API 블루프린트 등록 실패: {e}")
 
-# 모듈 관리 API 블루프린트 등록
-try:
-    from routes.module_management import module_management_bp
+# 모듈 관리 API 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.module_management import module_management_bp
+#     app.register_blueprint(module_management_bp, name="module_management_api_v2")
+#     logger.info("모듈 관리 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"모듈 관리 API 블루프린트 등록 실패: {e}")
 
-    app.register_blueprint(module_management_bp, name="module_management_api_v2")
-    logger.info("모듈 관리 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"모듈 관리 API 블루프린트 등록 실패: {e}")
+# 관리자 대시보드 API 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.admin_dashboard_api import admin_dashboard_api
+#     app.register_blueprint(admin_dashboard_api, name="admin_dashboard_api")
+#     logger.info("관리자 대시보드 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"관리자 대시보드 API 블루프린트 등록 실패: {e}")
 
-# 관리자 대시보드 API 블루프린트 등록
-try:
-    from routes.admin_dashboard_api import admin_dashboard_api
+# 플러그인 피드백 API 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.plugin_feedback import plugin_feedback_bp
+#     app.register_blueprint(plugin_feedback_bp, url_prefix="/api/plugin-feedback", name="plugin_feedback_api")
+#     logger.info("플러그인 피드백 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"플러그인 피드백 API 블루프린트 등록 실패: {e}")
 
-    app.register_blueprint(admin_dashboard_api, name="admin_dashboard_api")
-    logger.info("관리자 대시보드 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"관리자 대시보드 API 블루프린트 등록 실패: {e}")
-
-# 플러그인 피드백 API 블루프린트 등록
-try:
-    from routes.plugin_feedback import plugin_feedback_bp
-
-    app.register_blueprint(
-        plugin_feedback_bp,
-        url_prefix="/api/plugin-feedback",
-        name="plugin_feedback_api",
-    )
-    logger.info("플러그인 피드백 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"플러그인 피드백 API 블루프린트 등록 실패: {e}")
-
-# 플러그인 커스터마이징 API 블루프린트 등록
-try:
-    from routes.plugin_customization import plugin_customization_bp
-
-    app.register_blueprint(
-        plugin_customization_bp,
-        url_prefix="/api/plugin-customization",
-        name="plugin_customization_api",
-    )
-    logger.info("플러그인 커스터마이징 API 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"플러그인 커스터마이징 API 블루프린트 등록 실패: {e}")
+# 플러그인 커스터마이징 API 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.plugin_customization import plugin_customization_bp
+#     app.register_blueprint(plugin_customization_bp, url_prefix="/api/plugin-customization", name="plugin_customization_api")
+#     logger.info("플러그인 커스터마이징 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"플러그인 커스터마이징 API 블루프린트 등록 실패: {e}")
 
 # 플러그인 설정 관리 API 블루프린트 등록
 try:
@@ -707,7 +707,7 @@ except Exception as e:
 
 # 모듈 마켓플레이스 API 블루프린트 등록
 try:
-    from routes.brand_approval import brand_approval_bp
+    # from routes.brand_approval import brand_approval_bp
 
     app.register_blueprint(brand_approval_bp, name="brand_approval")
     logger.info("브랜드 관리자 승인 라우트 등록 완료")
@@ -715,7 +715,7 @@ except Exception as e:
     logger.error(f"브랜드 관리자 승인 라우트 등록 실패: {e}")
 
 try:
-    from routes.brand_management import brand_management_bp
+    # from routes.brand_management import brand_management_bp
 
     app.register_blueprint(brand_management_bp, name="brand_management_routes")
     logger.info("브랜드별 관리 라우트 등록 완료")
@@ -723,7 +723,7 @@ except Exception as e:
     logger.error(f"브랜드별 관리 라우트 등록 실패: {e}")
 
 try:
-    from routes.store_management import store_management_bp
+    # from routes.store_management import store_management_bp
 
     app.register_blueprint(store_management_bp, name="admin_store_management")
     logger.info("매장별 관리 라우트 등록 완료")
@@ -731,7 +731,7 @@ except Exception as e:
     logger.error(f"매장별 관리 라우트 등록 실패: {e}")
 
 try:
-    from routes.employee_management import employee_management_bp
+    # from routes.employee_management import employee_management_bp
 
     app.register_blueprint(employee_management_bp, name="employee_management")
     logger.info("직원별 관리 라우트 등록 완료")
@@ -748,7 +748,7 @@ except Exception as e:
     logger.error(f"라우터 기능 관리 라우트 등록 실패: {e}")
 
 try:
-    from routes.feedback_management import feedback_management_bp
+    # from routes.feedback_management import feedback_management_bp
 
     app.register_blueprint(feedback_management_bp, name="feedback_management")
     logger.info("피드백 관리 라우트 등록 완료")
@@ -770,16 +770,13 @@ except Exception as e:
     except Exception as e:
         logger.error(f"고도화된 성능 분석 API 블루프린트 등록 실패: {e}")  # noqa
 
-    # 고도화된 AI 예측 API 블루프린트 등록
-    try:
-        from api.advanced_ai_prediction import advanced_ai_prediction_bp
-
-        app.register_blueprint(
-            advanced_ai_prediction_bp, name="advanced_ai_prediction_api"
-        )
-        logger.info("고도화된 AI 예측 API 블루프린트 등록 완료")
-    except Exception as e:
-        logger.error(f"고도화된 AI 예측 API 블루프린트 등록 실패: {e}")  # noqa
+    # 고도화된 AI 예측 API 블루프린트 등록 (비활성화 - 중복 등록 방지)
+    # try:
+    #     from api.advanced_ai_prediction import advanced_ai_prediction_bp
+    #     app.register_blueprint(advanced_ai_prediction_bp, name="advanced_ai_prediction_api")
+    #     logger.info("고도화된 AI 예측 API 블루프린트 등록 완료")
+    # except Exception as e:
+    #     logger.error(f"고도화된 AI 예측 API 블루프린트 등록 실패: {e}")  # noqa
 
     # init_settings_manager(app)는 try 블록 내에서 호출되어야 하며,
     # except 블록이 중복되어 있으면 안 됩니다.
@@ -1378,19 +1375,20 @@ def api_test_system_alert():
 
 @app.route("/admin_dashboard")
 def admin_dashboard_route():
-    return render_template("admin/admin_dashboard.html")
+    """기존 admin_dashboard를 새로운 백엔드 관리자 대시보드로 리다이렉트"""
+    return redirect("/admin/backend")
 
 
 @app.route("/super-admin")
 def super_admin_dashboard():
-    """최고 관리자 대시보드"""
-    return render_template("admin/super_admin_dashboard.html")
+    """최고 관리자 대시보드를 새로운 백엔드 관리자 대시보드로 리다이렉트"""
+    return redirect("/admin/backend")
 
 
 @app.route("/manager-dashboard")
 def manager_dashboard():
-    """매니저 대시보드"""
-    return render_template("admin/manager_dashboard.html")
+    """매니저 대시보드를 새로운 백엔드 관리자 대시보드로 리다이렉트"""
+    return redirect("/admin/backend")
 
 
 @app.route("/employee-dashboard")
@@ -1451,14 +1449,16 @@ def check_auth():
 
 @app.route("/brand-manager-dashboard")
 def brand_manager_dashboard():
-    """브랜드 매니저 대시보드"""
-    return render_template("admin/brand_manager_dashboard.html")
+    """브랜드 매니저 대시보드를 새로운 백엔드 관리자 대시보드로 리다이렉트"""
+    return redirect("/admin/backend")
 
 
 @app.route("/store-manager-dashboard")
 def store_manager_dashboard():
-    """스토어 매니저 대시보드"""
-    return render_template("admin/store_manager_dashboard.html")
+    """스토어 매니저 대시보드를 새로운 백엔드 관리자 대시보드로 리다이렉트"""
+    return redirect("/admin/backend")
+
+# 중복된 shadcn 라우트들 제거됨 - 기존 구조 유지
 
 
 @app.route("/api/admin/dashboard-stats")
@@ -4626,10 +4626,9 @@ def api_modules_performance():
         return jsonify({"error": str(e)}), 500
 
 
-# 플러그인 등록 라우트 등록
-from routes.plugin_registration import plugin_registration_bp
-
-app.register_blueprint(plugin_registration_bp, url_prefix="/api/plugins")
+# 플러그인 등록 라우트 등록 (비활성화 - 파일이 존재하지 않음)
+# from routes.plugin_registration import plugin_registration_bp
+# app.register_blueprint(plugin_registration_bp, url_prefix="/api/plugins")
 
 
 @app.route("/admin/plugin-feedback-dashboard")
@@ -6176,23 +6175,21 @@ try:
 except Exception as e:
     logger.error(f"모듈 개발 모드 API 블루프린트 등록 실패: {e}")
 
-# 모듈 마켓플레이스 라우트 블루프린트 등록
-try:
-    from routes.module_marketplace_routes import module_marketplace_routes_bp
+# 모듈 마켓플레이스 라우트 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.module_marketplace_routes import module_marketplace_routes_bp
+#     app.register_blueprint(module_marketplace_routes_bp)
+#     logger.info("모듈 마켓플레이스 라우트 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"모듈 마켓플레이스 라우트 블루프린트 등록 실패: {e}")
 
-    app.register_blueprint(module_marketplace_routes_bp)
-    logger.info("모듈 마켓플레이스 라우트 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"모듈 마켓플레이스 라우트 블루프린트 등록 실패: {e}")
-
-# 모듈 개발 모드 라우트 블루프린트 등록
-try:
-    from routes.module_development_routes import module_dev_routes_bp
-
-    app.register_blueprint(module_dev_routes_bp)
-    logger.info("모듈 개발 모드 라우트 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"모듈 개발 모드 라우트 블루프린트 등록 실패: {e}")
+# 모듈 개발 모드 라우트 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.module_development_routes import module_dev_routes_bp
+#     app.register_blueprint(module_dev_routes_bp)
+#     logger.info("모듈 개발 모드 라우트 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"모듈 개발 모드 라우트 블루프린트 등록 실패: {e}")
 
 # 통합 연동 API 블루프린트 등록
 try:
@@ -6573,14 +6570,13 @@ try:
 except Exception as e:
     logger.error(f"모듈/플러그인 통합 개발 API 블루프린트 등록 실패: {e}")
 
-# 모듈/플러그인 개발 페이지 라우트 블루프린트 등록
-try:
-    from routes.module_plugin_dev_routes import module_plugin_dev_routes_bp
-
-    app.register_blueprint(module_plugin_dev_routes_bp)
-    logger.info("모듈/플러그인 개발 페이지 라우트 블루프린트 등록 완료")
-except Exception as e:
-    logger.error(f"모듈/플러그인 개발 페이지 라우트 블루프린트 등록 실패: {e}")
+# 모듈/플러그인 개발 페이지 라우트 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.module_plugin_dev_routes import module_plugin_dev_routes_bp
+#     app.register_blueprint(module_plugin_dev_routes_bp)
+#     logger.info("모듈/플러그인 개발 페이지 라우트 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"모듈/플러그인 개발 페이지 라우트 블루프린트 등록 실패: {e}")
 
 # 가계부 모듈 등록
 try:
@@ -6861,9 +6857,8 @@ def api_module_apply_brand(module_id):
 
 # start_auto_admin_alerts()
 
-from routes.module_marketplace import module_marketplace_bp
-
-app.register_blueprint(module_marketplace_bp, url_prefix="/api/module-marketplace")
+# from routes.module_marketplace import module_marketplace_bp
+# app.register_blueprint(module_marketplace_bp, url_prefix="/api/module-marketplace")
 
 
 # [디버그] 실제 등록된 모든 라우트 목록을 출력 (404 원인 분석용)

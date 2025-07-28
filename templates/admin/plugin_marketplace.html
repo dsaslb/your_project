@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>플러그인 마켓플레이스</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="flex items-center justify-between px-6 py-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">플러그인 마켓플레이스</h2>
+                    <p class="text-gray-600">플러그인 검색, 설치, 관리</p>
+                </div>
+                <a href="/admin/backend" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    뒤로가기
+                </a>
+            </div>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="p-6">
+            <!-- 검색 및 필터 -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="p-6 border-b">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex-1 min-w-0">
+                            <input type="text" id="search-input" placeholder="플러그인 이름, 설명으로 검색..." 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <select id="category-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">전체 카테고리</option>
+                            <option value="attendance">출근 관리</option>
+                            <option value="inventory">재고 관리</option>
+                            <option value="schedule">스케줄 관리</option>
+                            <option value="analytics">분석</option>
+                            <option value="integration">통합</option>
+                        </select>
+                        <select id="status-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">전체 상태</option>
+                            <option value="available">사용 가능</option>
+                            <option value="installed">설치됨</option>
+                            <option value="updating">업데이트 중</option>
+                        </select>
+                        <button id="refresh-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            새로고침
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 플러그인 그리드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="plugins-grid">
+                <!-- 플러그인 카드들이 여기에 동적으로 로드됩니다 -->
+            </div>
+
+            <!-- 페이지네이션 -->
+            <div class="mt-8 flex justify-center">
+                <div class="flex space-x-2" id="pagination">
+                    <!-- 페이지네이션이 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 플러그인 상세 모달 -->
+    <div id="plugin-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+                <div class="px-6 py-4 border-b flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-900" id="modal-title">플러그인 상세정보</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i data-feather="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="px-6 py-4" id="modal-content">
+                    <!-- 플러그인 상세 정보가 여기에 표시됩니다 -->
+                </div>
+                <div class="px-6 py-4 border-t flex justify-end space-x-3" id="modal-actions">
+                    <!-- 액션 버튼들이 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        let currentPage = 1;
+        let currentPlugin = null;
+
+        // 페이지 로드 시 데이터 가져오기
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPlugins();
+        });
+
+        // 검색 및 필터 이벤트
+        document.getElementById('search-input').addEventListener('input', debounce(loadPlugins, 300));
+        document.getElementById('category-filter').addEventListener('change', loadPlugins);
+        document.getElementById('status-filter').addEventListener('change', loadPlugins);
+        document.getElementById('refresh-btn').addEventListener('click', loadPlugins);
+
+        // 플러그인 목록 로드
+        function loadPlugins() {
+            const search = document.getElementById('search-input').value;
+            const category = document.getElementById('category-filter').value;
+            const status = document.getElementById('status-filter').value;
+            
+            fetch(`/api/plugin/market?page=${currentPage}&search=${search}&category=${category}&status=${status}`)
+                .then(response => response.json())
+                .then(data => {
+                    renderPluginsGrid(data.plugins);
+                    renderPagination(data.total, data.pages, data.current_page);
+                })
+                .catch(error => {
+                    console.error('Error loading plugins:', error);
+                });
+        }
+
+        // 플러그인 그리드 렌더링
+        function renderPluginsGrid(plugins) {
+            const grid = document.getElementById('plugins-grid');
+            grid.innerHTML = '';
+
+            plugins.forEach(plugin => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow hover:shadow-lg transition-shadow';
+                
+                const statusClass = getStatusClass(plugin.status);
+                const statusText = getStatusText(plugin.status);
+                
+                card.innerHTML = `
+                    <div class="p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                                    <i data-feather="package" class="w-6 h-6 text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">${plugin.name}</h3>
+                                    <p class="text-sm text-gray-500">v${plugin.version}</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
+                                ${statusText}
+                            </span>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-4">${plugin.description || '설명이 없습니다.'}</p>
+                        
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-4">
+                            <span>${plugin.author || 'Unknown'}</span>
+                            <span>${formatDate(plugin.created_at)}</span>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${plugin.tags ? plugin.tags.map(tag => `<span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">${tag}</span>`).join('') : ''}
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button onclick="showPluginDetail('${plugin.id}')" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                상세보기
+                            </button>
+                            ${plugin.status === 'available' ? `
+                                <button onclick="installPlugin('${plugin.id}')" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm">
+                                    설치
+                                </button>
+                            ` : ''}
+                            ${plugin.status === 'installed' ? `
+                                <button onclick="uninstallPlugin('${plugin.id}')" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm">
+                                    제거
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+            
+            // Feather 아이콘 다시 초기화
+            feather.replace();
+        }
+
+        // 상태별 스타일 클래스
+        function getStatusClass(status) {
+            switch(status) {
+                case 'available': return 'bg-green-100 text-green-800';
+                case 'installed': return 'bg-blue-100 text-blue-800';
+                case 'updating': return 'bg-yellow-100 text-yellow-800';
+                case 'error': return 'bg-red-100 text-red-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // 상태별 텍스트
+        function getStatusText(status) {
+            switch(status) {
+                case 'available': return '사용 가능';
+                case 'installed': return '설치됨';
+                case 'updating': return '업데이트 중';
+                case 'error': return '오류';
+                default: return '알 수 없음';
+            }
+        }
+
+        // 플러그인 상세 정보 표시
+        function showPluginDetail(pluginId) {
+            fetch(`/api/plugin/market/${pluginId}`)
+                .then(response => response.json())
+                .then(plugin => {
+                    currentPlugin = plugin;
+                    
+                    document.getElementById('modal-title').textContent = plugin.name;
+                    document.getElementById('modal-content').innerHTML = `
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="font-semibold text-gray-900">설명</h4>
+                                <p class="text-gray-600">${plugin.description || '설명이 없습니다.'}</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">버전</h4>
+                                    <p class="text-gray-600">${plugin.version}</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">작성자</h4>
+                                    <p class="text-gray-600">${plugin.author || 'Unknown'}</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">카테고리</h4>
+                                    <p class="text-gray-600">${plugin.category || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">등록일</h4>
+                                    <p class="text-gray-600">${formatDate(plugin.created_at)}</p>
+                                </div>
+                            </div>
+                            
+                            ${plugin.requirements ? `
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">요구사항</h4>
+                                    <p class="text-gray-600">${plugin.requirements}</p>
+                                </div>
+                            ` : ''}
+                            
+                            ${plugin.changelog ? `
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">변경사항</h4>
+                                    <div class="text-gray-600 text-sm">${plugin.changelog}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    // 액션 버튼 설정
+                    const actions = document.getElementById('modal-actions');
+                    actions.innerHTML = `
+                        <button onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                            닫기
+                        </button>
+                        ${plugin.status === 'available' ? `
+                            <button onclick="installPlugin('${plugin.id}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                설치
+                            </button>
+                        ` : ''}
+                        ${plugin.status === 'installed' ? `
+                            <button onclick="uninstallPlugin('${plugin.id}')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                제거
+                            </button>
+                        ` : ''}
+                    `;
+                    
+                    showModal();
+                })
+                .catch(error => {
+                    console.error('Error loading plugin details:', error);
+                    alert('플러그인 정보를 불러오는데 실패했습니다.');
+                });
+        }
+
+        // 플러그인 설치
+        function installPlugin(pluginId) {
+            if (!confirm('이 플러그인을 설치하시겠습니까?')) return;
+            
+            fetch(`/api/backend/plugin/install/${pluginId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    closeModal();
+                    loadPlugins();
+                } else {
+                    alert('오류가 발생했습니다: ' + result.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('오류가 발생했습니다.');
+            });
+        }
+
+        // 플러그인 제거
+        function uninstallPlugin(pluginId) {
+            if (!confirm('이 플러그인을 제거하시겠습니까?')) return;
+            
+            fetch(`/api/backend/plugin/uninstall/${pluginId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    closeModal();
+                    loadPlugins();
+                } else {
+                    alert('오류가 발생했습니다: ' + result.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('오류가 발생했습니다.');
+            });
+        }
+
+        // 모달 표시
+        function showModal() {
+            document.getElementById('plugin-modal').classList.remove('hidden');
+        }
+
+        // 모달 닫기
+        function closeModal() {
+            document.getElementById('plugin-modal').classList.add('hidden');
+            currentPlugin = null;
+        }
+
+        // 페이지네이션 렌더링
+        function renderPagination(total, pages, current) {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            
+            if (pages <= 1) return;
+            
+            // 이전 페이지
+            if (current > 1) {
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'px-3 py-2 text-sm text-gray-500 hover:text-gray-700';
+                prevBtn.textContent = '이전';
+                prevBtn.onclick = () => {
+                    currentPage = current - 1;
+                    loadPlugins();
+                };
+                pagination.appendChild(prevBtn);
+            }
+            
+            // 페이지 번호
+            for (let i = 1; i <= pages; i++) {
+                if (i === current) {
+                    const currentBtn = document.createElement('button');
+                    currentBtn.className = 'px-3 py-2 text-sm bg-blue-600 text-white rounded-lg';
+                    currentBtn.textContent = i;
+                    pagination.appendChild(currentBtn);
+                } else {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = 'px-3 py-2 text-sm text-gray-500 hover:text-gray-700';
+                    pageBtn.textContent = i;
+                    pageBtn.onclick = () => {
+                        currentPage = i;
+                        loadPlugins();
+                    };
+                    pagination.appendChild(pageBtn);
+                }
+            }
+            
+            // 다음 페이지
+            if (current < pages) {
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'px-3 py-2 text-sm text-gray-500 hover:text-gray-700';
+                nextBtn.textContent = '다음';
+                nextBtn.onclick = () => {
+                    currentPage = current + 1;
+                    loadPlugins();
+                };
+                pagination.appendChild(nextBtn);
+            }
+        }
+
+        // 날짜 포맷팅
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR');
+        }
+
+        // 디바운스 함수
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+</html> 

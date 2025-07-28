@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>백엔드 관리자 대시보드 - Shadcn</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="bg-background">
+    <!-- 사이드바 -->
+    <div class="flex h-screen">
+        <div class="w-64 bg-card border-r border-border">
+            <div class="p-4">
+                <h1 class="text-xl font-bold text-card-foreground">백엔드 관리자</h1>
+                <p class="text-muted-foreground text-sm">시스템 운영 관리</p>
+            </div>
+            
+            <nav class="mt-8">
+                <div class="px-4 py-2">
+                    <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">관리자 기능</h3>
+                </div>
+                
+                <a href="#dashboard" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="home" class="w-5 h-5 mr-3"></i>
+                    대시보드
+                </a>
+                
+                <a href="#industry-admin" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                    업종별 관리자 승인/관리
+                </a>
+                
+                <a href="#plugin-marketplace" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="package" class="w-5 h-5 mr-3"></i>
+                    플러그인 마켓플레이스
+                </a>
+                
+                <a href="#plugin-management" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="settings" class="w-5 h-5 mr-3"></i>
+                    플러그인 관리/개발
+                </a>
+                
+                <a href="#module-development" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="code" class="w-5 h-5 mr-3"></i>
+                    모듈 개발 시스템
+                </a>
+                
+                <a href="#system-monitoring" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="activity" class="w-5 h-5 mr-3"></i>
+                    시스템/서버 운영/모니터링
+                </a>
+                
+                <a href="#security" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="shield" class="w-5 h-5 mr-3"></i>
+                    보안 관리
+                </a>
+                
+                <a href="#events" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="bell" class="w-5 h-5 mr-3"></i>
+                    실시간 이벤트/알림
+                </a>
+                
+                <a href="#docs" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="file-text" class="w-5 h-5 mr-3"></i>
+                    API/DB 문서
+                </a>
+            </nav>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 overflow-auto">
+            <!-- 헤더 -->
+            <header class="bg-card border-b border-border shadow-sm">
+                <div class="flex items-center justify-between px-6 py-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-card-foreground">백엔드 관리자 대시보드</h2>
+                        <p class="text-muted-foreground">시스템 운영 및 관리</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-sm text-muted-foreground">시스템 정상</span>
+                        </div>
+                        <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                            로그아웃
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 대시보드 콘텐츠 -->
+            <main class="p-6">
+                <!-- 시스템 상태 카드 -->
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+                    <div class="rounded-xl border bg-card text-card-foreground shadow">
+                        <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                            <h3 class="tracking-tight text-sm font-medium">업종별 관리자</h3>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="h-4 w-4 text-muted-foreground"
+                            >
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="m22 21-2-2" />
+                                <path d="M16 16h6" />
+                            </svg>
+                        </div>
+                        <div class="p-6 pt-0">
+                            <div class="text-2xl font-bold" id="industry-admin-count">0</div>
+                            <p class="text-xs text-muted-foreground">승인 대기: <span id="pending-admin-count">0</span></p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border bg-card text-card-foreground shadow">
+                        <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                            <h3 class="tracking-tight text-sm font-medium">설치된 플러그인</h3>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="h-4 w-4 text-muted-foreground"
+                            >
+                                <rect width="20" height="14" x="2" y="5" rx="2" />
+                                <path d="M2 10h20" />
+                            </svg>
+                        </div>
+                        <div class="p-6 pt-0">
+                            <div class="text-2xl font-bold" id="installed-plugin-count">0</div>
+                            <p class="text-xs text-muted-foreground">활성: <span id="active-plugin-count">0</span></p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border bg-card text-card-foreground shadow">
+                        <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                            <h3 class="tracking-tight text-sm font-medium">시스템 로그</h3>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="h-4 w-4 text-muted-foreground"
+                            >
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                <polyline points="14,2 14,8 20,8" />
+                                <line x1="16" x2="8" y1="13" y2="13" />
+                                <line x1="16" x2="8" y1="17" y2="17" />
+                                <polyline points="10,9 9,9 8,9" />
+                            </svg>
+                        </div>
+                        <div class="p-6 pt-0">
+                            <div class="text-2xl font-bold" id="system-log-count">0</div>
+                            <p class="text-xs text-muted-foreground">오늘: <span id="today-log-count">0</span></p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border bg-card text-card-foreground shadow">
+                        <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                            <h3 class="tracking-tight text-sm font-medium">보안 알림</h3>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="h-4 w-4 text-muted-foreground"
+                            >
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            </svg>
+                        </div>
+                        <div class="p-6 pt-0">
+                            <div class="text-2xl font-bold text-red-600" id="security-alert-count">0</div>
+                            <p class="text-xs text-muted-foreground">심각: <span id="critical-alert-count">0</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 차트 및 테이블 섹션 -->
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                    <!-- 시스템 성능 차트 -->
+                    <div class="col-span-4 rounded-xl border bg-card text-card-foreground shadow">
+                        <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                            <h3 class="tracking-tight text-sm font-medium">시스템 성능</h3>
+                        </div>
+                        <div class="p-6 pt-0">
+                            <canvas id="performanceChart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 최근 이벤트 -->
+                    <div class="col-span-3 rounded-xl border bg-card text-card-foreground shadow">
+                        <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                            <h3 class="tracking-tight text-sm font-medium">최근 이벤트</h3>
+                        </div>
+                        <div class="p-6 pt-0">
+                            <div class="space-y-4" id="recent-events">
+                                <!-- 이벤트 항목들이 여기에 동적으로 추가됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 빠른 액션 버튼 -->
+                <div class="mt-8">
+                    <h3 class="text-lg font-semibold mb-4">빠른 액션</h3>
+                    <div class="flex flex-wrap gap-4">
+                        <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                            <i data-feather="users" class="w-4 h-4 mr-2"></i>
+                            관리자 승인
+                        </button>
+                        <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                            <i data-feather="package" class="w-4 h-4 mr-2"></i>
+                            플러그인 설치
+                        </button>
+                        <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                            <i data-feather="activity" class="w-4 h-4 mr-2"></i>
+                            시스템 모니터링
+                        </button>
+                        <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                            <i data-feather="shield" class="w-4 h-4 mr-2"></i>
+                            보안 설정
+                        </button>
+                        <button onclick="window.location.href='/admin/backend/module-development'" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white shadow hover:bg-green-700 h-9 px-4 py-2">
+                            <i data-feather="code" class="w-4 h-4 mr-2"></i>
+                            모듈 개발
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        // 차트 초기화
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        const performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                datasets: [{
+                    label: 'CPU 사용률',
+                    data: [45, 52, 38, 65, 58, 42],
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: '메모리 사용률',
+                    data: [62, 58, 65, 72, 68, 61],
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+
+        // 대시보드 통계 로드
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch('/api/backend/dashboard/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('industry-admin-count').textContent = data.stats.industry_admins || 0;
+                    document.getElementById('pending-admin-count').textContent = data.stats.pending_admins || 0;
+                    document.getElementById('installed-plugin-count').textContent = data.stats.installed_plugins || 0;
+                    document.getElementById('active-plugin-count').textContent = data.stats.active_plugins || 0;
+                    document.getElementById('system-log-count').textContent = data.stats.total_logs || 0;
+                    document.getElementById('today-log-count').textContent = data.stats.today_logs || 0;
+                    document.getElementById('security-alert-count').textContent = data.stats.security_alerts || 0;
+                    document.getElementById('critical-alert-count').textContent = data.stats.critical_alerts || 0;
+                }
+            } catch (error) {
+                console.error('대시보드 통계 로드 실패:', error);
+            }
+        }
+
+        // 최근 이벤트 로드
+        async function loadRecentEvents() {
+            try {
+                const response = await fetch('/api/backend/events/recent');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const eventsContainer = document.getElementById('recent-events');
+                    eventsContainer.innerHTML = '';
+                    
+                    data.events.slice(0, 5).forEach(event => {
+                        const eventElement = document.createElement('div');
+                        eventElement.className = 'flex items-center space-x-3';
+                        eventElement.innerHTML = `
+                            <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium">${event.action}</p>
+                                <p class="text-xs text-muted-foreground">${event.timestamp}</p>
+                            </div>
+                        `;
+                        eventsContainer.appendChild(eventElement);
+                    });
+                }
+            } catch (error) {
+                console.error('최근 이벤트 로드 실패:', error);
+            }
+        }
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardStats();
+            loadRecentEvents();
+            
+            // 30초마다 데이터 새로고침
+            setInterval(() => {
+                loadDashboardStats();
+                loadRecentEvents();
+            }, 30000);
+        });
+    </script>
+
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 222.2 47.4% 11.2%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96%;
+            --secondary-foreground: 222.2 84% 4.9%;
+            --muted: 210 40% 96%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96%;
+            --accent-foreground: 222.2 84% 4.9%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 222.2 84% 4.9%;
+            --radius: 0.5rem;
+        }
+
+        .dark {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 210 40% 98%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 212.7 26.8% 83.9%;
+        }
+
+        * {
+            border-color: hsl(var(--border));
+        }
+
+        body {
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+
+        .bg-background {
+            background-color: hsl(var(--background));
+        }
+
+        .bg-card {
+            background-color: hsl(var(--card));
+        }
+
+        .text-card-foreground {
+            color: hsl(var(--card-foreground));
+        }
+
+        .text-foreground {
+            color: hsl(var(--foreground));
+        }
+
+        .text-muted-foreground {
+            color: hsl(var(--muted-foreground));
+        }
+
+        .border {
+            border-color: hsl(var(--border));
+        }
+
+        .border-input {
+            border-color: hsl(var(--input));
+        }
+
+        .bg-accent {
+            background-color: hsl(var(--accent));
+        }
+
+        .text-accent-foreground {
+            color: hsl(var(--accent-foreground));
+        }
+
+        .bg-primary {
+            background-color: hsl(var(--primary));
+        }
+
+        .text-primary-foreground {
+            color: hsl(var(--primary-foreground));
+        }
+
+        .hover\:bg-accent:hover {
+            background-color: hsl(var(--accent));
+        }
+
+        .hover\:text-accent-foreground:hover {
+            color: hsl(var(--accent-foreground));
+        }
+
+        .hover\:bg-primary\/90:hover {
+            background-color: hsl(var(--primary) / 0.9);
+        }
+
+        .focus-visible\:ring-ring:focus-visible {
+            --tw-ring-color: hsl(var(--ring));
+        }
+
+        .disabled\:opacity-50:disabled {
+            opacity: 0.5;
+        }
+
+        .disabled\:cursor-not-allowed:disabled {
+            cursor: not-allowed;
+        }
+
+        .disabled\:pointer-events-none:disabled {
+            pointer-events: none;
+        }
+    </style>
+</body>
+</html> 

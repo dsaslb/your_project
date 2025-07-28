@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from models_main import PluginAccessControl
-import db
+from extensions import db
 
 args = None  # pyright: ignore
 config = None  # pyright: ignore

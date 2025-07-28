@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API/DB 문서</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="flex items-center justify-between px-6 py-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">API/DB 문서</h2>
+                    <p class="text-gray-600">API 문서, 데이터베이스 스키마, 운영 정책</p>
+                </div>
+                <a href="/admin/backend" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    뒤로가기
+                </a>
+            </div>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="p-6">
+            <!-- 문서 카테고리 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow" onclick="showDocumentSection('api')">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <i data-feather="code" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">API 문서</p>
+                            <p class="text-2xl font-bold text-gray-900">24</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow" onclick="showDocumentSection('database')">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-100 rounded-full">
+                            <i data-feather="database" class="w-6 h-6 text-green-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">데이터베이스</p>
+                            <p class="text-2xl font-bold text-gray-900">18</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow" onclick="showDocumentSection('policy')">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-yellow-100 rounded-full">
+                            <i data-feather="file-text" class="w-6 h-6 text-yellow-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">운영 정책</p>
+                            <p class="text-2xl font-bold text-gray-900">12</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow" onclick="showDocumentSection('deployment')">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-purple-100 rounded-full">
+                            <i data-feather="settings" class="w-6 h-6 text-purple-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">배포 가이드</p>
+                            <p class="text-2xl font-bold text-gray-900">8</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 문서 섹션 -->
+            <div class="bg-white rounded-lg shadow">
+                <!-- 섹션 탭 -->
+                <div class="border-b">
+                    <nav class="flex space-x-8 px-6">
+                        <button id="tab-api" class="py-4 px-1 border-b-2 border-blue-500 text-blue-600 font-medium text-sm">
+                            API 문서
+                        </button>
+                        <button id="tab-database" class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                            데이터베이스
+                        </button>
+                        <button id="tab-policy" class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                            운영 정책
+                        </button>
+                        <button id="tab-deployment" class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                            배포 가이드
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- 섹션 콘텐츠 -->
+                <div class="p-6">
+                    <!-- API 문서 섹션 -->
+                    <div id="api-content" class="document-section">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">API 문서</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                                    <h4 class="font-medium text-gray-900 mb-2">업종별 관리자 API</h4>
+                                    <p class="text-sm text-gray-600 mb-3">업종별 관리자 등록, 승인, 관리 API</p>
+                                    <div class="flex space-x-2">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">GET</span>
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">POST</span>
+                                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">PUT</span>
+                                    </div>
+                                </div>
+                                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                                    <h4 class="font-medium text-gray-900 mb-2">플러그인 마켓플레이스 API</h4>
+                                    <p class="text-sm text-gray-600 mb-3">플러그인 검색, 설치, 관리 API</p>
+                                    <div class="flex space-x-2">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">GET</span>
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">POST</span>
+                                        <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">DELETE</span>
+                                    </div>
+                                </div>
+                                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                                    <h4 class="font-medium text-gray-900 mb-2">시스템 모니터링 API</h4>
+                                    <p class="text-sm text-gray-600 mb-3">시스템 상태, 리소스 모니터링 API</p>
+                                    <div class="flex space-x-2">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">GET</span>
+                                    </div>
+                                </div>
+                                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                                    <h4 class="font-medium text-gray-900 mb-2">보안 관리 API</h4>
+                                    <p class="text-sm text-gray-600 mb-3">보안 로그, 정책 관리 API</p>
+                                    <div class="flex space-x-2">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">GET</span>
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">POST</span>
+                                    </div>
+                                </div>
+                                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                                    <h4 class="font-medium text-gray-900 mb-2">이벤트 알림 API</h4>
+                                    <p class="text-sm text-gray-600 mb-3">실시간 이벤트, 알림 관리 API</p>
+                                    <div class="flex space-x-2">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">GET</span>
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">POST</span>
+                                    </div>
+                                </div>
+                                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                                    <h4 class="font-medium text-gray-900 mb-2">백엔드 관리 API</h4>
+                                    <p class="text-sm text-gray-600 mb-3">백엔드 관리자 전용 API</p>
+                                    <div class="flex space-x-2">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">GET</span>
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">POST</span>
+                                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">PUT</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 데이터베이스 섹션 -->
+                    <div id="database-content" class="document-section hidden">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">데이터베이스 스키마</h3>
+                            <div class="space-y-6">
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">핵심 테이블</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">IndustryAdmin</h5>
+                                            <p class="text-sm text-gray-600 mb-2">업종별 관리자 정보</p>
+                                            <div class="text-xs text-gray-500 space-y-1">
+                                                <div>• id (Primary Key)</div>
+                                                <div>• full_name (VARCHAR)</div>
+                                                <div>• contact_email (VARCHAR)</div>
+                                                <div>• industry_name (VARCHAR)</div>
+                                                <div>• status (ENUM)</div>
+                                                <div>• created_at (TIMESTAMP)</div>
+                                            </div>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">Module</h5>
+                                            <p class="text-sm text-gray-600 mb-2">플러그인/모듈 정보</p>
+                                            <div class="text-xs text-gray-500 space-y-1">
+                                                <div>• id (Primary Key)</div>
+                                                <div>• name (VARCHAR)</div>
+                                                <div>• version (VARCHAR)</div>
+                                                <div>• description (TEXT)</div>
+                                                <div>• is_active (BOOLEAN)</div>
+                                                <div>• created_at (TIMESTAMP)</div>
+                                            </div>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">SystemLog</h5>
+                                            <p class="text-sm text-gray-600 mb-2">시스템 로그</p>
+                                            <div class="text-xs text-gray-500 space-y-1">
+                                                <div>• id (Primary Key)</div>
+                                                <div>• level (ENUM)</div>
+                                                <div>• message (TEXT)</div>
+                                                <div>• source (VARCHAR)</div>
+                                                <div>• timestamp (TIMESTAMP)</div>
+                                            </div>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">Notification</h5>
+                                            <p class="text-sm text-gray-600 mb-2">알림 정보</p>
+                                            <div class="text-xs text-gray-500 space-y-1">
+                                                <div>• id (Primary Key)</div>
+                                                <div>• title (VARCHAR)</div>
+                                                <div>• content (TEXT)</div>
+                                                <div>• is_urgent (BOOLEAN)</div>
+                                                <div>• created_at (TIMESTAMP)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">관계도</h4>
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <p class="text-sm text-gray-600">
+                                            IndustryAdmin → Module (관리자가 플러그인 관리)<br>
+                                            SystemLog ← 모든 테이블 (시스템 활동 로깅)<br>
+                                            Notification → User (알림 전송)
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 운영 정책 섹션 -->
+                    <div id="policy-content" class="document-section hidden">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">운영 정책</h3>
+                            <div class="space-y-6">
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">보안 정책</h4>
+                                    <div class="space-y-4">
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">접근 제어</h5>
+                                            <ul class="text-sm text-gray-600 space-y-1">
+                                                <li>• 관리자 계정은 2단계 인증 필수</li>
+                                                <li>• IP 화이트리스트 기반 접근 제한</li>
+                                                <li>• 세션 타임아웃: 60분</li>
+                                                <li>• 로그인 시도 제한: 5회</li>
+                                            </ul>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">데이터 보호</h5>
+                                            <ul class="text-sm text-gray-600 space-y-1">
+                                                <li>• 민감한 데이터 암호화 저장</li>
+                                                <li>• 데이터 접근 감사 로그 필수</li>
+                                                <li>• 백업 데이터 암호화</li>
+                                                <li>• 정기적인 보안 점검</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">플러그인 정책</h4>
+                                    <div class="border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-medium text-gray-900 mb-2">샌드박스 실행</h5>
+                                        <ul class="text-sm text-gray-600 space-y-1">
+                                            <li>• 모든 플러그인은 샌드박스 환경에서 실행</li>
+                                            <li>• 메모리 사용량 제한: 512MB</li>
+                                            <li>• 파일 시스템 접근 제한</li>
+                                            <li>• 네트워크 접근 제한</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">모니터링 정책</h4>
+                                    <div class="border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-medium text-gray-900 mb-2">시스템 모니터링</h5>
+                                        <ul class="text-sm text-gray-600 space-y-1">
+                                            <li>• CPU 사용률 80% 초과 시 경고</li>
+                                            <li>• 메모리 사용률 85% 초과 시 경고</li>
+                                            <li>• 디스크 사용률 90% 초과 시 경고</li>
+                                            <li>• 응답 시간 5초 초과 시 경고</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 배포 가이드 섹션 -->
+                    <div id="deployment-content" class="document-section hidden">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">배포 가이드</h3>
+                            <div class="space-y-6">
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">환경 요구사항</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">서버 요구사항</h5>
+                                            <ul class="text-sm text-gray-600 space-y-1">
+                                                <li>• CPU: 4코어 이상</li>
+                                                <li>• RAM: 8GB 이상</li>
+                                                <li>• Storage: 100GB 이상</li>
+                                                <li>• OS: Ubuntu 20.04+</li>
+                                            </ul>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">소프트웨어 요구사항</h5>
+                                            <ul class="text-sm text-gray-600 space-y-1">
+                                                <li>• Python 3.8+</li>
+                                                <li>• PostgreSQL 12+</li>
+                                                <li>• Redis 6+</li>
+                                                <li>• Nginx</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">배포 단계</h4>
+                                    <div class="space-y-4">
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">1. 환경 설정</h5>
+                                            <div class="text-sm text-gray-600 space-y-1">
+                                                <div>• 가상환경 생성 및 활성화</div>
+                                                <div>• 의존성 패키지 설치</div>
+                                                <div>• 환경 변수 설정</div>
+                                            </div>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">2. 데이터베이스 설정</h5>
+                                            <div class="text-sm text-gray-600 space-y-1">
+                                                <div>• PostgreSQL 데이터베이스 생성</div>
+                                                <div>• 마이그레이션 실행</div>
+                                                <div>• 초기 데이터 로드</div>
+                                            </div>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">3. 애플리케이션 배포</h5>
+                                            <div class="text-sm text-gray-600 space-y-1">
+                                                <div>• 애플리케이션 코드 배포</div>
+                                                <div>• Gunicorn 설정</div>
+                                                <div>• Nginx 설정</div>
+                                            </div>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h5 class="font-medium text-gray-900 mb-2">4. 모니터링 설정</h5>
+                                            <div class="text-sm text-gray-600 space-y-1">
+                                                <div>• 로그 수집 설정</div>
+                                                <div>• 알림 설정</div>
+                                                <div>• 백업 설정</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        // 탭 전환
+        document.getElementById('tab-api').addEventListener('click', () => switchDocumentTab('api'));
+        document.getElementById('tab-database').addEventListener('click', () => switchDocumentTab('database'));
+        document.getElementById('tab-policy').addEventListener('click', () => switchDocumentTab('policy'));
+        document.getElementById('tab-deployment').addEventListener('click', () => switchDocumentTab('deployment'));
+
+        // 문서 섹션 전환
+        function switchDocumentTab(tabName) {
+            // 모든 문서 섹션 숨기기
+            document.querySelectorAll('.document-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+
+            // 모든 탭 버튼 비활성화
+            document.querySelectorAll('nav button').forEach(button => {
+                button.classList.remove('border-blue-500', 'text-blue-600');
+                button.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            // 선택된 탭 활성화
+            document.getElementById(`${tabName}-content`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById(`tab-${tabName}`).classList.add('border-blue-500', 'text-blue-600');
+        }
+
+        // 문서 섹션 표시
+        function showDocumentSection(section) {
+            switchDocumentTab(section);
+        }
+    </script>
+</body>
+</html> 

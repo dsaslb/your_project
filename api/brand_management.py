@@ -1,4 +1,4 @@
-from models_main import Brand, Industry
+from models_main import Brand, Industry, User, Branch
 from extensions import db, csrf
 from flask_login import login_required, current_user
 from flask import Blueprint, jsonify, request, current_app
@@ -130,23 +130,277 @@ def get_industries():
         if not current_user.has_permission('brand_management', 'view'):
             return jsonify({'error': '권한이 없습니다.'}), 403
 
-        industries = Industry.query.filter_by(is_active=True).all()
+        industries = Industry.query.all()
+
+        # 각 업종별 통계 계산
+        industry_list = []
+        for industry in industries:
+            # 브랜드 수
+            brand_count = Brand.query.filter_by(industry_id=industry.id).count()
+            
+            # 매장 수
+            store_count = db.session.query(Branch).join(Brand).filter(Brand.industry_id == industry.id).count()
+            
+            # 직원 수
+            employee_count = db.session.query(User).join(Branch).join(Brand).filter(Brand.industry_id == industry.id).count()
+            
+            # 매출 (임시로 0으로 설정)
+            total_revenue = 0
+
+            industry_list.append({
+                'id': industry.id,
+                'name': industry.name,
+                'code': industry.code,
+                'description': industry.description or '',
+                'icon': industry.icon or '🏢',
+                'color': industry.color or '#3B82F6',
+                'brand_count': brand_count,
+                'store_count': store_count,
+                'employee_count': employee_count,
+                'total_revenue': total_revenue,
+                'status': 'active' if industry.is_active else 'inactive',
+                'last_activity': industry.updated_at.isoformat() if industry.updated_at else industry.created_at.isoformat()
+            })
 
         return jsonify({
-            'industries': [
-                {
-                    'id': industry.id,
-                    'name': industry.name,
-                    'code': industry.code,
-                    'description': industry.description
-                }
-                for industry in industries
-            ]
+            'industries': industry_list
         })
 
     except Exception as e:
         logger.error(f"업종 목록 조회 실패: {e}")
         return jsonify({'error': '업종 목록 조회에 실패했습니다.'}), 500
+
+
+@brand_management_bp.route('/api/admin/industries', methods=['POST'])
+@login_required
+def create_industry():
+    """업종 생성"""
+    try:
+        # 권한 확인
+        if not current_user.has_permission('brand_management', 'create'):
+            return jsonify({'error': '권한이 없습니다.'}), 403
+
+        data = request.get_json()
+
+        # 필수 필드 검증
+        required_fields = ['name', 'code']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'{field} 필드는 필수입니다.'}), 400
+
+        # 업종 코드 중복 확인
+        existing_industry = Industry.query.filter_by(code=data['code']).first()
+        if existing_industry:
+            return jsonify({'error': '이미 존재하는 업종 코드입니다.'}), 400
+
+        # 업종 생성
+        new_industry = Industry(
+            name=data['name'],
+            code=data['code'],
+            description=data.get('description', ''),
+            icon=data.get('icon', '🏢'),
+            color=data.get('color', '#3B82F6'),
+            is_active=data.get('status', 'active') == 'active'
+        )
+        
+        db.session.add(new_industry)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '업종이 생성되었습니다.',
+            'industry': {
+                'id': new_industry.id,
+                'name': new_industry.name,
+                'code': new_industry.code,
+                'description': new_industry.description,
+                'icon': new_industry.icon,
+                'color': new_industry.color,
+                'status': 'active' if new_industry.is_active else 'inactive'
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"업종 생성 실패: {e}")
+        return jsonify({'error': '업종 생성에 실패했습니다.'}), 500
+
+
+@brand_management_bp.route('/api/admin/industries/<int:industry_id>', methods=['PUT'])
+@login_required
+def update_industry(industry_id):
+    """업종 수정"""
+    try:
+        # 권한 확인
+        if not current_user.has_permission('brand_management', 'update'):
+            return jsonify({'error': '권한이 없습니다.'}), 403
+
+        industry = Industry.query.get_or_404(industry_id)
+        data = request.get_json()
+
+        # 업종 코드 중복 확인 (자신 제외)
+        if data.get('code') and data['code'] != industry.code:
+            existing_industry = Industry.query.filter_by(code=data['code']).first()
+            if existing_industry:
+                return jsonify({'error': '이미 존재하는 업종 코드입니다.'}), 400
+
+        # 업종 정보 업데이트
+        if data.get('name'):
+            industry.name = data['name']
+        if data.get('code'):
+            industry.code = data['code']
+        if data.get('description') is not None:
+            industry.description = data['description']
+        if data.get('icon'):
+            industry.icon = data['icon']
+        if data.get('color'):
+            industry.color = data['color']
+        if data.get('status'):
+            industry.is_active = data['status'] == 'active'
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '업종이 수정되었습니다.',
+            'industry': {
+                'id': industry.id,
+                'name': industry.name,
+                'code': industry.code,
+                'description': industry.description,
+                'icon': industry.icon,
+                'color': industry.color,
+                'status': 'active' if industry.is_active else 'inactive'
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"업종 수정 실패: {e}")
+        return jsonify({'error': '업종 수정에 실패했습니다.'}), 500
+
+
+@brand_management_bp.route('/api/admin/industries/<int:industry_id>', methods=['DELETE'])
+@login_required
+def delete_industry(industry_id):
+    """업종 삭제"""
+    try:
+        # 권한 확인
+        if not current_user.has_permission('brand_management', 'delete'):
+            return jsonify({'error': '권한이 없습니다.'}), 403
+
+        industry = Industry.query.get_or_404(industry_id)
+
+        # 해당 업종에 속한 브랜드가 있는지 확인
+        brand_count = Brand.query.filter_by(industry_id=industry.id).count()
+        if brand_count > 0:
+            return jsonify({'error': f'이 업종에 속한 브랜드가 {brand_count}개 있습니다. 먼저 브랜드를 삭제하거나 다른 업종으로 이동시켜주세요.'}), 400
+
+        db.session.delete(industry)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '업종이 삭제되었습니다.'
+        })
+
+    except Exception as e:
+        logger.error(f"업종 삭제 실패: {e}")
+        return jsonify({'error': '업종 삭제에 실패했습니다.'}), 500
+
+
+@brand_management_bp.route('/api/admin/industries/<int:industry_id>/detail', methods=['GET'])
+@login_required
+def get_industry_detail(industry_id):
+    """업종 상세 정보 조회"""
+    try:
+        # 권한 확인
+        if not current_user.has_permission('brand_management', 'view'):
+            return jsonify({'error': '권한이 없습니다.'}), 403
+
+        industry = Industry.query.get_or_404(industry_id)
+
+        # 브랜드 수
+        brand_count = Brand.query.filter_by(industry_id=industry.id).count()
+        
+        # 매장 수
+        store_count = db.session.query(Branch).join(Brand).filter(Brand.industry_id == industry.id).count()
+        
+        # 직원 수
+        employee_count = db.session.query(User).join(Branch).join(Brand).filter(Brand.industry_id == industry.id).count()
+        
+        # 매출 (임시로 0으로 설정)
+        total_revenue = 0
+
+        return jsonify({
+            'success': True,
+            'industry': {
+                'id': industry.id,
+                'name': industry.name,
+                'code': industry.code,
+                'description': industry.description,
+                'icon': industry.icon or '🏢',
+                'color': industry.color or '#3B82F6',
+                'brand_count': brand_count,
+                'store_count': store_count,
+                'employee_count': employee_count,
+                'total_revenue': total_revenue,
+                'status': 'active' if industry.is_active else 'inactive',
+                'last_activity': industry.updated_at.isoformat() if industry.updated_at else industry.created_at.isoformat()
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"업종 상세 정보 조회 실패: {e}")
+        return jsonify({'error': '업종 상세 정보 조회에 실패했습니다.'}), 500
+
+
+@brand_management_bp.route('/api/admin/industries/<int:industry_id>/brands', methods=['GET'])
+@login_required
+def get_industry_brands(industry_id):
+    """업종별 브랜드 목록 조회"""
+    try:
+        # 권한 확인
+        if not current_user.has_permission('brand_management', 'view'):
+            return jsonify({'error': '권한이 없습니다.'}), 403
+
+        industry = Industry.query.get_or_404(industry_id)
+        brands = Brand.query.filter_by(industry_id=industry.id).all()
+
+        brand_list = []
+        for brand in brands:
+            # 매장 수
+            store_count = Branch.query.filter_by(brand_id=brand.id).count()
+            
+            # 직원 수
+            employee_count = db.session.query(User).join(Branch).filter(Branch.brand_id == brand.id).count()
+            
+            # 매출 (임시로 0으로 설정)
+            total_revenue = 0
+
+            brand_list.append({
+                'id': brand.id,
+                'name': brand.name,
+                'code': brand.code,
+                'description': brand.description,
+                'status': brand.status,
+                'store_count': store_count,
+                'employee_count': employee_count,
+                'total_revenue': total_revenue,
+                'last_activity': brand.updated_at.isoformat() if brand.updated_at else brand.created_at.isoformat()
+            })
+
+        return jsonify({
+            'success': True,
+            'industry': {
+                'id': industry.id,
+                'name': industry.name,
+                'code': industry.code
+            },
+            'brands': brand_list
+        })
+
+    except Exception as e:
+        logger.error(f"업종별 브랜드 목록 조회 실패: {e}")
+        return jsonify({'error': '업종별 브랜드 목록 조회에 실패했습니다.'}), 500
 
 
 @brand_management_bp.route('/brands', methods=['POST'])

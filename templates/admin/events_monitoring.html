@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 이벤트/알림</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="flex items-center justify-between px-6 py-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">실시간 이벤트/알림</h2>
+                    <p class="text-gray-600">시스템 이벤트 및 알림 모니터링</p>
+                </div>
+                <a href="/admin/backend" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    뒤로가기
+                </a>
+            </div>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="p-6">
+            <!-- 이벤트 통계 카드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <i data-feather="activity" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">오늘 이벤트</p>
+                            <p class="text-2xl font-bold text-gray-900" id="today-events">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-yellow-100 rounded-full">
+                            <i data-feather="alert-triangle" class="w-6 h-6 text-yellow-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">경고</p>
+                            <p class="text-2xl font-bold text-gray-900" id="warning-events">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-red-100 rounded-full">
+                            <i data-feather="alert-circle" class="w-6 h-6 text-red-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">오류</p>
+                            <p class="text-2xl font-bold text-gray-900" id="error-events">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-100 rounded-full">
+                            <i data-feather="check-circle" class="w-6 h-6 text-green-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">성공</p>
+                            <p class="text-2xl font-bold text-gray-900" id="success-events">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 실시간 이벤트 및 알림 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 실시간 이벤트 -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900">실시간 이벤트</h3>
+                        <div class="flex space-x-2">
+                            <select id="event-type-filter" class="px-3 py-1 border border-gray-300 rounded text-sm">
+                                <option value="">전체 이벤트</option>
+                                <option value="system">시스템</option>
+                                <option value="user">사용자</option>
+                                <option value="plugin">플러그인</option>
+                                <option value="security">보안</option>
+                            </select>
+                            <button id="refresh-events" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors">
+                                새로고침
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div id="events-list" class="space-y-4 max-h-96 overflow-y-auto">
+                            <!-- 실시간 이벤트가 여기에 동적으로 로드됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 알림 관리 -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900">알림 관리</h3>
+                        <button id="send-notification" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors">
+                            알림 전송
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div id="notifications-list" class="space-y-4 max-h-96 overflow-y-auto">
+                            <!-- 알림 목록이 여기에 동적으로 로드됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 이벤트 히스토리 -->
+            <div class="mt-8 bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">이벤트 히스토리</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시간</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이벤트 유형</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">사용자</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상세정보</th>
+                            </tr>
+                        </thead>
+                        <tbody id="events-history-table" class="bg-white divide-y divide-gray-200">
+                            <!-- 이벤트 히스토리가 여기에 동적으로 로드됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-6 py-4 border-t">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            총 <span id="total-events">0</span>개의 이벤트
+                        </div>
+                        <div class="flex space-x-2" id="events-pagination">
+                            <!-- 페이지네이션이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 알림 전송 모달 -->
+    <div id="notification-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">알림 전송</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">수신자</label>
+                            <select id="notification-recipient" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="all">전체 사용자</option>
+                                <option value="admins">관리자만</option>
+                                <option value="industry_admins">업종별 관리자</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">제목</label>
+                            <input type="text" id="notification-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="알림 제목을 입력하세요">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">내용</label>
+                            <textarea id="notification-content" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="알림 내용을 입력하세요"></textarea>
+                        </div>
+                        <div>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="notification-urgent" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">긴급 알림</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t flex justify-end space-x-3">
+                    <button onclick="closeNotificationModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                        취소
+                    </button>
+                    <button onclick="sendNotification()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        전송
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        let currentEventsPage = 1;
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEventStats();
+            loadRecentEvents();
+            loadNotifications();
+            loadEventsHistory();
+            
+            // 30초마다 데이터 업데이트
+            setInterval(loadRecentEvents, 30000);
+            setInterval(loadEventStats, 60000);
+        });
+
+        // 이벤트 리스너
+        document.getElementById('refresh-events').addEventListener('click', loadRecentEvents);
+        document.getElementById('event-type-filter').addEventListener('change', loadRecentEvents);
+        document.getElementById('send-notification').addEventListener('click', showNotificationModal);
+
+        // 이벤트 통계 로드
+        function loadEventStats() {
+            fetch('/api/backend/events/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('today-events').textContent = data.today_events || 0;
+                    document.getElementById('warning-events').textContent = data.warning_events || 0;
+                    document.getElementById('error-events').textContent = data.error_events || 0;
+                    document.getElementById('success-events').textContent = data.success_events || 0;
+                })
+                .catch(error => {
+                    console.error('Error loading event stats:', error);
+                });
+        }
+
+        // 최근 이벤트 로드
+        function loadRecentEvents() {
+            const type = document.getElementById('event-type-filter').value;
+            
+            fetch(`/api/backend/events/recent?type=${type}`)
+                .then(response => response.json())
+                .then(data => {
+                    renderRecentEvents(data.events || []);
+                })
+                .catch(error => {
+                    console.error('Error loading recent events:', error);
+                });
+        }
+
+        // 최근 이벤트 렌더링
+        function renderRecentEvents(events) {
+            const container = document.getElementById('events-list');
+            container.innerHTML = '';
+
+            events.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'flex items-start space-x-3 p-3 bg-gray-50 rounded-lg';
+                
+                const iconClass = getEventIconClass(event.type);
+                const statusClass = getEventStatusClass(event.status);
+                
+                eventDiv.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <i data-feather="${getEventIcon(event.type)}" class="w-5 h-5 ${iconClass}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-medium text-gray-900">${event.title || '이벤트'}</p>
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
+                                ${getEventStatusText(event.status)}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-600">${event.description || ''}</p>
+                        <p class="text-xs text-gray-500 mt-1">${formatDateTime(event.timestamp)}</p>
+                    </div>
+                `;
+                
+                container.appendChild(eventDiv);
+            });
+            
+            // Feather 아이콘 다시 초기화
+            feather.replace();
+        }
+
+        // 알림 로드
+        function loadNotifications() {
+            fetch('/api/backend/notifications')
+                .then(response => response.json())
+                .then(data => {
+                    renderNotifications(data.notifications || []);
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                });
+        }
+
+        // 알림 렌더링
+        function renderNotifications(notifications) {
+            const container = document.getElementById('notifications-list');
+            container.innerHTML = '';
+
+            notifications.forEach(notification => {
+                const notificationDiv = document.createElement('div');
+                notificationDiv.className = 'flex items-start space-x-3 p-3 bg-gray-50 rounded-lg';
+                
+                const urgentClass = notification.is_urgent ? 'text-red-600' : 'text-blue-600';
+                
+                notificationDiv.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <i data-feather="bell" class="w-5 h-5 ${urgentClass}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-medium text-gray-900">${notification.title}</p>
+                            ${notification.is_urgent ? '<span class="text-xs text-red-600 font-semibold">긴급</span>' : ''}
+                        </div>
+                        <p class="text-sm text-gray-600">${notification.content}</p>
+                        <p class="text-xs text-gray-500 mt-1">${formatDateTime(notification.created_at)}</p>
+                    </div>
+                `;
+                
+                container.appendChild(notificationDiv);
+            });
+        }
+
+        // 이벤트 히스토리 로드
+        function loadEventsHistory() {
+            fetch(`/api/backend/events/history?page=${currentEventsPage}`)
+                .then(response => response.json())
+                .then(data => {
+                    renderEventsHistory(data.events || []);
+                    renderEventsPagination(data.total, data.pages, data.current_page);
+                    document.getElementById('total-events').textContent = data.total || 0;
+                })
+                .catch(error => {
+                    console.error('Error loading events history:', error);
+                });
+        }
+
+        // 이벤트 히스토리 렌더링
+        function renderEventsHistory(events) {
+            const tbody = document.getElementById('events-history-table');
+            tbody.innerHTML = '';
+
+            events.forEach(event => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                const statusClass = getEventStatusClass(event.status);
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${formatDateTime(event.timestamp)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${getEventTypeText(event.type)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${event.user_id || 'N/A'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
+                            ${getEventStatusText(event.status)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                        ${event.details || 'N/A'}
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // 이벤트 페이지네이션 렌더링
+        function renderEventsPagination(total, pages, current) {
+            const pagination = document.getElementById('events-pagination');
+            pagination.innerHTML = '';
+            
+            if (pages <= 1) return;
+            
+            // 이전 페이지
+            if (current > 1) {
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'px-3 py-1 text-sm text-gray-500 hover:text-gray-700';
+                prevBtn.textContent = '이전';
+                prevBtn.onclick = () => {
+                    currentEventsPage = current - 1;
+                    loadEventsHistory();
+                };
+                pagination.appendChild(prevBtn);
+            }
+            
+            // 페이지 번호
+            for (let i = 1; i <= pages; i++) {
+                if (i === current) {
+                    const currentBtn = document.createElement('button');
+                    currentBtn.className = 'px-3 py-1 text-sm bg-blue-600 text-white rounded';
+                    currentBtn.textContent = i;
+                    pagination.appendChild(currentBtn);
+                } else {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = 'px-3 py-1 text-sm text-gray-500 hover:text-gray-700';
+                    pageBtn.textContent = i;
+                    pageBtn.onclick = () => {
+                        currentEventsPage = i;
+                        loadEventsHistory();
+                    };
+                    pagination.appendChild(pageBtn);
+                }
+            }
+            
+            // 다음 페이지
+            if (current < pages) {
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'px-3 py-1 text-sm text-gray-500 hover:text-gray-700';
+                nextBtn.textContent = '다음';
+                nextBtn.onclick = () => {
+                    currentEventsPage = current + 1;
+                    loadEventsHistory();
+                };
+                pagination.appendChild(nextBtn);
+            }
+        }
+
+        // 알림 모달 표시
+        function showNotificationModal() {
+            document.getElementById('notification-modal').classList.remove('hidden');
+        }
+
+        // 알림 모달 닫기
+        function closeNotificationModal() {
+            document.getElementById('notification-modal').classList.add('hidden');
+            // 입력 필드 초기화
+            document.getElementById('notification-title').value = '';
+            document.getElementById('notification-content').value = '';
+            document.getElementById('notification-urgent').checked = false;
+        }
+
+        // 알림 전송
+        function sendNotification() {
+            const recipient = document.getElementById('notification-recipient').value;
+            const title = document.getElementById('notification-title').value;
+            const content = document.getElementById('notification-content').value;
+            const isUrgent = document.getElementById('notification-urgent').checked;
+
+            if (!title.trim() || !content.trim()) {
+                alert('제목과 내용을 모두 입력해주세요.');
+                return;
+            }
+
+            fetch('/api/backend/notifications/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    recipient: recipient,
+                    title: title,
+                    content: content,
+                    is_urgent: isUrgent
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('알림이 전송되었습니다.');
+                    closeNotificationModal();
+                    loadNotifications();
+                } else {
+                    alert('오류가 발생했습니다: ' + result.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('오류가 발생했습니다.');
+            });
+        }
+
+        // 이벤트 아이콘 클래스
+        function getEventIconClass(type) {
+            switch(type) {
+                case 'system': return 'text-blue-600';
+                case 'user': return 'text-green-600';
+                case 'plugin': return 'text-purple-600';
+                case 'security': return 'text-red-600';
+                default: return 'text-gray-600';
+            }
+        }
+
+        // 이벤트 아이콘
+        function getEventIcon(type) {
+            switch(type) {
+                case 'system': return 'cpu';
+                case 'user': return 'user';
+                case 'plugin': return 'package';
+                case 'security': return 'shield';
+                default: return 'activity';
+            }
+        }
+
+        // 이벤트 상태 클래스
+        function getEventStatusClass(status) {
+            switch(status) {
+                case 'success': return 'bg-green-100 text-green-800';
+                case 'warning': return 'bg-yellow-100 text-yellow-800';
+                case 'error': return 'bg-red-100 text-red-800';
+                case 'info': return 'bg-blue-100 text-blue-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // 이벤트 상태 텍스트
+        function getEventStatusText(status) {
+            switch(status) {
+                case 'success': return '성공';
+                case 'warning': return '경고';
+                case 'error': return '오류';
+                case 'info': return '정보';
+                default: return '알 수 없음';
+            }
+        }
+
+        // 이벤트 유형 텍스트
+        function getEventTypeText(type) {
+            switch(type) {
+                case 'system': return '시스템';
+                case 'user': return '사용자';
+                case 'plugin': return '플러그인';
+                case 'security': return '보안';
+                default: return '기타';
+            }
+        }
+
+        // 날짜/시간 포맷팅
+        function formatDateTime(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleString('ko-KR');
+        }
+    </script>
+</body>
+</html> 

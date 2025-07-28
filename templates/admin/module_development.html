@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 개발 시스템 - 백엔드 관리자</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body class="bg-background">
+    <!-- 사이드바 -->
+    <div class="flex h-screen">
+        <div class="w-64 bg-card border-r border-border">
+            <div class="p-4">
+                <h1 class="text-xl font-bold text-card-foreground">백엔드 관리자</h1>
+                <p class="text-muted-foreground text-sm">시스템 운영 관리</p>
+            </div>
+            
+            <nav class="mt-8">
+                <div class="px-4 py-2">
+                    <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">관리자 기능</h3>
+                </div>
+                
+                <a href="/admin/backend" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="home" class="w-5 h-5 mr-3"></i>
+                    대시보드
+                </a>
+                
+                <a href="/admin/backend/industry-admin" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                    업종별 관리자 승인/관리
+                </a>
+                
+                <a href="/admin/backend/plugin-marketplace" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="package" class="w-5 h-5 mr-3"></i>
+                    플러그인 마켓플레이스
+                </a>
+                
+                <a href="/admin/backend/plugin-management" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="settings" class="w-5 h-5 mr-3"></i>
+                    플러그인 관리/개발
+                </a>
+                
+                <a href="/admin/backend/module-development" class="flex items-center px-4 py-3 bg-accent text-accent-foreground">
+                    <i data-feather="code" class="w-5 h-5 mr-3"></i>
+                    모듈 개발 시스템
+                </a>
+                
+                <a href="/admin/backend/system-monitoring" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="activity" class="w-5 h-5 mr-3"></i>
+                    시스템/서버 운영/모니터링
+                </a>
+                
+                <a href="/admin/backend/security" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="shield" class="w-5 h-5 mr-3"></i>
+                    보안 관리
+                </a>
+                
+                <a href="/admin/backend/events" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="bell" class="w-5 h-5 mr-3"></i>
+                    실시간 이벤트/알림
+                </a>
+                
+                <a href="/admin/backend/docs" class="flex items-center px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <i data-feather="file-text" class="w-5 h-5 mr-3"></i>
+                    API/DB 문서
+                </a>
+            </nav>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="flex-1 flex flex-col">
+            <!-- 헤더 -->
+            <header class="bg-card border-b border-border shadow-sm">
+                <div class="flex items-center justify-between px-6 py-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-card-foreground">모듈 개발 시스템</h2>
+                        <p class="text-muted-foreground">시각적 모듈 개발 및 테스트 환경</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="preview-mode" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                            <i data-feather="eye" class="w-4 h-4 mr-2"></i>
+                            미리보기
+                        </button>
+                        <button id="save-project" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                            <i data-feather="save" class="w-4 h-4 mr-2"></i>
+                            저장
+                        </button>
+                        <button id="deploy-module" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white shadow hover:bg-green-700 h-9 px-4 py-2">
+                            <i data-feather="play" class="w-4 h-4 mr-2"></i>
+                            배포
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 메인 작업 영역 -->
+            <div class="flex-1 flex">
+                <!-- 좌측 컴포넌트 팔레트 -->
+                <div class="w-80 bg-card border-r border-border p-4">
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-card-foreground mb-4">컴포넌트 라이브러리</h3>
+                        
+                        <!-- 컴포넌트 카테고리 -->
+                        <div class="space-y-4">
+                            <!-- 기본 컴포넌트 -->
+                            <div>
+                                <h4 class="text-sm font-medium text-muted-foreground mb-2">기본 컴포넌트</h4>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="component-item" data-type="button" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">🔘</div>
+                                                <div class="text-xs text-muted-foreground">버튼</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="component-item" data-type="card" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">🃏</div>
+                                                <div class="text-xs text-muted-foreground">카드</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="component-item" data-type="input" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">📝</div>
+                                                <div class="text-xs text-muted-foreground">입력</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="component-item" data-type="table" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">📊</div>
+                                                <div class="text-xs text-muted-foreground">테이블</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 고급 컴포넌트 -->
+                            <div>
+                                <h4 class="text-sm font-medium text-muted-foreground mb-2">고급 컴포넌트</h4>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="component-item" data-type="chart" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">📈</div>
+                                                <div class="text-xs text-muted-foreground">차트</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="component-item" data-type="modal" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">🪟</div>
+                                                <div class="text-xs text-muted-foreground">모달</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="component-item" data-type="tabs" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">📑</div>
+                                                <div class="text-xs text-muted-foreground">탭</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="component-item" data-type="calendar" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">📅</div>
+                                                <div class="text-xs text-muted-foreground">캘린더</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 레이아웃 컴포넌트 -->
+                            <div>
+                                <h4 class="text-sm font-medium text-muted-foreground mb-2">레이아웃</h4>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="component-item" data-type="container" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">📦</div>
+                                                <div class="text-xs text-muted-foreground">컨테이너</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="component-item" data-type="grid" draggable="true">
+                                        <div class="p-3 border border-border rounded-lg hover:bg-accent cursor-move">
+                                            <div class="text-center">
+                                                <div class="text-2xl mb-1">⊞</div>
+                                                <div class="text-xs text-muted-foreground">그리드</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 중앙 캔버스 -->
+                <div class="flex-1 flex flex-col">
+                    <!-- 캔버스 툴바 -->
+                    <div class="bg-card border-b border-border p-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-muted-foreground">미리보기:</span>
+                                    <button id="desktop-preview" class="preview-mode-btn active px-3 py-1 text-xs border border-border rounded hover:bg-accent">
+                                        <i data-feather="monitor" class="w-3 h-3 mr-1"></i>
+                                        데스크탑
+                                    </button>
+                                    <button id="tablet-preview" class="preview-mode-btn px-3 py-1 text-xs border border-border rounded hover:bg-accent">
+                                        <i data-feather="tablet" class="w-3 h-3 mr-1"></i>
+                                        태블릿
+                                    </button>
+                                    <button id="mobile-preview" class="preview-mode-btn px-3 py-1 text-xs border border-border rounded hover:bg-accent">
+                                        <i data-feather="smartphone" class="w-3 h-3 mr-1"></i>
+                                        모바일
+                                    </button>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-muted-foreground">테마:</span>
+                                    <button id="light-theme" class="theme-btn active px-3 py-1 text-xs border border-border rounded hover:bg-accent">
+                                        <i data-feather="sun" class="w-3 h-3 mr-1"></i>
+                                        라이트
+                                    </button>
+                                    <button id="dark-theme" class="theme-btn px-3 py-1 text-xs border border-border rounded hover:bg-accent">
+                                        <i data-feather="moon" class="w-3 h-3 mr-1"></i>
+                                        다크
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button id="undo-btn" class="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded">
+                                    <i data-feather="rotate-ccw" class="w-4 h-4"></i>
+                                </button>
+                                <button id="redo-btn" class="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded">
+                                    <i data-feather="rotate-cw" class="w-4 h-4"></i>
+                                </button>
+                                <button id="clear-canvas" class="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded">
+                                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 캔버스 영역 -->
+                    <div class="flex-1 bg-muted p-6 overflow-auto">
+                        <div id="canvas-container" class="bg-white rounded-lg shadow-lg mx-auto" style="min-height: 600px; width: 100%; max-width: 1200px;">
+                            <div id="canvas" class="relative w-full h-full min-h-[600px] p-8">
+                                <!-- 드롭 영역 안내 -->
+                                <div id="drop-zone" class="flex items-center justify-center h-full text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                                    <div class="text-center">
+                                        <i data-feather="plus-circle" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                                        <p class="text-lg font-medium">컴포넌트를 여기에 드래그하세요</p>
+                                        <p class="text-sm">좌측 팔레트에서 원하는 컴포넌트를 선택하여 캔버스에 배치하세요</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 우측 속성 패널 -->
+                <div class="w-80 bg-card border-l border-border p-4">
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-card-foreground mb-4">속성 편집</h3>
+                        
+                        <!-- 탭 네비게이션 -->
+                        <div class="flex border-b border-border mb-4">
+                            <button class="tab-btn active px-3 py-2 text-sm font-medium border-b-2 border-primary text-primary">
+                                속성
+                            </button>
+                            <button class="tab-btn px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+                                스타일
+                            </button>
+                            <button class="tab-btn px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+                                데이터
+                            </button>
+                            <button class="tab-btn px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+                                이벤트
+                            </button>
+                        </div>
+
+                        <!-- 속성 편집 영역 -->
+                        <div id="properties-panel">
+                            <div class="text-center text-muted-foreground py-8">
+                                <i data-feather="settings" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                                <p>컴포넌트를 선택하여 속성을 편집하세요</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 프로젝트 정보 -->
+                    <div class="border-t border-border pt-4">
+                        <h4 class="text-sm font-medium text-muted-foreground mb-3">프로젝트 정보</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-xs text-muted-foreground">프로젝트명</label>
+                                <input type="text" id="project-name" class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background" placeholder="새 프로젝트">
+                            </div>
+                            <div>
+                                <label class="text-xs text-muted-foreground">설명</label>
+                                <textarea id="project-description" class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background" rows="3" placeholder="프로젝트 설명"></textarea>
+                            </div>
+                            <div>
+                                <label class="text-xs text-muted-foreground">모듈 타입</label>
+                                <select id="module-type" class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background">
+                                    <option value="general">일반 모듈</option>
+                                    <option value="dashboard">대시보드</option>
+                                    <option value="form">폼</option>
+                                    <option value="report">리포트</option>
+                                    <option value="widget">위젯</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        // 전역 변수
+        let selectedComponent = null;
+        let components = [];
+        let componentCounter = 0;
+        let currentProject = {
+            name: '새 프로젝트',
+            description: '',
+            type: 'general',
+            components: []
+        };
+
+        // 컴포넌트 템플릿
+        const componentTemplates = {
+            button: {
+                type: 'button',
+                name: '버튼',
+                properties: {
+                    text: '클릭하세요',
+                    variant: 'primary',
+                    size: 'medium',
+                    disabled: false
+                },
+                styles: {
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    cursor: 'pointer'
+                }
+            },
+            card: {
+                type: 'card',
+                name: '카드',
+                properties: {
+                    title: '카드 제목',
+                    content: '카드 내용을 입력하세요',
+                    showHeader: true,
+                    showFooter: false
+                },
+                styles: {
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }
+            },
+            input: {
+                type: 'input',
+                name: '입력 필드',
+                properties: {
+                    label: '라벨',
+                    placeholder: '입력하세요',
+                    type: 'text',
+                    required: false
+                },
+                styles: {
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                }
+            },
+            table: {
+                type: 'table',
+                name: '테이블',
+                properties: {
+                    headers: ['이름', '이메일', '역할'],
+                    rows: [
+                        ['홍길동', 'hong@example.com', '관리자'],
+                        ['김철수', 'kim@example.com', '사용자']
+                    ]
+                },
+                styles: {
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: '14px'
+                }
+            }
+        };
+
+        // 드래그 앤 드롭 초기화
+        function initializeDragAndDrop() {
+            const canvas = document.getElementById('canvas');
+            const dropZone = document.getElementById('drop-zone');
+
+            // 컴포넌트 아이템 드래그 이벤트
+            document.querySelectorAll('.component-item').forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', item.dataset.type);
+                });
+            });
+
+            // 캔버스 드롭 이벤트
+            canvas.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.display = 'none';
+            });
+
+            canvas.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                if (!canvas.contains(e.relatedTarget)) {
+                    dropZone.style.display = 'flex';
+                }
+            });
+
+            canvas.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const componentType = e.dataTransfer.getData('text/plain');
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                addComponent(componentType, x, y);
+                dropZone.style.display = 'none';
+            });
+        }
+
+        // 컴포넌트 추가
+        function addComponent(type, x, y) {
+            const template = componentTemplates[type];
+            if (!template) return;
+
+            const component = {
+                id: `component-${++componentCounter}`,
+                ...template,
+                position: { x, y },
+                size: { width: 200, height: 100 }
+            };
+
+            components.push(component);
+            renderComponent(component);
+            updatePropertiesPanel(component);
+        }
+
+        // 컴포넌트 렌더링
+        function renderComponent(component) {
+            const canvas = document.getElementById('canvas');
+            const existingElement = document.getElementById(component.id);
+            
+            if (existingElement) {
+                existingElement.remove();
+            }
+
+            const element = document.createElement('div');
+            element.id = component.id;
+            element.className = 'absolute cursor-pointer border-2 border-transparent hover:border-blue-400';
+            element.style.left = component.position.x + 'px';
+            element.style.top = component.position.y + 'px';
+            element.style.width = component.size.width + 'px';
+            element.style.height = component.size.height + 'px';
+
+            // 컴포넌트별 렌더링
+            switch (component.type) {
+                case 'button':
+                    element.innerHTML = `
+                        <button style="${getStyleString(component.styles)}" onclick="selectComponent('${component.id}')">
+                            ${component.properties.text}
+                        </button>
+                    `;
+                    break;
+                case 'card':
+                    element.innerHTML = `
+                        <div style="${getStyleString(component.styles)}" onclick="selectComponent('${component.id}')">
+                            ${component.properties.showHeader ? `<h3 class="font-semibold mb-2">${component.properties.title}</h3>` : ''}
+                            <p>${component.properties.content}</p>
+                        </div>
+                    `;
+                    break;
+                case 'input':
+                    element.innerHTML = `
+                        <div onclick="selectComponent('${component.id}')">
+                            <label class="block text-sm font-medium mb-1">${component.properties.label}</label>
+                            <input type="${component.properties.type}" placeholder="${component.properties.placeholder}" 
+                                   style="${getStyleString(component.styles)}">
+                        </div>
+                    `;
+                    break;
+                case 'table':
+                    element.innerHTML = `
+                        <table style="${getStyleString(component.styles)}" onclick="selectComponent('${component.id}')">
+                            <thead>
+                                <tr>${component.properties.headers.map(h => `<th class="border px-4 py-2">${h}</th>`).join('')}</tr>
+                            </thead>
+                            <tbody>
+                                ${component.properties.rows.map(row => 
+                                    `<tr>${row.map(cell => `<td class="border px-4 py-2">${cell}</td>`).join('')}</tr>`
+                                ).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+            }
+
+            canvas.appendChild(element);
+        }
+
+        // 스타일 문자열 변환
+        function getStyleString(styles) {
+            return Object.entries(styles).map(([key, value]) => `${key}: ${value}`).join('; ');
+        }
+
+        // 컴포넌트 선택
+        function selectComponent(id) {
+            selectedComponent = components.find(c => c.id === id);
+            updatePropertiesPanel(selectedComponent);
+            
+            // 선택 표시
+            document.querySelectorAll('[id^="component-"]').forEach(el => {
+                el.classList.remove('border-blue-500');
+                el.classList.add('border-transparent');
+            });
+            
+            const element = document.getElementById(id);
+            if (element) {
+                element.classList.remove('border-transparent');
+                element.classList.add('border-blue-500');
+            }
+        }
+
+        // 속성 패널 업데이트
+        function updatePropertiesPanel(component) {
+            const panel = document.getElementById('properties-panel');
+            
+            if (!component) {
+                panel.innerHTML = `
+                    <div class="text-center text-muted-foreground py-8">
+                        <i data-feather="settings" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                        <p>컴포넌트를 선택하여 속성을 편집하세요</p>
+                    </div>
+                `;
+                feather.replace();
+                return;
+            }
+
+            let html = `<div class="space-y-4">`;
+            
+            // 컴포넌트별 속성 편집기
+            switch (component.type) {
+                case 'button':
+                    html += `
+                        <div>
+                            <label class="text-xs text-muted-foreground">텍스트</label>
+                            <input type="text" value="${component.properties.text}" 
+                                   onchange="updateComponentProperty('${component.id}', 'text', this.value)"
+                                   class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background">
+                        </div>
+                        <div>
+                            <label class="text-xs text-muted-foreground">크기</label>
+                            <select onchange="updateComponentProperty('${component.id}', 'size', this.value)"
+                                    class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background">
+                                <option value="small" ${component.properties.size === 'small' ? 'selected' : ''}>작음</option>
+                                <option value="medium" ${component.properties.size === 'medium' ? 'selected' : ''}>보통</option>
+                                <option value="large" ${component.properties.size === 'large' ? 'selected' : ''}>큼</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                case 'card':
+                    html += `
+                        <div>
+                            <label class="text-xs text-muted-foreground">제목</label>
+                            <input type="text" value="${component.properties.title}" 
+                                   onchange="updateComponentProperty('${component.id}', 'title', this.value)"
+                                   class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background">
+                        </div>
+                        <div>
+                            <label class="text-xs text-muted-foreground">내용</label>
+                            <textarea onchange="updateComponentProperty('${component.id}', 'content', this.value)"
+                                      class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background" rows="3">${component.properties.content}</textarea>
+                        </div>
+                    `;
+                    break;
+                case 'input':
+                    html += `
+                        <div>
+                            <label class="text-xs text-muted-foreground">라벨</label>
+                            <input type="text" value="${component.properties.label}" 
+                                   onchange="updateComponentProperty('${component.id}', 'label', this.value)"
+                                   class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background">
+                        </div>
+                        <div>
+                            <label class="text-xs text-muted-foreground">플레이스홀더</label>
+                            <input type="text" value="${component.properties.placeholder}" 
+                                   onchange="updateComponentProperty('${component.id}', 'placeholder', this.value)"
+                                   class="w-full px-3 py-2 text-sm border border-border rounded-md bg-background">
+                        </div>
+                    `;
+                    break;
+            }
+
+            html += `</div>`;
+            panel.innerHTML = html;
+        }
+
+        // 컴포넌트 속성 업데이트
+        function updateComponentProperty(id, property, value) {
+            const component = components.find(c => c.id === id);
+            if (component) {
+                component.properties[property] = value;
+                renderComponent(component);
+            }
+        }
+
+        // 미리보기 모드
+        function initializePreviewModes() {
+            const container = document.getElementById('canvas-container');
+            
+            document.getElementById('desktop-preview').addEventListener('click', () => {
+                container.style.maxWidth = '1200px';
+                updatePreviewMode('desktop');
+            });
+            
+            document.getElementById('tablet-preview').addEventListener('click', () => {
+                container.style.maxWidth = '768px';
+                updatePreviewMode('tablet');
+            });
+            
+            document.getElementById('mobile-preview').addEventListener('click', () => {
+                container.style.maxWidth = '375px';
+                updatePreviewMode('mobile');
+            });
+        }
+
+        function updatePreviewMode(mode) {
+            document.querySelectorAll('.preview-mode-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-primary', 'text-primary-foreground');
+                btn.classList.add('text-muted-foreground');
+            });
+            
+            document.getElementById(`${mode}-preview`).classList.add('active', 'bg-primary', 'text-primary-foreground');
+        }
+
+        // 테마 전환
+        function initializeThemes() {
+            document.getElementById('light-theme').addEventListener('click', () => {
+                document.body.classList.remove('dark');
+                updateTheme('light');
+            });
+            
+            document.getElementById('dark-theme').addEventListener('click', () => {
+                document.body.classList.add('dark');
+                updateTheme('dark');
+            });
+        }
+
+        function updateTheme(theme) {
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-primary', 'text-primary-foreground');
+                btn.classList.add('text-muted-foreground');
+            });
+            
+            document.getElementById(`${theme}-theme`).classList.add('active', 'bg-primary', 'text-primary-foreground');
+        }
+
+        // 프로젝트 저장
+        function saveProject() {
+            currentProject.components = components;
+            currentProject.name = document.getElementById('project-name').value;
+            currentProject.description = document.getElementById('project-description').value;
+            currentProject.type = document.getElementById('module-type').value;
+            
+            // 서버에 저장 요청
+            fetch('/api/backend/module/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(currentProject)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('프로젝트가 저장되었습니다.');
+                } else {
+                    alert('저장에 실패했습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('저장 오류:', error);
+                alert('저장 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 모듈 배포
+        function deployModule() {
+            if (components.length === 0) {
+                alert('배포할 컴포넌트가 없습니다.');
+                return;
+            }
+
+            if (!confirm('정말로 이 모듈을 배포하시겠습니까?')) {
+                return;
+            }
+
+            currentProject.components = components;
+            
+            fetch('/api/backend/module/deploy', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(currentProject)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('모듈이 성공적으로 배포되었습니다.');
+                } else {
+                    alert('배포에 실패했습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('배포 오류:', error);
+                alert('배포 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 이벤트 리스너 등록
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDragAndDrop();
+            initializePreviewModes();
+            initializeThemes();
+            
+            // 버튼 이벤트
+            document.getElementById('save-project').addEventListener('click', saveProject);
+            document.getElementById('deploy-module').addEventListener('click', deployModule);
+            document.getElementById('clear-canvas').addEventListener('click', () => {
+                if (confirm('캔버스를 초기화하시겠습니까?')) {
+                    components = [];
+                    document.getElementById('canvas').innerHTML = `
+                        <div id="drop-zone" class="flex items-center justify-center h-full text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                            <div class="text-center">
+                                <i data-feather="plus-circle" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                                <p class="text-lg font-medium">컴포넌트를 여기에 드래그하세요</p>
+                                <p class="text-sm">좌측 팔레트에서 원하는 컴포넌트를 선택하여 캔버스에 배치하세요</p>
+                            </div>
+                        </div>
+                    `;
+                    feather.replace();
+                }
+            });
+        });
+    </script>
+
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 222.2 47.4% 11.2%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96%;
+            --secondary-foreground: 222.2 84% 4.9%;
+            --muted: 210 40% 96%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96%;
+            --accent-foreground: 222.2 84% 4.9%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 222.2 84% 4.9%;
+            --radius: 0.5rem;
+        }
+
+        .dark {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 210 40% 98%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 212.7 26.8% 83.9%;
+        }
+
+        * {
+            border-color: hsl(var(--border));
+        }
+
+        body {
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+
+        .bg-background {
+            background-color: hsl(var(--background));
+        }
+
+        .bg-card {
+            background-color: hsl(var(--card));
+        }
+
+        .text-card-foreground {
+            color: hsl(var(--card-foreground));
+        }
+
+        .text-foreground {
+            color: hsl(var(--foreground));
+        }
+
+        .text-muted-foreground {
+            color: hsl(var(--muted-foreground));
+        }
+
+        .border {
+            border-color: hsl(var(--border));
+        }
+
+        .border-input {
+            border-color: hsl(var(--input));
+        }
+
+        .bg-accent {
+            background-color: hsl(var(--accent));
+        }
+
+        .text-accent-foreground {
+            color: hsl(var(--accent-foreground));
+        }
+
+        .bg-primary {
+            background-color: hsl(var(--primary));
+        }
+
+        .text-primary-foreground {
+            color: hsl(var(--primary-foreground));
+        }
+
+        .bg-destructive {
+            background-color: hsl(var(--destructive));
+        }
+
+        .text-destructive-foreground {
+            color: hsl(var(--destructive-foreground));
+        }
+
+        .hover\:bg-accent:hover {
+            background-color: hsl(var(--accent));
+        }
+
+        .hover\:text-accent-foreground:hover {
+            color: hsl(var(--accent-foreground));
+        }
+
+        .hover\:bg-primary\/90:hover {
+            background-color: hsl(var(--primary) / 0.9);
+        }
+
+        .hover\:bg-destructive\/90:hover {
+            background-color: hsl(var(--destructive) / 0.9);
+        }
+
+        .focus-visible\:ring-ring:focus-visible {
+            --tw-ring-color: hsl(var(--ring));
+        }
+
+        .disabled\:opacity-50:disabled {
+            opacity: 0.5;
+        }
+
+        .disabled\:cursor-not-allowed:disabled {
+            cursor: not-allowed;
+        }
+
+        .disabled\:pointer-events-none:disabled {
+            pointer-events: none;
+        }
+
+        .active {
+            background-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+    </style>
+</body>
+</html> 

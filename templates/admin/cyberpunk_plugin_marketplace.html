@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>플러그인 마켓플레이스 - 백엔드 관리자</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        
+        .cyber-bg {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        
+        .cyber-card {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid #ff6b35;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .cyber-border {
+            border-color: #ff6b35;
+        }
+        
+        .cyber-border-b {
+            border-bottom-color: #ff6b35;
+        }
+        
+        .cyber-orange {
+            color: #ff6b35;
+        }
+        
+        .cyber-orange-glow {
+            color: #ff6b35;
+            text-shadow: 0 0 10px rgba(255, 107, 53, 0.8);
+        }
+        
+        .cyber-green {
+            color: #00ff88;
+        }
+        
+        .cyber-blue {
+            color: #00d4ff;
+        }
+        
+        .cyber-red {
+            color: #ff4757;
+        }
+        
+        .cyber-purple {
+            color: #a855f7;
+        }
+        
+        .cyber-text-dim {
+            color: #888;
+        }
+        
+        .cyber-font {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .cyber-text {
+            font-family: 'Rajdhani', sans-serif;
+        }
+        
+        .cyber-button {
+            background: linear-gradient(45deg, #ff6b35, #ff8c42);
+            border: 1px solid #ff6b35;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .cyber-button:hover {
+            background: linear-gradient(45deg, #ff8c42, #ff6b35);
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .cyber-button.secondary {
+            background: linear-gradient(45deg, #00d4ff, #00a8cc);
+            border: 1px solid #00d4ff;
+        }
+        
+        .cyber-button.secondary:hover {
+            background: linear-gradient(45deg, #00a8cc, #00d4ff);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+        }
+        
+        .cyber-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .cyber-status.online {
+            background: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+        }
+        
+        .cyber-status.offline {
+            background: #ff4757;
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.6);
+        }
+        
+        .cyber-status.warning {
+            background: #ffa500;
+            box-shadow: 0 0 10px rgba(255, 165, 0, 0.6);
+        }
+        
+        .cyber-scanner {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cyber-scanner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ff6b35, transparent);
+            animation: scan 3s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .cyber-terminal {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff88;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .cyber-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .cyber-scope {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b35, #00ff88, #00d4ff, #ff6b35);
+            border-radius: 2px;
+            margin-bottom: 16px;
+            animation: scope 2s ease-in-out infinite;
+        }
+        
+        @keyframes scope {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .plugin-card {
+            transition: all 0.3s ease;
+        }
+        
+        .plugin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 30px rgba(255, 107, 53, 0.5);
+        }
+    </style>
+</head>
+<body class="cyber-bg text-white min-h-screen">
+    <div class="flex h-screen">
+        <!-- 사이드바 -->
+        <div class="w-64 cyber-card border-r cyber-border">
+            <div class="p-4">
+                <h1 class="cyber-font text-xl font-bold cyber-orange-glow">백엔드 관리자</h1>
+                <p class="cyber-text-dim text-sm">시스템 운영 관리</p>
+            </div>
+            
+            <nav class="mt-8">
+                <div class="px-4 py-2">
+                    <h3 class="cyber-font text-xs font-semibold cyber-text-dim uppercase tracking-wider">관리자 기능</h3>
+                </div>
+                
+                <a href="/admin/backend" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="monitor" class="w-5 h-5 mr-3"></i>
+                    대시보드
+                </a>
+                
+                <a href="/admin/backend/industry-admin" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                    업종별 관리자 승인/관리
+                </a>
+                
+                <a href="/admin/backend/plugin-marketplace" class="flex items-center px-4 py-3 cyber-orange-glow cyber-border-orange bg-opacity-20">
+                    <i data-feather="package" class="w-5 h-5 mr-3"></i>
+                    플러그인 마켓플레이스
+                </a>
+                
+                <a href="/admin/backend/plugin-management" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="settings" class="w-5 h-5 mr-3"></i>
+                    플러그인 관리/개발
+                </a>
+                
+                <a href="/admin/backend/module-development" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="code" class="w-5 h-5 mr-3"></i>
+                    모듈 개발 시스템
+                </a>
+                
+                <a href="/admin/backend/system-monitoring" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="activity" class="w-5 h-5 mr-3"></i>
+                    시스템/서버 운영/모니터링
+                </a>
+                
+                <a href="/admin/backend/security" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="shield" class="w-5 h-5 mr-3"></i>
+                    보안 관리
+                </a>
+                
+                <a href="/admin/backend/events" class="flex items-center px-4 py-3 cyber-text-dim hover:cyber-orange transition-colors">
+                    <i data-feather="bell" class="w-5 h-5 mr-3"></i>
+                    실시간 이벤트/알림
+                </a>
+            </nav>
+
+            <!-- 시스템 상태 -->
+            <div class="mt-auto pt-8 cyber-card p-4">
+                <div class="flex items-center mb-2">
+                    <span class="cyber-status online"></span>
+                    <span class="cyber-green font-semibold">시스템 정상</span>
+                </div>
+                <div class="cyber-text-dim text-sm space-y-1">
+                    <div>가동시간: <span class="cyber-green" id="uptime">72:14:33</span></div>
+                    <div>활성 사용자: <span class="cyber-blue" id="active-agents">847명</span></div>
+                    <div>진행 작업: <span class="cyber-orange" id="ongoing-missions">23개</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col">
+            <!-- 헤더 -->
+            <header class="cyber-bg-card cyber-border-b cyber-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="cyber-font text-3xl font-bold cyber-orange-glow">플러그인 마켓플레이스</h2>
+                        <p class="cyber-text-dim">사용 가능한 플러그인 탐색 및 설치</p>
+                    </div>
+                    <div class="flex items-center space-x-6">
+                        <div class="cyber-text-dim">
+                            마지막 업데이트: <span class="cyber-green" id="last-update">2025/06/05 20:00 UTC</span>
+                        </div>
+                        <a href="/admin/backend" class="cyber-button">
+                            <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i>
+                            뒤로가기
+                        </a>
+                        <button class="cyber-button">
+                            <i data-feather="refresh-cw" class="w-4 h-4 mr-2"></i>
+                            새로고침
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="flex-1 p-6 overflow-auto">
+                <!-- 검색 및 필터 -->
+                <div class="cyber-card p-6 mb-6">
+                    <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">플러그인 검색</h3>
+                    <div class="cyber-scope"></div>
+                    
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1">
+                            <input type="text" placeholder="플러그인 이름 또는 키워드 검색..." 
+                                   class="w-full p-3 bg-gray-800 border cyber-border rounded text-white cyber-text">
+                        </div>
+                        <select class="p-3 bg-gray-800 border cyber-border rounded text-white cyber-text">
+                            <option value="">모든 카테고리</option>
+                            <option value="attendance">출근 관리</option>
+                            <option value="inventory">재고 관리</option>
+                            <option value="sales">매출 관리</option>
+                            <option value="customer">고객 관리</option>
+                            <option value="analytics">분석 도구</option>
+                        </select>
+                        <button class="cyber-button">
+                            <i data-feather="search" class="w-4 h-4 mr-2"></i>
+                            검색
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 플러그인 목록 -->
+                <div class="cyber-grid">
+                    <!-- 출근 관리 플러그인 -->
+                    <div class="cyber-card p-6 plugin-card">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h4 class="cyber-font font-bold cyber-green text-lg">출근 관리 플러그인</h4>
+                                <p class="cyber-text-dim text-sm">직원 출근/퇴근 관리 및 근태 통계</p>
+                            </div>
+                            <span class="cyber-status online"></span>
+                        </div>
+                        
+                        <div class="cyber-scope mb-4"></div>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">버전:</span>
+                                <span class="cyber-blue">v2.1.4</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">다운로드:</span>
+                                <span class="cyber-green">1,247회</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">평점:</span>
+                                <span class="cyber-orange">★★★★☆ (4.2)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button class="cyber-button flex-1">
+                                <i data-feather="download" class="w-4 h-4 mr-2"></i>
+                                설치
+                            </button>
+                            <button class="cyber-button secondary">
+                                <i data-feather="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 재고 관리 플러그인 -->
+                    <div class="cyber-card p-6 plugin-card">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h4 class="cyber-font font-bold cyber-green text-lg">재고 관리 플러그인</h4>
+                                <p class="cyber-text-dim text-sm">실시간 재고 추적 및 발주 관리</p>
+                            </div>
+                            <span class="cyber-status online"></span>
+                        </div>
+                        
+                        <div class="cyber-scope mb-4"></div>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">버전:</span>
+                                <span class="cyber-blue">v1.8.2</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">다운로드:</span>
+                                <span class="cyber-green">892회</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">평점:</span>
+                                <span class="cyber-orange">★★★★★ (4.7)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button class="cyber-button flex-1">
+                                <i data-feather="download" class="w-4 h-4 mr-2"></i>
+                                설치
+                            </button>
+                            <button class="cyber-button secondary">
+                                <i data-feather="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 매출 분석 플러그인 -->
+                    <div class="cyber-card p-6 plugin-card">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h4 class="cyber-font font-bold cyber-purple text-lg">매출 분석 플러그인</h4>
+                                <p class="cyber-text-dim text-sm">매출 데이터 분석 및 리포트 생성</p>
+                            </div>
+                            <span class="cyber-status warning"></span>
+                        </div>
+                        
+                        <div class="cyber-scope mb-4"></div>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">버전:</span>
+                                <span class="cyber-blue">v3.0.1</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">다운로드:</span>
+                                <span class="cyber-green">2,156회</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">평점:</span>
+                                <span class="cyber-orange">★★★★☆ (4.5)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button class="cyber-button flex-1">
+                                <i data-feather="download" class="w-4 h-4 mr-2"></i>
+                                설치
+                            </button>
+                            <button class="cyber-button secondary">
+                                <i data-feather="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 고객 관리 플러그인 -->
+                    <div class="cyber-card p-6 plugin-card">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h4 class="cyber-font font-bold cyber-blue text-lg">고객 관리 플러그인</h4>
+                                <p class="cyber-text-dim text-sm">고객 정보 관리 및 마케팅 도구</p>
+                            </div>
+                            <span class="cyber-status online"></span>
+                        </div>
+                        
+                        <div class="cyber-scope mb-4"></div>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">버전:</span>
+                                <span class="cyber-blue">v2.5.0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">다운로드:</span>
+                                <span class="cyber-green">1,734회</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">평점:</span>
+                                <span class="cyber-orange">★★★★☆ (4.3)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button class="cyber-button flex-1">
+                                <i data-feather="download" class="w-4 h-4 mr-2"></i>
+                                설치
+                            </button>
+                            <button class="cyber-button secondary">
+                                <i data-feather="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- AI 분석 플러그인 -->
+                    <div class="cyber-card p-6 plugin-card">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h4 class="cyber-font font-bold cyber-orange text-lg">AI 분석 플러그인</h4>
+                                <p class="cyber-text-dim text-sm">AI 기반 데이터 분석 및 예측</p>
+                            </div>
+                            <span class="cyber-status online"></span>
+                        </div>
+                        
+                        <div class="cyber-scope mb-4"></div>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">버전:</span>
+                                <span class="cyber-blue">v1.0.0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">다운로드:</span>
+                                <span class="cyber-green">456회</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">평점:</span>
+                                <span class="cyber-orange">★★★★★ (4.8)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button class="cyber-button flex-1">
+                                <i data-feather="download" class="w-4 h-4 mr-2"></i>
+                                설치
+                            </button>
+                            <button class="cyber-button secondary">
+                                <i data-feather="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 자동화 플러그인 -->
+                    <div class="cyber-card p-6 plugin-card">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h4 class="cyber-font font-bold cyber-red text-lg">자동화 플러그인</h4>
+                                <p class="cyber-text-dim text-sm">업무 자동화 및 워크플로우 관리</p>
+                            </div>
+                            <span class="cyber-status warning"></span>
+                        </div>
+                        
+                        <div class="cyber-scope mb-4"></div>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">버전:</span>
+                                <span class="cyber-blue">v2.3.1</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">다운로드:</span>
+                                <span class="cyber-green">678회</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="cyber-text-dim">평점:</span>
+                                <span class="cyber-orange">★★★★☆ (4.1)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button class="cyber-button flex-1">
+                                <i data-feather="download" class="w-4 h-4 mr-2"></i>
+                                설치
+                            </button>
+                            <button class="cyber-button secondary">
+                                <i data-feather="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Feather 아이콘 초기화
+        feather.replace();
+
+        // 실시간 데이터 업데이트
+        function updateMarketplaceData() {
+            const now = new Date();
+            const lastUpdate = document.getElementById('last-update');
+            lastUpdate.textContent = now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR') + ' UTC';
+        }
+
+        // 5초마다 업데이트
+        setInterval(updateMarketplaceData, 5000);
+
+        // 초기 업데이트
+        updateMarketplaceData();
+    </script>
+</body>
+</html> 
