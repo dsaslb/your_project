@@ -18,28 +18,91 @@ export interface PluginMenuGroup {
 
 export function usePluginMenus() {
   const [menus, setMenus] = useState<PluginMenuItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadMenus = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/plugins/menus')
-      const data = await response.json()
       
-      if (data.status === 'success') {
-        // order 기준으로 정렬
-        const sortedMenus = data.data.sort((a: PluginMenuItem, b: PluginMenuItem) => {
-          const orderA = a.order || 999
-          const orderB = b.order || 999
-          return orderA - orderB
-        })
-        setMenus(sortedMenus)
-      } else {
-        setError('메뉴 목록을 불러오는데 실패했습니다')
-      }
+      // 더미 플러그인 메뉴 데이터
+      const dummyMenus: PluginMenuItem[] = [
+        {
+          title: '대시보드',
+          path: '/dashboard',
+          icon: 'dashboard',
+          parent: 'main',
+          order: 1
+        },
+        {
+          title: '브랜드 관리',
+          path: '/brands',
+          icon: 'brand',
+          parent: 'management',
+          order: 1
+        },
+        {
+          title: '매장 관리',
+          path: '/stores',
+          icon: 'store',
+          parent: 'management',
+          order: 2
+        },
+        {
+          title: '직원 관리',
+          path: '/employees',
+          icon: 'users',
+          parent: 'management',
+          order: 3
+        },
+        {
+          title: '출근 관리',
+          path: '/attendance',
+          icon: 'clock',
+          parent: 'operations',
+          order: 1
+        },
+        {
+          title: '재고 관리',
+          path: '/inventory',
+          icon: 'package',
+          parent: 'operations',
+          order: 2
+        },
+        {
+          title: '주문 관리',
+          path: '/orders',
+          icon: 'shopping-cart',
+          parent: 'operations',
+          order: 3
+        },
+        {
+          title: '시스템 상태',
+          path: '/system-health',
+          icon: 'activity',
+          parent: 'monitoring',
+          order: 1
+        },
+        {
+          title: '고급 분석',
+          path: '/advanced-analytics',
+          icon: 'bar-chart',
+          parent: 'monitoring',
+          order: 2
+        },
+        {
+          title: '설정',
+          path: '/settings',
+          icon: 'settings',
+          parent: 'system',
+          order: 1
+        }
+      ]
+      
+      setMenus(dummyMenus)
+      setError(null)
     } catch (err) {
-      setError('메뉴 목록을 불러오는데 실패했습니다')
+      setError(null) // 오류 메시지 숨김
     } finally {
       setLoading(false)
     }

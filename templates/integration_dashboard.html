@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔄 Your Program 통합 시스템 대시보드</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .status-healthy { background-color: #10B981; }
+        .status-warning { background-color: #F59E0B; }
+        .status-error { background-color: #EF4444; }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- 헤더 -->
+    <header class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div class="flex items-center">
+                    <h1 class="text-3xl font-bold text-gray-900">
+                        🔄 Your Program 통합 시스템
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-sm text-gray-500">
+                        마지막 업데이트: <span id="lastUpdate">-</span>
+                    </div>
+                    <button onclick="refreshData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 전체 상태 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div id="overallStatus" class="w-4 h-4 rounded-full pulse"></div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">전체 상태</p>
+                        <p id="overallHealth" class="text-2xl font-bold text-gray-900">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-4 h-4 bg-blue-500 rounded-full"></div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">총 요청 수</p>
+                        <p id="totalRequests" class="text-2xl font-bold text-gray-900">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-4 h-4 bg-green-500 rounded-full"></div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">정상 시스템</p>
+                        <p id="healthySystems" class="text-2xl font-bold text-gray-900">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-4 h-4 bg-red-500 rounded-full"></div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">오류 시스템</p>
+                        <p id="errorSystems" class="text-2xl font-bold text-gray-900">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 시스템 상태 그리드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div id="apiGatewayCard" class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">API 게이트웨이</h3>
+                    <div id="apiGatewayStatus" class="w-3 h-3 rounded-full"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">응답 시간:</span>
+                        <span id="apiGatewayResponseTime" class="text-sm font-medium">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">마지막 체크:</span>
+                        <span id="apiGatewayLastCheck" class="text-sm font-medium">-</span>
+                    </div>
+                    <div id="apiGatewayError" class="text-sm text-red-600 hidden"></div>
+                </div>
+            </div>
+
+            <div id="aiMlCard" class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">AI/ML 플랫폼</h3>
+                    <div id="aiMlStatus" class="w-3 h-3 rounded-full"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">응답 시간:</span>
+                        <span id="aiMlResponseTime" class="text-sm font-medium">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">마지막 체크:</span>
+                        <span id="aiMlLastCheck" class="text-sm font-medium">-</span>
+                    </div>
+                    <div id="aiMlError" class="text-sm text-red-600 hidden"></div>
+                </div>
+            </div>
+
+            <div id="dataAnalysisCard" class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">데이터 분석</h3>
+                    <div id="dataAnalysisStatus" class="w-3 h-3 rounded-full"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">응답 시간:</span>
+                        <span id="dataAnalysisResponseTime" class="text-sm font-medium">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">마지막 체크:</span>
+                        <span id="dataAnalysisLastCheck" class="text-sm font-medium">-</span>
+                    </div>
+                    <div id="dataAnalysisError" class="text-sm text-red-600 hidden"></div>
+                </div>
+            </div>
+
+            <div id="blockchainCard" class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">블록체인</h3>
+                    <div id="blockchainStatus" class="w-3 h-3 rounded-full"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">응답 시간:</span>
+                        <span id="blockchainResponseTime" class="text-sm font-medium">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">마지막 체크:</span>
+                        <span id="blockchainLastCheck" class="text-sm font-medium">-</span>
+                    </div>
+                    <div id="blockchainError" class="text-sm text-red-600 hidden"></div>
+                </div>
+            </div>
+
+            <div id="iotCard" class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">IoT 플랫폼</h3>
+                    <div id="iotStatus" class="w-3 h-3 rounded-full"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">응답 시간:</span>
+                        <span id="iotResponseTime" class="text-sm font-medium">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">마지막 체크:</span>
+                        <span id="iotLastCheck" class="text-sm font-medium">-</span>
+                    </div>
+                    <div id="iotError" class="text-sm text-red-600 hidden"></div>
+                </div>
+            </div>
+
+            <div id="securityCard" class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">보안 시스템</h3>
+                    <div id="securityStatus" class="w-3 h-3 rounded-full"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">응답 시간:</span>
+                        <span id="securityResponseTime" class="text-sm font-medium">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">마지막 체크:</span>
+                        <span id="securityLastCheck" class="text-sm font-medium">-</span>
+                    </div>
+                    <div id="securityError" class="text-sm text-red-600 hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 차트 섹션 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">시스템 응답 시간</h3>
+                <canvas id="responseTimeChart" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">시스템 상태 분포</h3>
+                <canvas id="statusChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- 로그 섹션 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">최근 통합 로그</h3>
+                <button onclick="loadLogs()" class="text-blue-600 hover:text-blue-800 text-sm">
+                    새로고침
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                시간
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                이벤트 타입
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                상세 정보
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- 로그 데이터가 여기에 동적으로 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // API 기본 URL
+        const API_BASE_URL = 'http://localhost:8080';
+        
+        // 차트 객체들
+        let responseTimeChart = null;
+        let statusChart = null;
+        
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            refreshData();
+            loadLogs();
+            
+            // 30초마다 자동 새로고침
+            setInterval(refreshData, 30000);
+        });
+        
+        // 차트 초기화
+        function initializeCharts() {
+            // 응답 시간 차트
+            const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+            responseTimeChart = new Chart(responseTimeCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '응답 시간 (ms)',
+                        data: [],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // 상태 분포 차트
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['정상', '경고', '오류'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            'rgb(34, 197, 94)',
+                            'rgb(245, 158, 11)',
+                            'rgb(239, 68, 68)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 데이터 새로고침
+        async function refreshData() {
+            try {
+                const [healthResponse, metricsResponse] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/health`),
+                    axios.get(`${API_BASE_URL}/metrics`)
+                ]);
+                
+                updateDashboard(healthResponse.data, metricsResponse.data);
+                updateCharts(healthResponse.data, metricsResponse.data);
+                
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ko-KR');
+            } catch (error) {
+                console.error('데이터 새로고침 오류:', error);
+                showError('데이터를 불러오는 중 오류가 발생했습니다.');
+            }
+        }
+        
+        // 대시보드 업데이트
+        function updateDashboard(healthData, metricsData) {
+            // 전체 상태 업데이트
+            const overallHealth = (healthData.overall_health * 100).toFixed(1);
+            document.getElementById('overallHealth').textContent = `${overallHealth}%`;
+            
+            const overallStatusElement = document.getElementById('overallStatus');
+            overallStatusElement.className = 'w-4 h-4 rounded-full pulse';
+            if (overallHealth >= 80) {
+                overallStatusElement.classList.add('status-healthy');
+            } else if (overallHealth >= 50) {
+                overallStatusElement.classList.add('status-warning');
+            } else {
+                overallStatusElement.classList.add('status-error');
+            }
+            
+            // 메트릭 업데이트
+            document.getElementById('totalRequests').textContent = metricsData.total_requests.toLocaleString();
+            
+            // 시스템별 상태 업데이트
+            const systems = healthData.systems;
+            let healthyCount = 0;
+            let errorCount = 0;
+            
+            Object.keys(systems).forEach(systemName => {
+                const system = systems[systemName];
+                updateSystemCard(systemName, system);
+                
+                if (system.status === 'healthy') {
+                    healthyCount++;
+                } else if (system.status === 'error') {
+                    errorCount++;
+                }
+            });
+            
+            document.getElementById('healthySystems').textContent = healthyCount;
+            document.getElementById('errorSystems').textContent = errorCount;
+        }
+        
+        // 시스템 카드 업데이트
+        function updateSystemCard(systemName, system) {
+            const statusElement = document.getElementById(`${systemName}Status`);
+            const responseTimeElement = document.getElementById(`${systemName}ResponseTime`);
+            const lastCheckElement = document.getElementById(`${systemName}LastCheck`);
+            const errorElement = document.getElementById(`${systemName}Error`);
+            
+            // 상태 표시
+            statusElement.className = 'w-3 h-3 rounded-full';
+            if (system.status === 'healthy') {
+                statusElement.classList.add('status-healthy');
+            } else if (system.status === 'warning') {
+                statusElement.classList.add('status-warning');
+            } else {
+                statusElement.classList.add('status-error');
+            }
+            
+            // 응답 시간
+            responseTimeElement.textContent = `${(system.response_time * 1000).toFixed(0)}ms`;
+            
+            // 마지막 체크 시간
+            const lastCheck = new Date(system.last_check);
+            lastCheckElement.textContent = lastCheck.toLocaleTimeString('ko-KR');
+            
+            // 오류 메시지
+            if (system.error_message) {
+                errorElement.textContent = system.error_message;
+                errorElement.classList.remove('hidden');
+            } else {
+                errorElement.classList.add('hidden');
+            }
+        }
+        
+        // 차트 업데이트
+        function updateCharts(healthData, metricsData) {
+            // 응답 시간 차트 업데이트
+            const systems = healthData.systems;
+            const labels = Object.keys(systems);
+            const responseTimes = labels.map(name => systems[name].response_time * 1000);
+            
+            responseTimeChart.data.labels = labels;
+            responseTimeChart.data.datasets[0].data = responseTimes;
+            responseTimeChart.update();
+            
+            // 상태 분포 차트 업데이트
+            let healthyCount = 0;
+            let warningCount = 0;
+            let errorCount = 0;
+            
+            Object.values(systems).forEach(system => {
+                if (system.status === 'healthy') {
+                    healthyCount++;
+                } else if (system.status === 'warning') {
+                    warningCount++;
+                } else {
+                    errorCount++;
+                }
+            });
+            
+            statusChart.data.datasets[0].data = [healthyCount, warningCount, errorCount];
+            statusChart.update();
+        }
+        
+        // 로그 로드
+        async function loadLogs() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/logs?limit=10`);
+                updateLogsTable(response.data.logs);
+            } catch (error) {
+                console.error('로그 로드 오류:', error);
+            }
+        }
+        
+        // 로그 테이블 업데이트
+        function updateLogsTable(logs) {
+            const tbody = document.getElementById('logsTableBody');
+            tbody.innerHTML = '';
+            
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${new Date(log.timestamp).toLocaleString('ko-KR')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${log.event_type}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                        ${JSON.stringify(log.details, null, 2)}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // 오류 표시
+        function showError(message) {
+            // 간단한 알림 표시 (실제 구현에서는 더 정교한 알림 시스템 사용)
+            console.error(message);
+        }
+    </script>
+</body>
+</html> 

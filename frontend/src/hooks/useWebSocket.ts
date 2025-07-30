@@ -1,216 +1,374 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
 
-interface WebSocketMessage {
+export interface Notification {
+  id: string;
   type: string;
-  [key: string]: any;
+  message: string;
+  data: any;
+  priority: 'high' | 'medium' | 'low';
+  created_at: string;
+  read: boolean;
+  read_at?: string;
 }
 
-interface WebSocketHookOptions {
-  url: string;
-  user_id?: string;
-  user_type?: string;
-  autoReconnect?: boolean;
-  reconnectInterval?: number;
-  maxReconnectAttempts?: number;
-}
-
-interface WebSocketHookReturn {
-  isConnected: boolean;
-  sendMessage: (message: WebSocketMessage) => void;
-  lastMessage: WebSocketMessage | null;
+export interface WebSocketStatus {
+  connected: boolean;
+  connecting: boolean;
   error: string | null;
-  connect: () => void;
-  disconnect: () => void;
+  lastActivity: Date | null;
 }
 
-export const useWebSocket = ({
-  url,
-  user_id = 'anonymous',
-  user_type = 'guest',
-  autoReconnect = true,
-  reconnectInterval = 3000,
-  maxReconnectAttempts = 5
-}: WebSocketHookOptions): WebSocketHookReturn => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  
-  const wsRef = useRef<WebSocket | null>(null);
+export interface NotificationStats {
+  total_notifications: number;
+  unread_count: number;
+  read_count: number;
+  type_stats: Record<string, { total: number; unread: number }>;
+  priority_stats: Record<string, number>;
+  connected_clients: number;
+}
+
+interface UseWebSocketOptions {
+  userId?: string;
+  autoConnect?: boolean;
+  reconnectAttempts?: number;
+  reconnectDelay?: number;
+}
+
+export const useWebSocket = (options: UseWebSocketOptions = {}) => {
+  const {
+    userId = 'anonymous',
+    autoConnect = true,
+    reconnectAttempts = 5,
+    reconnectDelay = 1000
+  } = options;
+
+  const socketRef = useRef<Socket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [status, setStatus] = useState<WebSocketStatus>({
+    connected: false,
+    connecting: false,
+    error: null,
+    lastActivity: null
+  });
+
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [stats, setStats] = useState<NotificationStats | null>(null);
+
+  // WebSocket 연결 생성
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
+    if (socketRef.current?.connected) return;
+
+    setStatus(prev => ({ ...prev, connecting: true, error: null }));
 
     try {
-      const ws = new WebSocket(url);
-      wsRef.current = ws;
+      const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
+        query: { user_id: userId },
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+        reconnection: false // 수동으로 재연결 처리
+      });
 
-      ws.onopen = () => {
-        setIsConnected(true);
-        setError(null);
+      socketRef.current = socket;
+
+      // 연결 이벤트
+      socket.on('connect', () => {
+        console.log('WebSocket 연결됨');
+        setStatus({
+          connected: true,
+          connecting: false,
+          error: null,
+          lastActivity: new Date()
+        });
         reconnectAttemptsRef.current = 0;
-        
-        // 인증 메시지 전송
-        ws.send(JSON.stringify({
-          user_id,
-          user_type
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('WebSocket 연결 해제:', reason);
+        setStatus(prev => ({
+          ...prev,
+          connected: false,
+          connecting: false,
+          error: reason === 'io server disconnect' ? '서버에서 연결을 해제했습니다.' : null
         }));
-      };
 
-      ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          setLastMessage(message);
-          
-          // 메시지 타입별 처리
-          handleMessage(message);
-        } catch (err) {
-          console.error('WebSocket 메시지 파싱 오류:', err);
-        }
-      };
-
-      ws.onclose = (event) => {
-        setIsConnected(false);
-        
-        if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+        // 자동 재연결 시도
+        if (reconnectAttemptsRef.current < reconnectAttempts) {
           reconnectAttemptsRef.current++;
-          console.log(`WebSocket 재연결 시도 ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`);
+          console.log(`재연결 시도 ${reconnectAttemptsRef.current}/${reconnectAttempts}`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
-          }, reconnectInterval);
-        } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-          setError('최대 재연결 시도 횟수를 초과했습니다.');
+          }, reconnectDelay * reconnectAttemptsRef.current);
         }
-      };
+      });
 
-      ws.onerror = (event) => {
-        setError('WebSocket 연결 오류가 발생했습니다.');
-        console.error('WebSocket 오류:', event);
-      };
+      socket.on('connect_error', (error) => {
+        console.error('WebSocket 연결 오류:', error);
+        setStatus(prev => ({
+          ...prev,
+          connecting: false,
+          error: `연결 실패: ${error.message}`
+        }));
+      });
 
-    } catch (err) {
-      setError('WebSocket 연결을 생성할 수 없습니다.');
-      console.error('WebSocket 연결 오류:', err);
+      // 알림 이벤트
+      socket.on('notification', (notification: Notification) => {
+        console.log('새 알림 수신:', notification);
+        setNotifications(prev => [notification, ...prev]);
+        setStatus(prev => ({ ...prev, lastActivity: new Date() }));
+      });
+
+      socket.on('notification_history', (data: { notifications: Notification[] }) => {
+        console.log('알림 히스토리 수신:', data.notifications.length);
+        setNotifications(data.notifications);
+      });
+
+      // 기타 이벤트
+      socket.on('connection_established', (data) => {
+        console.log('연결 확인:', data);
+        setStatus(prev => ({ ...prev, lastActivity: new Date() }));
+      });
+
+      socket.on('room_joined', (data) => {
+        console.log('룸 참가:', data);
+      });
+
+      socket.on('room_left', (data) => {
+        console.log('룸 나감:', data);
+      });
+
+      socket.on('subscription_confirmed', (data) => {
+        console.log('알림 구독 확인:', data);
+      });
+
+      socket.on('unsubscription_confirmed', (data) => {
+        console.log('알림 구독 해제 확인:', data);
+      });
+
+      socket.on('notification_marked_read', (data) => {
+        console.log('알림 읽음 처리:', data);
+        setNotifications(prev => 
+          prev.map(n => 
+            n.id === data.notification_id 
+              ? { ...n, read: true, read_at: data.timestamp }
+              : n
+          )
+        );
+      });
+
+      socket.on('pong', (data) => {
+        setStatus(prev => ({ ...prev, lastActivity: new Date() }));
+      });
+
+      socket.on('error', (error) => {
+        console.error('WebSocket 오류:', error);
+        setStatus(prev => ({ ...prev, error: error.message }));
+      });
+
+    } catch (error) {
+      console.error('WebSocket 초기화 오류:', error);
+      setStatus(prev => ({
+        ...prev,
+        connecting: false,
+        error: `초기화 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`
+      }));
     }
-  }, [url, user_id, user_type, autoReconnect, reconnectInterval, maxReconnectAttempts]);
+  }, [userId, reconnectAttempts, reconnectDelay]);
 
+  // 연결 해제
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-    
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
-    
-    setIsConnected(false);
-    reconnectAttemptsRef.current = 0;
+
+    setStatus({
+      connected: false,
+      connecting: false,
+      error: null,
+      lastActivity: null
+    });
   }, []);
 
-  const sendMessage = useCallback((message: WebSocketMessage) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
-    } else {
-      setError('WebSocket이 연결되지 않았습니다.');
-    }
-  }, []);
-
-  const handleMessage = useCallback((message: WebSocketMessage) => {
-    switch (message.type) {
-      case 'welcome':
-        console.log('WebSocket 서버에 연결되었습니다:', message.message);
-        break;
-        
-      case 'clock_event':
-        console.log('출근/퇴근 이벤트:', message);
-        // 출근/퇴근 알림 처리
-        break;
-        
-      case 'schedule_update':
-        console.log('스케줄 업데이트:', message);
-        // 스케줄 업데이트 처리
-        break;
-        
-      case 'notification':
-        console.log('알림:', message);
-        // 일반 알림 처리
-        break;
-        
-      case 'system_alert':
-        console.log('시스템 알림:', message);
-        // 시스템 알림 처리
-        break;
-        
-      case 'dashboard_update':
-        console.log('대시보드 업데이트:', message);
-        // 대시보드 업데이트 처리
-        break;
-
-      case 'order_update':
-        console.log('주문 업데이트:', message);
-        // 주문 상태 변경 처리
-        break;
-
-      case 'inventory_alert':
-        console.log('재고 알림:', message);
-        // 재고 부족/초과 알림 처리
-        break;
-
-      case 'customer_feedback':
-        console.log('고객 피드백:', message);
-        // 고객 피드백 처리
-        break;
-
-      case 'store_status':
-        console.log('매장 상태:', message);
-        // 매장 운영 상태 처리
-        break;
-
-      case 'employee_activity':
-        console.log('직원 활동:', message);
-        // 직원 활동 로그 처리
-        break;
-
-      case 'sales_report':
-        console.log('매출 리포트:', message);
-        // 매출 데이터 처리
-        break;
-        
-      case 'pong':
-        console.log('핑 응답:', message);
-        break;
-        
-      case 'error':
-        console.error('서버 오류:', message.message);
-        setError(message.message);
-        break;
-        
-      default:
-        console.log('알 수 없는 메시지 타입:', message.type);
+  // 알림 구독
+  const subscribeNotifications = useCallback((types: string[]) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('subscribe_notifications', { types });
     }
   }, []);
 
+  // 알림 구독 해제
+  const unsubscribeNotifications = useCallback((types: string[]) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('unsubscribe_notifications', { types });
+    }
+  }, []);
+
+  // 룸 참가
+  const joinRoom = useCallback((room: string) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('join_room', { room });
+    }
+  }, []);
+
+  // 룸 나가기
+  const leaveRoom = useCallback((room: string) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('leave_room', { room });
+    }
+  }, []);
+
+  // 알림 읽음 처리
+  const markNotificationRead = useCallback((notificationId: string) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('mark_notification_read', { notification_id: notificationId });
+    }
+  }, []);
+
+  // 핑 전송
+  const ping = useCallback(() => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('ping');
+    }
+  }, []);
+
+  // 알림 통계 조회
+  const fetchNotificationStats = useCallback(async () => {
+    try {
+      const response = await fetch('/api/websocket/notifications/stats');
+      const data = await response.json();
+      
+      if (data.success) {
+        setStats(data.data);
+      }
+    } catch (error) {
+      console.error('알림 통계 조회 실패:', error);
+    }
+  }, []);
+
+  // 알림 히스토리 조회
+  const fetchNotificationHistory = useCallback(async (options?: {
+    limit?: number;
+    type?: string;
+    unread_only?: boolean;
+  }) => {
+    try {
+      const params = new URLSearchParams();
+      if (options?.limit) params.append('limit', options.limit.toString());
+      if (options?.type) params.append('type', options.type);
+      if (options?.unread_only) params.append('unread_only', 'true');
+
+      const response = await fetch(`/api/websocket/notifications/history?${params}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setNotifications(data.data.notifications);
+      }
+    } catch (error) {
+      console.error('알림 히스토리 조회 실패:', error);
+    }
+  }, []);
+
+  // 알림 읽음 처리 (배치)
+  const markNotificationsRead = useCallback(async (notificationIds: string[]) => {
+    try {
+      const response = await fetch('/api/websocket/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_ids: notificationIds })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        // 로컬 상태 업데이트
+        setNotifications(prev => 
+          prev.map(n => 
+            notificationIds.includes(n.id) 
+              ? { ...n, read: true, read_at: new Date().toISOString() }
+              : n
+          )
+        );
+      }
+    } catch (error) {
+      console.error('알림 읽음 처리 실패:', error);
+    }
+  }, []);
+
+  // 모든 알림 읽음 처리
+  const markAllNotificationsRead = useCallback(async () => {
+    try {
+      const response = await fetch('/api/websocket/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mark_all: true })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setNotifications(prev => 
+          prev.map(n => ({ ...n, read: true, read_at: new Date().toISOString() }))
+        );
+      }
+    } catch (error) {
+      console.error('모든 알림 읽음 처리 실패:', error);
+    }
+  }, []);
+
+  // 컴포넌트 마운트 시 연결
   useEffect(() => {
-    connect();
-    
+    if (autoConnect) {
+      connect();
+    }
+
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [autoConnect, connect, disconnect]);
+
+  // 주기적 핑 전송
+  useEffect(() => {
+    if (!status.connected) return;
+
+    const pingInterval = setInterval(ping, 30000); // 30초마다 핑
+
+    return () => clearInterval(pingInterval);
+  }, [status.connected, ping]);
 
   return {
-    isConnected,
-    sendMessage,
-    lastMessage,
-    error,
+    // 상태
+    status,
+    notifications,
+    stats,
+    
+    // 연결 관리
     connect,
-    disconnect
+    disconnect,
+    
+    // 룸 관리
+    joinRoom,
+    leaveRoom,
+    
+    // 알림 관리
+    subscribeNotifications,
+    unsubscribeNotifications,
+    markNotificationRead,
+    markNotificationsRead,
+    markAllNotificationsRead,
+    
+    // 데이터 조회
+    fetchNotificationStats,
+    fetchNotificationHistory,
+    
+    // 유틸리티
+    ping
   };
 };
 

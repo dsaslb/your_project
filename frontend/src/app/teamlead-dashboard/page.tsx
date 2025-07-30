@@ -28,7 +28,7 @@ export default function TeamLeadDashboard() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => window.location.href = 'http://192.168.45.44:5000/super-admin'}
+                onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/super-admin`}
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="h-4 w-4" />

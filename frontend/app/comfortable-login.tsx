@@ -33,7 +33,7 @@ export default function ComfortableLoginPage() {
         
         // 권한에 따라 리다이렉트
         if (result.data.user.role === 'admin' || result.data.user.role === 'super_admin') {
-          router.push("/admin-dashboard")
+          router.push("/dashboard")
         } else if (result.data.user.role === 'brand_manager') {
           router.push("/brand-dashboard")
         } else if (result.data.user.role === 'store_manager') {

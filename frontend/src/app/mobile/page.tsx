@@ -1,352 +1,184 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { apiClient } from '@/lib/api-client';
+import { useState } from 'react';
 import { 
-  Clock, 
-  User, 
-  ShoppingCart, 
-  Package, 
-  Bell, 
-  Calendar,
-  TrendingUp,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+  MobileBottomNavigation, 
+  MobileDataTable, 
+  TouchButton, 
+  MobileChart,
+  SwipeableCard 
+} from '@/components/MobileOptimized';
+import { DataCard } from '@/components/DataTable';
+import { Users, ShoppingCart, DollarSign, Activity, Bell, Settings } from 'lucide-react';
 
-interface MobileDashboard {
-  role: string;
-  stats?: any;
-  today_schedule?: any;
-  branch_id?: number;
-}
+export default function MobilePage() {
+  const [activeTab, setActiveTab] = useState('dashboard');
 
-interface Order {
-  id: number;
-  customer_name: string;
-  items: string;
-  total_amount: number;
-  status: string;
-  created_at: string;
-}
+  // 샘플 데이터
+  const userData = [
+    { id: 1, name: '김철수', role: '매니저', status: '활성', lastLogin: '2분 전' },
+    { id: 2, name: '이영희', role: '직원', status: '활성', lastLogin: '5분 전' },
+    { id: 3, name: '박민수', role: '매니저', status: '비활성', lastLogin: '1시간 전' },
+    { id: 4, name: '최지영', role: '직원', status: '활성', lastLogin: '10분 전' },
+  ];
 
-interface Attendance {
-  date: string;
-  check_in_time: string | null;
-  check_out_time: string | null;
-  work_hours: number | null;
-  status: string;
-}
+  const chartData = [
+    { value: 45, label: 'CPU' },
+    { value: 67, label: '메모리' },
+    { value: 23, label: '디스크' },
+    { value: 12, label: '네트워크' },
+  ];
 
-const MobilePage: React.FC = () => {
-  const [dashboard, setDashboard] = useState<MobileDashboard | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const userColumns = [
+    { key: 'name', title: '이름' },
+    { key: 'role', title: '역할' },
+    { key: 'status', title: '상태' },
+    { key: 'lastLogin', title: '마지막 로그인' },
+  ];
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      setError(null);
+  const renderDashboard = () => (
+    <div className="space-y-4">
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-2 gap-3 px-4">
+        <DataCard
+          title="총 사용자"
+          value="1,234"
+          change={5.2}
+          icon={Users}
+          color="cyan"
+        />
+        <DataCard
+          title="총 주문"
+          value="567"
+          change={-2.1}
+          icon={ShoppingCart}
+          color="green"
+        />
+        <DataCard
+          title="총 매출"
+          value="₩12M"
+          change={8.7}
+          icon={DollarSign}
+          color="yellow"
+        />
+        <DataCard
+          title="시스템 부하"
+          value="67%"
+          change={1.5}
+          icon={Activity}
+          color="red"
+        />
+      </div>
+
+      {/* 시스템 성능 차트 */}
+      <MobileChart
+        title="시스템 성능"
+        data={chartData}
+        color="#06b6d4"
+      />
+
+      {/* 스와이프 가능한 알림 카드 */}
+      <SwipeableCard
+        onSwipeLeft={() => console.log('알림 삭제')}
+        onSwipeRight={() => console.log('알림 보관')}
+        className="mx-4"
+      >
+        <div className="p-4 bg-black/30 backdrop-blur-sm border border-cyan-500/20 rounded-lg">
+          <div className="flex items-center space-x-3">
+            <Bell className="w-5 h-5 text-cyan-400" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-white">새로운 알림</h3>
+              <p className="text-sm text-slate-400">시스템 업데이트가 완료되었습니다.</p>
+            </div>
+          </div>
+        </div>
+      </SwipeableCard>
+    </div>
+  );
+
+  const renderUsers = () => (
+    <div className="space-y-4">
+      <div className="px-4">
+        <h2 className="text-lg font-semibold text-white mb-4">사용자 관리</h2>
+        <TouchButton
+          onClick={() => console.log('새 사용자 추가')}
+          className="w-full mb-4"
+        >
+          새 사용자 추가
+        </TouchButton>
+      </div>
       
-      const response = await apiClient.post('/api/mobile/auth/login', loginData);
-      const { token, user: userData } = response.data;
+      <MobileDataTable
+        data={userData}
+        columns={userColumns}
+        title="사용자 목록"
+      />
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="space-y-4 px-4">
+      <h2 className="text-lg font-semibold text-white mb-4">설정</h2>
       
-      // 로컬 스토리지에 토큰 저장
-      localStorage.setItem('mobile_token', token);
-      localStorage.setItem('mobile_user', JSON.stringify(userData));
-      
-    } catch (err: any) {
-      setError(err.response?.data?.error || '로그인에 실패했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
+      <div className="space-y-3">
+        <TouchButton
+          onClick={() => console.log('알림 설정')}
+          variant="outline"
+          className="w-full justify-start"
+        >
+          <Bell className="w-4 h-4 mr-2" />
+          알림 설정
+        </TouchButton>
+        
+        <TouchButton
+          onClick={() => console.log('계정 설정')}
+          variant="outline"
+          className="w-full justify-start"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          계정 설정
+        </TouchButton>
+        
+        <TouchButton
+          onClick={() => console.log('테마 설정')}
+          variant="outline"
+          className="w-full justify-start"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          테마 설정
+        </TouchButton>
+      </div>
+    </div>
+  );
 
-  const fetchDashboard = async () => {
-    try {
-      const response = await apiClient.get('/api/mobile/dashboard');
-      setDashboard(response.data);
-    } catch (err) {
-      console.error('Dashboard fetch error:', err);
-    }
-  };
-
-  const fetchOrders = async () => {
-    try {
-      const response = await apiClient.get('/api/mobile/orders?per_page=10');
-      setOrders(response.data.orders);
-    } catch (err) {
-      console.error('Orders fetch error:', err);
-    }
-  };
-
-  const fetchAttendance = async () => {
-    try {
-      const response = await apiClient.get('/api/mobile/attendance/history?per_page=7');
-      setAttendance(response.data.attendances);
-    } catch (err) {
-      console.error('Attendance fetch error:', err);
-    }
-  };
-
-  const handleCheckIn = async () => {
-    try {
-      await apiClient.post('/api/mobile/attendance/check-in');
-      fetchAttendance();
-    } catch (err: any) {
-      setError(err.response?.data?.error || '출근 기록에 실패했습니다.');
-    }
-  };
-
-  const handleCheckOut = async () => {
-    try {
-      await apiClient.post('/api/mobile/attendance/check-out');
-      fetchAttendance();
-    } catch (err: any) {
-      setError(err.response?.data?.error || '퇴근 기록에 실패했습니다.');
-    }
-  };
-
-  const updateOrderStatus = async (orderId: number, status: string) => {
-    try {
-      await apiClient.put(`/api/mobile/orders/${orderId}/status`, { status });
-      fetchOrders();
-    } catch (err: any) {
-      setError(err.response?.data?.error || '주문 상태 업데이트에 실패했습니다.');
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW'
-    }).format(amount);
-  };
-
-  const formatTime = (timeString: string) => {
-    return new Date(timeString).toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'confirmed': return 'bg-blue-500';
-      case 'completed': return 'bg-green-500';
-      case 'cancelled': return 'bg-red-500';
-      default: return 'bg-gray-500';
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return renderDashboard();
+      case 'users':
+        return renderUsers();
+      case 'settings':
+        return renderSettings();
+      default:
+        return renderDashboard();
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 pb-20">
       {/* 헤더 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">레스토랑 관리</h1>
-            // <p className="text-sm text-gray-600">user 정보 표시(임시 비활성화)</p>
-          </div>
-          // 로그아웃 버튼(임시 비활성화)
-        </div>
+      <div className="p-4 border-b border-cyan-500/20">
+        <h1 className="text-xl font-bold text-white">모바일 대시보드</h1>
+        <p className="text-sm text-slate-400">모바일에 최적화된 인터페이스</p>
       </div>
 
-      <div className="p-4 space-y-4">
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* 대시보드 카드 */}
-        {dashboard && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                대시보드
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {dashboard.stats && (
-                  <>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {dashboard.stats.total_orders || dashboard.stats.branch_orders || 0}
-                      </div>
-                      <div className="text-sm text-gray-600">총 주문</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        {dashboard.stats.today_orders || dashboard.stats.today_branch_orders || 0}
-                      </div>
-                      <div className="text-sm text-gray-600">오늘 주문</div>
-                    </div>
-                  </>
-                )}
-                {dashboard.today_schedule && (
-                  <div className="col-span-2">
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">오늘 근무</div>
-                      <div className="text-sm text-gray-600">
-                        {dashboard.today_schedule.start_time && 
-                         formatTime(dashboard.today_schedule.start_time)} - 
-                        {dashboard.today_schedule.end_time && 
-                         formatTime(dashboard.today_schedule.end_time)}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 출근 관리 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              출근 관리
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Button onClick={handleCheckIn} className="flex-1">
-                출근 체크인
-              </Button>
-              <Button onClick={handleCheckOut} variant="outline" className="flex-1">
-                퇴근 체크아웃
-              </Button>
-            </div>
-            
-            {attendance.length > 0 && (
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">최근 출근 기록</h4>
-                <div className="space-y-2">
-                  {attendance.slice(0, 3).map((record, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm">
-                      <span>{new Date(record.date).toLocaleDateString('ko-KR')}</span>
-                      <div className="flex items-center gap-2">
-                        {record.check_in_time && (
-                          <Badge variant="outline" className="text-xs">
-                            {formatTime(record.check_in_time)}
-                          </Badge>
-                        )}
-                        {record.check_out_time && (
-                          <Badge variant="outline" className="text-xs">
-                            {formatTime(record.check_out_time)}
-                          </Badge>
-                        )}
-                        <Badge className={record.status === 'present' ? 'bg-green-500' : 'bg-red-500'}>
-                          {record.status === 'present' ? '출근' : '결근'}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 주문 관리 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              주문 관리
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {orders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{order.customer_name}</span>
-                    <Badge className={getStatusColor(order.status)}>
-                      {order.status}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-gray-600 mb-2">
-                    {order.items}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{formatCurrency(order.total_amount)}</span>
-                    <div className="flex gap-1">
-                      {order.status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => updateOrderStatus(order.id, 'confirmed')}
-                            className="h-6 px-2 text-xs"
-                          >
-                            확인
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateOrderStatus(order.id, 'cancelled')}
-                            className="h-6 px-2 text-xs"
-                          >
-                            취소
-                          </Button>
-                        </>
-                      )}
-                      {order.status === 'confirmed' && (
-                        <Button
-                          size="sm"
-                          onClick={() => updateOrderStatus(order.id, 'completed')}
-                          className="h-6 px-2 text-xs"
-                        >
-                          완료
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 빠른 액션 */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-center">
-                <Package className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                <div className="font-medium">재고 확인</div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-center">
-                <Bell className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                <div className="font-medium">알림</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* 메인 콘텐츠 */}
+      <div className="py-4">
+        {renderContent()}
       </div>
+
+      {/* 하단 네비게이션 */}
+      <MobileBottomNavigation />
     </div>
   );
-};
-
-export default MobilePage; 
+} 

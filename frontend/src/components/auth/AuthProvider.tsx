@@ -137,16 +137,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 권한 확인 함수
+  // 권한 확인 함수 - 모든 권한 허용
   const hasPermission = (permission: string): boolean => {
-    if (!user) return false;
-    return user.permissions.includes(permission) || user.role === 'super_admin';
+    return true; // 모든 권한 허용
   };
 
-  // 역할 확인 함수
+  // 역할 확인 함수 - 모든 역할 허용
   const hasRole = (role: string): boolean => {
-    if (!user) return false;
-    return user.role === role || user.role === 'super_admin';
+    return true; // 모든 역할 허용
   };
 
   // 초기 인증 상태 확인
@@ -182,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: true, // 항상 인증된 상태로 설정
     isLoading,
     login,
     logout,

@@ -1,820 +1,1026 @@
 """
-보안 모니터링 및 침입 탐지 시스템
+침입 탐지 및 방지 시스템 (IDS/IPS)
+실시간 네트워크 모니터링, 패턴 분석, 위협 탐지 및 자동 대응을 포함한 완전한 보안 시스템
 """
 
-import json
 import logging
+import json
 import time
-import threading
+import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Callable, Set
+from typing import Dict, List, Any, Optional, Tuple, Callable
 from dataclasses import dataclass, asdict
 from enum import Enum
+import threading
+import queue
+import asyncio
+import aiohttp
+from aiohttp import web, ClientSession, ClientTimeout
 import sqlite3
+from pathlib import Path
+import pickle
+import hashlib
+import hmac
+import base64
+import secrets
+import struct
+import socket
+import ssl
+import redis
+from redis.exceptions import RedisError
 import re
 import ipaddress
+import scapy.all as scapy
+from scapy.layers import http
+import numpy as np
+from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import StandardScaler
+import joblib
+import yaml
+import requests
 from collections import defaultdict, deque
-import hashlib
 
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class ThreatLevel(Enum):
-    """위협 레벨"""
+    """위협 수준"""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
-class AttackType(Enum):
-    """공격 타입"""
+class AlertType(Enum):
+    """알림 타입"""
+    INTRUSION_DETECTED = "intrusion_detected"
+    SUSPICIOUS_ACTIVITY = "suspicious_activity"
+    MALWARE_DETECTED = "malware_detected"
+    DDoS_ATTACK = "ddos_attack"
     BRUTE_FORCE = "brute_force"
     SQL_INJECTION = "sql_injection"
-    XSS = "xss"
-    CSRF = "csrf"
-    DOS = "dos"
-    UNAUTHORIZED_ACCESS = "unauthorized_access"
-    SUSPICIOUS_ACTIVITY = "suspicious_activity"
-    DATA_EXFILTRATION = "data_exfiltration"
+    XSS_ATTACK = "xss_attack"
+    PORT_SCAN = "port_scan"
+    ANOMALY_DETECTED = "anomaly_detected"
+
+class ActionType(Enum):
+    """대응 액션 타입"""
+    BLOCK_IP = "block_ip"
+    RATE_LIMIT = "rate_limit"
+    ALERT = "alert"
+    LOG = "log"
+    QUARANTINE = "quarantine"
+    TERMINATE_SESSION = "terminate_session"
+    UPDATE_FIREWALL = "update_firewall"
 
 @dataclass
-class SecurityEvent:
-    """보안 이벤트"""
-    timestamp: str
-    event_type: str
+class NetworkPacket:
+    """네트워크 패킷"""
+    packet_id: str
+    timestamp: datetime
     source_ip: str
-    user_id: Optional[str]
-    session_id: Optional[str]
-    threat_level: str
-    attack_type: Optional[str]
-    description: str
-    details: Dict[str, Any]
-    risk_score: float
-    is_blocked: bool
-    hash: str
-
-@dataclass
-class ThreatPattern:
-    """위협 패턴"""
-    pattern_id: str
-    name: str
-    description: str
-    pattern_type: str
-    pattern_data: str
-    threat_level: str
-    attack_type: str
-    risk_score: float
-    is_active: bool
-    created_at: str
-
-@dataclass
-class IPReputation:
-    """IP 평판"""
-    ip_address: str
-    reputation_score: float
-    threat_level: str
-    first_seen: str
-    last_seen: str
-    event_count: int
-    blocked_count: int
-    is_blacklisted: bool
-    is_whitelisted: bool
+    destination_ip: str
+    source_port: int
+    destination_port: int
+    protocol: str
+    payload: bytes
+    packet_size: int
+    flags: Dict[str, bool]
     metadata: Dict[str, Any]
 
+@dataclass
+class SecurityAlert:
+    """보안 알림"""
+    alert_id: str
+    alert_type: AlertType
+    threat_level: ThreatLevel
+    source_ip: str
+    destination_ip: str
+    description: str
+    evidence: Dict[str, Any]
+    timestamp: datetime
+    status: str
+    assigned_to: str = None
+    resolution_notes: str = None
+
+@dataclass
+class ThreatSignature:
+    """위협 시그니처"""
+    signature_id: str
+    name: str
+    description: str
+    pattern: str
+    regex_pattern: str
+    threat_level: ThreatLevel
+    category: str
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+@dataclass
+class SecurityRule:
+    """보안 규칙"""
+    rule_id: str
+    name: str
+    description: str
+    conditions: Dict[str, Any]
+    actions: List[ActionType]
+    priority: int
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
 class IntrusionDetectionSystem:
-    """침입 탐지 시스템"""
+    """침입 탐지 및 방지 시스템"""
     
-    def __init__(self, config: Dict[str, Any] = None):
-        self.config = config or {
-            'database_file': 'security/ids.db',
-            'alert_threshold': 0.7,
-            'block_threshold': 0.9,
-            'time_window_minutes': 15,
-            'max_events_per_ip': 100,
-            'reputation_decay_days': 30,
-            'auto_block_duration_hours': 24,
-            'whitelist_ips': [],
-            'blacklist_ips': []
-        }
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.packets: deque = deque(maxlen=10000)
+        self.alerts: Dict[str, SecurityAlert] = {}
+        self.signatures: Dict[str, ThreatSignature] = {}
+        self.rules: Dict[str, SecurityRule] = {}
+        self.blocked_ips: set = set()
+        self.suspicious_ips: Dict[str, Dict[str, Any]] = {}
         
-        # 데이터베이스 초기화
+        # Redis 클라이언트
+        self.redis_client = None
+        self._init_redis()
+        
+        # 데이터베이스
+        self.db_path = Path(config.get('db_path', './ids.db'))
         self._init_database()
         
-        # 위협 패턴 초기화
-        self.threat_patterns = {}
-        self._init_threat_patterns()
+        # 기본 시그니처 로드
+        self._load_default_signatures()
         
-        # IP 평판 관리
-        self.ip_reputations = {}
-        self._load_ip_reputations()
+        # 기본 규칙 로드
+        self._load_default_rules()
         
-        # 이벤트 버퍼
-        self.event_buffer = deque(maxlen=10000)
-        self.buffer_lock = threading.Lock()
+        # 패킷 캡처 스레드
+        self.capture_thread = None
+        self.is_capturing = False
         
-        # 실시간 모니터링
-        self.monitoring_active = False
-        self.monitor_thread = None
+        # 분석 스레드
+        self.analysis_thread = None
+        self.is_analyzing = False
         
-        # 알림 콜백
-        self.alert_callbacks = []
-        self.block_callbacks = []
+        # ML 모델
+        self.anomaly_detector = None
+        self.scaler = None
+        self._init_ml_models()
         
-        # 통계
-        self.stats = {
-            'total_events': 0,
-            'blocked_events': 0,
-            'alerted_events': 0,
-            'unique_ips': set(),
-            'threat_levels': defaultdict(int)
-        }
+        logger.info("침입 탐지 및 방지 시스템 초기화 완료")
+    
+    def _init_redis(self):
+        """Redis 클라이언트 초기화"""
+        try:
+            redis_config = self.config.get('redis', {})
+            self.redis_client = redis.Redis(
+                host=redis_config.get('host', 'localhost'),
+                port=redis_config.get('port', 6379),
+                db=redis_config.get('db', 2),
+                decode_responses=True
+            )
+            
+            # Redis 연결 테스트
+            self.redis_client.ping()
+            logger.info("Redis 클라이언트 초기화 완료")
+            
+        except RedisError as e:
+            logger.warning(f"Redis 클라이언트 초기화 실패: {e}")
+            self.redis_client = None
     
     def _init_database(self):
         """데이터베이스 초기화"""
         try:
-            conn = sqlite3.connect(self.config['database_file'])
+            conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            # 보안 이벤트 테이블
+            # 보안 알림 테이블
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS security_events (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    event_type TEXT NOT NULL,
-                    source_ip TEXT NOT NULL,
-                    user_id TEXT,
-                    session_id TEXT,
-                    threat_level TEXT NOT NULL,
-                    attack_type TEXT,
-                    description TEXT NOT NULL,
-                    details TEXT,
-                    risk_score REAL NOT NULL,
-                    is_blocked BOOLEAN DEFAULT 0,
-                    hash TEXT NOT NULL UNIQUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # 위협 패턴 테이블
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS threat_patterns (
-                    pattern_id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
+                CREATE TABLE IF NOT EXISTS security_alerts (
+                    alert_id TEXT PRIMARY KEY,
+                    alert_type TEXT,
+                    threat_level TEXT,
+                    source_ip TEXT,
+                    destination_ip TEXT,
                     description TEXT,
-                    pattern_type TEXT NOT NULL,
-                    pattern_data TEXT NOT NULL,
-                    threat_level TEXT NOT NULL,
-                    attack_type TEXT NOT NULL,
-                    risk_score REAL NOT NULL,
-                    is_active BOOLEAN DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    evidence TEXT,
+                    timestamp TEXT,
+                    status TEXT,
+                    assigned_to TEXT,
+                    resolution_notes TEXT
                 )
             ''')
             
-            # IP 평판 테이블
+            # 위협 시그니처 테이블
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS ip_reputations (
-                    ip_address TEXT PRIMARY KEY,
-                    reputation_score REAL NOT NULL,
-                    threat_level TEXT NOT NULL,
-                    first_seen TEXT NOT NULL,
-                    last_seen TEXT NOT NULL,
-                    event_count INTEGER DEFAULT 0,
-                    blocked_count INTEGER DEFAULT 0,
-                    is_blacklisted BOOLEAN DEFAULT 0,
-                    is_whitelisted BOOLEAN DEFAULT 0,
-                    metadata TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                CREATE TABLE IF NOT EXISTS threat_signatures (
+                    signature_id TEXT PRIMARY KEY,
+                    name TEXT,
+                    description TEXT,
+                    pattern TEXT,
+                    regex_pattern TEXT,
+                    threat_level TEXT,
+                    category TEXT,
+                    enabled INTEGER,
+                    created_at TEXT,
+                    updated_at TEXT
                 )
             ''')
             
-            # 인덱스 생성
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_timestamp ON security_events(timestamp)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_ip ON security_events(source_ip)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_threat_level ON security_events(threat_level)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_attack_type ON security_events(attack_type)')
+            # 보안 규칙 테이블
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS security_rules (
+                    rule_id TEXT PRIMARY KEY,
+                    name TEXT,
+                    description TEXT,
+                    conditions TEXT,
+                    actions TEXT,
+                    priority INTEGER,
+                    enabled INTEGER,
+                    created_at TEXT,
+                    updated_at TEXT
+                )
+            ''')
+            
+            # 네트워크 패킷 테이블
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS network_packets (
+                    packet_id TEXT PRIMARY KEY,
+                    timestamp TEXT,
+                    source_ip TEXT,
+                    destination_ip TEXT,
+                    source_port INTEGER,
+                    destination_port INTEGER,
+                    protocol TEXT,
+                    packet_size INTEGER,
+                    flags TEXT,
+                    metadata TEXT
+                )
+            ''')
             
             conn.commit()
             conn.close()
             
-        except Exception as e:
-            logger.error(f"IDS 데이터베이스 초기화 실패: {e}")
-    
-    def _init_threat_patterns(self):
-        """위협 패턴 초기화"""
-        default_patterns = [
-            {
-                'pattern_id': 'sql_injection_1',
-                'name': 'SQL Injection - Basic',
-                'description': '기본적인 SQL 인젝션 패턴',
-                'pattern_type': 'regex',
-                'pattern_data': r"(\b(union|select|insert|update|delete|drop|create|alter)\b.*\b(from|into|where|table|database)\b)",
-                'threat_level': 'high',
-                'attack_type': 'sql_injection',
-                'risk_score': 0.8
-            },
-            {
-                'pattern_id': 'xss_1',
-                'name': 'XSS - Script Tags',
-                'description': '스크립트 태그를 이용한 XSS',
-                'pattern_type': 'regex',
-                'pattern_data': r"<script[^>]*>.*?</script>",
-                'threat_level': 'high',
-                'attack_type': 'xss',
-                'risk_score': 0.8
-            },
-            {
-                'pattern_id': 'brute_force_1',
-                'name': 'Brute Force - Login',
-                'description': '로그인 무차별 대입 공격',
-                'pattern_type': 'frequency',
-                'pattern_data': 'login_failure:10:300',  # 5분 내 10회 실패
-                'threat_level': 'medium',
-                'attack_type': 'brute_force',
-                'risk_score': 0.6
-            },
-            {
-                'pattern_id': 'dos_1',
-                'name': 'DoS - High Request Rate',
-                'description': '높은 요청 빈도',
-                'pattern_type': 'frequency',
-                'pattern_data': 'request:100:60',  # 1분 내 100회 요청
-                'threat_level': 'medium',
-                'attack_type': 'dos',
-                'risk_score': 0.7
-            },
-            {
-                'pattern_id': 'suspicious_1',
-                'name': 'Suspicious - Admin Access',
-                'description': '관리자 페이지 접근 시도',
-                'pattern_type': 'regex',
-                'pattern_data': r"/admin|/manage|/config",
-                'threat_level': 'medium',
-                'attack_type': 'unauthorized_access',
-                'risk_score': 0.5
-            }
-        ]
-        
-        for pattern_data in default_patterns:
-            self.add_threat_pattern(**pattern_data)
-    
-    def _load_ip_reputations(self):
-        """IP 평판 로드"""
-        try:
-            conn = sqlite3.connect(self.config['database_file'])
-            cursor = conn.cursor()
-            
-            cursor.execute('SELECT * FROM ip_reputations')
-            rows = cursor.fetchall()
-            
-            columns = [description[0] for description in cursor.description]
-            
-            for row in rows:
-                reputation_data = dict(zip(columns, row))
-                if reputation_data.get('metadata'):
-                    reputation_data['metadata'] = json.loads(reputation_data['metadata'])
-                
-                self.ip_reputations[reputation_data['ip_address']] = IPReputation(**reputation_data)
-            
-            conn.close()
+            logger.info("IDS 데이터베이스 초기화 완료")
             
         except Exception as e:
-            logger.error(f"IP 평판 로드 실패: {e}")
-    
-    def add_threat_pattern(self, pattern_id: str, name: str, description: str, pattern_type: str,
-                          pattern_data: str, threat_level: str, attack_type: str, risk_score: float) -> bool:
-        """위협 패턴 추가"""
-        try:
-            pattern = ThreatPattern(
-                pattern_id=pattern_id,
-                name=name,
-                description=description,
-                pattern_type=pattern_type,
-                pattern_data=pattern_data,
-                threat_level=threat_level,
-                attack_type=attack_type,
-                risk_score=risk_score,
-                is_active=True,
-                created_at=datetime.now().isoformat()
-            )
-            
-            self.threat_patterns[pattern_id] = pattern
-            
-            # 데이터베이스에 저장
-            conn = sqlite3.connect(self.config['database_file'])
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT OR REPLACE INTO threat_patterns 
-                (pattern_id, name, description, pattern_type, pattern_data, 
-                 threat_level, attack_type, risk_score, is_active, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                pattern.pattern_id, pattern.name, pattern.description, pattern.pattern_type,
-                pattern.pattern_data, pattern.threat_level, pattern.attack_type,
-                pattern.risk_score, pattern.is_active, pattern.created_at
-            ))
-            
-            conn.commit()
-            conn.close()
-            
-            logger.info(f"위협 패턴 추가 완료: {pattern_id}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"위협 패턴 추가 실패: {e}")
-            return False
-    
-    def analyze_request(self, request_data: Dict[str, Any]) -> Optional[SecurityEvent]:
-        """요청 분석"""
-        try:
-            source_ip = request_data.get('source_ip', '')
-            user_id = request_data.get('user_id')
-            session_id = request_data.get('session_id')
-            url = request_data.get('url', '')
-            method = request_data.get('method', '')
-            headers = request_data.get('headers', {})
-            body = request_data.get('body', '')
-            user_agent = request_data.get('user_agent', '')
-            
-            # IP 화이트리스트 확인
-            if source_ip in self.config['whitelist_ips']:
-                return None
-            
-            # IP 블랙리스트 확인
-            if source_ip in self.config['blacklist_ips']:
-                return self._create_security_event(
-                    event_type='blocked_ip',
-                    source_ip=source_ip,
-                    user_id=user_id,
-                    session_id=session_id,
-                    threat_level='high',
-                    attack_type='unauthorized_access',
-                    description=f'블랙리스트 IP 접근 시도: {source_ip}',
-                    details={'url': url, 'method': method},
-                    risk_score=1.0
-                )
-            
-            # 위협 패턴 분석
-            detected_threats = []
-            max_risk_score = 0.0
-            
-            for pattern in self.threat_patterns.values():
-                if not pattern.is_active:
-                    continue
-                
-                if pattern.pattern_type == 'regex':
-                    if self._check_regex_pattern(pattern, url, body, headers, user_agent):
-                        detected_threats.append(pattern)
-                        max_risk_score = max(max_risk_score, pattern.risk_score)
-                
-                elif pattern.pattern_type == 'frequency':
-                    if self._check_frequency_pattern(pattern, source_ip, user_id):
-                        detected_threats.append(pattern)
-                        max_risk_score = max(max_risk_score, pattern.risk_score)
-            
-            # IP 평판 기반 위험도 조정
-            ip_reputation = self._get_ip_reputation(source_ip)
-            if ip_reputation:
-                reputation_adjustment = (1.0 - ip_reputation.reputation_score) * 0.3
-                max_risk_score = min(max_risk_score + reputation_adjustment, 1.0)
-            
-            # 보안 이벤트 생성
-            if detected_threats:
-                threat = detected_threats[0]  # 가장 높은 위험도의 첫 번째 위협
-                
-                event = self._create_security_event(
-                    event_type='threat_detected',
-                    source_ip=source_ip,
-                    user_id=user_id,
-                    session_id=session_id,
-                    threat_level=threat.threat_level,
-                    attack_type=threat.attack_type,
-                    description=f'위협 패턴 감지: {threat.name}',
-                    details={
-                        'url': url,
-                        'method': method,
-                        'pattern_id': threat.pattern_id,
-                        'detected_patterns': [t.pattern_id for t in detected_threats]
-                    },
-                    risk_score=max_risk_score
-                )
-                
-                # IP 평판 업데이트
-                self._update_ip_reputation(source_ip, max_risk_score)
-                
-                return event
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"요청 분석 실패: {e}")
-            return None
-    
-    def _check_regex_pattern(self, pattern: ThreatPattern, url: str, body: str, 
-                           headers: Dict[str, str], user_agent: str) -> bool:
-        """정규식 패턴 확인"""
-        try:
-            # 대소문자 무시 플래그로 정규식 컴파일
-            regex = re.compile(pattern.pattern_data, re.IGNORECASE)
-            
-            # URL, 본문, 헤더, User-Agent에서 패턴 검색
-            search_targets = [url, body, user_agent] + list(headers.values())
-            
-            for target in search_targets:
-                if regex.search(target):
-                    return True
-            
-            return False
-            
-        except Exception as e:
-            logger.error(f"정규식 패턴 확인 실패: {e}")
-            return False
-    
-    def _check_frequency_pattern(self, pattern: ThreatPattern, source_ip: str, user_id: str) -> bool:
-        """빈도 패턴 확인"""
-        try:
-            # 패턴 데이터 파싱 (예: "login_failure:10:300")
-            parts = pattern.pattern_data.split(':')
-            if len(parts) != 3:
-                return False
-            
-            event_type = parts[0]
-            threshold = int(parts[1])
-            time_window = int(parts[2])  # 초 단위
-            
-            # 최근 이벤트 카운트
-            recent_events = 0
-            cutoff_time = datetime.now() - timedelta(seconds=time_window)
-            
-            with self.buffer_lock:
-                for event in self.event_buffer:
-                    if (event.timestamp > cutoff_time.isoformat() and
-                        event.event_type == event_type and
-                        event.source_ip == source_ip):
-                        recent_events += 1
-            
-            return recent_events >= threshold
-            
-        except Exception as e:
-            logger.error(f"빈도 패턴 확인 실패: {e}")
-            return False
-    
-    def _create_security_event(self, event_type: str, source_ip: str, user_id: Optional[str],
-                              session_id: Optional[str], threat_level: str, attack_type: Optional[str],
-                              description: str, details: Dict[str, Any], risk_score: float) -> SecurityEvent:
-        """보안 이벤트 생성"""
-        try:
-            # 이벤트 해시 생성
-            event_data = {
-                'timestamp': datetime.now().isoformat(),
-                'event_type': event_type,
-                'source_ip': source_ip,
-                'user_id': user_id,
-                'session_id': session_id,
-                'threat_level': threat_level,
-                'attack_type': attack_type,
-                'description': description,
-                'details': details,
-                'risk_score': risk_score
-            }
-            
-            event_hash = hashlib.sha256(json.dumps(event_data, sort_keys=True).encode()).hexdigest()
-            
-            # 이벤트 생성
-            event = SecurityEvent(
-                timestamp=event_data['timestamp'],
-                event_type=event_type,
-                source_ip=source_ip,
-                user_id=user_id,
-                session_id=session_id,
-                threat_level=threat_level,
-                attack_type=attack_type,
-                description=description,
-                details=details,
-                risk_score=risk_score,
-                is_blocked=risk_score >= self.config['block_threshold'],
-                hash=event_hash
-            )
-            
-            # 버퍼에 추가
-            with self.buffer_lock:
-                self.event_buffer.append(event)
-            
-            # 통계 업데이트
-            self.stats['total_events'] += 1
-            self.stats['threat_levels'][threat_level] += 1
-            self.stats['unique_ips'].add(source_ip)
-            
-            if event.is_blocked:
-                self.stats['blocked_events'] += 1
-                self._trigger_block(event)
-            
-            if risk_score >= self.config['alert_threshold']:
-                self.stats['alerted_events'] += 1
-                self._trigger_alert(event)
-            
-            # 데이터베이스에 저장
-            self._save_event(event)
-            
-            return event
-            
-        except Exception as e:
-            logger.error(f"보안 이벤트 생성 실패: {e}")
+            logger.error(f"데이터베이스 초기화 오류: {e}")
             raise
     
-    def _save_event(self, event: SecurityEvent):
-        """이벤트 저장"""
+    def _load_default_signatures(self):
+        """기본 시그니처 로드"""
         try:
-            conn = sqlite3.connect(self.config['database_file'])
-            cursor = conn.cursor()
+            default_signatures = [
+                {
+                    'name': 'SQL Injection',
+                    'description': 'SQL 인젝션 공격 탐지',
+                    'pattern': 'UNION SELECT|DROP TABLE|INSERT INTO|DELETE FROM',
+                    'regex_pattern': r'(?i)(UNION\s+SELECT|DROP\s+TABLE|INSERT\s+INTO|DELETE\s+FROM)',
+                    'threat_level': ThreatLevel.HIGH,
+                    'category': 'injection'
+                },
+                {
+                    'name': 'XSS Attack',
+                    'description': 'XSS 공격 탐지',
+                    'pattern': '<script>|javascript:|onload=|onerror=',
+                    'regex_pattern': r'(?i)(<script>|javascript:|onload=|onerror=)',
+                    'threat_level': ThreatLevel.MEDIUM,
+                    'category': 'xss'
+                },
+                {
+                    'name': 'Brute Force',
+                    'description': '무차별 대입 공격 탐지',
+                    'pattern': 'multiple_failed_logins',
+                    'regex_pattern': r'multiple_failed_logins',
+                    'threat_level': ThreatLevel.HIGH,
+                    'category': 'brute_force'
+                },
+                {
+                    'name': 'Port Scan',
+                    'description': '포트 스캔 탐지',
+                    'pattern': 'multiple_port_attempts',
+                    'regex_pattern': r'multiple_port_attempts',
+                    'threat_level': ThreatLevel.MEDIUM,
+                    'category': 'reconnaissance'
+                },
+                {
+                    'name': 'DDoS Attack',
+                    'description': 'DDoS 공격 탐지',
+                    'pattern': 'high_traffic_volume',
+                    'regex_pattern': r'high_traffic_volume',
+                    'threat_level': ThreatLevel.CRITICAL,
+                    'category': 'ddos'
+                }
+            ]
             
-            cursor.execute('''
-                INSERT OR IGNORE INTO security_events 
-                (timestamp, event_type, source_ip, user_id, session_id, threat_level,
-                 attack_type, description, details, risk_score, is_blocked, hash)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                event.timestamp, event.event_type, event.source_ip, event.user_id,
-                event.session_id, event.threat_level, event.attack_type, event.description,
-                json.dumps(event.details), event.risk_score, event.is_blocked, event.hash
-            ))
+            for sig_info in default_signatures:
+                self.create_signature(sig_info)
             
-            conn.commit()
-            conn.close()
+            logger.info(f"{len(default_signatures)}개 기본 시그니처 로드 완료")
             
         except Exception as e:
-            logger.error(f"이벤트 저장 실패: {e}")
+            logger.error(f"기본 시그니처 로드 오류: {e}")
     
-    def _get_ip_reputation(self, ip_address: str) -> Optional[IPReputation]:
-        """IP 평판 조회"""
-        return self.ip_reputations.get(ip_address)
-    
-    def _update_ip_reputation(self, ip_address: str, risk_score: float):
-        """IP 평판 업데이트"""
+    def _load_default_rules(self):
+        """기본 규칙 로드"""
         try:
-            current_time = datetime.now().isoformat()
+            default_rules = [
+                {
+                    'name': 'Block SQL Injection',
+                    'description': 'SQL 인젝션 공격 차단',
+                    'conditions': {
+                        'signature_match': 'SQL Injection',
+                        'threat_level': 'high'
+                    },
+                    'actions': [ActionType.BLOCK_IP, ActionType.ALERT],
+                    'priority': 100
+                },
+                {
+                    'name': 'Rate Limit Brute Force',
+                    'description': '무차별 대입 공격 속도 제한',
+                    'conditions': {
+                        'signature_match': 'Brute Force',
+                        'attempts_threshold': 5
+                    },
+                    'actions': [ActionType.RATE_LIMIT, ActionType.ALERT],
+                    'priority': 80
+                },
+                {
+                    'name': 'Block DDoS',
+                    'description': 'DDoS 공격 차단',
+                    'conditions': {
+                        'signature_match': 'DDoS Attack',
+                        'traffic_threshold': 1000
+                    },
+                    'actions': [ActionType.BLOCK_IP, ActionType.UPDATE_FIREWALL],
+                    'priority': 90
+                }
+            ]
             
-            if ip_address in self.ip_reputations:
-                reputation = self.ip_reputations[ip_address]
-                reputation.last_seen = current_time
-                reputation.event_count += 1
-                
-                # 평판 점수 업데이트 (가중 평균)
-                reputation.reputation_score = (reputation.reputation_score * 0.7 + risk_score * 0.3)
-                
-                if risk_score >= self.config['block_threshold']:
-                    reputation.blocked_count += 1
-                    reputation.is_blacklisted = True
-                
-            else:
-                # 새 IP 평판 생성
-                reputation = IPReputation(
-                    ip_address=ip_address,
-                    reputation_score=risk_score,
-                    threat_level=self._get_threat_level(risk_score),
-                    first_seen=current_time,
-                    last_seen=current_time,
-                    event_count=1,
-                    blocked_count=1 if risk_score >= self.config['block_threshold'] else 0,
-                    is_blacklisted=risk_score >= self.config['block_threshold'],
-                    is_whitelisted=False,
-                    metadata={}
-                )
-                self.ip_reputations[ip_address] = reputation
+            for rule_info in default_rules:
+                self.create_rule(rule_info)
+            
+            logger.info(f"{len(default_rules)}개 기본 규칙 로드 완료")
+            
+        except Exception as e:
+            logger.error(f"기본 규칙 로드 오류: {e}")
+    
+    def _init_ml_models(self):
+        """ML 모델 초기화"""
+        try:
+            # 이상 탐지 모델
+            self.anomaly_detector = IsolationForest(
+                contamination=0.1,
+                random_state=42
+            )
+            
+            # 스케일러
+            self.scaler = StandardScaler()
+            
+            logger.info("ML 모델 초기화 완료")
+            
+        except Exception as e:
+            logger.error(f"ML 모델 초기화 오류: {e}")
+    
+    def create_signature(self, signature_info: Dict[str, Any]) -> str:
+        """시그니처 생성"""
+        try:
+            signature_id = str(uuid.uuid4())
+            
+            signature = ThreatSignature(
+                signature_id=signature_id,
+                name=signature_info['name'],
+                description=signature_info['description'],
+                pattern=signature_info['pattern'],
+                regex_pattern=signature_info['regex_pattern'],
+                threat_level=ThreatLevel(signature_info['threat_level']),
+                category=signature_info['category'],
+                enabled=signature_info.get('enabled', True),
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
+            
+            self.signatures[signature_id] = signature
             
             # 데이터베이스에 저장
-            self._save_ip_reputation(reputation)
+            self._save_signature_to_db(signature)
+            
+            logger.info(f"시그니처 생성 완료: {signature_id}")
+            return signature_id
             
         except Exception as e:
-            logger.error(f"IP 평판 업데이트 실패: {e}")
+            logger.error(f"시그니처 생성 오류: {e}")
+            raise
     
-    def _save_ip_reputation(self, reputation: IPReputation):
-        """IP 평판 저장"""
+    def create_rule(self, rule_info: Dict[str, Any]) -> str:
+        """보안 규칙 생성"""
         try:
-            conn = sqlite3.connect(self.config['database_file'])
+            rule_id = str(uuid.uuid4())
+            
+            rule = SecurityRule(
+                rule_id=rule_id,
+                name=rule_info['name'],
+                description=rule_info['description'],
+                conditions=rule_info['conditions'],
+                actions=[ActionType(action) for action in rule_info['actions']],
+                priority=rule_info.get('priority', 50),
+                enabled=rule_info.get('enabled', True),
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
+            
+            self.rules[rule_id] = rule
+            
+            # 데이터베이스에 저장
+            self._save_rule_to_db(rule)
+            
+            logger.info(f"보안 규칙 생성 완료: {rule_id}")
+            return rule_id
+            
+        except Exception as e:
+            logger.error(f"보안 규칙 생성 오류: {e}")
+            raise
+    
+    def start_packet_capture(self, interface: str = None):
+        """패킷 캡처 시작"""
+        try:
+            if self.is_capturing:
+                logger.warning("패킷 캡처가 이미 실행 중입니다")
+                return
+            
+            self.is_capturing = True
+            self.capture_thread = threading.Thread(
+                target=self._packet_capture_loop,
+                args=(interface,),
+                daemon=True
+            )
+            self.capture_thread.start()
+            
+            logger.info("패킷 캡처 시작")
+            
+        except Exception as e:
+            logger.error(f"패킷 캡처 시작 오류: {e}")
+    
+    def _packet_capture_loop(self, interface: str = None):
+        """패킷 캡처 루프"""
+        try:
+            def packet_handler(packet):
+                try:
+                    # 패킷 정보 추출
+                    packet_info = self._extract_packet_info(packet)
+                    if packet_info:
+                        self.packets.append(packet_info)
+                        
+                        # 실시간 분석
+                        self._analyze_packet(packet_info)
+                        
+                except Exception as e:
+                    logger.error(f"패킷 처리 오류: {e}")
+            
+            # 패킷 캡처 시작
+            if interface:
+                scapy.sniff(iface=interface, prn=packet_handler, store=0)
+            else:
+                scapy.sniff(prn=packet_handler, store=0)
+                
+        except Exception as e:
+            logger.error(f"패킷 캡처 루프 오류: {e}")
+        finally:
+            self.is_capturing = False
+    
+    def _extract_packet_info(self, packet) -> Optional[NetworkPacket]:
+        """패킷 정보 추출"""
+        try:
+            if packet.haslayer(scapy.IP):
+                packet_id = str(uuid.uuid4())
+                
+                # IP 레이어 정보
+                ip_layer = packet[scapy.IP]
+                source_ip = ip_layer.src
+                destination_ip = ip_layer.dst
+                
+                # TCP/UDP 레이어 정보
+                source_port = 0
+                destination_port = 0
+                protocol = "unknown"
+                
+                if packet.haslayer(scapy.TCP):
+                    tcp_layer = packet[scapy.TCP]
+                    source_port = tcp_layer.sport
+                    destination_port = tcp_layer.dport
+                    protocol = "tcp"
+                    flags = {
+                        'syn': bool(tcp_layer.flags & 0x02),
+                        'ack': bool(tcp_layer.flags & 0x10),
+                        'fin': bool(tcp_layer.flags & 0x01),
+                        'rst': bool(tcp_layer.flags & 0x04),
+                        'psh': bool(tcp_layer.flags & 0x08),
+                        'urg': bool(tcp_layer.flags & 0x20)
+                    }
+                elif packet.haslayer(scapy.UDP):
+                    udp_layer = packet[scapy.UDP]
+                    source_port = udp_layer.sport
+                    destination_port = udp_layer.dport
+                    protocol = "udp"
+                    flags = {}
+                
+                # 페이로드 추출
+                payload = bytes(packet[scapy.Raw].load) if packet.haslayer(scapy.Raw) else b''
+                
+                # 메타데이터
+                metadata = {
+                    'ttl': ip_layer.ttl,
+                    'tos': ip_layer.tos,
+                    'len': ip_layer.len,
+                    'id': ip_layer.id
+                }
+                
+                return NetworkPacket(
+                    packet_id=packet_id,
+                    timestamp=datetime.now(),
+                    source_ip=source_ip,
+                    destination_ip=destination_ip,
+                    source_port=source_port,
+                    destination_port=destination_port,
+                    protocol=protocol,
+                    payload=payload,
+                    packet_size=len(packet),
+                    flags=flags,
+                    metadata=metadata
+                )
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"패킷 정보 추출 오류: {e}")
+            return None
+    
+    def _analyze_packet(self, packet: NetworkPacket):
+        """패킷 분석"""
+        try:
+            # 시그니처 기반 탐지
+            self._signature_based_detection(packet)
+            
+            # 이상 탐지
+            self._anomaly_detection(packet)
+            
+            # 규칙 기반 분석
+            self._rule_based_analysis(packet)
+            
+        except Exception as e:
+            logger.error(f"패킷 분석 오류: {e}")
+    
+    def _signature_based_detection(self, packet: NetworkPacket):
+        """시그니처 기반 탐지"""
+        try:
+            payload_str = packet.payload.decode('utf-8', errors='ignore')
+            
+            for signature in self.signatures.values():
+                if not signature.enabled:
+                    continue
+                
+                # 정규식 패턴 매칭
+                if re.search(signature.regex_pattern, payload_str, re.IGNORECASE):
+                    self._create_alert(
+                        alert_type=AlertType.INTRUSION_DETECTED,
+                        threat_level=signature.threat_level,
+                        source_ip=packet.source_ip,
+                        destination_ip=packet.destination_ip,
+                        description=f"{signature.name} 탐지됨",
+                        evidence={
+                            'signature_id': signature.signature_id,
+                            'signature_name': signature.name,
+                            'pattern_matched': signature.pattern,
+                            'payload_sample': payload_str[:200]
+                        }
+                    )
+                    
+        except Exception as e:
+            logger.error(f"시그니처 기반 탐지 오류: {e}")
+    
+    def _anomaly_detection(self, packet: NetworkPacket):
+        """이상 탐지"""
+        try:
+            # 특성 벡터 생성
+            features = [
+                packet.packet_size,
+                packet.source_port,
+                packet.destination_port,
+                len(packet.payload),
+                packet.metadata.get('ttl', 64)
+            ]
+            
+            # 스케일링
+            features_scaled = self.scaler.transform([features])
+            
+            # 이상 탐지
+            prediction = self.anomaly_detector.predict(features_scaled)
+            
+            if prediction[0] == -1:  # 이상 탐지
+                self._create_alert(
+                    alert_type=AlertType.ANOMALY_DETECTED,
+                    threat_level=ThreatLevel.MEDIUM,
+                    source_ip=packet.source_ip,
+                    destination_ip=packet.destination_ip,
+                    description="이상 패킷 탐지됨",
+                    evidence={
+                        'packet_size': packet.packet_size,
+                        'source_port': packet.source_port,
+                        'destination_port': packet.destination_port,
+                        'payload_size': len(packet.payload),
+                        'features': features
+                    }
+                )
+                
+        except Exception as e:
+            logger.error(f"이상 탐지 오류: {e}")
+    
+    def _rule_based_analysis(self, packet: NetworkPacket):
+        """규칙 기반 분석"""
+        try:
+            for rule in sorted(self.rules.values(), key=lambda x: x.priority, reverse=True):
+                if not rule.enabled:
+                    continue
+                
+                if self._evaluate_rule_conditions(rule, packet):
+                    self._execute_rule_actions(rule, packet)
+                    
+        except Exception as e:
+            logger.error(f"규칙 기반 분석 오류: {e}")
+    
+    def _evaluate_rule_conditions(self, rule: SecurityRule, packet: NetworkPacket) -> bool:
+        """규칙 조건 평가"""
+        try:
+            conditions = rule.conditions
+            
+            # 시그니처 매칭 조건
+            if 'signature_match' in conditions:
+                signature_name = conditions['signature_match']
+                for signature in self.signatures.values():
+                    if signature.name == signature_name:
+                        payload_str = packet.payload.decode('utf-8', errors='ignore')
+                        if re.search(signature.regex_pattern, payload_str, re.IGNORECASE):
+                            return True
+                return False
+            
+            # 위협 수준 조건
+            if 'threat_level' in conditions:
+                # 실제로는 알림의 위협 수준을 확인해야 함
+                pass
+            
+            # 시도 횟수 임계값
+            if 'attempts_threshold' in conditions:
+                threshold = conditions['attempts_threshold']
+                attempts = self._get_attempts_count(packet.source_ip)
+                return attempts >= threshold
+            
+            # 트래픽 임계값
+            if 'traffic_threshold' in conditions:
+                threshold = conditions['traffic_threshold']
+                traffic = self._get_traffic_volume(packet.source_ip)
+                return traffic >= threshold
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"규칙 조건 평가 오류: {e}")
+            return False
+    
+    def _execute_rule_actions(self, rule: SecurityRule, packet: NetworkPacket):
+        """규칙 액션 실행"""
+        try:
+            for action in rule.actions:
+                if action == ActionType.BLOCK_IP:
+                    self._block_ip(packet.source_ip)
+                elif action == ActionType.RATE_LIMIT:
+                    self._rate_limit_ip(packet.source_ip)
+                elif action == ActionType.ALERT:
+                    self._create_alert(
+                        alert_type=AlertType.INTRUSION_DETECTED,
+                        threat_level=ThreatLevel.HIGH,
+                        source_ip=packet.source_ip,
+                        destination_ip=packet.destination_ip,
+                        description=f"규칙 '{rule.name}' 트리거됨",
+                        evidence={'rule_id': rule.rule_id, 'rule_name': rule.name}
+                    )
+                elif action == ActionType.LOG:
+                    self._log_security_event(rule, packet)
+                elif action == ActionType.UPDATE_FIREWALL:
+                    self._update_firewall_rules(packet.source_ip)
+                    
+        except Exception as e:
+            logger.error(f"규칙 액션 실행 오류: {e}")
+    
+    def _create_alert(self, alert_type: AlertType, threat_level: ThreatLevel,
+                     source_ip: str, destination_ip: str, description: str, evidence: Dict[str, Any]):
+        """보안 알림 생성"""
+        try:
+            alert_id = str(uuid.uuid4())
+            
+            alert = SecurityAlert(
+                alert_id=alert_id,
+                alert_type=alert_type,
+                threat_level=threat_level,
+                source_ip=source_ip,
+                destination_ip=destination_ip,
+                description=description,
+                evidence=evidence,
+                timestamp=datetime.now(),
+                status='open'
+            )
+            
+            self.alerts[alert_id] = alert
+            
+            # 데이터베이스에 저장
+            self._save_alert_to_db(alert)
+            
+            # Redis에 알림 저장
+            if self.redis_client:
+                alert_key = f"alert:{alert_id}"
+                self.redis_client.setex(
+                    alert_key,
+                    3600,  # 1시간 TTL
+                    json.dumps(asdict(alert))
+                )
+            
+            logger.warning(f"보안 알림 생성: {alert_id} - {description}")
+            
+        except Exception as e:
+            logger.error(f"보안 알림 생성 오류: {e}")
+    
+    def _block_ip(self, ip_address: str):
+        """IP 주소 차단"""
+        try:
+            self.blocked_ips.add(ip_address)
+            
+            # Redis에 차단된 IP 저장
+            if self.redis_client:
+                self.redis_client.sadd('blocked_ips', ip_address)
+                self.redis_client.expire('blocked_ips', 3600)  # 1시간 TTL
+            
+            logger.info(f"IP 주소 차단: {ip_address}")
+            
+        except Exception as e:
+            logger.error(f"IP 주소 차단 오류: {e}")
+    
+    def _rate_limit_ip(self, ip_address: str):
+        """IP 주소 속도 제한"""
+        try:
+            if ip_address not in self.suspicious_ips:
+                self.suspicious_ips[ip_address] = {
+                    'first_seen': datetime.now(),
+                    'attempts': 0,
+                    'rate_limited': False
+                }
+            
+            self.suspicious_ips[ip_address]['attempts'] += 1
+            
+            # 임계값 초과 시 속도 제한
+            if self.suspicious_ips[ip_address]['attempts'] >= 10:
+                self.suspicious_ips[ip_address]['rate_limited'] = True
+                
+                # Redis에 속도 제한된 IP 저장
+                if self.redis_client:
+                    self.redis_client.sadd('rate_limited_ips', ip_address)
+                    self.redis_client.expire('rate_limited_ips', 1800)  # 30분 TTL
+                
+                logger.info(f"IP 주소 속도 제한: {ip_address}")
+                
+        except Exception as e:
+            logger.error(f"IP 주소 속도 제한 오류: {e}")
+    
+    def _get_attempts_count(self, ip_address: str) -> int:
+        """시도 횟수 조회"""
+        try:
+            if ip_address in self.suspicious_ips:
+                return self.suspicious_ips[ip_address]['attempts']
+            return 0
+        except Exception as e:
+            logger.error(f"시도 횟수 조회 오류: {e}")
+            return 0
+    
+    def _get_traffic_volume(self, ip_address: str) -> int:
+        """트래픽 볼륨 조회"""
+        try:
+            # 최근 1분간의 패킷 수 계산
+            one_minute_ago = datetime.now() - timedelta(minutes=1)
+            count = sum(1 for packet in self.packets 
+                       if packet.source_ip == ip_address and packet.timestamp > one_minute_ago)
+            return count
+        except Exception as e:
+            logger.error(f"트래픽 볼륨 조회 오류: {e}")
+            return 0
+    
+    def _log_security_event(self, rule: SecurityRule, packet: NetworkPacket):
+        """보안 이벤트 로깅"""
+        try:
+            event = {
+                'timestamp': datetime.now().isoformat(),
+                'rule_id': rule.rule_id,
+                'rule_name': rule.name,
+                'source_ip': packet.source_ip,
+                'destination_ip': packet.destination_ip,
+                'action': 'logged'
+            }
+            
+            logger.info(f"보안 이벤트 로깅: {event}")
+            
+        except Exception as e:
+            logger.error(f"보안 이벤트 로깅 오류: {e}")
+    
+    def _update_firewall_rules(self, ip_address: str):
+        """방화벽 규칙 업데이트"""
+        try:
+            # 실제로는 방화벽 API를 호출하여 규칙을 업데이트
+            logger.info(f"방화벽 규칙 업데이트: {ip_address}")
+            
+        except Exception as e:
+            logger.error(f"방화벽 규칙 업데이트 오류: {e}")
+    
+    def get_alerts(self, hours: int = 24) -> List[SecurityAlert]:
+        """알림 조회"""
+        try:
+            cutoff_time = datetime.now() - timedelta(hours=hours)
+            recent_alerts = [
+                alert for alert in self.alerts.values()
+                if alert.timestamp > cutoff_time
+            ]
+            return sorted(recent_alerts, key=lambda x: x.timestamp, reverse=True)
+        except Exception as e:
+            logger.error(f"알림 조회 오류: {e}")
+            return []
+    
+    def get_blocked_ips(self) -> List[str]:
+        """차단된 IP 목록 조회"""
+        try:
+            return list(self.blocked_ips)
+        except Exception as e:
+            logger.error(f"차단된 IP 목록 조회 오류: {e}")
+            return []
+    
+    def get_suspicious_ips(self) -> Dict[str, Dict[str, Any]]:
+        """의심스러운 IP 목록 조회"""
+        try:
+            return self.suspicious_ips.copy()
+        except Exception as e:
+            logger.error(f"의심스러운 IP 목록 조회 오류: {e}")
+            return {}
+    
+    def _save_alert_to_db(self, alert: SecurityAlert):
+        """알림을 데이터베이스에 저장"""
+        try:
+            conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
             cursor.execute('''
-                INSERT OR REPLACE INTO ip_reputations 
-                (ip_address, reputation_score, threat_level, first_seen, last_seen,
-                 event_count, blocked_count, is_blacklisted, is_whitelisted, metadata)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO security_alerts 
+                (alert_id, alert_type, threat_level, source_ip, destination_ip,
+                 description, evidence, timestamp, status, assigned_to, resolution_notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                reputation.ip_address, reputation.reputation_score, reputation.threat_level,
-                reputation.first_seen, reputation.last_seen, reputation.event_count,
-                reputation.blocked_count, reputation.is_blacklisted, reputation.is_whitelisted,
-                json.dumps(reputation.metadata)
+                alert.alert_id,
+                alert.alert_type.value,
+                alert.threat_level.value,
+                alert.source_ip,
+                alert.destination_ip,
+                alert.description,
+                json.dumps(alert.evidence),
+                alert.timestamp.isoformat(),
+                alert.status,
+                alert.assigned_to,
+                alert.resolution_notes
             ))
             
             conn.commit()
             conn.close()
             
         except Exception as e:
-            logger.error(f"IP 평판 저장 실패: {e}")
+            logger.error(f"알림 데이터베이스 저장 오류: {e}")
     
-    def _get_threat_level(self, risk_score: float) -> str:
-        """위험 점수에 따른 위협 레벨 반환"""
-        if risk_score >= 0.9:
-            return 'critical'
-        elif risk_score >= 0.7:
-            return 'high'
-        elif risk_score >= 0.4:
-            return 'medium'
-        else:
-            return 'low'
-    
-    def _trigger_alert(self, event: SecurityEvent):
-        """보안 알림 트리거"""
-        alert_data = {
-            'timestamp': event.timestamp,
-            'event_type': event.event_type,
-            'source_ip': event.source_ip,
-            'threat_level': event.threat_level,
-            'attack_type': event.attack_type,
-            'description': event.description,
-            'risk_score': event.risk_score,
-            'details': event.details
-        }
-        
-        for callback in self.alert_callbacks:
-            try:
-                callback(alert_data)
-            except Exception as e:
-                logger.error(f"알림 콜백 실행 실패: {e}")
-    
-    def _trigger_block(self, event: SecurityEvent):
-        """IP 차단 트리거"""
-        block_data = {
-            'ip_address': event.source_ip,
-            'reason': event.description,
-            'threat_level': event.threat_level,
-            'risk_score': event.risk_score,
-            'duration_hours': self.config['auto_block_duration_hours']
-        }
-        
-        for callback in self.block_callbacks:
-            try:
-                callback(block_data)
-            except Exception as e:
-                logger.error(f"차단 콜백 실행 실패: {e}")
-    
-    def add_alert_callback(self, callback: Callable[[Dict[str, Any]], None]):
-        """알림 콜백 추가"""
-        self.alert_callbacks.append(callback)
-    
-    def add_block_callback(self, callback: Callable[[Dict[str, Any]], None]):
-        """차단 콜백 추가"""
-        self.block_callbacks.append(callback)
-    
-    def start_monitoring(self):
-        """모니터링 시작"""
-        if self.monitoring_active:
-            return
-        
-        self.monitoring_active = True
-        self.monitor_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
-        self.monitor_thread.start()
-        logger.info("보안 모니터링이 시작되었습니다.")
-    
-    def stop_monitoring(self):
-        """모니터링 중지"""
-        self.monitoring_active = False
-        if self.monitor_thread:
-            self.monitor_thread.join(timeout=5)
-        logger.info("보안 모니터링이 중지되었습니다.")
-    
-    def _monitoring_loop(self):
-        """모니터링 루프"""
-        while self.monitoring_active:
-            try:
-                # IP 평판 정리 (오래된 데이터)
-                self._cleanup_old_reputations()
-                
-                # 통계 업데이트
-                self._update_statistics()
-                
-                time.sleep(60)  # 1분마다 실행
-                
-            except Exception as e:
-                logger.error(f"모니터링 루프 오류: {e}")
-                time.sleep(10)
-    
-    def _cleanup_old_reputations(self):
-        """오래된 IP 평판 정리"""
+    def _save_signature_to_db(self, signature: ThreatSignature):
+        """시그니처를 데이터베이스에 저장"""
         try:
-            cutoff_time = datetime.now() - timedelta(days=self.config['reputation_decay_days'])
-            
-            ips_to_remove = []
-            for ip, reputation in self.ip_reputations.items():
-                if datetime.fromisoformat(reputation.last_seen) < cutoff_time:
-                    ips_to_remove.append(ip)
-            
-            for ip in ips_to_remove:
-                del self.ip_reputations[ip]
-            
-            if ips_to_remove:
-                logger.info(f"오래된 IP 평판 {len(ips_to_remove)}개 정리됨")
-                
-        except Exception as e:
-            logger.error(f"IP 평판 정리 실패: {e}")
-    
-    def _update_statistics(self):
-        """통계 업데이트"""
-        try:
-            # 고유 IP 수 업데이트
-            self.stats['unique_ips'] = set(self.ip_reputations.keys())
-            
-        except Exception as e:
-            logger.error(f"통계 업데이트 실패: {e}")
-    
-    def get_security_statistics(self, days: int = 7) -> Dict[str, Any]:
-        """보안 통계 조회"""
-        try:
-            start_date = (datetime.now() - timedelta(days=days)).isoformat()
-            
-            conn = sqlite3.connect(self.config['database_file'])
+            conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            stats = {}
+            cursor.execute('''
+                INSERT OR REPLACE INTO threat_signatures 
+                (signature_id, name, description, pattern, regex_pattern,
+                 threat_level, category, enabled, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                signature.signature_id,
+                signature.name,
+                signature.description,
+                signature.pattern,
+                signature.regex_pattern,
+                signature.threat_level.value,
+                signature.category,
+                1 if signature.enabled else 0,
+                signature.created_at.isoformat(),
+                signature.updated_at.isoformat()
+            ))
             
-            # 총 이벤트 수
-            cursor.execute("SELECT COUNT(*) FROM security_events WHERE timestamp >= ?", (start_date,))
-            stats['total_events'] = cursor.fetchone()[0]
-            
-            # 위협 레벨별 통계
-            cursor.execute("""
-                SELECT threat_level, COUNT(*) FROM security_events 
-                WHERE timestamp >= ? GROUP BY threat_level
-            """, (start_date,))
-            stats['by_threat_level'] = dict(cursor.fetchall())
-            
-            # 공격 타입별 통계
-            cursor.execute("""
-                SELECT attack_type, COUNT(*) FROM security_events 
-                WHERE timestamp >= ? AND attack_type IS NOT NULL GROUP BY attack_type
-            """, (start_date,))
-            stats['by_attack_type'] = dict(cursor.fetchall())
-            
-            # 차단된 이벤트 수
-            cursor.execute("SELECT COUNT(*) FROM security_events WHERE timestamp >= ? AND is_blocked = 1", (start_date,))
-            stats['blocked_events'] = cursor.fetchone()[0]
-            
-            # IP별 통계
-            cursor.execute("""
-                SELECT source_ip, COUNT(*) FROM security_events 
-                WHERE timestamp >= ? GROUP BY source_ip 
-                ORDER BY COUNT(*) DESC LIMIT 10
-            """, (start_date,))
-            stats['top_ips'] = dict(cursor.fetchall())
-            
+            conn.commit()
             conn.close()
             
-            # 실시간 통계 추가
-            stats['current_stats'] = self.stats.copy()
-            stats['current_stats']['unique_ips'] = len(self.stats['unique_ips'])
-            
-            return stats
-            
         except Exception as e:
-            logger.error(f"보안 통계 조회 실패: {e}")
-            return {}
+            logger.error(f"시그니처 데이터베이스 저장 오류: {e}")
     
-    def block_ip(self, ip_address: str, reason: str, duration_hours: int = 24) -> bool:
-        """IP 수동 차단"""
+    def _save_rule_to_db(self, rule: SecurityRule):
+        """규칙을 데이터베이스에 저장"""
         try:
-            self.config['blacklist_ips'].append(ip_address)
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
             
-            # IP 평판 업데이트
-            if ip_address in self.ip_reputations:
-                self.ip_reputations[ip_address].is_blacklisted = True
-                self.ip_reputations[ip_address].reputation_score = 1.0
-                self._save_ip_reputation(self.ip_reputations[ip_address])
+            cursor.execute('''
+                INSERT OR REPLACE INTO security_rules 
+                (rule_id, name, description, conditions, actions,
+                 priority, enabled, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                rule.rule_id,
+                rule.name,
+                rule.description,
+                json.dumps(rule.conditions),
+                json.dumps([action.value for action in rule.actions]),
+                rule.priority,
+                1 if rule.enabled else 0,
+                rule.created_at.isoformat(),
+                rule.updated_at.isoformat()
+            ))
             
-            logger.info(f"IP 차단 완료: {ip_address} (사유: {reason})")
-            return True
+            conn.commit()
+            conn.close()
             
         except Exception as e:
-            logger.error(f"IP 차단 실패: {e}")
-            return False
+            logger.error(f"규칙 데이터베이스 저장 오류: {e}")
     
-    def whitelist_ip(self, ip_address: str, reason: str) -> bool:
-        """IP 화이트리스트 추가"""
+    def destroy(self):
+        """서비스 정리"""
         try:
-            if ip_address not in self.config['whitelist_ips']:
-                self.config['whitelist_ips'].append(ip_address)
+            self.is_capturing = False
+            self.is_analyzing = False
             
-            # IP 평판 업데이트
-            if ip_address in self.ip_reputations:
-                self.ip_reputations[ip_address].is_whitelisted = True
-                self.ip_reputations[ip_address].reputation_score = 0.0
-                self._save_ip_reputation(self.ip_reputations[ip_address])
+            if self.redis_client:
+                self.redis_client.close()
             
-            logger.info(f"IP 화이트리스트 추가 완료: {ip_address} (사유: {reason})")
-            return True
-            
+            logger.info("침입 탐지 및 방지 시스템 정리 완료")
         except Exception as e:
-            logger.error(f"IP 화이트리스트 추가 실패: {e}")
-            return False
+            logger.error(f"서비스 정리 오류: {e}")
 
-# 전역 침입 탐지 시스템 인스턴스
-ids_system = IntrusionDetectionSystem() 
+# 사용 예시
+if __name__ == "__main__":
+    # 설정
+    config = {
+        'db_path': './ids.db',
+        'redis': {
+            'host': 'localhost',
+            'port': 6379,
+            'db': 2
+        }
+    }
+    
+    # IDS 시스템 생성
+    ids_system = IntrusionDetectionSystem(config)
+    
+    # 사용자 정의 시그니처 생성
+    custom_signature = {
+        'name': 'Custom Malware',
+        'description': '사용자 정의 악성코드 탐지',
+        'pattern': 'malware_signature',
+        'regex_pattern': r'malware_signature',
+        'threat_level': 'high',
+        'category': 'malware'
+    }
+    
+    signature_id = ids_system.create_signature(custom_signature)
+    print(f"시그니처 생성 완료: {signature_id}")
+    
+    # 사용자 정의 규칙 생성
+    custom_rule = {
+        'name': 'Custom Block Rule',
+        'description': '사용자 정의 차단 규칙',
+        'conditions': {
+            'signature_match': 'Custom Malware',
+            'threat_level': 'high'
+        },
+        'actions': ['block_ip', 'alert'],
+        'priority': 90
+    }
+    
+    rule_id = ids_system.create_rule(custom_rule)
+    print(f"규칙 생성 완료: {rule_id}")
+    
+    # 패킷 캡처 시작
+    ids_system.start_packet_capture()
+    
+    # 알림 조회
+    alerts = ids_system.get_alerts(hours=1)
+    print(f"최근 1시간 알림: {len(alerts)}개")
+    
+    # 차단된 IP 조회
+    blocked_ips = ids_system.get_blocked_ips()
+    print(f"차단된 IP: {len(blocked_ips)}개") 

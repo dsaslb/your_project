@@ -46,8 +46,8 @@ const PaymentDashboard: React.FC = () => {
         body: JSON.stringify({
           amount: Number(amount),
           description: desc,
-          success_url: window.location.origin + '/admin-dashboard/payments?success=1',
-          cancel_url: window.location.origin + '/admin-dashboard/payments?cancel=1',
+                  success_url: window.location.origin + '/dashboard/payments?success=1',
+        cancel_url: window.location.origin + '/dashboard/payments?cancel=1',
         }),
       });
       const data = await res.json();

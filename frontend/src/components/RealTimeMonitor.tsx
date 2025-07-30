@@ -78,7 +78,7 @@ const RealTimeMonitor: React.FC = () => {
 
         {/* 연결 정보 */}
         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-          <div>WebSocket 서버: ws://192.168.45.44:8765</div>
+          <div>WebSocket 서버: {process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8765'}</div>
           <div>동기화 간격: 30초</div>
           <div>재시도 횟수: 3회</div>
         </div>

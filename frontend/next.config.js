@@ -1,95 +1,97 @@
 /** @type {import('next').NextConfig} */
-
-const FRONTEND_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://192.168.45.44:3000',
-  'http://192.168.45.44:3001',
-];
-
-const BACKEND_API = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.45.44:5000';
-
 const nextConfig = {
-  // Turbopack 설정
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
+  // 성능 최적화 설정
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   
+  // 이미지 최적화
   images: {
-    domains: ['localhost', '192.168.45.44'],
+    formats: ['image/webp', 'image/avif'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   
-  // 정적 파일 설정
-  assetPrefix: process.env.NODE_ENV === 'production' ? undefined : '',
-
+  // 번들 분석
+  webpack: (config, { dev, isServer }) => {
+    // 프로덕션 빌드에서만 번들 분석
+    if (!dev && !isServer) {
+      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'static',
+          openAnalyzer: false,
+          reportFilename: '../bundle-analysis.html',
+        })
+      );
+    }
+    
+    // 트리 쉐이킹 최적화
+    config.optimization = {
+      ...config.optimization,
+      usedExports: true,
+      sideEffects: false,
+    };
+    
+    return config;
+  },
+  
+  // 압축 설정
+  compress: true,
+  
+  // 캐싱 설정
+  generateEtags: true,
+  
+  // 보안 헤더
   async headers() {
     return [
       {
-        source: '/manifest.json',
+        source: '/(.*)',
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
           },
         ],
       },
-      // 모든 경로에 CORS 헤더 추가
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, X-Requested-With, Accept' },
-          { key: 'Access-Control-Allow-Credentials', value: 'true' },
-        ],
-      },
-      // Next.js 내부 리소스에 대한 특별한 헤더
-      {
-        source: '/_next/(.*)',
-        headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
-      {
-        source: '/__nextjs_font/:all*',
-        headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' },
-        ],
-      },
-      {
-        source: '/_next/static/:all*',
-        headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
     ];
   },
+  
 
-  async rewrites() {
+  
+  // 환경 변수
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
+  },
+  
+  // 타입스크립트 설정
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  
+  // ESLint 설정
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  
+  // 리다이렉트 설정
+  async redirects() {
     return [
       {
-        source: '/api/:path*',
-        destination: `${BACKEND_API}/api/:path*`,
+        source: '/',
+        destination: '/dashboard',
+        permanent: false,  // 개발용이므로 임시 리다이렉트
       },
     ];
-  },
-
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-    };
-    return config;
   },
 };
 

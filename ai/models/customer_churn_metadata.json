@@ -1,0 +1,20 @@
+{
+  "model_name": "customer_churn",
+  "framework": "sklearn",
+  "type": "classification",
+  "features": [
+    "visit_frequency",
+    "avg_order_value",
+    "days_since_last_visit",
+    "total_orders",
+    "customer_satisfaction"
+  ],
+  "target": "churn_probability",
+  "trained_at": "2025-07-29T20:33:53.429811",
+  "performance": {
+    "mse": null,
+    "mae": null,
+    "r2": 1.0
+  },
+  "data_samples": 2000
+}

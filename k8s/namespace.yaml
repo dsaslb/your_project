@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: your-program
+  labels:
+    name: your-program
+    environment: production 

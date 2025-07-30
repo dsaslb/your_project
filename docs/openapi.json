@@ -1,0 +1,52 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Your Program API",
+    "version": "1.0.0",
+    "description": "Your Program REST API Documentation",
+    "contact": {
+      "name": "Your Program Team",
+      "email": "support@yourprogram.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Development server"
+    }
+  ],
+  "paths": {},
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "AUTH_INVALID_CREDENTIALS"
+              },
+              "message": {
+                "type": "string",
+                "example": "Invalid credentials"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

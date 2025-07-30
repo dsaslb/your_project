@@ -35,7 +35,8 @@ export default function PluginMarketPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/plugins/market");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/plugins/market`);
       const data = await res.json();
       if (data.success) {
         setPlugins(data.plugins);
@@ -55,7 +56,8 @@ export default function PluginMarketPage() {
   const installPlugin = async (plugin: MarketPlugin) => {
     setActioning(plugin.id);
     try {
-      const res = await fetch(`/api/plugins/${plugin.id}/install`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/plugins/${plugin.id}/install`, {
         method: "POST",
       });
       const data = await res.json();
@@ -73,7 +75,8 @@ export default function PluginMarketPage() {
   const uninstallPlugin = async (plugin: MarketPlugin) => {
     setActioning(plugin.id);
     try {
-      const res = await fetch(`/api/plugins/${plugin.id}/uninstall`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/plugins/${plugin.id}/uninstall`, {
         method: "POST",
       });
       const data = await res.json();
@@ -91,7 +94,8 @@ export default function PluginMarketPage() {
   const updatePlugin = async (plugin: MarketPlugin) => {
     setActioning(plugin.id);
     try {
-      const res = await fetch(`/api/plugins/${plugin.id}/update`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/plugins/${plugin.id}/update`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ version: plugin.latest_version }),
@@ -111,7 +115,8 @@ export default function PluginMarketPage() {
   const rollbackPlugin = async (plugin: MarketPlugin) => {
     setActioning(plugin.id);
     try {
-      const res = await fetch(`/api/plugins/${plugin.id}/rollback`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/plugins/${plugin.id}/rollback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ version: "1.0.0" }), // 이전 버전으로 롤백

@@ -68,7 +68,7 @@ export default function LoginPage() {
       description: "시스템 전체 관리 및 설정",
       icon: <Shield className="h-6 w-6" />,
       color: "from-pink-600 to-pink-700",
-      route: "/admin-dashboard"
+              route: "/dashboard"
     },
     {
       id: "brand_admin",
@@ -123,7 +123,7 @@ export default function LoginPage() {
         
         // 역할에 따라 대시보드로 리다이렉트
         const roleRoutes = {
-          "admin": "/admin-dashboard",
+          "admin": "/dashboard",
           "brand_admin": "/brand-dashboard", 
           "store_admin": "/store-dashboard",
           "employee": "/employee-dashboard"
@@ -161,7 +161,8 @@ export default function LoginPage() {
 
     try {
       // 백엔드 API로 로그인 요청
-      const response = await fetch('http://192.168.45.44:5000/api/auth/login', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

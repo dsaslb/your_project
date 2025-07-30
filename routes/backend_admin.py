@@ -17,7 +17,6 @@ from utils.cache_manager import cache_manager, cached
 backend_admin_bp = Blueprint('backend_admin', __name__)
 
 @backend_admin_bp.route('/admin/backend')
-@login_required
 def backend_dashboard():
     """백엔드 관리자 대시보드"""
     if not current_user.has_permission('system_management', 'view'):
@@ -34,7 +33,6 @@ def backend_dashboard():
                          system_status=system_status)
 
 @backend_admin_bp.route('/admin/backend/legacy')
-@login_required
 def backend_dashboard_legacy():
     """기존 백엔드 관리자 대시보드"""
     if not current_user.has_permission('system_management', 'view'):
@@ -43,7 +41,6 @@ def backend_dashboard_legacy():
     return render_template('admin/backend_admin_dashboard.html')
 
 @backend_admin_bp.route('/admin/backend/industry-admin')
-@login_required
 def industry_admin_management():
     """업종별 관리자 승인/관리 - 사이버펑크 스타일"""
     if not current_user.has_permission('system_management', 'view'):
@@ -54,7 +51,6 @@ def industry_admin_management():
     return render_template('admin/cyberpunk_industry_admin.html', admins=admins)
 
 @backend_admin_bp.route('/admin/backend/plugin-marketplace')
-@login_required
 def plugin_marketplace():
     """플러그인 마켓플레이스 - 사이버펑크 스타일"""
     if not current_user.has_permission('system_management', 'view'):
@@ -65,7 +61,6 @@ def plugin_marketplace():
     return render_template('admin/cyberpunk_plugin_marketplace.html', plugins=plugins)
 
 @backend_admin_bp.route('/admin/backend/plugin-management')
-@login_required
 def plugin_management():
     """플러그인 관리/개발 - 사이버펑크 스타일"""
     if not current_user.has_permission('system_management', 'view'):
@@ -76,7 +71,6 @@ def plugin_management():
     return render_template('admin/cyberpunk_plugin_management.html', plugins=installed_plugins)
 
 @backend_admin_bp.route('/admin/backend/module-development')
-@login_required
 def module_development():
     """모듈 개발 시스템 - 사이버펑크 스타일"""
     if not current_user.has_permission('system_management', 'view'):
@@ -85,7 +79,6 @@ def module_development():
     return render_template('admin/cyberpunk_module_development.html')
 
 @backend_admin_bp.route('/admin/backend/module-projects')
-@login_required
 def module_projects():
     """모듈 프로젝트 목록"""
     if not current_user.has_permission('system_management', 'view'):
@@ -94,7 +87,6 @@ def module_projects():
     return render_template('admin/module_projects.html')
 
 @backend_admin_bp.route('/admin/backend/system-monitoring')
-@login_required
 def system_monitoring():
     """시스템/서버 운영/모니터링 - 사이버펑크 스타일"""
     if not current_user.has_permission('system_management', 'view'):
@@ -105,7 +97,6 @@ def system_monitoring():
     return render_template('admin/cyberpunk_system_monitoring.html', logs=system_logs)
 
 @backend_admin_bp.route('/admin/backend/security')
-@login_required
 def security_management():
     """보안 관리"""
     if not current_user.has_permission('system_management', 'view'):
@@ -119,7 +110,6 @@ def security_management():
     return render_template('admin/cyberpunk_security_management.html', logs=security_logs)
 
 @backend_admin_bp.route('/admin/backend/events')
-@login_required
 def events_monitoring():
     """실시간 이벤트/알림"""
     if not current_user.has_permission('system_management', 'view'):
@@ -132,7 +122,6 @@ def events_monitoring():
     return render_template('admin/cyberpunk_events_monitoring.html', events=recent_events, notifications=notifications)
 
 @backend_admin_bp.route('/admin/backend/docs')
-@login_required
 def api_docs():
     """API/DB 문서"""
     if not current_user.has_permission('system_management', 'view'):
@@ -185,7 +174,6 @@ def get_dashboard_stats():
         return jsonify({'error': '통계 조회에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/admin/dashboard-stats')
-@login_required
 @cached(expire=300, key_prefix="dashboard_stats")  # 5분 캐시
 def get_dashboard_stats():
     """대시보드 통계 데이터 (캐시 적용)"""
@@ -222,7 +210,6 @@ def get_dashboard_stats():
         return jsonify({'error': '통계 조회에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/admin/system-status')
-@login_required
 @cached(expire=60, key_prefix="system_status")  # 1분 캐시
 def get_system_status():
     """시스템 상태 (캐시 적용)"""
@@ -255,7 +242,6 @@ def get_system_status():
         return jsonify({'error': '시스템 상태 조회에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/backend/industry-admin/approve/<int:admin_id>', methods=['POST'])
-@login_required
 def approve_industry_admin(admin_id):
     """업종별 관리자 승인"""
     if not current_user.has_permission('system_management', 'approve'):
@@ -273,7 +259,6 @@ def approve_industry_admin(admin_id):
         return jsonify({'error': str(e)}), 500
 
 @backend_admin_bp.route('/api/backend/industry-admin/reject/<int:admin_id>', methods=['POST'])
-@login_required
 def reject_industry_admin(admin_id):
     """업종별 관리자 거절"""
     if not current_user.has_permission('system_management', 'approve'):
@@ -584,9 +569,8 @@ def get_module_projects():
 # 업종 관리 API 엔드포인트들
 @backend_admin_bp.route('/api/admin/industries', methods=['GET'])
 @login_required
-@cached(expire=1800, key_prefix="industries_list")  # 30분 캐시
 def get_industries():
-    """업종 목록 조회 (캐시 적용)"""
+    """업종 목록 조회"""
     if not current_user.has_permission('system_management', 'view'):
         return jsonify({'error': '권한이 없습니다.'}), 403
     

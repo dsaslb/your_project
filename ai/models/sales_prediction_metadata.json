@@ -1,0 +1,22 @@
+{
+  "model_name": "sales_prediction",
+  "framework": "tensorflow",
+  "type": "regression",
+  "features": [
+    "timestamp",
+    "day_of_week",
+    "month",
+    "hour",
+    "previous_sales",
+    "temperature",
+    "is_holiday"
+  ],
+  "target": "sales_amount",
+  "trained_at": "2025-07-29T20:29:06.968437",
+  "performance": {
+    "mse": 55084.42991476533,
+    "mae": 183.61260384036376,
+    "r2": -0.013216549299376323
+  },
+  "data_samples": 2000
+}

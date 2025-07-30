@@ -33,7 +33,7 @@ const PermissionNav = () => {
     {
       title: '슈퍼 관리자 대시보드',
       description: '전체 시스템 관리 및 모니터링',
-      href: '/admin-dashboard',
+              href: '/dashboard',
       icon: Crown,
       color: 'bg-purple-500',
       requiredPermission: 'canAccessSuperAdmin',

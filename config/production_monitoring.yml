@@ -1,0 +1,558 @@
+# Your Program 프로덕션 모니터링 설정
+# 실시간 시스템 모니터링, 알림, 자동화 규칙을 정의합니다.
+
+monitoring:
+  # 전역 설정
+  global:
+    environment: "production"
+    cluster_name: "your-program-prod"
+    data_retention_days: 90
+    alert_resolve_timeout: 3600  # 1시간
+    
+  # 메트릭 수집 설정
+  metrics:
+    collection_interval: 30s
+    batch_size: 1000
+    timeout: 10s
+    
+    # Prometheus 설정
+    prometheus:
+      enabled: true
+      port: 9090
+      retention: "30d"
+      scrape_configs:
+        - job_name: "your-program-api"
+          static_configs:
+            - targets: ["localhost:8000", "localhost:8001", "localhost:8002", "localhost:8007"]
+          scrape_interval: 15s
+          metrics_path: "/metrics"
+          
+        - job_name: "node-exporter"
+          static_configs:
+            - targets: ["localhost:9100"]
+          scrape_interval: 30s
+          
+        - job_name: "postgres-exporter"
+          static_configs:
+            - targets: ["localhost:9187"]
+          scrape_interval: 60s
+          
+        - job_name: "redis-exporter"
+          static_configs:
+            - targets: ["localhost:9121"]
+          scrape_interval: 30s
+
+  # 로그 관리
+  logging:
+    level: "INFO"
+    format: "json"
+    output:
+      - type: "file"
+        path: "/var/log/yourprogram/app.log"
+        max_size: "100MB"
+        max_files: 10
+        compress: true
+      - type: "syslog"
+        facility: "local0"
+      - type: "elasticsearch"
+        hosts: ["localhost:9200"]
+        index_pattern: "yourprogram-logs-%{+YYYY.MM.dd}"
+        
+    log_rotation:
+      enabled: true
+      frequency: "daily"
+      max_age: "30d"
+
+# 알림 및 경고 설정
+alerting:
+  # 글로벌 알림 설정
+  global:
+    resolve_timeout: 5m
+    smtp_smarthost: "smtp.company.com:587"
+    smtp_from: "alerts@yourprogram.com"
+    smtp_auth_username: "alerts@yourprogram.com"
+    
+  # 알림 채널
+  receivers:
+    - name: "critical-alerts"
+      email_configs:
+        - to: "oncall@company.com"
+          subject: "🚨 [CRITICAL] Your Program Alert"
+          body: |
+            Alert: {{ .GroupLabels.alertname }}
+            Summary: {{ .CommonAnnotations.summary }}
+            Description: {{ .CommonAnnotations.description }}
+            
+            Details:
+            {{ range .Alerts }}
+            - Instance: {{ .Labels.instance }}
+            - Severity: {{ .Labels.severity }}
+            - Value: {{ .Annotations.value }}
+            {{ end }}
+      slack_configs:
+        - api_url: "${SLACK_WEBHOOK_URL}"
+          channel: "#critical-alerts"
+          title: "🚨 Critical Alert - Your Program"
+          text: "{{ .CommonAnnotations.summary }}"
+          
+    - name: "warning-alerts"
+      email_configs:
+        - to: "devops@company.com"
+          subject: "⚠️ [WARNING] Your Program Alert"
+      slack_configs:
+        - api_url: "${SLACK_WEBHOOK_URL}"
+          channel: "#alerts"
+          title: "⚠️ Warning - Your Program"
+          
+    - name: "info-alerts"
+      slack_configs:
+        - api_url: "${SLACK_WEBHOOK_URL}"
+          channel: "#monitoring"
+          title: "ℹ️ Info - Your Program"
+
+  # 알림 규칙
+  rules:
+    # 시스템 리소스 알림
+    - name: "system-resources"
+      rules:
+        - alert: "HighCPUUsage"
+          expr: "cpu_usage_percent > 80"
+          for: "5m"
+          labels:
+            severity: "warning"
+            component: "system"
+          annotations:
+            summary: "높은 CPU 사용률 감지"
+            description: "CPU 사용률이 {{ $value }}%로 80%를 초과했습니다."
+            value: "{{ $value }}%"
+            
+        - alert: "CriticalCPUUsage"
+          expr: "cpu_usage_percent > 95"
+          for: "2m"
+          labels:
+            severity: "critical"
+            component: "system"
+          annotations:
+            summary: "위험한 CPU 사용률 감지"
+            description: "CPU 사용률이 {{ $value }}%로 95%를 초과했습니다."
+            
+        - alert: "HighMemoryUsage"
+          expr: "memory_usage_percent > 85"
+          for: "5m"
+          labels:
+            severity: "warning"
+            component: "system"
+          annotations:
+            summary: "높은 메모리 사용률 감지"
+            description: "메모리 사용률이 {{ $value }}%로 85%를 초과했습니다."
+            
+        - alert: "CriticalMemoryUsage"
+          expr: "memory_usage_percent > 95"
+          for: "2m"
+          labels:
+            severity: "critical"
+            component: "system"
+          annotations:
+            summary: "위험한 메모리 사용률 감지"
+            description: "메모리 사용률이 {{ $value }}%로 95%를 초과했습니다."
+            
+        - alert: "DiskSpaceLow"
+          expr: "disk_usage_percent > 85"
+          for: "10m"
+          labels:
+            severity: "warning"
+            component: "storage"
+          annotations:
+            summary: "디스크 공간 부족"
+            description: "디스크 사용률이 {{ $value }}%로 85%를 초과했습니다."
+            
+        - alert: "DiskSpaceCritical"
+          expr: "disk_usage_percent > 95"
+          for: "5m"
+          labels:
+            severity: "critical"
+            component: "storage"
+          annotations:
+            summary: "디스크 공간 위험"
+            description: "디스크 사용률이 {{ $value }}%로 95%를 초과했습니다."
+
+    # 애플리케이션 서비스 알림
+    - name: "application-services"
+      rules:
+        - alert: "ServiceDown"
+          expr: "up == 0"
+          for: "1m"
+          labels:
+            severity: "critical"
+            component: "service"
+          annotations:
+            summary: "서비스 다운 감지"
+            description: "{{ $labels.job }} 서비스가 응답하지 않습니다."
+            
+        - alert: "HighResponseTime"
+          expr: "http_request_duration_seconds{quantile='0.95'} > 2"
+          for: "5m"
+          labels:
+            severity: "warning"
+            component: "performance"
+          annotations:
+            summary: "높은 응답 시간 감지"
+            description: "95% 응답 시간이 {{ $value }}초로 2초를 초과했습니다."
+            
+        - alert: "HighErrorRate"
+          expr: "rate(http_requests_total{status=~'5..'}[5m]) / rate(http_requests_total[5m]) > 0.05"
+          for: "5m"
+          labels:
+            severity: "warning"
+            component: "reliability"
+          annotations:
+            summary: "높은 에러율 감지"
+            description: "에러율이 {{ $value | humanizePercentage }}로 5%를 초과했습니다."
+            
+        - alert: "CriticalErrorRate"
+          expr: "rate(http_requests_total{status=~'5..'}[5m]) / rate(http_requests_total[5m]) > 0.1"
+          for: "2m"
+          labels:
+            severity: "critical"
+            component: "reliability"
+          annotations:
+            summary: "위험한 에러율 감지"
+            description: "에러율이 {{ $value | humanizePercentage }}로 10%를 초과했습니다."
+
+    # 데이터베이스 알림
+    - name: "database"
+      rules:
+        - alert: "PostgreSQLDown"
+          expr: "pg_up == 0"
+          for: "1m"
+          labels:
+            severity: "critical"
+            component: "database"
+          annotations:
+            summary: "PostgreSQL 데이터베이스 다운"
+            description: "PostgreSQL 데이터베이스에 연결할 수 없습니다."
+            
+        - alert: "PostgreSQLTooManyConnections"
+          expr: "pg_stat_activity_count > 100"
+          for: "5m"
+          labels:
+            severity: "warning"
+            component: "database"
+          annotations:
+            summary: "PostgreSQL 연결 수 과다"
+            description: "PostgreSQL 연결 수가 {{ $value }}개로 100개를 초과했습니다."
+            
+        - alert: "RedisDown"
+          expr: "redis_up == 0"
+          for: "1m"
+          labels:
+            severity: "critical"
+            component: "database"
+          annotations:
+            summary: "Redis 서버 다운"
+            description: "Redis 서버에 연결할 수 없습니다."
+            
+        - alert: "RedisHighMemoryUsage"
+          expr: "redis_memory_used_bytes / redis_memory_max_bytes > 0.9"
+          for: "5m"
+          labels:
+            severity: "warning"
+            component: "database"
+          annotations:
+            summary: "Redis 메모리 사용량 높음"
+            description: "Redis 메모리 사용률이 {{ $value | humanizePercentage }}로 90%를 초과했습니다."
+
+    # 보안 알림
+    - name: "security"
+      rules:
+        - alert: "SecurityThreatDetected"
+          expr: "security_threat_level > 0.8"
+          for: "0s"  # 즉시 알림
+          labels:
+            severity: "critical"
+            component: "security"
+          annotations:
+            summary: "보안 위협 탐지"
+            description: "위협 점수 {{ $value }}의 보안 위협이 탐지되었습니다."
+            
+        - alert: "HighSecurityEventRate"
+          expr: "rate(security_events_total[5m]) > 10"
+          for: "2m"
+          labels:
+            severity: "warning"
+            component: "security"
+          annotations:
+            summary: "높은 보안 이벤트 발생률"
+            description: "보안 이벤트가 분당 {{ $value }}건 발생하고 있습니다."
+            
+        - alert: "FailedLoginAttempts"
+          expr: "rate(login_attempts_total{status='failed'}[5m]) > 5"
+          for: "5m"
+          labels:
+            severity: "warning"
+            component: "security"
+          annotations:
+            summary: "로그인 실패 시도 급증"
+            description: "로그인 실패 시도가 분당 {{ $value }}건 발생하고 있습니다."
+
+  # 알림 라우팅
+  route:
+    group_by: ["alertname", "cluster", "service"]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    receiver: "warning-alerts"
+    
+    routes:
+      - match:
+          severity: "critical"
+        receiver: "critical-alerts"
+        group_wait: 10s
+        repeat_interval: 30m
+        
+      - match:
+          severity: "warning"
+        receiver: "warning-alerts"
+        
+      - match:
+          severity: "info"
+        receiver: "info-alerts"
+        repeat_interval: 24h
+
+# 자동화 규칙
+automation:
+  # 자동 복구 규칙
+  auto_recovery:
+    enabled: true
+    rules:
+      - name: "restart_failed_service"
+        condition: "up == 0"
+        action: "systemctl restart {{ $labels.job }}"
+        cooldown: "5m"
+        max_attempts: 3
+        
+      - name: "clear_memory_cache"
+        condition: "memory_usage_percent > 90"
+        action: "echo 3 > /proc/sys/vm/drop_caches"
+        cooldown: "10m"
+        
+      - name: "cleanup_old_logs"
+        condition: "disk_usage_percent > 85"
+        action: "find /var/log -name '*.log' -mtime +7 -delete"
+        cooldown: "1h"
+
+  # 자동 스케일링
+  auto_scaling:
+    enabled: false  # 프로덕션에서는 신중하게 활성화
+    rules:
+      - name: "scale_up_api_gateway"
+        condition: "cpu_usage_percent > 80 AND response_time > 1"
+        action: "scale_service api_gateway +1"
+        cooldown: "10m"
+        max_instances: 5
+        
+      - name: "scale_down_api_gateway"
+        condition: "cpu_usage_percent < 30 AND instance_count > 1"
+        action: "scale_service api_gateway -1"
+        cooldown: "30m"
+        min_instances: 1
+
+# 대시보드 설정
+dashboards:
+  grafana:
+    enabled: true
+    port: 3000
+    admin_user: "admin"
+    admin_password: "${GRAFANA_ADMIN_PASSWORD}"
+    
+    # 기본 대시보드
+    default_dashboards:
+      - name: "시스템 개요"
+        file: "/etc/grafana/dashboards/system-overview.json"
+        
+      - name: "애플리케이션 성능"
+        file: "/etc/grafana/dashboards/application-performance.json"
+        
+      - name: "데이터베이스 모니터링"
+        file: "/etc/grafana/dashboards/database-monitoring.json"
+        
+      - name: "보안 모니터링"
+        file: "/etc/grafana/dashboards/security-monitoring.json"
+        
+    # 데이터소스
+    datasources:
+      - name: "Prometheus"
+        type: "prometheus"
+        url: "http://localhost:9090"
+        access: "proxy"
+        isDefault: true
+        
+      - name: "Elasticsearch"
+        type: "elasticsearch"
+        url: "http://localhost:9200"
+        database: "yourprogram-logs-*"
+        timeField: "@timestamp"
+
+# 성능 임계값
+thresholds:
+  system:
+    cpu_warning: 80
+    cpu_critical: 95
+    memory_warning: 85
+    memory_critical: 95
+    disk_warning: 85
+    disk_critical: 95
+    load_warning: 2.0
+    load_critical: 5.0
+    
+  application:
+    response_time_warning: 1.0  # 1초
+    response_time_critical: 2.0  # 2초
+    error_rate_warning: 0.05    # 5%
+    error_rate_critical: 0.1    # 10%
+    throughput_min: 100         # RPS
+    
+  database:
+    connection_warning: 80
+    connection_critical: 100
+    slow_query_threshold: 5.0   # 5초
+    replication_lag_warning: 60 # 1분
+    
+  security:
+    threat_score_critical: 0.8
+    failed_login_rate: 5        # 분당 5회
+    security_event_rate: 10     # 분당 10건
+
+# 백업 모니터링
+backup_monitoring:
+  enabled: true
+  check_interval: "1h"
+  
+  # 백업 상태 확인
+  checks:
+    - name: "database_backup"
+      path: "/opt/backups/database"
+      max_age: "24h"
+      min_size: "100MB"
+      
+    - name: "system_backup"
+      path: "/opt/backups/system"
+      max_age: "24h"
+      min_size: "50MB"
+      
+    - name: "config_backup"
+      path: "/opt/backups/config"
+      max_age: "24h"
+      min_size: "10MB"
+
+# 헬스체크 설정
+health_checks:
+  enabled: true
+  interval: "30s"
+  timeout: "10s"
+  
+  endpoints:
+    - name: "api_gateway"
+      url: "http://localhost:8000/health"
+      expected_status: 200
+      
+    - name: "ai_ml_service"
+      url: "http://localhost:8001/health"
+      expected_status: 200
+      
+    - name: "data_analysis"
+      url: "http://localhost:8002/health"
+      expected_status: 200
+      
+    - name: "security_monitor"
+      url: "http://localhost:8007/security/status"
+      expected_status: 200
+      
+    - name: "postgresql"
+      type: "tcp"
+      host: "localhost"
+      port: 5432
+      
+    - name: "redis"
+      type: "tcp"
+      host: "localhost"
+      port: 6379
+
+# 로그 분석 규칙
+log_analysis:
+  enabled: true
+  rules:
+    - name: "error_pattern_detection"
+      pattern: "(ERROR|FATAL|CRITICAL)"
+      action: "alert"
+      severity: "warning"
+      
+    - name: "security_pattern_detection"
+      pattern: "(unauthorized|forbidden|attack|intrusion)"
+      action: "alert"
+      severity: "critical"
+      
+    - name: "performance_pattern_detection"
+      pattern: "(timeout|slow|bottleneck)"
+      action: "alert"
+      severity: "warning"
+
+# 리포팅 설정
+reporting:
+  enabled: true
+  
+  # 일일 리포트
+  daily_report:
+    enabled: true
+    time: "09:00"
+    recipients: ["ops@company.com"]
+    format: "html"
+    include:
+      - system_metrics
+      - application_performance
+      - security_summary
+      - backup_status
+      
+  # 주간 리포트
+  weekly_report:
+    enabled: true
+    day: "monday"
+    time: "09:00"
+    recipients: ["management@company.com"]
+    format: "pdf"
+    include:
+      - executive_summary
+      - performance_trends
+      - security_incidents
+      - capacity_planning
+      
+  # 월간 리포트
+  monthly_report:
+    enabled: true
+    day: 1
+    time: "09:00"
+    recipients: ["leadership@company.com"]
+    format: "pdf"
+    include:
+      - business_metrics
+      - infrastructure_costs
+      - security_compliance
+      - recommendations
+
+# 유지보수 모드
+maintenance_mode:
+  enabled: false
+  schedule:
+    - day: "sunday"
+      start_time: "02:00"
+      duration: "2h"
+      tasks:
+        - "system_updates"
+        - "log_rotation"
+        - "backup_verification"
+        - "performance_optimization"
+  
+  notifications:
+    advance_notice: "24h"
+    reminder: "1h"
+    completion: "immediate" 

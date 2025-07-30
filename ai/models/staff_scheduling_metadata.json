@@ -1,0 +1,18 @@
+{
+  "model_name": "staff_scheduling",
+  "framework": "tensorflow",
+  "type": "regression",
+  "features": [
+    "historical_demand",
+    "weather",
+    "events"
+  ],
+  "target": "required_staff",
+  "trained_at": "2025-07-29T20:33:29.175613",
+  "performance": {
+    "mse": 1.037676136283914,
+    "mae": 0.8158336765558429,
+    "r2": 0.27421609263989344
+  },
+  "data_samples": 2000
+}

@@ -139,7 +139,8 @@ const PluginManagement: React.FC = () => {
         ...filters
       });
 
-      const response = await fetch(`/api/plugins?${params}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/plugins?${params}`);
       const data = await response.json();
 
       if (data.success) {
@@ -160,7 +161,8 @@ const PluginManagement: React.FC = () => {
   const togglePlugin = async (pluginId: string, enabled: boolean) => {
     try {
       const action = enabled ? 'enable' : 'disable';
-      const response = await fetch(`/api/plugins/${pluginId}/${action}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/plugins/${pluginId}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -181,7 +183,8 @@ const PluginManagement: React.FC = () => {
   // 플러그인 재로드
   const reloadPlugin = async (pluginId: string) => {
     try {
-      const response = await fetch(`/api/plugins/${pluginId}/reload`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/plugins/${pluginId}/reload`, {
         method: 'POST'
       });
       const data = await response.json();
@@ -201,7 +204,8 @@ const PluginManagement: React.FC = () => {
   // 플러그인 로그 조회
   const fetchPluginLogs = async (pluginId: string) => {
     try {
-      const response = await fetch(`/api/plugins/${pluginId}/logs`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/plugins/${pluginId}/logs`);
       const data = await response.json();
 
       if (data.success) {
@@ -218,7 +222,8 @@ const PluginManagement: React.FC = () => {
   // 플러그인 메트릭 조회
   const fetchPluginMetrics = async (pluginId: string) => {
     try {
-      const response = await fetch(`/api/plugins/${pluginId}/metrics`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/plugins/${pluginId}/metrics`);
       const data = await response.json();
 
       if (data.success) {
@@ -235,7 +240,8 @@ const PluginManagement: React.FC = () => {
   // 설치 이력 조회
   const fetchInstallationHistory = async () => {
     try {
-      const response = await fetch('/api/plugins/history');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/plugins/history`);
       const data = await response.json();
 
       if (data.success) {
@@ -252,7 +258,8 @@ const PluginManagement: React.FC = () => {
   // 플러그인 스캔
   const scanPlugins = async () => {
     try {
-      const response = await fetch('/api/plugins/scan', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/plugins/scan`, {
         method: 'POST'
       });
       const data = await response.json();

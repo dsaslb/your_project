@@ -1,467 +1,544 @@
+"""
+보안 API 엔드포인트
+엔터프라이즈급 보안 기능을 위한 REST API
+"""
+
 from flask import Blueprint, request, jsonify, current_app
-from flask_login import login_required, current_user
-import json
-import logging
+from flask_cors import cross_origin
 from datetime import datetime, timedelta
+import logging
 import traceback
+import secrets
+import json
+from typing import Dict, Any, Optional
 
-# 보안 모듈 import
-from security.multi_factor_auth import MultiFactorAuth
-from security.data_encryption import DataEncryption
-from security.audit_logger import SecurityAuditLogger
-from security.threat_detection import ThreatDetection
-
-# Blueprint 생성
-security_api = Blueprint('security_api', __name__, url_prefix='/api/security')
+# 보안 모듈 임포트
+from security.multi_factor_auth import MultiFactorAuth, BiometricAuth
+from security.encryption_manager import KeyManager, EncryptionManager
+from security.audit_system import AuditSystem, AuditEvent, EventType, SecurityLevel
 
 # 로깅 설정
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 보안 모듈 인스턴스
-mfa = MultiFactorAuth()
-encryption = DataEncryption()
-audit_logger = SecurityAuditLogger()
-threat_detection = ThreatDetection()
+# 블루프린트 생성
+security_bp = Blueprint('security', __name__, url_prefix='/api/security')
 
-@security_api.route('/mfa/setup', methods=['POST'])
-@login_required
-def setup_mfa():
-    """MFA 설정 API"""
-    try:
-        # 사용자 ID 가져오기
-        user_id = current_user.id if current_user else request.json.get('user_id')
-        
-        if not user_id:
-            return jsonify({'error': '사용자 ID가 필요합니다'}), 400
-        
-        # MFA 설정
-        result = mfa.setup_mfa(user_id)
-        
-        if result['success']:
-            # 감사 로그 기록
-            audit_logger.log_event(
-                event_type='mfa_setup',
-                user_id=user_id,
-                ip_address=request.remote_addr,
-                details=f"MFA 설정 완료: {result['secret']}"
-            )
-            
-            return jsonify({
-                'success': True,
-                'secret': result['secret'],
-                'qr_code': result['qr_code'],
-                'backup_codes': result['backup_codes']
-            })
-        else:
-            return jsonify({'error': result['error']}), 400
-            
-    except Exception as e:
-        logger.error(f"MFA 설정 오류: {str(e)}")
-        return jsonify({'error': 'MFA 설정 중 오류가 발생했습니다'}), 500
+# 전역 보안 시스템 인스턴스
+mfa_system = None
+key_manager = None
+encryption_manager = None
+audit_system = None
+biometric_auth = None
 
-@security_api.route('/mfa/verify', methods=['POST'])
-@login_required
-def verify_mfa():
-    """MFA 인증 API"""
+def init_security_systems():
+    """보안 시스템 초기화"""
+    global mfa_system, key_manager, encryption_manager, audit_system, biometric_auth
+    
     try:
-        data = request.get_json()
-        user_id = current_user.id if current_user else data.get('user_id')
-        code = data.get('code')
-        method = data.get('method', 'totp')  # totp, sms, email
-        
-        if not user_id or not code:
-            return jsonify({'error': '사용자 ID와 인증 코드가 필요합니다'}), 400
-        
-        # MFA 인증
-        result = mfa.verify_mfa(user_id, code, method)
-        
-        if result['success']:
-            # 감사 로그 기록
-            audit_logger.log_event(
-                event_type='mfa_verification_success',
-                user_id=user_id,
-                ip_address=request.remote_addr,
-                details=f"MFA 인증 성공: {method}"
-            )
-            
-            return jsonify({'success': True, 'message': 'MFA 인증이 완료되었습니다'})
-        else:
-            # 실패 로그 기록
-            audit_logger.log_event(
-                event_type='mfa_verification_failed',
-                user_id=user_id,
-                ip_address=request.remote_addr,
-                details=f"MFA 인증 실패: {method}, 코드: {code}"
-            )
-            
-            return jsonify({'error': result['error']}), 401
-            
-    except Exception as e:
-        logger.error(f"MFA 인증 오류: {str(e)}")
-        return jsonify({'error': 'MFA 인증 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/mfa/disable', methods=['POST'])
-@login_required
-def disable_mfa():
-    """MFA 비활성화 API"""
-    try:
-        user_id = current_user.id if current_user else request.json.get('user_id')
-        
-        if not user_id:
-            return jsonify({'error': '사용자 ID가 필요합니다'}), 400
-        
-        # MFA 비활성화
-        result = mfa.disable_mfa(user_id)
-        
-        if result['success']:
-            # 감사 로그 기록
-            audit_logger.log_event(
-                event_type='mfa_disable',
-                user_id=user_id,
-                ip_address=request.remote_addr,
-                details="MFA 비활성화 완료"
-            )
-            
-            return jsonify({'success': True, 'message': 'MFA가 비활성화되었습니다'})
-        else:
-            return jsonify({'error': result['error']}), 400
-            
-    except Exception as e:
-        logger.error(f"MFA 비활성화 오류: {str(e)}")
-        return jsonify({'error': 'MFA 비활성화 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/encrypt', methods=['POST'])
-@login_required
-def encrypt_data():
-    """데이터 암호화 API"""
-    try:
-        data = request.get_json()
-        text = data.get('text')
-        encryption_type = data.get('type', 'symmetric')  # symmetric, asymmetric
-        
-        if not text:
-            return jsonify({'error': '암호화할 텍스트가 필요합니다'}), 400
-        
-        # 데이터 암호화
-        if encryption_type == 'symmetric':
-            result = encryption.encrypt_symmetric(text)
-        else:
-            result = encryption.encrypt_asymmetric(text)
-        
-        if result['success']:
-            # 감사 로그 기록
-            audit_logger.log_event(
-                event_type='data_encryption',
-                user_id=current_user.id if current_user else None,
-                ip_address=request.remote_addr,
-                details=f"데이터 암호화 완료: {encryption_type}"
-            )
-            
-            return jsonify({
-                'success': True,
-                'encrypted_data': result['encrypted_data'],
-                'type': encryption_type
-            })
-        else:
-            return jsonify({'error': result['error']}), 400
-            
-    except Exception as e:
-        logger.error(f"데이터 암호화 오류: {str(e)}")
-        return jsonify({'error': '데이터 암호화 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/decrypt', methods=['POST'])
-@login_required
-def decrypt_data():
-    """데이터 복호화 API"""
-    try:
-        data = request.get_json()
-        encrypted_data = data.get('encrypted_data')
-        encryption_type = data.get('type', 'symmetric')  # symmetric, asymmetric
-        
-        if not encrypted_data:
-            return jsonify({'error': '복호화할 데이터가 필요합니다'}), 400
-        
-        # 데이터 복호화
-        if encryption_type == 'symmetric':
-            result = encryption.decrypt_symmetric(encrypted_data)
-        else:
-            result = encryption.decrypt_asymmetric(encrypted_data)
-        
-        if result['success']:
-            # 감사 로그 기록
-            audit_logger.log_event(
-                event_type='data_decryption',
-                user_id=current_user.id if current_user else None,
-                ip_address=request.remote_addr,
-                details=f"데이터 복호화 완료: {encryption_type}"
-            )
-            
-            return jsonify({
-                'success': True,
-                'decrypted_data': result['decrypted_data'],
-                'type': encryption_type
-            })
-        else:
-            return jsonify({'error': result['error']}), 400
-            
-    except Exception as e:
-        logger.error(f"데이터 복호화 오류: {str(e)}")
-        return jsonify({'error': '데이터 복호화 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/audit-logs', methods=['GET'])
-@login_required
-def get_audit_logs():
-    """감사 로그 조회 API"""
-    try:
-        # 쿼리 파라미터
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
-        event_type = request.args.get('event_type')
-        user_id = request.args.get('user_id')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        
-        # 감사 로그 조회
-        logs = audit_logger.get_events(
-            page=page,
-            per_page=per_page,
-            event_type=event_type,
-            user_id=user_id,
-            start_date=start_date,
-            end_date=end_date
-        )
-        
-        return jsonify({
-            'success': True,
-            'logs': logs['events'],
-            'total': logs['total'],
-            'page': page,
-            'per_page': per_page,
-            'pages': logs['pages']
-        })
-        
-    except Exception as e:
-        logger.error(f"감사 로그 조회 오류: {str(e)}")
-        return jsonify({'error': '감사 로그 조회 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/audit-logs/export', methods=['GET'])
-@login_required
-def export_audit_logs():
-    """감사 로그 내보내기 API"""
-    try:
-        format_type = request.args.get('format', 'json')  # json, csv
-        event_type = request.args.get('event_type')
-        user_id = request.args.get('user_id')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        
-        # 감사 로그 내보내기
-        result = audit_logger.export_logs(
-            format_type=format_type,
-            event_type=event_type,
-            user_id=user_id,
-            start_date=start_date,
-            end_date=end_date
-        )
-        
-        if result['success']:
-            return jsonify({
-                'success': True,
-                'download_url': result['download_url'],
-                'filename': result['filename']
-            })
-        else:
-            return jsonify({'error': result['error']}), 400
-            
-    except Exception as e:
-        logger.error(f"감사 로그 내보내기 오류: {str(e)}")
-        return jsonify({'error': '감사 로그 내보내기 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/threats', methods=['GET'])
-@login_required
-def get_threats():
-    """위협 탐지 로그 조회 API"""
-    try:
-        # 쿼리 파라미터
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
-        threat_type = request.args.get('threat_type')
-        ip_address = request.args.get('ip_address')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        
-        # 위협 로그 조회
-        threats = threat_detection.get_threats(
-            page=page,
-            per_page=per_page,
-            threat_type=threat_type,
-            ip_address=ip_address,
-            start_date=start_date,
-            end_date=end_date
-        )
-        
-        return jsonify({
-            'success': True,
-            'threats': threats['threats'],
-            'total': threats['total'],
-            'page': page,
-            'per_page': per_page,
-            'pages': threats['pages']
-        })
-        
-    except Exception as e:
-        logger.error(f"위협 로그 조회 오류: {str(e)}")
-        return jsonify({'error': '위협 로그 조회 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/threats/block-ip', methods=['POST'])
-@login_required
-def block_ip():
-    """IP 차단 API"""
-    try:
-        data = request.get_json()
-        ip_address = data.get('ip_address')
-        reason = data.get('reason', '관리자에 의한 수동 차단')
-        duration = data.get('duration', 3600)  # 초 단위
-        
-        if not ip_address:
-            return jsonify({'error': 'IP 주소가 필요합니다'}), 400
-        
-        # IP 차단
-        result = threat_detection.block_ip(ip_address, reason, duration)
-        
-        if result['success']:
-            # 감사 로그 기록
-            audit_logger.log_event(
-                event_type='ip_blocked',
-                user_id=current_user.id if current_user else None,
-                ip_address=request.remote_addr,
-                details=f"IP 차단: {ip_address}, 사유: {reason}, 기간: {duration}초"
-            )
-            
-            return jsonify({'success': True, 'message': f'IP {ip_address}가 차단되었습니다'})
-        else:
-            return jsonify({'error': result['error']}), 400
-            
-    except Exception as e:
-        logger.error(f"IP 차단 오류: {str(e)}")
-        return jsonify({'error': 'IP 차단 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/threats/unblock-ip', methods=['POST'])
-@login_required
-def unblock_ip():
-    """IP 차단 해제 API"""
-    try:
-        data = request.get_json()
-        ip_address = data.get('ip_address')
-        
-        if not ip_address:
-            return jsonify({'error': 'IP 주소가 필요합니다'}), 400
-        
-        # IP 차단 해제
-        result = threat_detection.unblock_ip(ip_address)
-        
-        if result['success']:
-            # 감사 로그 기록
-            audit_logger.log_event(
-                event_type='ip_unblocked',
-                user_id=current_user.id if current_user else None,
-                ip_address=request.remote_addr,
-                details=f"IP 차단 해제: {ip_address}"
-            )
-            
-            return jsonify({'success': True, 'message': f'IP {ip_address}의 차단이 해제되었습니다'})
-        else:
-            return jsonify({'error': result['error']}), 400
-            
-    except Exception as e:
-        logger.error(f"IP 차단 해제 오류: {str(e)}")
-        return jsonify({'error': 'IP 차단 해제 중 오류가 발생했습니다'}), 500
-
-@security_api.route('/security-status', methods=['GET'])
-@login_required
-def get_security_status():
-    """보안 상태 조회 API"""
-    try:
-        # 현재 보안 상태 정보 수집
-        status = {
-            'mfa_enabled_users': mfa.get_enabled_users_count(),
-            'active_threats': threat_detection.get_active_threats_count(),
-            'blocked_ips': threat_detection.get_blocked_ips_count(),
-            'recent_audit_events': audit_logger.get_recent_events_count(),
-            'encryption_status': encryption.get_status(),
-            'system_health': {
-                'mfa_system': mfa.is_healthy(),
-                'encryption_system': encryption.is_healthy(),
-                'audit_system': audit_logger.is_healthy(),
-                'threat_detection_system': threat_detection.is_healthy()
+        # MFA 시스템 초기화
+        mfa_config = {
+            'totp_issuer': 'Your Program',
+            'totp_digits': 6,
+            'totp_interval': 30,
+            'max_attempts': 3,
+            'session_timeout': 300,
+            'backup_codes_count': 10,
+            'smtp': {
+                'host': 'smtp.gmail.com',
+                'port': 587,
+                'username': 'your-email@gmail.com',
+                'password': 'your-password',
+                'from_email': 'noreply@yourprogram.com'
             }
         }
+        mfa_system = MultiFactorAuth(mfa_config)
+        
+        # 키 관리자 초기화
+        key_manager = KeyManager()
+        
+        # 암호화 관리자 초기화
+        encryption_manager = EncryptionManager(key_manager)
+        
+        # 감사 시스템 초기화
+        audit_system = AuditSystem()
+        
+        # 생체 인증 초기화
+        biometric_auth = BiometricAuth()
+        
+        logger.info("보안 시스템 초기화 완료")
+        
+    except Exception as e:
+        logger.error(f"보안 시스템 초기화 오류: {e}")
+        logger.error(traceback.format_exc())
+
+def log_security_event(event_type: EventType, user_id: Optional[str] = None, 
+                      success: bool = True, details: Dict[str, Any] = None):
+    """보안 이벤트 로깅"""
+    try:
+        if audit_system:
+            event = AuditEvent(
+                event_id=f"event_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(4)}",
+                event_type=event_type,
+                user_id=user_id,
+                session_id=request.headers.get('X-Session-ID'),
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', ''),
+                timestamp=datetime.now(),
+                security_level=SecurityLevel.MEDIUM,
+                description=f"{event_type.value} 이벤트",
+                details=details or {},
+                success=success,
+                metadata={'endpoint': request.endpoint}
+            )
+            audit_system.log_event(event)
+    except Exception as e:
+        logger.error(f"보안 이벤트 로깅 오류: {e}")
+
+# MFA 관련 엔드포인트
+@security_bp.route('/mfa/setup/totp', methods=['POST'])
+@cross_origin()
+def setup_totp():
+    """TOTP 설정"""
+    try:
+        data = request.get_json()
+        if not data or 'user_id' not in data or 'email' not in data:
+            return jsonify({'error': '사용자 ID와 이메일이 필요합니다'}), 400
+        
+        user_id = data['user_id']
+        email = data['email']
+        
+        if not mfa_system:
+            return jsonify({'error': 'MFA 시스템이 초기화되지 않았습니다'}), 500
+        
+        # TOTP 설정
+        totp_setup = mfa_system.setup_totp(user_id, email)
+        
+        log_security_event(EventType.MFA_ENABLED, user_id, True, {'method': 'totp'})
         
         return jsonify({
-            'success': True,
-            'status': status,
-            'timestamp': datetime.now().isoformat()
-        })
+            'status': 'success',
+            'message': 'TOTP 설정 완료',
+            'data': {
+                'secret': totp_setup['secret'],
+                'qr_code': totp_setup['qr_code'],
+                'backup_codes': totp_setup['backup_codes']
+            }
+        }), 200
         
     except Exception as e:
-        logger.error(f"보안 상태 조회 오류: {str(e)}")
-        return jsonify({'error': '보안 상태 조회 중 오류가 발생했습니다'}), 500
+        logger.error(f"TOTP 설정 오류: {e}")
+        log_security_event(EventType.MFA_ENABLED, data.get('user_id') if data else None, False)
+        return jsonify({'error': 'TOTP 설정 중 오류가 발생했습니다'}), 500
 
-@security_api.route('/security-settings', methods=['GET', 'PUT'])
-@login_required
-def security_settings():
-    """보안 설정 API"""
+@security_bp.route('/mfa/setup/email', methods=['POST'])
+@cross_origin()
+def setup_email_mfa():
+    """이메일 MFA 설정"""
     try:
-        if request.method == 'GET':
-            # 현재 보안 설정 조회
-            settings = {
-                'mfa_settings': mfa.get_settings(),
-                'encryption_settings': encryption.get_settings(),
-                'audit_settings': audit_logger.get_settings(),
-                'threat_detection_settings': threat_detection.get_settings()
-            }
-            
-            return jsonify({
-                'success': True,
-                'settings': settings
-            })
-            
-        elif request.method == 'PUT':
-            # 보안 설정 업데이트
-            data = request.get_json()
-            
-            # 각 모듈별 설정 업데이트
-            if 'mfa_settings' in data:
-                mfa.update_settings(data['mfa_settings'])
-            
-            if 'encryption_settings' in data:
-                encryption.update_settings(data['encryption_settings'])
-            
-            if 'audit_settings' in data:
-                audit_logger.update_settings(data['audit_settings'])
-            
-            if 'threat_detection_settings' in data:
-                threat_detection.update_settings(data['threat_detection_settings'])
-            
-            # 감사 로그 기록
-            audit_logger.log_event(
-                event_type='security_settings_updated',
-                user_id=current_user.id if current_user else None,
-                ip_address=request.remote_addr,
-                details="보안 설정 업데이트"
-            )
-            
-            return jsonify({'success': True, 'message': '보안 설정이 업데이트되었습니다'})
-            
+        data = request.get_json()
+        if not data or 'user_id' not in data or 'email' not in data:
+            return jsonify({'error': '사용자 ID와 이메일이 필요합니다'}), 400
+        
+        user_id = data['user_id']
+        email = data['email']
+        
+        if not mfa_system:
+            return jsonify({'error': 'MFA 시스템이 초기화되지 않았습니다'}), 500
+        
+        # 이메일 MFA 설정
+        success = mfa_system.setup_email_mfa(user_id, email)
+        
+        if success:
+            log_security_event(EventType.MFA_ENABLED, user_id, True, {'method': 'email'})
+            return jsonify({'status': 'success', 'message': '이메일 MFA 설정 완료'}), 200
+        else:
+            log_security_event(EventType.MFA_ENABLED, user_id, False, {'method': 'email'})
+            return jsonify({'error': '이메일 MFA 설정에 실패했습니다'}), 500
+        
     except Exception as e:
-        logger.error(f"보안 설정 오류: {str(e)}")
-        return jsonify({'error': '보안 설정 처리 중 오류가 발생했습니다'}), 500
+        logger.error(f"이메일 MFA 설정 오류: {e}")
+        log_security_event(EventType.MFA_ENABLED, data.get('user_id') if data else None, False)
+        return jsonify({'error': '이메일 MFA 설정 중 오류가 발생했습니다'}), 500
 
-# 에러 핸들러
-@security_api.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': '요청한 리소스를 찾을 수 없습니다'}), 404
+@security_bp.route('/mfa/initiate', methods=['POST'])
+@cross_origin()
+def initiate_mfa():
+    """MFA 시작"""
+    try:
+        data = request.get_json()
+        if not data or 'user_id' not in data or 'method_type' not in data:
+            return jsonify({'error': '사용자 ID와 방법 타입이 필요합니다'}), 400
+        
+        user_id = data['user_id']
+        method_type = data['method_type']
+        
+        if not mfa_system:
+            return jsonify({'error': 'MFA 시스템이 초기화되지 않았습니다'}), 500
+        
+        # MFA 시작
+        session_id, code = mfa_system.initiate_mfa(user_id, method_type)
+        
+        log_security_event(EventType.MFA_ENABLED, user_id, True, {'method': method_type})
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'MFA 시작 완료',
+            'data': {
+                'session_id': session_id,
+                'code': code if method_type in ['email', 'sms'] else None
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"MFA 시작 오류: {e}")
+        log_security_event(EventType.MFA_ENABLED, data.get('user_id') if data else None, False)
+        return jsonify({'error': 'MFA 시작 중 오류가 발생했습니다'}), 500
 
-@security_api.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': '내부 서버 오류가 발생했습니다'}), 500
+@security_bp.route('/mfa/verify', methods=['POST'])
+@cross_origin()
+def verify_mfa():
+    """MFA 검증"""
+    try:
+        data = request.get_json()
+        if not data or 'session_id' not in data or 'token' not in data:
+            return jsonify({'error': '세션 ID와 토큰이 필요합니다'}), 400
+        
+        session_id = data['session_id']
+        token = data['token']
+        
+        if not mfa_system:
+            return jsonify({'error': 'MFA 시스템이 초기화되지 않았습니다'}), 500
+        
+        # MFA 검증
+        verified = mfa_system.verify_mfa_session(session_id, token)
+        
+        if verified:
+            log_security_event(EventType.MFA_ENABLED, None, True, {'session_id': session_id})
+            return jsonify({'status': 'success', 'message': 'MFA 검증 성공'}), 200
+        else:
+            log_security_event(EventType.MFA_FAILED, None, False, {'session_id': session_id})
+            return jsonify({'error': 'MFA 검증 실패'}), 401
+        
+    except Exception as e:
+        logger.error(f"MFA 검증 오류: {e}")
+        log_security_event(EventType.MFA_FAILED, None, False)
+        return jsonify({'error': 'MFA 검증 중 오류가 발생했습니다'}), 500
+
+# 암호화 관련 엔드포인트
+@security_bp.route('/encryption/keys/generate', methods=['POST'])
+@cross_origin()
+def generate_keys():
+    """키 생성"""
+    try:
+        data = request.get_json()
+        if not data or 'key_type' not in data:
+            return jsonify({'error': '키 타입이 필요합니다'}), 400
+        
+        key_type = data['key_type']
+        key_size = data.get('key_size', 256)
+        
+        if not key_manager:
+            return jsonify({'error': '키 관리자가 초기화되지 않았습니다'}), 500
+        
+        if key_type == 'symmetric':
+            key_id = key_manager.generate_symmetric_key(key_size)
+        elif key_type == 'asymmetric':
+            private_key_id, public_key_id = key_manager.generate_asymmetric_key_pair(key_size)
+            key_id = {'private_key_id': private_key_id, 'public_key_id': public_key_id}
+        else:
+            return jsonify({'error': '지원하지 않는 키 타입입니다'}), 400
+        
+        log_security_event(EventType.SYSTEM_ERROR, None, True, {'action': 'key_generation', 'type': key_type})
+        
+        return jsonify({
+            'status': 'success',
+            'message': '키 생성 완료',
+            'data': {'key_id': key_id}
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"키 생성 오류: {e}")
+        log_security_event(EventType.SYSTEM_ERROR, None, False, {'action': 'key_generation'})
+        return jsonify({'error': '키 생성 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/encryption/encrypt', methods=['POST'])
+@cross_origin()
+def encrypt_data():
+    """데이터 암호화"""
+    try:
+        data = request.get_json()
+        if not data or 'data' not in data or 'key_id' not in data:
+            return jsonify({'error': '데이터와 키 ID가 필요합니다'}), 400
+        
+        plain_data = data['data']
+        key_id = data['key_id']
+        encryption_type = data.get('type', 'symmetric')
+        
+        if not encryption_manager:
+            return jsonify({'error': '암호화 관리자가 초기화되지 않았습니다'}), 500
+        
+        if encryption_type == 'symmetric':
+            encrypted_data = encryption_manager.encrypt_symmetric(plain_data, key_id)
+        elif encryption_type == 'asymmetric':
+            encrypted_data = encryption_manager.encrypt_asymmetric(plain_data, key_id)
+        else:
+            return jsonify({'error': '지원하지 않는 암호화 타입입니다'}), 400
+        
+        log_security_event(EventType.DATA_EXPORT, None, True, {'action': 'encryption', 'type': encryption_type})
+        
+        return jsonify({
+            'status': 'success',
+            'message': '암호화 완료',
+            'data': {
+                'encrypted_data': encrypted_data.data.decode('latin1'),
+                'algorithm': encrypted_data.algorithm
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"암호화 오류: {e}")
+        log_security_event(EventType.DATA_EXPORT, None, False, {'action': 'encryption'})
+        return jsonify({'error': '암호화 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/encryption/decrypt', methods=['POST'])
+@cross_origin()
+def decrypt_data():
+    """데이터 복호화"""
+    try:
+        data = request.get_json()
+        if not data or 'encrypted_data' not in data or 'key_id' not in data:
+            return jsonify({'error': '암호화된 데이터와 키 ID가 필요합니다'}), 400
+        
+        encrypted_data_str = data['encrypted_data']
+        key_id = data['key_id']
+        decryption_type = data.get('type', 'symmetric')
+        
+        if not encryption_manager:
+            return jsonify({'error': '암호화 관리자가 초기화되지 않았습니다'}), 500
+        
+        # EncryptedData 객체 생성
+        from security.encryption_manager import EncryptedData
+        encrypted_data = EncryptedData(
+            data=encrypted_data_str.encode('latin1'),
+            key_id=key_id,
+            algorithm='AES-256-GCM' if decryption_type == 'symmetric' else 'RSA-OAEP'
+        )
+        
+        if decryption_type == 'symmetric':
+            decrypted_data = encryption_manager.decrypt_symmetric(encrypted_data)
+        elif decryption_type == 'asymmetric':
+            decrypted_data = encryption_manager.decrypt_asymmetric(encrypted_data, key_id)
+        else:
+            return jsonify({'error': '지원하지 않는 복호화 타입입니다'}), 400
+        
+        log_security_event(EventType.DATA_IMPORT, None, True, {'action': 'decryption', 'type': decryption_type})
+        
+        return jsonify({
+            'status': 'success',
+            'message': '복호화 완료',
+            'data': {'decrypted_data': decrypted_data.decode('utf-8')}
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"복호화 오류: {e}")
+        log_security_event(EventType.DATA_IMPORT, None, False, {'action': 'decryption'})
+        return jsonify({'error': '복호화 중 오류가 발생했습니다'}), 500
+
+# 생체 인증 관련 엔드포인트
+@security_bp.route('/biometric/enroll', methods=['POST'])
+@cross_origin()
+def enroll_biometric():
+    """생체 인증 등록"""
+    try:
+        data = request.get_json()
+        if not data or 'user_id' not in data or 'method' not in data or 'biometric_data' not in data:
+            return jsonify({'error': '사용자 ID, 방법, 생체 데이터가 필요합니다'}), 400
+        
+        user_id = data['user_id']
+        method = data['method']
+        biometric_data = data['biometric_data']
+        
+        if not biometric_auth:
+            return jsonify({'error': '생체 인증 시스템이 초기화되지 않았습니다'}), 500
+        
+        # 생체 인증 등록
+        success = biometric_auth.enroll_biometric(user_id, method, biometric_data)
+        
+        if success:
+            log_security_event(EventType.MFA_ENABLED, user_id, True, {'method': f'biometric_{method}'})
+            return jsonify({'status': 'success', 'message': '생체 인증 등록 완료'}), 200
+        else:
+            log_security_event(EventType.MFA_ENABLED, user_id, False, {'method': f'biometric_{method}'})
+            return jsonify({'error': '생체 인증 등록에 실패했습니다'}), 500
+        
+    except Exception as e:
+        logger.error(f"생체 인증 등록 오류: {e}")
+        log_security_event(EventType.MFA_ENABLED, data.get('user_id') if data else None, False)
+        return jsonify({'error': '생체 인증 등록 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/biometric/verify', methods=['POST'])
+@cross_origin()
+def verify_biometric():
+    """생체 인증 검증"""
+    try:
+        data = request.get_json()
+        if not data or 'user_id' not in data or 'method' not in data or 'biometric_data' not in data:
+            return jsonify({'error': '사용자 ID, 방법, 생체 데이터가 필요합니다'}), 400
+        
+        user_id = data['user_id']
+        method = data['method']
+        biometric_data = data['biometric_data']
+        
+        if not biometric_auth:
+            return jsonify({'error': '생체 인증 시스템이 초기화되지 않았습니다'}), 500
+        
+        # 생체 인증 검증
+        verified = biometric_auth.verify_biometric(user_id, method, biometric_data)
+        
+        if verified:
+            log_security_event(EventType.MFA_ENABLED, user_id, True, {'method': f'biometric_{method}'})
+            return jsonify({'status': 'success', 'message': '생체 인증 검증 성공'}), 200
+        else:
+            log_security_event(EventType.MFA_FAILED, user_id, False, {'method': f'biometric_{method}'})
+            return jsonify({'error': '생체 인증 검증 실패'}), 401
+        
+    except Exception as e:
+        logger.error(f"생체 인증 검증 오류: {e}")
+        log_security_event(EventType.MFA_FAILED, data.get('user_id') if data else None, False)
+        return jsonify({'error': '생체 인증 검증 중 오류가 발생했습니다'}), 500
+
+# 감사 및 모니터링 엔드포인트
+@security_bp.route('/audit/events', methods=['GET'])
+@cross_origin()
+def get_audit_events():
+    """감사 이벤트 조회"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        event_type = request.args.get('event_type')
+        user_id = request.args.get('user_id')
+        ip_address = request.args.get('ip_address')
+        
+        if not audit_system:
+            return jsonify({'error': '감사 시스템이 초기화되지 않았습니다'}), 500
+        
+        events = audit_system.get_recent_events(
+            minutes=hours * 60,
+            event_type=EventType(event_type) if event_type else None,
+            user_id=user_id,
+            ip_address=ip_address
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'events': [asdict(event) for event in events],
+                'total_count': len(events)
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"감사 이벤트 조회 오류: {e}")
+        return jsonify({'error': '감사 이벤트 조회 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/audit/alerts', methods=['GET'])
+@cross_origin()
+def get_security_alerts():
+    """보안 알림 조회"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        resolved = request.args.get('resolved')
+        severity = request.args.get('severity')
+        
+        if not audit_system:
+            return jsonify({'error': '감사 시스템이 초기화되지 않았습니다'}), 500
+        
+        alerts = audit_system.get_security_alerts(
+            hours=hours,
+            resolved=bool(resolved) if resolved is not None else None,
+            severity=SecurityLevel(severity) if severity else None
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'alerts': [asdict(alert) for alert in alerts],
+                'total_count': len(alerts)
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"보안 알림 조회 오류: {e}")
+        return jsonify({'error': '보안 알림 조회 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/audit/report', methods=['GET'])
+@cross_origin()
+def get_security_report():
+    """보안 리포트 생성"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        
+        if not audit_system:
+            return jsonify({'error': '감사 시스템이 초기화되지 않았습니다'}), 500
+        
+        report = audit_system.generate_security_report(hours=hours)
+        
+        return jsonify({
+            'status': 'success',
+            'data': report
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"보안 리포트 생성 오류: {e}")
+        return jsonify({'error': '보안 리포트 생성 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/audit/alerts/<alert_id>/resolve', methods=['POST'])
+@cross_origin()
+def resolve_alert(alert_id):
+    """알림 해결"""
+    try:
+        data = request.get_json()
+        resolution_notes = data.get('resolution_notes', '') if data else ''
+        
+        if not audit_system:
+            return jsonify({'error': '감사 시스템이 초기화되지 않았습니다'}), 500
+        
+        success = audit_system.resolve_alert(alert_id, resolution_notes)
+        
+        if success:
+            return jsonify({'status': 'success', 'message': '알림 해결 완료'}), 200
+        else:
+            return jsonify({'error': '알림 해결에 실패했습니다'}), 500
+        
+    except Exception as e:
+        logger.error(f"알림 해결 오류: {e}")
+        return jsonify({'error': '알림 해결 중 오류가 발생했습니다'}), 500
+
+# 시스템 상태 엔드포인트
+@security_bp.route('/health', methods=['GET'])
+@cross_origin()
+def security_health():
+    """보안 시스템 상태 확인"""
+    try:
+        health_status = {
+            'mfa_system': mfa_system is not None,
+            'key_manager': key_manager is not None,
+            'encryption_manager': encryption_manager is not None,
+            'audit_system': audit_system is not None,
+            'biometric_auth': biometric_auth is not None,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        all_systems_healthy = all(health_status.values()[:-1])  # timestamp 제외
+        
+        return jsonify({
+            'status': 'healthy' if all_systems_healthy else 'unhealthy',
+            'data': health_status
+        }), 200 if all_systems_healthy else 503
+        
+    except Exception as e:
+        logger.error(f"보안 시스템 상태 확인 오류: {e}")
+        return jsonify({'error': '시스템 상태 확인 중 오류가 발생했습니다'}), 500
+
+# 초기화
+init_security_systems()

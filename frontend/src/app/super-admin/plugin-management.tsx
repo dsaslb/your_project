@@ -33,7 +33,8 @@ export default function PluginManagementPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/plugins");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/plugins`);
       const data = await res.json();
       if (data.success) {
         setPlugins(data.plugins);
@@ -55,7 +56,8 @@ export default function PluginManagementPage() {
   const togglePlugin = async (plugin: PluginInfo) => {
     setUpdating(plugin.id);
     try {
-      const res = await fetch(`/api/plugins/${plugin.id}/${plugin.enabled ? "disable" : "enable"}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/plugins/${plugin.id}/${plugin.enabled ? "disable" : "enable"}`, {
         method: "POST",
       });
       const data = await res.json();

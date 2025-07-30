@@ -1,0 +1,20 @@
+{
+  "model_name": "inventory_optimization",
+  "framework": "sklearn",
+  "type": "regression",
+  "features": [
+    "historical_demand",
+    "seasonality",
+    "price",
+    "promotion",
+    "competitor_price"
+  ],
+  "target": "optimal_stock",
+  "trained_at": "2025-07-29T20:33:23.888763",
+  "performance": {
+    "mse": 505.64730361341293,
+    "mae": 17.66493427442144,
+    "r2": 0.6001253764445758
+  },
+  "data_samples": 2000
+}

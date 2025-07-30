@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Your Program 성능 모니터링 대시보드</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .metric-card { transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-2px); }
+        .status-healthy { background: linear-gradient(135deg, #10B981, #059669); }
+        .status-warning { background: linear-gradient(135deg, #F59E0B, #D97706); }
+        .status-critical { background: linear-gradient(135deg, #EF4444, #DC2626); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .chart-container { position: relative; height: 300px; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <!-- 헤더 -->
+    <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        📊 성능 모니터링 대시보드
+                    </h1>
+                    <div class="ml-4 flex items-center space-x-2">
+                        <div class="w-3 h-3 bg-green-500 rounded-full pulse"></div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">실시간 모니터링</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refreshBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        🔄 새로고침
+                    </button>
+                    <button id="settingsBtn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                        ⚙️ 설정
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 시스템 상태 개요 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- CPU 사용률 -->
+            <div class="metric-card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">CPU 사용률</p>
+                        <p id="cpuPercent" class="text-2xl font-bold text-gray-900 dark:text-gray-100">--</p>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                        <span class="text-blue-600 dark:text-blue-400 text-xl">🖥️</span>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div id="cpuBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 메모리 사용률 -->
+            <div class="metric-card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">메모리 사용률</p>
+                        <p id="memoryPercent" class="text-2xl font-bold text-gray-900 dark:text-gray-100">--</p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                        <span class="text-green-600 dark:text-green-400 text-xl">💾</span>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div id="memoryBar" class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 응답 시간 -->
+            <div class="metric-card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">응답 시간</p>
+                        <p id="responseTime" class="text-2xl font-bold text-gray-900 dark:text-gray-100">--</p>
+                    </div>
+                    <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
+                        <span class="text-yellow-600 dark:text-yellow-400 text-xl">⚡</span>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div id="responseBar" class="bg-yellow-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오류율 -->
+            <div class="metric-card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">오류율</p>
+                        <p id="errorRate" class="text-2xl font-bold text-gray-900 dark:text-gray-100">--</p>
+                    </div>
+                    <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                        <span class="text-red-600 dark:text-red-400 text-xl">⚠️</span>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div id="errorBar" class="bg-red-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 차트 섹션 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- CPU & 메모리 트렌드 -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">시스템 리소스 트렌드</h3>
+                <div class="chart-container">
+                    <canvas id="resourceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 응답 시간 & 오류율 트렌드 -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">애플리케이션 성능 트렌드</h3>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 최적화 및 알림 섹션 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 최적화 결과 -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">최적화 결과</h3>
+                <div id="optimizationResults" class="space-y-3">
+                    <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                        최적화 데이터를 불러오는 중...
+                    </div>
+                </div>
+            </div>
+
+            <!-- 최근 알림 -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">최근 알림</h3>
+                <div id="recentAlerts" class="space-y-3">
+                    <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                        알림 데이터를 불러오는 중...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 설정 모달 -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">모니터링 설정</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            모니터링 간격 (초)
+                        </label>
+                        <input type="number" id="monitoringInterval" value="30" min="10" max="300" 
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            알림 임계값
+                        </label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="cpuThreshold" placeholder="CPU %" 
+                                   class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                            <input type="number" id="memoryThreshold" placeholder="메모리 %" 
+                                   class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="cancelSettings" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                        취소
+                    </button>
+                    <button id="saveSettings" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        저장
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let resourceChart, performanceChart;
+        let monitoringInterval = 30000; // 30초
+        let isMonitoring = true;
+
+        // 차트 초기화
+        function initCharts() {
+            // 리소스 차트
+            const resourceCtx = document.getElementById('resourceChart').getContext('2d');
+            resourceChart = new Chart(resourceCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'CPU (%)',
+                        data: [],
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: '메모리 (%)',
+                        data: [],
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: document.documentElement.classList.contains('dark') ? '#F3F4F6' : '#374151'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 성능 차트
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '응답 시간 (초)',
+                        data: [],
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: '오류율 (%)',
+                        data: [],
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.1)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: document.documentElement.classList.contains('dark') ? '#F3F4F6' : '#374151'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 메트릭 업데이트
+        async function updateMetrics() {
+            try {
+                const response = await axios.get('/api/performance/metrics');
+                const metrics = response.data;
+
+                // 메트릭 카드 업데이트
+                document.getElementById('cpuPercent').textContent = `${metrics.cpu_percent.toFixed(1)}%`;
+                document.getElementById('memoryPercent').textContent = `${metrics.memory_percent.toFixed(1)}%`;
+                document.getElementById('responseTime').textContent = `${metrics.response_time.toFixed(2)}s`;
+                document.getElementById('errorRate').textContent = `${metrics.error_rate.toFixed(1)}%`;
+
+                // 프로그레스 바 업데이트
+                document.getElementById('cpuBar').style.width = `${metrics.cpu_percent}%`;
+                document.getElementById('memoryBar').style.width = `${metrics.memory_percent}%`;
+                document.getElementById('responseBar').style.width = `${Math.min(metrics.response_time * 20, 100)}%`;
+                document.getElementById('errorBar').style.width = `${metrics.error_rate}%`;
+
+                // 상태 색상 업데이트
+                updateMetricStatus('cpuBar', metrics.cpu_percent, 70, 90);
+                updateMetricStatus('memoryBar', metrics.memory_percent, 80, 95);
+                updateMetricStatus('responseBar', metrics.response_time, 2, 5);
+                updateMetricStatus('errorBar', metrics.error_rate, 5, 10);
+
+                // 차트 업데이트
+                updateCharts(metrics);
+
+            } catch (error) {
+                console.error('메트릭 업데이트 실패:', error);
+            }
+        }
+
+        // 메트릭 상태 업데이트
+        function updateMetricStatus(elementId, value, warningThreshold, criticalThreshold) {
+            const element = document.getElementById(elementId);
+            element.classList.remove('bg-green-600', 'bg-yellow-600', 'bg-red-600');
+            
+            if (value >= criticalThreshold) {
+                element.classList.add('bg-red-600');
+            } else if (value >= warningThreshold) {
+                element.classList.add('bg-yellow-600');
+            } else {
+                element.classList.add('bg-green-600');
+            }
+        }
+
+        // 차트 업데이트
+        function updateCharts(metrics) {
+            const now = new Date().toLocaleTimeString();
+
+            // 리소스 차트 업데이트
+            resourceChart.data.labels.push(now);
+            resourceChart.data.datasets[0].data.push(metrics.cpu_percent);
+            resourceChart.data.datasets[1].data.push(metrics.memory_percent);
+
+            // 최근 20개 데이터만 유지
+            if (resourceChart.data.labels.length > 20) {
+                resourceChart.data.labels.shift();
+                resourceChart.data.datasets[0].data.shift();
+                resourceChart.data.datasets[1].data.shift();
+            }
+
+            resourceChart.update('none');
+
+            // 성능 차트 업데이트
+            performanceChart.data.labels.push(now);
+            performanceChart.data.datasets[0].data.push(metrics.response_time);
+            performanceChart.data.datasets[1].data.push(metrics.error_rate);
+
+            if (performanceChart.data.labels.length > 20) {
+                performanceChart.data.labels.shift();
+                performanceChart.data.datasets[0].data.shift();
+                performanceChart.data.datasets[1].data.shift();
+            }
+
+            performanceChart.update('none');
+        }
+
+        // 최적화 결과 로드
+        async function loadOptimizationResults() {
+            try {
+                const response = await axios.get('/api/performance/optimizations');
+                const optimizations = response.data;
+
+                const container = document.getElementById('optimizationResults');
+                if (optimizations.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400 py-8">최적화 결과가 없습니다.</div>';
+                    return;
+                }
+
+                container.innerHTML = optimizations.slice(0, 5).map(opt => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <p class="font-medium text-gray-900 dark:text-gray-100">${opt.rule_name}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">${opt.message}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                opt.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }">
+                                ${opt.success ? '성공' : '실패'}
+                            </span>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                ${new Date(opt.timestamp).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('최적화 결과 로드 실패:', error);
+            }
+        }
+
+        // 최근 알림 로드
+        async function loadRecentAlerts() {
+            try {
+                const response = await axios.get('/api/performance/alerts');
+                const alerts = response.data;
+
+                const container = document.getElementById('recentAlerts');
+                if (alerts.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400 py-8">알림이 없습니다.</div>';
+                    return;
+                }
+
+                container.innerHTML = alerts.slice(0, 5).map(alert => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <p class="font-medium text-gray-900 dark:text-gray-100">${alert.alert_type}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">${alert.message}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                alert.severity === 'critical' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                            }">
+                                ${alert.severity === 'critical' ? '심각' : '경고'}
+                            </span>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                ${new Date(alert.timestamp).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('알림 로드 실패:', error);
+            }
+        }
+
+        // 설정 모달 제어
+        function showSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function hideSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        // 이벤트 리스너
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            updateMetrics();
+            loadOptimizationResults();
+            loadRecentAlerts();
+        });
+
+        document.getElementById('settingsBtn').addEventListener('click', showSettingsModal);
+        document.getElementById('cancelSettings').addEventListener('click', hideSettingsModal);
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            const interval = document.getElementById('monitoringInterval').value;
+            monitoringInterval = parseInt(interval) * 1000;
+            hideSettingsModal();
+            
+            // 모니터링 간격 재설정
+            if (isMonitoring) {
+                clearInterval(window.monitoringTimer);
+                window.monitoringTimer = setInterval(updateMetrics, monitoringInterval);
+            }
+        });
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            updateMetrics();
+            loadOptimizationResults();
+            loadRecentAlerts();
+
+            // 주기적 업데이트
+            window.monitoringTimer = setInterval(updateMetrics, monitoringInterval);
+        });
+
+        // 페이지 언로드 시 정리
+        window.addEventListener('beforeunload', () => {
+            if (window.monitoringTimer) {
+                clearInterval(window.monitoringTimer);
+            }
+        });
+    </script>
+</body>
+</html> 

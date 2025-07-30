@@ -40,6 +40,12 @@ def init_extensions(app):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    
+    # 로그인 매니저 설정
+    login_manager.login_view = 'auth.login'
+    login_manager.login_message = '로그인이 필요합니다.'
+    login_manager.login_message_category = 'error'
+    
     limiter.init_app(app)
     cache.init_app(app)
     csrf.init_app(app)

@@ -60,7 +60,7 @@ export const useChat = () => {
   const connectSocket = useCallback(() => {
     if (socketRef.current?.connected) return;
 
-    socketRef.current = io('http://localhost:5000', {
+    socketRef.current = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
       transports: ['websocket', 'polling'],
     });
 

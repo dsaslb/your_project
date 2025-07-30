@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}백엔드 관리자 대시보드{% endblock %}
+
+{% block head %}
+<link href="/static/css/tailwind.css" rel="stylesheet">
+<style>
+.dashboard-card {
+    transition: all 0.3s ease;
+}
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- 헤더 -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">백엔드 관리자 대시보드</h1>
+                    <p class="mt-1 text-sm text-gray-500">환영합니다, {{ user.username }}님! ({{ user.role }})</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        온라인
+                    </span>
+                    <a href="/auth/logout" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">로그아웃</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 통계 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="dashboard-card bg-white overflow-hidden shadow-sm rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <dt class="text-sm font-medium text-gray-500 truncate">전체 사용자</dt>
+                            <dd class="text-2xl font-semibold text-gray-900">{{ stats.total_users if stats else '-' }}</dd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card bg-white overflow-hidden shadow-sm rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <dt class="text-sm font-medium text-gray-500 truncate">브랜드 수</dt>
+                            <dd class="text-2xl font-semibold text-gray-900">{{ stats.total_brands if stats else '-' }}</dd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card bg-white overflow-hidden shadow-sm rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <dt class="text-sm font-medium text-gray-500 truncate">대기 승인</dt>
+                            <dd class="text-2xl font-semibold text-gray-900">{{ stats.pending_approvals if stats else '-' }}</dd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card bg-white overflow-hidden shadow-sm rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <dt class="text-sm font-medium text-gray-500 truncate">시스템 상태</dt>
+                            <dd class="text-2xl font-semibold text-green-600">정상</dd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 주요 관리 메뉴 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 사용자 관리 -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">사용자 관리</h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <a href="/admin/employee-management" class="dashboard-card bg-blue-50 hover:bg-blue-100 p-4 rounded-lg text-center">
+                            <div class="text-blue-600 text-2xl mb-2">👥</div>
+                            <div class="text-sm font-medium text-blue-800">직원 관리</div>
+                        </a>
+                        <a href="/admin/backend/hierarchy-management" class="dashboard-card bg-green-50 hover:bg-green-100 p-4 rounded-lg text-center">
+                            <div class="text-green-600 text-2xl mb-2">🏢</div>
+                            <div class="text-sm font-medium text-green-800">계층 관리</div>
+                        </a>
+                        <a href="/admin/backend/industry-management" class="dashboard-card bg-yellow-50 hover:bg-yellow-100 p-4 rounded-lg text-center">
+                            <div class="text-yellow-600 text-2xl mb-2">🏭</div>
+                            <div class="text-sm font-medium text-yellow-800">업종 관리</div>
+                        </a>
+                        <a href="/admin/brand-manager-approval" class="dashboard-card bg-purple-50 hover:bg-purple-100 p-4 rounded-lg text-center">
+                            <div class="text-purple-600 text-2xl mb-2">✅</div>
+                            <div class="text-sm font-medium text-purple-800">승인 관리</div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 시스템 관리 -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">시스템 관리</h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <a href="/admin/brand-management" class="dashboard-card bg-indigo-50 hover:bg-indigo-100 p-4 rounded-lg text-center">
+                            <div class="text-indigo-600 text-2xl mb-2">🏷️</div>
+                            <div class="text-sm font-medium text-indigo-800">브랜드 관리</div>
+                        </a>
+                        <a href="/admin/store-management" class="dashboard-card bg-teal-50 hover:bg-teal-100 p-4 rounded-lg text-center">
+                            <div class="text-teal-600 text-2xl mb-2">🏪</div>
+                            <div class="text-sm font-medium text-teal-800">매장 관리</div>
+                        </a>
+                        <a href="/admin/plugin-management" class="dashboard-card bg-orange-50 hover:bg-orange-100 p-4 rounded-lg text-center">
+                            <div class="text-orange-600 text-2xl mb-2">🔌</div>
+                            <div class="text-sm font-medium text-orange-800">플러그인</div>
+                        </a>
+                        <a href="/admin/system-monitoring" class="dashboard-card bg-red-50 hover:bg-red-100 p-4 rounded-lg text-center">
+                            <div class="text-red-600 text-2xl mb-2">📊</div>
+                            <div class="text-sm font-medium text-red-800">모니터링</div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 최근 활동 -->
+        <div class="mt-8 bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">최근 활동</h3>
+            </div>
+            <div class="p-6">
+                <div class="flow-root">
+                    <ul class="-my-5 divide-y divide-gray-200">
+                        <li class="py-4">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <span class="text-blue-600 text-sm font-medium">👤</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 truncate">새로운 사용자 등록</p>
+                                    <p class="text-sm text-gray-500">5분 전</p>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="py-4">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                        <span class="text-green-600 text-sm font-medium">🏢</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 truncate">브랜드 설정 업데이트</p>
+                                    <p class="text-sm text-gray-500">15분 전</p>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="py-4">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                                        <span class="text-yellow-600 text-sm font-medium">⚠️</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 truncate">시스템 알림 생성</p>
+                                    <p class="text-sm text-gray-500">30분 전</p>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

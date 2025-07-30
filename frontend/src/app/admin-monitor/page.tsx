@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/DataTable';
 import { 
   Shield, 
   Server, 
@@ -54,11 +55,11 @@ export default function AdminMonitorPage() {
     lastBackup: "2024-01-15 02:00:00",
     nextBackup: "2024-01-16 02:00:00",
     services: [
-      { name: "웹 서버", status: "정상", uptime: "15일 8시간", response: "45ms" },
-      { name: "데이터베이스", status: "정상", uptime: "15일 8시간", response: "12ms" },
-      { name: "캐시 서버", status: "정상", uptime: "15일 8시간", response: "3ms" },
-      { name: "이메일 서비스", status: "정상", uptime: "15일 8시간", response: "120ms" },
-      { name: "백업 서비스", status: "점검 필요", uptime: "2일 5시간", response: "N/A" },
+      { id: 1, name: "웹 서버", status: "정상", uptime: "15일 8시간", response: "45ms", type: "웹서비스" },
+      { id: 2, name: "데이터베이스", status: "정상", uptime: "15일 8시간", response: "12ms", type: "데이터베이스" },
+      { id: 3, name: "캐시 서버", status: "정상", uptime: "15일 8시간", response: "3ms", type: "캐시" },
+      { id: 4, name: "이메일 서비스", status: "정상", uptime: "15일 8시간", response: "120ms", type: "통신" },
+      { id: 5, name: "백업 서비스", status: "점검 필요", uptime: "2일 5시간", response: "N/A", type: "백업" },
     ],
     resources: {
       cpu: { usage: 23, status: "정상" },
@@ -67,15 +68,16 @@ export default function AdminMonitorPage() {
       network: { usage: 12, status: "정상" },
     },
     alerts: [
-      { id: 1, level: "warning", message: "백업 서비스 점검 필요", time: "1시간 전" },
-      { id: 2, level: "info", message: "시스템 업데이트 완료", time: "3시간 전" },
-      { id: 3, level: "info", message: "데이터베이스 최적화 완료", time: "6시간 전" },
+      { id: 1, level: "warning", message: "백업 서비스 점검 필요", time: "1시간 전", category: "시스템" },
+      { id: 2, level: "info", message: "시스템 업데이트 완료", time: "3시간 전", category: "업데이트" },
+      { id: 3, level: "info", message: "데이터베이스 최적화 완료", time: "6시간 전", category: "최적화" },
     ],
     logs: [
-      { id: 1, level: "INFO", message: "사용자 로그인: admin", time: "2분 전" },
-      { id: 2, level: "INFO", message: "새 사용자 등록: user123", time: "5분 전" },
-      { id: 3, level: "WARNING", message: "백업 서비스 응답 지연", time: "10분 전" },
-      { id: 4, level: "INFO", message: "시스템 점검 완료", time: "15분 전" },
+      { id: 1, level: "INFO", message: "사용자 로그인: admin", time: "2분 전", user: "admin", ip: "192.168.1.100" },
+      { id: 2, level: "INFO", message: "새 사용자 등록: user123", time: "5분 전", user: "system", ip: "192.168.1.101" },
+      { id: 3, level: "WARNING", message: "백업 서비스 응답 지연", time: "10분 전", user: "backup", ip: "192.168.1.102" },
+      { id: 4, level: "INFO", message: "시스템 점검 완료", time: "15분 전", user: "system", ip: "192.168.1.103" },
+      { id: 5, level: "ERROR", message: "데이터베이스 연결 실패", time: "20분 전", user: "db", ip: "192.168.1.104" },
     ]
   };
 
@@ -96,6 +98,44 @@ export default function AdminMonitorPage() {
       default: return "bg-gray-500";
     }
   };
+
+  // 서비스 상태 테이블 컬럼
+  const serviceColumns = [
+    { key: 'name', title: '서비스명', sortable: true, filterable: true },
+    { key: 'type', title: '유형', sortable: true, filterable: true },
+    { key: 'status', title: '상태', sortable: true, render: (value: string) => (
+      <Badge variant={value === "정상" ? "default" : "destructive"}>
+        {value}
+      </Badge>
+    )},
+    { key: 'uptime', title: '가동시간', sortable: true },
+    { key: 'response', title: '응답시간', sortable: true },
+  ];
+
+  // 시스템 로그 테이블 컬럼
+  const logColumns = [
+    { key: 'time', title: '시간', sortable: true },
+    { key: 'level', title: '레벨', sortable: true, render: (value: string) => (
+      <Badge variant={value === "ERROR" ? "destructive" : value === "WARNING" ? "secondary" : "outline"}>
+        {value}
+      </Badge>
+    )},
+    { key: 'message', title: '메시지', sortable: false },
+    { key: 'user', title: '사용자', sortable: true, filterable: true },
+    { key: 'ip', title: 'IP 주소', sortable: true, filterable: true },
+  ];
+
+  // 알림 테이블 컬럼
+  const alertColumns = [
+    { key: 'time', title: '시간', sortable: true },
+    { key: 'level', title: '레벨', sortable: true, render: (value: string) => (
+      <Badge variant={value === "warning" ? "destructive" : "secondary"}>
+        {value === "warning" ? "경고" : "정보"}
+      </Badge>
+    )},
+    { key: 'category', title: '카테고리', sortable: true, filterable: true },
+    { key: 'message', title: '메시지', sortable: false },
+  ];
 
   return (
     <div className="p-6 space-y-6">
@@ -256,98 +296,38 @@ export default function AdminMonitorPage() {
         </CardContent>
       </Card>
 
-      {/* 서비스 상태 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Server className="h-5 w-5" />
-              <span>서비스 상태</span>
-            </CardTitle>
-            <CardDescription>
-              각 서비스의 현재 상태 및 응답 시간
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {systemStatus.services.map((service) => (
-                <div key={service.name} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-full ${getStatusColor(service.status)}`}></div>
-                    <div>
-                      <h3 className="font-medium">{service.name}</h3>
-                      <p className="text-sm text-muted-foreground">가동시간: {service.uptime}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{service.response}</p>
-                    <Badge variant={service.status === "정상" ? "default" : "destructive"}>
-                      {service.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* 서비스 상태 테이블 */}
+      <DataTable
+        data={systemStatus.services}
+        columns={serviceColumns}
+        title="서비스 상태"
+        searchable={true}
+        sortable={true}
+        pagination={true}
+        pageSize={5}
+      />
 
-        {/* 시스템 알림 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5" />
-              <span>시스템 알림</span>
-            </CardTitle>
-            <CardDescription>
-              주의가 필요한 시스템 알림들
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {systemStatus.alerts.map((alert) => (
-                <div key={alert.id} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                  <div>
-                    <p className="font-medium text-sm">{alert.message}</p>
-                    <p className="text-xs text-muted-foreground">{alert.time}</p>
-                  </div>
-                  <Badge variant={alert.level === "warning" ? "destructive" : "secondary"}>
-                    {alert.level === "warning" ? "경고" : "정보"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* 시스템 알림 테이블 */}
+      <DataTable
+        data={systemStatus.alerts}
+        columns={alertColumns}
+        title="시스템 알림"
+        searchable={true}
+        sortable={true}
+        pagination={true}
+        pageSize={5}
+      />
 
-      {/* 시스템 로그 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Activity className="h-5 w-5" />
-            <span>시스템 로그</span>
-          </CardTitle>
-          <CardDescription>
-            최근 시스템 로그 (실시간)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 max-h-64 overflow-y-auto">
-            {systemStatus.logs.map((log) => (
-              <div key={log.id} className="flex items-center space-x-3 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <div className={`w-2 h-2 rounded-full ${getLevelColor(log.level.toLowerCase())}`}></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{log.message}</p>
-                  <p className="text-xs text-muted-foreground">{log.time}</p>
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {log.level}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* 시스템 로그 테이블 */}
+      <DataTable
+        data={systemStatus.logs}
+        columns={logColumns}
+        title="시스템 로그"
+        searchable={true}
+        sortable={true}
+        pagination={true}
+        pageSize={10}
+      />
 
       {/* 빠른 액션 */}
       <Card>

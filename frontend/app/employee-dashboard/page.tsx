@@ -1,323 +1,184 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, User, Building, MapPin, Phone, Mail } from 'lucide-react';
-import { useAuthStore } from '@/store/auth-store';
-import { useEmployeeDashboard, useEmployeeClockIn, useEmployeeClockOut } from '@/hooks/useApi';
-import { toast } from 'sonner';
-
-// 직원 정보 타입 정의
-interface EmployeeInfo {
-  id: number;
-  name: string;
-  employee_id: string;
-  position: string;
-  department: string;
-  branch: {
-    id: number;
-    name: string;
-    address: string;
-  };
-  contact: {
-    phone: string;
-    email: string;
-  };
-  schedule: {
-    today: string;
-    start_time: string;
-    end_time: string;
-    status: 'scheduled' | 'working' | 'completed' | 'absent';
-  };
-  stats: {
-    total_work_hours: number;
-    this_month_hours: number;
-    attendance_rate: number;
-    overtime_hours: number;
-  };
-}
-
-// 근무 일정 타입 정의
-interface WorkSchedule {
-  id: number;
-  date: string;
-  start_time: string;
-  end_time: string;
-  status: 'scheduled' | 'working' | 'completed' | 'absent';
-  notes?: string;
-}
+import { Button } from '@/components/ui/button';
+import { 
+  User, 
+  Clock, 
+  Calendar,
+  TrendingUp,
+  Activity,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
 
 export default function EmployeeDashboard() {
-  const { user } = useAuthStore();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // API 훅 사용
-  const { data: employeeData, isLoading, error } = useEmployeeDashboard();
-  const clockInMutation = useEmployeeClockIn();
-  const clockOutMutation = useEmployeeClockOut();
-  
-  const employeeInfo = employeeData?.data?.employee;
-  const workSchedule = employeeData?.data?.work_schedule || [];
-
-  // 현재 시간 업데이트
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // 에러 처리
-  useEffect(() => {
-    if (error) {
-      toast.error("직원 정보 로드에 실패했습니다.");
-    }
-  }, [error]);
-
-  // 출근 체크
-  const handleClockIn = () => {
-    if (employeeInfo?.employee_id) {
-      clockInMutation.mutate({
-        employee_id: employeeInfo.employee_id,
-        timestamp: new Date().toISOString()
-      });
-    }
-  };
-
-  // 퇴근 체크
-  const handleClockOut = () => {
-    if (employeeInfo?.employee_id) {
-      clockOutMutation.mutate({
-        employee_id: employeeInfo.employee_id,
-        timestamp: new Date().toISOString()
-      });
-    }
-  };
-
-  // 상태에 따른 배지 색상
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'working':
-        return <Badge className="bg-green-500">근무중</Badge>;
-      case 'completed':
-        return <Badge className="bg-blue-500">완료</Badge>;
-      case 'scheduled':
-        return <Badge className="bg-gray-500">예정</Badge>;
-      case 'absent':
-        return <Badge className="bg-red-500">결근</Badge>;
-      default:
-        return <Badge variant="outline">알 수 없음</Badge>;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">직원 정보를 불러오는 중...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!employeeInfo) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-red-500">직원 정보를 찾을 수 없습니다.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* 헤더 */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">직원 대시보드</h1>
-            <p className="text-gray-600 mt-1">
-              {currentTime.toLocaleDateString('ko-KR', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                weekday: 'long'
-              })} {currentTime.toLocaleTimeString('ko-KR')}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">로그인: {user?.name}</p>
-            <p className="text-sm text-gray-500">{user?.role}</p>
-          </div>
+    <div className="p-6 space-y-6">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-600 bg-clip-text text-transparent">
+            직원 대시보드
+          </h1>
+          <p className="text-slate-400 mt-2">내 근무 현황 및 업무 관리</p>
         </div>
+        <div className="flex items-center space-x-4">
+          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
+            출근 중
+          </Badge>
+          <Button variant="outline" className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10">
+            새로고침
+          </Button>
+        </div>
+      </div>
 
-        {/* 직원 정보 카드 */}
-        <Card>
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="bg-black/50 border-cyan-500/20 backdrop-blur-xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-300">이번 주 근무시간</CardTitle>
+            <Clock className="h-4 w-4 text-cyan-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">32시간</div>
+            <p className="text-xs text-cyan-400">목표 40시간</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/50 border-emerald-500/20 backdrop-blur-xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-300">완료된 업무</CardTitle>
+            <CheckCircle className="h-4 w-4 text-emerald-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">15건</div>
+            <p className="text-xs text-emerald-400">이번 주</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/50 border-orange-500/20 backdrop-blur-xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-300">대기 업무</CardTitle>
+            <AlertCircle className="h-4 w-4 text-orange-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">3건</div>
+            <p className="text-xs text-orange-400">우선순위 높음</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/50 border-purple-500/20 backdrop-blur-xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-300">성과 점수</CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">85점</div>
+            <p className="text-xs text-purple-400">+5점 지난주 대비</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 메인 콘텐츠 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 오늘 근무표 */}
+        <Card className="bg-black/50 border-cyan-500/20 backdrop-blur-xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              직원 정보
+            <CardTitle className="text-cyan-400 flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              오늘 근무표
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-500">이름</p>
-                <p className="text-lg font-semibold">{employeeInfo.name}</p>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg">
+              <div>
+                <p className="text-lg font-semibold text-white">09:00 - 18:00</p>
+                <p className="text-sm text-slate-400">정규 근무</p>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-500">사원번호</p>
-                <p className="text-lg font-semibold">{employeeInfo.employee_id}</p>
+              <Badge className="bg-emerald-500/20 text-emerald-400">출근</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-slate-800/30 rounded-lg">
+                <p className="text-sm text-slate-400">시작 시간</p>
+                <p className="text-lg font-semibold text-white">09:00</p>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-500">직급</p>
-                <p className="text-lg font-semibold">{employeeInfo.position}</p>
+              <div className="text-center p-3 bg-slate-800/30 rounded-lg">
+                <p className="text-sm text-slate-400">종료 시간</p>
+                <p className="text-lg font-semibold text-white">18:00</p>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-500">부서</p>
-                <p className="text-lg font-semibold">{employeeInfo.department}</p>
-              </div>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg">
+              <span className="text-sm text-slate-300">휴식 시간</span>
+              <span className="text-sm text-white">12:00 - 13:00 (1시간)</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* 근무 정보 및 출퇴근 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 오늘 근무 정보 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                오늘 근무
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">근무 시간</span>
-                <span className="font-semibold">
-                  {employeeInfo.schedule.start_time} - {employeeInfo.schedule.end_time}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">상태</span>
-                {getStatusBadge(employeeInfo.schedule.status)}
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleClockIn}
-                  disabled={employeeInfo.schedule.status === 'working' || employeeInfo.schedule.status === 'completed'}
-                  className="flex-1"
-                >
-                  출근
-                </Button>
-                <Button 
-                  onClick={handleClockOut}
-                  disabled={employeeInfo.schedule.status === 'scheduled' || employeeInfo.schedule.status === 'completed'}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  퇴근
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 근무 통계 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                근무 통계
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">이번 달 근무시간</span>
-                <span className="font-semibold">{employeeInfo.stats.this_month_hours}시간</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">출근률</span>
-                <span className="font-semibold">{employeeInfo.stats.attendance_rate}%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">초과근무</span>
-                <span className="font-semibold">{employeeInfo.stats.overtime_hours}시간</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 지점 정보 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                근무 지점
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <p className="font-semibold">{employeeInfo.branch.name}</p>
-                <p className="text-sm text-gray-600 flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  {employeeInfo.branch.address}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-500 flex items-center gap-1">
-                  <Phone className="h-4 w-4" />
-                  {employeeInfo.contact.phone}
-                </p>
-                <p className="text-sm text-gray-500 flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
-                  {employeeInfo.contact.email}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 근무 일정 */}
-        <Card>
+        {/* 업무 현황 */}
+        <Card className="bg-black/50 border-purple-500/20 backdrop-blur-xl">
           <CardHeader>
-            <CardTitle>근무 일정</CardTitle>
+            <CardTitle className="text-purple-400 flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              업무 현황
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {workSchedule.map((schedule) => (
-                <div key={schedule.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500">날짜</p>
-                      <p className="font-semibold">
-                        {new Date(schedule.date).toLocaleDateString('ko-KR', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          weekday: 'short'
-                        })}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500">시간</p>
-                      <p className="font-semibold">{schedule.start_time} - {schedule.end_time}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {getStatusBadge(schedule.status)}
-                    {schedule.notes && (
-                      <p className="text-sm text-gray-600">{schedule.notes}</p>
-                    )}
-                  </div>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-white">재고 정리</p>
+                  <p className="text-xs text-slate-400">창고 A 구역</p>
                 </div>
-              ))}
+                <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">완료</Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-white">고객 응대</p>
+                  <p className="text-xs text-slate-400">전화 상담</p>
+                </div>
+                <Badge className="bg-blue-500/20 text-blue-400 text-xs">진행중</Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-white">매장 청소</p>
+                  <p className="text-xs text-slate-400">마감 후</p>
+                </div>
+                <Badge className="bg-orange-500/20 text-orange-400 text-xs">대기</Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* 빠른 액션 */}
+      <Card className="bg-black/50 border-slate-500/20 backdrop-blur-xl">
+        <CardHeader>
+          <CardTitle className="text-white">빠른 액션</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            <Button className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50 hover:bg-emerald-500/30">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              업무 완료
+            </Button>
+            <Button className="bg-blue-500/20 text-blue-400 border-blue-500/50 hover:bg-blue-500/30">
+              <Clock className="h-4 w-4 mr-2" />
+              휴식 시작
+            </Button>
+            <Button className="bg-purple-500/20 text-purple-400 border-purple-500/50 hover:bg-purple-500/30">
+              <Calendar className="h-4 w-4 mr-2" />
+              근무표 확인
+            </Button>
+            <Button className="bg-orange-500/20 text-orange-400 border-orange-500/50 hover:bg-orange-500/30">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              긴급 보고
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

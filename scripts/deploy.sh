@@ -1,7 +1,7 @@
 ﻿#!/bin/bash
 
-# Your Program 배포 스크립트
-# 사용법: ./deploy.sh [environment] [version]
+# 배포 스크립트
+# 사용법: ./scripts/deploy.sh [environment] [version]
 
 set -e
 
@@ -30,233 +30,275 @@ log_error() {
 }
 
 # 환경 변수 설정
-ENVIRONMENT=${1:-production}
+ENVIRONMENT=${1:-development}
 VERSION=${2:-latest}
-PROJECT_NAME="your_program"
-DOCKER_COMPOSE_FILE="docker-compose.yml"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+log_info "배포 시작: 환경=$ENVIRONMENT, 버전=$VERSION"
 
 # 환경별 설정
 case $ENVIRONMENT in
-    "production")
-        DOCKER_COMPOSE_FILE="docker-compose.production.yml"
-        DOMAIN="yourprogram.com"
-        ;;
-    "staging")
-        DOCKER_COMPOSE_FILE="docker-compose.staging.yml"
-        DOMAIN="staging.yourprogram.com"
-        ;;
-    "development")
-        DOCKER_COMPOSE_FILE="docker-compose.development.yml"
+    development)
+        DOCKER_COMPOSE_FILE="docker-compose.yml"
+        PROFILE="dev"
         DOMAIN="dev.yourprogram.com"
         ;;
+    staging)
+        DOCKER_COMPOSE_FILE="docker-compose.staging.yml"
+        PROFILE="staging"
+        DOMAIN="staging.yourprogram.com"
+        ;;
+    production)
+        DOCKER_COMPOSE_FILE="docker-compose.production.yml"
+        PROFILE="production"
+        DOMAIN="yourprogram.com"
+        ;;
     *)
-        log_error "Unknown environment: $ENVIRONMENT"
+        log_error "지원하지 않는 환경: $ENVIRONMENT"
         exit 1
         ;;
 esac
 
-log_info "Starting deployment for $ENVIRONMENT environment (version: $VERSION)"
-
-# 사전 체크
-pre_deployment_checks() {
-    log_info "Running pre-deployment checks..."
+# 배포 전 검사
+pre_deploy_check() {
+    log_info "배포 전 검사 시작..."
     
     # Docker 설치 확인
     if ! command -v docker &> /dev/null; then
-        log_error "Docker is not installed"
+        log_error "Docker가 설치되지 않았습니다."
         exit 1
     fi
     
     # Docker Compose 설치 확인
     if ! command -v docker-compose &> /dev/null; then
-        log_error "Docker Compose is not installed"
+        log_error "Docker Compose가 설치되지 않았습니다."
         exit 1
     fi
     
     # 환경 변수 파일 확인
-    if [ ! -f ".env.$ENVIRONMENT" ]; then
-        log_warning "Environment file .env.$ENVIRONMENT not found"
+    if [ ! -f "$PROJECT_ROOT/.env.$ENVIRONMENT" ]; then
+        log_warning ".env.$ENVIRONMENT 파일이 없습니다. 기본값을 사용합니다."
     fi
     
-    # SSL 인증서 확인 (프로덕션)
-    if [ "$ENVIRONMENT" = "production" ]; then
-        if [ ! -f "nginx/ssl/cert.pem" ] || [ ! -f "nginx/ssl/key.pem" ]; then
-            log_warning "SSL certificates not found"
-        fi
-    fi
-    
-    log_success "Pre-deployment checks completed"
+    log_success "배포 전 검사 완료"
 }
 
 # 백업 생성
 create_backup() {
-    log_info "Creating backup..."
+    log_info "백업 생성 중..."
     
-    BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)"
+    BACKUP_DIR="$PROJECT_ROOT/backups/$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$BACKUP_DIR"
     
     # 데이터베이스 백업
-    if docker-compose -f $DOCKER_COMPOSE_FILE exec -T db pg_dump -U your_program your_program > "$BACKUP_DIR/database.sql" 2>/dev/null; then
-        log_success "Database backup created: $BACKUP_DIR/database.sql"
+    if docker-compose -f "$DOCKER_COMPOSE_FILE" ps -q db > /dev/null 2>&1; then
+        docker-compose -f "$DOCKER_COMPOSE_FILE" exec -T db pg_dump -U postgres your_program > "$BACKUP_DIR/database.sql"
+        log_success "데이터베이스 백업 완료: $BACKUP_DIR/database.sql"
+    fi
+    
+    # 업로드 파일 백업
+    if [ -d "$PROJECT_ROOT/uploads" ]; then
+        tar -czf "$BACKUP_DIR/uploads.tar.gz" -C "$PROJECT_ROOT" uploads/
+        log_success "업로드 파일 백업 완료: $BACKUP_DIR/uploads.tar.gz"
+    fi
+    
+    # 로그 파일 백업
+    if [ -d "$PROJECT_ROOT/logs" ]; then
+        tar -czf "$BACKUP_DIR/logs.tar.gz" -C "$PROJECT_ROOT" logs/
+        log_success "로그 파일 백업 완료: $BACKUP_DIR/logs.tar.gz"
+    fi
+    
+    log_success "백업 생성 완료: $BACKUP_DIR"
+}
+
+# 이미지 빌드
+build_images() {
+    log_info "Docker 이미지 빌드 중..."
+    
+    cd "$PROJECT_ROOT"
+    
+    # 환경 변수 로드
+    if [ -f ".env.$ENVIRONMENT" ]; then
+        export $(cat ".env.$ENVIRONMENT" | grep -v '^#' | xargs)
+    fi
+    
+    # 이미지 빌드
+    docker-compose -f "$DOCKER_COMPOSE_FILE" build --no-cache
+    
+    log_success "Docker 이미지 빌드 완료"
+}
+
+# 서비스 배포
+deploy_services() {
+    log_info "서비스 배포 중..."
+    
+    cd "$PROJECT_ROOT"
+    
+    # 기존 서비스 중지 (데이터베이스 제외)
+    log_info "기존 서비스 중지 중..."
+    docker-compose -f "$DOCKER_COMPOSE_FILE" stop app nginx grafana prometheus || true
+    
+    # 새 서비스 시작
+    log_info "새 서비스 시작 중..."
+    if [ "$ENVIRONMENT" = "development" ]; then
+        docker-compose -f "$DOCKER_COMPOSE_FILE" --profile "$PROFILE" up -d
     else
-        log_warning "Database backup failed"
+        docker-compose -f "$DOCKER_COMPOSE_FILE" up -d
     fi
     
-    # 설정 파일 백업
-    cp -r config/ "$BACKUP_DIR/" 2>/dev/null || log_warning "Config backup failed"
-    cp -r nginx/ "$BACKUP_DIR/" 2>/dev/null || log_warning "Nginx backup failed"
-    
-    log_success "Backup completed: $BACKUP_DIR"
+    log_success "서비스 배포 완료"
 }
 
-# 이전 버전 중지
-stop_previous_version() {
-    log_info "Stopping previous version..."
-    
-    # 현재 실행 중인 컨테이너 확인
-    if docker-compose -f $DOCKER_COMPOSE_FILE ps | grep -q "Up"; then
-        docker-compose -f $DOCKER_COMPOSE_FILE down --remove-orphans
-        log_success "Previous version stopped"
-    else
-        log_info "No previous version running"
-    fi
-}
-
-# 새 버전 배포
-deploy_new_version() {
-    log_info "Deploying new version..."
-    
-    # 환경 변수 설정
-    export VERSION=$VERSION
-    export ENVIRONMENT=$ENVIRONMENT
-    
-    # 이미지 풀 (프로덕션)
-    if [ "$ENVIRONMENT" = "production" ]; then
-        log_info "Pulling latest images..."
-        docker-compose -f $DOCKER_COMPOSE_FILE pull
-    fi
-    
-    # 서비스 시작
-    docker-compose -f $DOCKER_COMPOSE_FILE up -d
-    
-    log_success "New version deployed"
-}
-
-# 헬스체크
+# 헬스 체크
 health_check() {
-    log_info "Running health checks..."
+    log_info "헬스 체크 시작..."
     
     local max_attempts=30
     local attempt=1
-    local health_url="https://$DOMAIN/health"
     
-    # HTTP 헬스체크
     while [ $attempt -le $max_attempts ]; do
-        log_info "Health check attempt $attempt/$max_attempts"
+        log_info "헬스 체크 시도 $attempt/$max_attempts"
         
-        if curl -f -s "$health_url" > /dev/null; then
-            log_success "Health check passed"
-            return 0
+        # 애플리케이션 헬스 체크
+        if curl -f "http://localhost:5000/health" > /dev/null 2>&1; then
+            log_success "애플리케이션 헬스 체크 통과"
+            break
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log_error "헬스 체크 실패"
+            return 1
         fi
         
         sleep 10
-        attempt=$((attempt + 1))
+        ((attempt++))
     done
     
-    log_error "Health check failed after $max_attempts attempts"
-    return 1
-}
-
-# 성능 테스트
-performance_test() {
-    log_info "Running performance tests..."
-    
-    # 간단한 성능 테스트
-    local response_time=$(curl -w "%{time_total}" -s -o /dev/null "https://$DOMAIN/api/status")
-    
-    if (( $(echo "$response_time < 2.0" | bc -l) )); then
-        log_success "Performance test passed (response time: ${response_time}s)"
+    # 데이터베이스 헬스 체크
+    if docker-compose -f "$DOCKER_COMPOSE_FILE" exec -T db pg_isready -U postgres > /dev/null 2>&1; then
+        log_success "데이터베이스 헬스 체크 통과"
     else
-        log_warning "Performance test warning (response time: ${response_time}s)"
+        log_error "데이터베이스 헬스 체크 실패"
+        return 1
     fi
+    
+    # Redis 헬스 체크
+    if docker-compose -f "$DOCKER_COMPOSE_FILE" exec -T redis redis-cli ping > /dev/null 2>&1; then
+        log_success "Redis 헬스 체크 통과"
+    else
+        log_error "Redis 헬스 체크 실패"
+        return 1
+    fi
+    
+    log_success "모든 헬스 체크 통과"
 }
 
-# 롤백
+# 데이터베이스 마이그레이션
+run_migrations() {
+    log_info "데이터베이스 마이그레이션 실행 중..."
+    
+    cd "$PROJECT_ROOT"
+    
+    # Alembic 마이그레이션 실행
+    docker-compose -f "$DOCKER_COMPOSE_FILE" exec -T app python -m alembic upgrade head
+    
+    log_success "데이터베이스 마이그레이션 완료"
+}
+
+# 캐시 정리
+clear_cache() {
+    log_info "캐시 정리 중..."
+    
+    cd "$PROJECT_ROOT"
+    
+    # Redis 캐시 정리
+    docker-compose -f "$DOCKER_COMPOSE_FILE" exec -T redis redis-cli FLUSHALL > /dev/null 2>&1 || true
+    
+    log_success "캐시 정리 완료"
+}
+
+# 로그 정리
+cleanup_logs() {
+    log_info "오래된 로그 정리 중..."
+    
+    # 30일 이상 된 로그 파일 삭제
+    find "$PROJECT_ROOT/logs" -name "*.log" -mtime +30 -delete 2>/dev/null || true
+    
+    log_success "로그 정리 완료"
+}
+
+# 배포 후 검증
+post_deploy_verification() {
+    log_info "배포 후 검증 중..."
+    
+    # 서비스 상태 확인
+    cd "$PROJECT_ROOT"
+    docker-compose -f "$DOCKER_COMPOSE_FILE" ps
+    
+    # 로그 확인
+    log_info "최근 로그 확인:"
+    docker-compose -f "$DOCKER_COMPOSE_FILE" logs --tail=20 app
+    
+    log_success "배포 후 검증 완료"
+}
+
+# 롤백 함수
 rollback() {
-    log_error "Deployment failed, starting rollback..."
+    log_error "배포 실패. 롤백 시작..."
+    
+    cd "$PROJECT_ROOT"
     
     # 이전 버전으로 롤백
-    docker-compose -f $DOCKER_COMPOSE_FILE down
-    docker-compose -f $DOCKER_COMPOSE_FILE up -d
+    docker-compose -f "$DOCKER_COMPOSE_FILE" down
+    docker-compose -f "$DOCKER_COMPOSE_FILE" up -d
     
-    # 롤백 후 헬스체크
-    if health_check; then
-        log_success "Rollback completed successfully"
-    else
-        log_error "Rollback failed"
-        exit 1
-    fi
-}
-
-# 알림 전송
-send_notification() {
-    local status=$1
-    local message=$2
-    
-    log_info "Sending notification: $status - $message"
-    
-    # Slack 알림 (예시)
-    if [ -n "$SLACK_WEBHOOK_URL" ]; then
-        curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"[$ENVIRONMENT] Deployment $status: $message\"}" \
-            "$SLACK_WEBHOOK_URL" > /dev/null 2>&1 || log_warning "Slack notification failed"
-    fi
-    
-    # 이메일 알림 (예시)
-    if [ -n "$EMAIL_RECIPIENTS" ]; then
-        echo "Deployment $status: $message" | mail -s "[$ENVIRONMENT] Deployment $status" $EMAIL_RECIPIENTS || log_warning "Email notification failed"
-    fi
+    log_warning "롤백 완료. 시스템을 확인하세요."
 }
 
 # 메인 배포 프로세스
 main() {
     local start_time=$(date +%s)
     
-    log_info "Starting deployment process..."
+    log_info "배포 프로세스 시작"
     
-    # 사전 체크
-    pre_deployment_checks
+    # 배포 전 검사
+    pre_deploy_check
     
     # 백업 생성
     create_backup
     
-    # 이전 버전 중지
-    stop_previous_version
+    # 이미지 빌드
+    build_images
     
-    # 새 버전 배포
-    if deploy_new_version; then
-        # 헬스체크
-        if health_check; then
-            # 성능 테스트
-            performance_test
-            
-            local end_time=$(date +%s)
-            local duration=$((end_time - start_time))
-            
-            log_success "Deployment completed successfully in ${duration} seconds"
-            send_notification "SUCCESS" "Deployment completed in ${duration}s"
-        else
-            log_error "Health check failed"
-            rollback
-            send_notification "FAILED" "Health check failed, rolled back"
-            exit 1
-        fi
-    else
-        log_error "Deployment failed"
+    # 서비스 배포
+    deploy_services
+    
+    # 헬스 체크
+    if ! health_check; then
         rollback
-        send_notification "FAILED" "Deployment failed, rolled back"
         exit 1
     fi
+    
+    # 데이터베이스 마이그레이션
+    run_migrations
+    
+    # 캐시 정리
+    clear_cache
+    
+    # 로그 정리
+    cleanup_logs
+    
+    # 배포 후 검증
+    post_deploy_verification
+    
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    log_success "배포 완료! 소요 시간: ${duration}초"
+    log_info "배포된 환경: $ENVIRONMENT"
+    log_info "배포된 버전: $VERSION"
+    log_info "도메인: $DOMAIN"
 }
 
 # 스크립트 실행

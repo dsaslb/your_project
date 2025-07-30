@@ -88,7 +88,7 @@ export default function BrandImprovementsPage() {
   }
 
   return (
-    <ProtectedRoute requiredRoles={['admin', 'brand_admin', 'store_manager']} redirectTo="/admin-dashboard">
+            <ProtectedRoute requiredRoles={['admin', 'brand_admin', 'store_manager']} redirectTo="/dashboard">
       <main className="p-8">
         <h1 className="text-2xl font-bold mb-4" aria-label="브랜드별 개선요청 목록">개선요청 목록</h1>
         {canManage ? (

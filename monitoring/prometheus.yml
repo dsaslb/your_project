@@ -3,7 +3,8 @@ global:
   evaluation_interval: 15s
 
 rule_files:
-  - "alerts.yml"
+  # - "first_rules.yml"
+  # - "second_rules.yml"
 
 alerting:
   alertmanagers:
@@ -17,34 +18,41 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Your Program 애플리케이션
-  - job_name: 'your_program_app'
+  # Your Program 백엔드 애플리케이션
+  - job_name: 'your_program_backend'
     static_configs:
       - targets: ['app:5000']
     metrics_path: '/metrics'
     scrape_interval: 30s
     scrape_timeout: 10s
-    honor_labels: true
 
-  # Nginx 모니터링
-  - job_name: 'nginx'
+  # Your Program 프론트엔드
+  - job_name: 'your_program_frontend'
     static_configs:
-      - targets: ['nginx:8080']
-    metrics_path: '/nginx_status'
+      - targets: ['frontend:3000']
+    metrics_path: '/metrics'
     scrape_interval: 30s
     scrape_timeout: 10s
 
-  # PostgreSQL 모니터링
+  # PostgreSQL 데이터베이스
   - job_name: 'postgres'
     static_configs:
       - targets: ['db:5432']
-    scrape_interval: 30s
+    scrape_interval: 60s
     scrape_timeout: 10s
 
-  # Redis 모니터링
+  # Redis 캐시
   - job_name: 'redis'
     static_configs:
       - targets: ['redis:6379']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Nginx 리버스 프록시
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: '/nginx_status'
     scrape_interval: 30s
     scrape_timeout: 10s
 
@@ -55,10 +63,10 @@ scrape_configs:
     scrape_interval: 30s
     scrape_timeout: 10s
 
-  # Docker 컨테이너 모니터링
-  - job_name: 'cadvisor'
+  # Docker 컨테이너 메트릭
+  - job_name: 'docker'
     static_configs:
-      - targets: ['cadvisor:8080']
+      - targets: ['docker-exporter:9323']
     scrape_interval: 30s
     scrape_timeout: 10s
 

@@ -3,8 +3,11 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../src/components/ui/card';
+import { Button } from '../../../src/components/ui/button';
+import { useBrandDetail, useBrandStores, useBrandEmployees, useDataSync } from '../../../hooks/useHierarchyData';
+import { toast } from 'sonner';
+import { Building2, Users, TrendingUp, ArrowLeft, RefreshCw } from 'lucide-react';
 
 // 브랜드별 하위 데이터 타입 예시
 type Store = { id: string; name: string };
@@ -17,58 +20,135 @@ export default function BrandDashboardPage() {
   const params = useParams();
   const brandId = params?.brand_id as string;
   const router = useRouter();
-
-  // 각 하위 데이터 상태
-  const [stores, setStores] = useState<Store[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  
+  // 새로운 통합 Hook 사용
+  const { data: brandDetail, loading: brandLoading, error: brandError, refresh: refreshBrand } = useBrandDetail(
+    brandId ? parseInt(brandId) : null,
+    { immediate: true, refreshInterval: 0 }
+  );
+  
+  const { data: stores, loading: storesLoading, refresh: refreshStores } = useBrandStores(
+    brandId ? parseInt(brandId) : null,
+    { page: 1, per_page: 50 },
+    { immediate: true, refreshInterval: 0 }
+  );
+  
+  const { data: employees, loading: employeesLoading, refresh: refreshEmployees } = useBrandEmployees(
+    brandId ? parseInt(brandId) : null,
+    { page: 1, per_page: 50 },
+    { immediate: true, refreshInterval: 0 }
+  );
+  
+  const { refreshAll, refreshing } = useDataSync();
+  
+  // 기존 sales, improvements는 임시로 빈 배열 (추후 API 추가 필요)
   const [sales, setSales] = useState<Sale[]>([]);
   const [improvements, setImprovements] = useState<Improvement[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // 브랜드별 데이터 불러오기 (API 연동)
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        // 실제 운영에서는 /api/admin/stores?brand_id=... 등으로 교체
-        const [storesRes, employeesRes, salesRes, improvementsRes] = await Promise.all([
-          fetch(`/api/admin/stores?brand_id=${brandId}`),
-          fetch(`/api/admin/employees?brand_id=${brandId}`),
-          fetch(`/api/admin/brand/${brandId}/sales`),
-          fetch(`/api/admin/brand/${brandId}/improvements`),
-        ]);
-        
-        // 각 응답에 대한 에러 처리 개선
-        setStores(storesRes.ok ? (await storesRes.json()).stores || [] : []);
-        setEmployees(employeesRes.ok ? (await employeesRes.json()).employees || [] : []);
-        setSales(salesRes.ok ? (await salesRes.json()).sales || [] : []);
-        setImprovements(improvementsRes.ok ? (await improvementsRes.json()).improvements || [] : []);
-        
-        // 개발 환경에서 API 응답 로깅
-        if (process.env.NODE_ENV === 'development') {
-          console.log('API Responses:', {
-            stores: storesRes.status,
-            employees: employeesRes.status,
-            sales: salesRes.status,
-            improvements: improvementsRes.status
-          });
-        }
-      } catch (e) {
-        console.error('브랜드 대시보드 데이터 로딩 오류:', e);
-        setStores([]); 
-        setEmployees([]); 
-        setSales([]); 
-        setImprovements([]);
-      } finally {
-        setLoading(false);
-      }
+  
+  // 전체 로딩 상태
+  const loading = brandLoading || storesLoading || employeesLoading;
+  
+  // 데이터 새로고침 함수
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([
+        refreshBrand(),
+        refreshStores(),
+        refreshEmployees()
+      ]);
+      toast.success('브랜드 데이터가 성공적으로 새로고침되었습니다');
+    } catch (error) {
+      toast.error('데이터 새로고침에 실패했습니다');
+      console.error('브랜드 대시보드 새로고침 오류:', error);
     }
-    if (brandId) fetchData();
-  }, [brandId]);
+  };
 
   return (
     <div className="min-h-screen p-8 bg-gradient-to-br from-white to-blue-50 dark:from-slate-900 dark:to-slate-800">
-      <h1 className="text-3xl font-bold mb-6">브랜드 대시보드 (ID: {brandId})</h1>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">
+            {brandDetail?.name || `브랜드 대시보드 (ID: ${brandId})`}
+          </h1>
+          {brandDetail?.description && (
+            <p className="text-gray-600 dark:text-gray-400 mt-2">{brandDetail.description}</p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            뒤로가기
+          </Button>
+          <Button
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? '새로고침 중...' : '새로고침'}
+          </Button>
+        </div>
+      </div>
+      
+      {/* 브랜드 통계 카드 */}
+      {brandDetail && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">총 매장</p>
+                  <p className="text-2xl font-bold">{brandDetail.stats?.total_stores || 0}</p>
+                </div>
+                <Building2 className="w-8 h-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">총 직원</p>
+                  <p className="text-2xl font-bold">{brandDetail.stats?.total_employees || 0}</p>
+                </div>
+                <Users className="w-8 h-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">총 주문</p>
+                  <p className="text-2xl font-bold">{brandDetail.stats?.total_orders || 0}</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">오늘 주문</p>
+                  <p className="text-2xl font-bold">{brandDetail.stats?.today_orders || 0}</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
+      {brandError && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          브랜드 정보를 불러오는데 실패했습니다: {brandError}
+        </div>
+      )}
       {loading ? (
         <div>데이터 불러오는 중...</div>
       ) : (
@@ -80,7 +160,7 @@ export default function BrandDashboardPage() {
               <CardDescription>이 브랜드에 속한 매장</CardDescription>
             </CardHeader>
             <CardContent>
-              {stores.length === 0 ? (
+              {!stores || stores.length === 0 ? (
                 <div>매장이 없습니다.</div>
               ) : (
                 <ul>
@@ -99,7 +179,7 @@ export default function BrandDashboardPage() {
               <CardDescription>이 브랜드에 속한 직원</CardDescription>
             </CardHeader>
             <CardContent>
-              {employees.length === 0 ? (
+              {!employees || employees.length === 0 ? (
                 <div>직원이 없습니다.</div>
               ) : (
                 <ul>

@@ -4,7 +4,7 @@ import Router from 'next/router';
 import useUserStore from '@/store/useUserStore';
 
 // API 기본 설정
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = 'http://192.168.45.44:5000';
 
 // Axios 인스턴스 생성
 export const apiClient: AxiosInstance = axios.create({
@@ -210,7 +210,7 @@ export const api = {
   
   // 인증
   login: (credentials: { username: string; password: string }): Promise<ApiResponse> => 
-    apiClient.post('/api/security/auth/login', credentials).then(res => res.data),
+    apiClient.post('/api/auth/login', credentials).then(res => res.data),
 
   // 사용자 정보 조회
   getProfile: (): Promise<any> =>

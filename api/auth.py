@@ -18,20 +18,35 @@ auth_bp = Blueprint("auth", __name__)
 
 # --- 자동 admin 계정 생성 및 초기화 ---
 def ensure_admin_account():
-    from models_main import User, db
-    admin = User.query.filter_by(username="admin").first()
+    from extensions import db
+    from werkzeug.security import generate_password_hash
+    
+    # users 테이블에서 admin 조회
+    admin = db.session.execute(
+        db.text("SELECT * FROM users WHERE username = 'admin'"),
+    ).fetchone()
+    
     if not admin:
-        admin = User()
-        admin.username = "admin"
-        admin.role = "super_admin"
-        admin.status = "approved"
-        admin.set_password("admin123")
-        db.session.add(admin)
+        # 새 admin 사용자 생성
+        password_hash = generate_password_hash("admin123", method="pbkdf2:sha256")
+        db.session.execute(
+            db.text("""
+                INSERT INTO users (username, email, password_hash, role, status, created_at, updated_at)
+                VALUES ('admin', 'admin@your_program.com', :password_hash, 'admin', 'approved', datetime('now'), datetime('now'))
+            """),
+            {"password_hash": password_hash}
+        )
         db.session.commit()
+        print("✅ Admin 계정이 생성되었습니다.")
     else:
-        admin.set_password("admin123")
-        admin.status = "approved"
+        # 기존 admin 비밀번호 업데이트
+        password_hash = generate_password_hash("admin123", method="pbkdf2:sha256")
+        db.session.execute(
+            db.text("UPDATE users SET password_hash = :password_hash, status = 'approved' WHERE username = 'admin'"),
+            {"password_hash": password_hash}
+        )
         db.session.commit()
+        print("✅ Admin 계정이 업데이트되었습니다.")
 
 # Flask 앱 생성 후에 호출
 try:
@@ -60,7 +75,38 @@ def api_login():
     if not data or "username" not in data or "password" not in data:
         return jsonify({"message": "사용자명과 비밀번호를 입력해주세요."}), 400
 
-    user = User.query.filter_by(username=data["username"]).first()
+    # users 테이블에서 직접 조회
+    from extensions import db
+    user = db.session.execute(
+        db.text("SELECT * FROM users WHERE username = :username"),
+        {"username": data["username"]}
+    ).fetchone()
+    
+    # User 객체로 변환
+    if user:
+        class UserObj:
+            def __init__(self, row):
+                self.id = row.id
+                self.username = row.username
+                self.email = row.email
+                self.password_hash = row.password_hash
+                self.role = row.role
+                self.status = row.status
+                self.branch_id = row.branch_id
+                self.is_authenticated = True
+                self.is_active = True
+                self.is_anonymous = False
+            
+            def check_password(self, password):
+                from werkzeug.security import check_password_hash
+                return check_password_hash(self.password_hash, password)
+            
+            def get_id(self):
+                return str(self.id)
+        
+        user = UserObj(user)
+    else:
+        user = None
     if user:
         print("비밀번호 일치:", user.check_password(data["password"]))
     if not user or not user.check_password(data["password"]):
@@ -108,23 +154,19 @@ def api_login():
         "branch_id": user.branch_id,
     }
 
-    # 역할별 리다이렉트 페이지 결정 (프론트엔드 Next.js 앱으로 리다이렉트)
-    # 요청의 Origin, Referer, Host에서 프론트엔드 주소를 동적으로 추출
-    frontend_base = request.headers.get("Origin") or request.headers.get("Referer")
-    if frontend_base:
-        if frontend_base.endswith("/"):
-            frontend_base = frontend_base[:-1]
-    else:
-        frontend_base = "http://localhost:3000"  # 기본값
-    redirect_to = f"{frontend_base}/dashboard"  # 기본값
-    if user.role == "admin":
-        redirect_to = f"{frontend_base}/admin-dashboard"
+    # 역할별 백엔드 대시보드로 리다이렉트
+    if user.role == "super_admin":
+        redirect_to = "/admin/backend"
+    elif user.role == "admin":
+        redirect_to = "/admin/backend"
     elif user.role == "brand_admin":
-        redirect_to = f"{frontend_base}/brand-dashboard"
+        redirect_to = "/admin/backend"
     elif user.role == "store_admin":
-        redirect_to = f"{frontend_base}/store-dashboard"
-    elif user.role == "employee":
-        redirect_to = f"{frontend_base}/employee-dashboard"
+        redirect_to = "/admin/backend"
+    elif user.role == "manager":
+        redirect_to = "/admin/backend"
+    else:
+        redirect_to = "/admin/backend"
 
     # JWT access_token을 쿠키로 내려주기 (프론트엔드 인증 유지)
     from flask import make_response
@@ -166,7 +208,32 @@ def api_refresh():
     try:
         secret_key = current_app.config.get('JWT_SECRET_KEY', 'your-secret-key')
         payload = jwt.decode(data["refresh_token"], secret_key, algorithms=['HS256'])
-        user = User.query.get(payload['user_id'])
+        # users 테이블에서 사용자 조회
+        from extensions import db
+        user = db.session.execute(
+            db.text("SELECT * FROM users WHERE id = :user_id"),
+            {"user_id": payload['user_id']}
+        ).fetchone()
+        
+        if user:
+            class UserObj:
+                def __init__(self, row):
+                    self.id = row.id
+                    self.username = row.username
+                    self.email = row.email
+                    self.role = row.role
+                    self.status = row.status
+                    self.branch_id = row.branch_id
+                    self.is_authenticated = True
+                    self.is_active = True
+                    self.is_anonymous = False
+                
+                def get_id(self):
+                    return str(self.id)
+            
+            user = UserObj(user)
+        else:
+            user = None
         if not user:
             return jsonify({"message": "유효하지 않은 토큰입니다."}), 401
 
@@ -209,7 +276,37 @@ def login():
             flash("사용자명과 비밀번호를 입력해주세요.", "error")
             return render_template("auth/login.html")
 
-        user = User.query.filter_by(username=username).first()
+        # 테이블명이 'users'이므로 직접 쿼리
+        from extensions import db
+        user = db.session.execute(
+            db.text("SELECT * FROM users WHERE username = :username"),
+            {"username": username}
+        ).fetchone()
+        
+        # User 객체로 변환
+        if user:
+            class UserObj:
+                def __init__(self, row):
+                    self.id = row.id
+                    self.username = row.username
+                    self.email = row.email
+                    self.password_hash = row.password_hash
+                    self.role = row.role
+                    self.status = row.status
+                    self.is_authenticated = True
+                    self.is_active = True
+                    self.is_anonymous = False
+                
+                def check_password(self, password):
+                    from werkzeug.security import check_password_hash
+                    return check_password_hash(self.password_hash, password)
+                
+                def get_id(self):
+                    return str(self.id)
+            
+            user = UserObj(user)
+        else:
+            user = None
 
         if not user or not user.check_password(password):
             flash("잘못된 사용자명 또는 비밀번호입니다.", "error")
@@ -218,30 +315,35 @@ def login():
         # 로그인 성공 처리 (Flask-Login 사용)
         from flask_login import login_user
 
+        print(f"DEBUG: 로그인 시도 - username: {user.username}, role: {user.role}, status: {user.status}")
+        
         login_user(user)
+        
+        print(f"DEBUG: Flask-Login 완료 - user.is_authenticated: {user.is_authenticated}")
 
-        # 역할별 리다이렉트 페이지 결정 (프론트엔드 Next.js 앱으로 리다이렉트)
-        # 요청의 Origin, Referer, Host에서 프론트엔드 주소를 동적으로 추출
-        frontend_base = request.headers.get("Origin") or request.headers.get("Referer")
-        if frontend_base:
-            if frontend_base.endswith("/"):
-                frontend_base = frontend_base[:-1]
-        else:
-            frontend_base = "http://localhost:3000"  # 기본값
-        redirect_to = f"{frontend_base}/dashboard"  # 기본값
-        if user.role == "admin":
-            redirect_to = f"{frontend_base}/admin-dashboard"
+        # 역할별 백엔드 대시보드로 리다이렉트
+        if user.role == "super_admin":
+            redirect_to = "/dashboard"
+        elif user.role == "admin":
+            redirect_to = "/dashboard"
         elif user.role == "brand_admin":
-            redirect_to = f"{frontend_base}/brand-dashboard"
+            redirect_to = "/dashboard"
         elif user.role == "store_admin":
-            redirect_to = f"{frontend_base}/store-dashboard"
-        elif user.role == "employee":
-            redirect_to = f"{frontend_base}/employee-dashboard"
+            redirect_to = "/dashboard"
+        elif user.role == "manager":
+            redirect_to = "/dashboard"
+        else:
+            redirect_to = "/dashboard"
+
+        print(f"DEBUG: 리다이렉트 대상: {redirect_to}")
 
         # next 파라미터가 있으면 해당 페이지로, 없으면 역할별 페이지로
         next_page = request.args.get("next")
         if next_page and next_page.startswith("/"):
+            print(f"DEBUG: next 파라미터로 리다이렉트: {next_page}")
             return redirect(next_page)
+        
+        print(f"DEBUG: 최종 리다이렉트: {redirect_to}")
         return redirect(redirect_to)
 
     return render_template("auth/login.html")
@@ -269,17 +371,32 @@ def register():
             flash("사용자명과 비밀번호를 입력해주세요.", "error")
             return render_template("auth/register.html")
 
-        # 중복 사용자명 확인
-        if User.query.filter_by(username=username).first():
+        # 중복 사용자명 확인 (users 테이블)
+        from extensions import db
+        existing_user = db.session.execute(
+            db.text("SELECT username FROM users WHERE username = :username"),
+            {"username": username}
+        ).fetchone()
+        
+        if existing_user:
             flash("이미 존재하는 사용자명입니다.", "error")
             return render_template("auth/register.html")
 
-        # 새 사용자 생성
-        user = User()
-        user.username = username
-        user.email = email
-        user.set_password(password)
-        db.session.add(user)
+        # 새 사용자 생성 (users 테이블에 직접 삽입)
+        from werkzeug.security import generate_password_hash
+        password_hash = generate_password_hash(password, method="pbkdf2:sha256")
+        
+        db.session.execute(
+            db.text("""
+                INSERT INTO users (username, email, password_hash, role, status, created_at, updated_at)
+                VALUES (:username, :email, :password_hash, 'employee', 'approved', datetime('now'), datetime('now'))
+            """),
+            {
+                "username": username,
+                "email": email,
+                "password_hash": password_hash
+            }
+        )
         db.session.commit()
 
         flash("회원가입이 완료되었습니다. 로그인해주세요.", "success")
@@ -292,15 +409,29 @@ def register():
 def api_quick_admin_login():
     """관리자(admin) 계정으로 바로 로그인 API (테스트/개발용)"""
     try:
-        # admin 계정 확인 및 생성
-        admin = User.query.filter_by(username="admin").first()
+        # admin 계정 확인 및 생성 (테이블명: users)
+        from extensions import db
+        admin = db.session.execute(
+            db.text("SELECT * FROM users WHERE username = 'admin'"),
+        ).fetchone()
         if not admin:
-            admin = User()
-            admin.username = "admin"
-            admin.role = "super_admin"
-            admin.status = "approved"
-            admin.set_password("admin123")
-            db.session.add(admin)
+            # 새 admin 사용자 생성 (users 테이블에 직접 삽입)
+            from werkzeug.security import generate_password_hash
+            password_hash = generate_password_hash("admin123", method="pbkdf2:sha256")
+            
+            db.session.execute(
+                db.text("""
+                    INSERT INTO users (username, email, password_hash, role, status, created_at, updated_at)
+                    VALUES ('admin', 'admin@your_program.com', :password_hash, 'admin', 'approved', datetime('now'), datetime('now'))
+                """),
+                {"password_hash": password_hash}
+            )
+            db.session.commit()
+            
+            # 생성된 admin 사용자 조회
+            admin = db.session.execute(
+                db.text("SELECT * FROM users WHERE username = 'admin'"),
+            ).fetchone()
             db.session.commit()
 
         # JWT 토큰 생성
@@ -343,7 +474,7 @@ def api_quick_admin_login():
             "access_token": access_token,
             "refresh_token": refresh_token,
             "user": user_data,
-            "redirect_to": "/admin-dashboard"
+            "redirect_to": "/admin/backend"
         }), 200
 
     except Exception:
@@ -354,18 +485,34 @@ def api_quick_admin_login():
 def quick_admin_login():
     """관리자(admin) 계정으로 바로 로그인 (테스트/개발용)"""
     from flask_login import login_user
-    from models_main import User, db
-    admin = User.query.filter_by(username="admin").first()
-    if not admin:
-        admin = User()
-        admin.username = "admin"
-        admin.role = "admin"
-        admin.status = "approved"
-        admin.set_password("admin123")
-        db.session.add(admin)
-        db.session.commit()
-    login_user(admin)
-    return redirect(url_for("dashboard"))
+    from extensions import db
+    
+    # users 테이블에서 admin 조회
+    admin = db.session.execute(
+        db.text("SELECT * FROM users WHERE username = 'admin'"),
+    ).fetchone()
+    
+    if admin:
+        # AdminUser 객체 생성
+        class AdminUser:
+            def __init__(self, row):
+                self.id = row.id
+                self.username = row.username
+                self.email = row.email
+                self.role = row.role
+                self.status = row.status
+                self.is_authenticated = True
+                self.is_active = True
+                self.is_anonymous = False
+                
+            def get_id(self):
+                return str(self.id)
+        
+        admin_user = AdminUser(admin)
+        login_user(admin_user)
+        return redirect("/dashboard")
+    else:
+        return "Admin 사용자를 찾을 수 없습니다.", 404
 
 
 @api_auth_bp.route("/profile", methods=["GET"])
@@ -388,8 +535,33 @@ def api_profile():
         except jwt.InvalidTokenError:
             return jsonify({"message": "유효하지 않은 토큰입니다."}), 401
 
-        # 사용자 정보 조회
-        user = User.query.get(user_id)
+        # users 테이블에서 사용자 정보 조회
+        from extensions import db
+        user = db.session.execute(
+            db.text("SELECT * FROM users WHERE id = :user_id"),
+            {"user_id": user_id}
+        ).fetchone()
+        
+        if user:
+            class UserObj:
+                def __init__(self, row):
+                    self.id = row.id
+                    self.username = row.username
+                    self.email = row.email
+                    self.role = row.role
+                    self.status = row.status
+                    self.branch_id = row.branch_id
+                    self.created_at = row.created_at
+                    self.is_authenticated = True
+                    self.is_active = True
+                    self.is_anonymous = False
+                
+                def get_id(self):
+                    return str(self.id)
+            
+            user = UserObj(user)
+        else:
+            user = None
         if not user:
             return jsonify({"message": "사용자를 찾을 수 없습니다."}), 404
 

@@ -1,27 +1,40 @@
 # -*- coding: utf-8 -*-
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# 환경에 따른 .env 파일 로드
+env = os.getenv('FLASK_ENV', 'development')
+if env == 'production':
+    load_dotenv('config/production.env')
+elif env == 'development':
+    load_dotenv('config/development.env')
+else:
+    load_dotenv('config/development.env')  # 기본값
 
 
 class Config:
-    SECRET_KEY = "your-very-strong-secret-key"  # 환경 변수 무시, 항상 고정
-    SQLALCHEMY_DATABASE_URI = (
-        os.environ.get("DATABASE_URL") or "sqlite:///C:/your_program/instance/your_program.db"
+    SECRET_KEY = os.getenv("SECRET_KEY", "your-very-strong-secret-key")
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "DATABASE_URL",
+        "sqlite:///instance/your_program.db"  # SQLite 기본값 (PostgreSQL 준비 완료)
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # 성능 최적화 설정
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_size": 10,
-        "pool_recycle": 3600,
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "10")),
+        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "3600")),
         "pool_pre_ping": True,
-        "max_overflow": 20,
+        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "20")),
+        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
     }
 
-    # 캐시 설정 (Redis 없이 메모리 캐시 사용)
-    CACHE_TYPE = "simple"
-    CACHE_DEFAULT_TIMEOUT = 300
+    # 캐시 설정
+    CACHE_TYPE = os.getenv("CACHE_TYPE", "simple")
+    CACHE_DEFAULT_TIMEOUT = int(os.getenv("CACHE_DEFAULT_TIMEOUT", "300"))
     CACHE_THRESHOLD = 1000
+    CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL")
 
     # 세션 설정
     PERMANENT_SESSION_LIFETIME = timedelta(hours=2)
@@ -67,10 +80,8 @@ class TestConfig(Config):
     # 필요한 추가 테스트 설정...
 
 
-config_by_name = {
-    "development": DevelopmentConfig,
-    "production": ProductionConfig,
-    "testing": TestingConfig,
-    "test": TestConfig,
-    "default": DevelopmentConfig,
-} 
+config_by_name = dict(
+    development=DevelopmentConfig,
+    production=ProductionConfig,
+    default=DevelopmentConfig
+) 

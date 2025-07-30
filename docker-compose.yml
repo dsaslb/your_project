@@ -1,35 +1,29 @@
 ﻿version: '3.8'
 
 services:
-  # 메인 애플리케이션
+  # 백엔드 애플리케이션
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
     container_name: your_program_app
     restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
-      - DATABASE_URL=postgresql://your_program:password@db:5432/your_program
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/your_program
       - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
-      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
-      - EMAIL_USERNAME=${EMAIL_USERNAME}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
-      - SMS_API_KEY=${SMS_API_KEY}
-      - SMS_SECRET_KEY=${SMS_SECRET_KEY}
-    volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
-      - ./backups:/app/backups
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     depends_on:
       - db
       - redis
     networks:
-      - your_program_network
+      - app-network
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -44,38 +38,37 @@ services:
     restart: unless-stopped
     environment:
       - POSTGRES_DB=your_program
-      - POSTGRES_USER=your_program
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5432:5432"
     networks:
-      - your_program_network
+      - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U your_program -d your_program"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Redis 캐시
   redis:
     image: redis:7-alpine
     container_name: your_program_redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass redispassword
-    volumes:
-      - redis_data:/data
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     networks:
-      - your_program_network
+      - app-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Nginx 리버스 프록시
   nginx:
@@ -92,41 +85,41 @@ services:
     depends_on:
       - app
     networks:
-      - your_program_network
+      - app-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # 백업 서비스
-  backup:
-    image: postgres:15-alpine
-    container_name: your_program_backup
-    restart: "no"
-    environment:
-      - POSTGRES_DB=your_program
-      - POSTGRES_USER=your_program
-      - POSTGRES_PASSWORD=password
-    volumes:
-      - ./scripts/backup.sh:/backup.sh
-      - ./backups:/backups
-    depends_on:
-      - db
-    networks:
-      - your_program_network
-    command: ["/bin/sh", "/backup.sh"]
-
-  # 모니터링 서비스
-  monitoring:
-    image: prom/prometheus:latest
-    container_name: your_program_monitoring
+  # Grafana 모니터링
+  grafana:
+    image: grafana/grafana:latest
+    container_name: your_program_grafana
     restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
     ports:
-      - "9090:9090"
+      - "3001:3000"
+    networks:
+      - app-network
+
+  # Prometheus 모니터링
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: your_program_prometheus
+    restart: unless-stopped
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -134,65 +127,105 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
-    networks:
-      - your_program_network
 
-  # 로그 수집 서비스
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.8.0
-    container_name: your_program_logstash
+  # 개발 환경용 서비스
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-builder
+    container_name: your_program_app_dev
     restart: unless-stopped
-    volumes:
-      - ./monitoring/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
-      - ./logs:/var/log/your_program
-    environment:
-      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
-    networks:
-      - your_program_network
-
-  # Elasticsearch
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
-    container_name: your_program_elasticsearch
-    restart: unless-stopped
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200"
-    networks:
-      - your_program_network
-
-  # Kibana
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.8.0
-    container_name: your_program_kibana
-    restart: unless-stopped
+      - "5001:5000"
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    ports:
-      - "5601:5601"
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/your_program_dev
+      - REDIS_URL=redis://redis:6379/1
     depends_on:
-      - elasticsearch
+      - db
+      - redis
     networks:
-      - your_program_network
+      - app-network
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    profiles:
+      - dev
+
+  # 프론트엔드 개발 서버
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: your_program_frontend_dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    networks:
+      - app-network
+    profiles:
+      - dev
+
+  # 테스트 환경용 서비스
+  app-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-builder
+    container_name: your_program_app_test
+    restart: "no"
+    environment:
+      - FLASK_ENV=testing
+      - DATABASE_URL=postgresql://postgres:postgres@db-test:5432/your_program_test
+      - REDIS_URL=redis://redis-test:6379/2
+    depends_on:
+      - db-test
+      - redis-test
+    networks:
+      - app-network
+    profiles:
+      - test
+    command: ["pytest", "tests/"]
+
+  db-test:
+    image: postgres:15-alpine
+    container_name: your_program_db_test
+    restart: "no"
+    environment:
+      - POSTGRES_DB=your_program_test
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      - app-network
+    profiles:
+      - test
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: your_program_redis_test
+    restart: "no"
+    networks:
+      - app-network
+    profiles:
+      - test
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
-  prometheus_data:
+  grafana_data:
     driver: local
-  elasticsearch_data:
+  prometheus_data:
     driver: local
 
 networks:
-  your_program_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16 
+  app-network:
+    driver: bridge 

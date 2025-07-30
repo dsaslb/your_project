@@ -132,7 +132,8 @@ export default function PluginAIAnalyticsDashboard() {
 
   const loadPlugins = async () => {
     try {
-      const response = await fetch('/api/plugins/list');
+              const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${apiUrl}/api/plugins/list`);
       const data = await response.json();
       if (data.success) {
         const pluginIds = data.plugins.map((p: any) => p.id);

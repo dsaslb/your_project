@@ -1,8 +1,8 @@
-import React from 'react';
-import { useI18n } from './i18n';
+import React, { useState } from 'react';
 
 const LanguageSwitcher: React.FC = () => {
-  const { lang, setLang } = useI18n();
+  const [lang, setLang] = useState('ko');
+  
   return (
     <div className="flex gap-2 items-center">
       <button
