@@ -1,254 +1,398 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useBrands, useCreateBrand } from '../../../src/hooks/useApi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Building, Users, Calendar, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { Store, Users, MapPin, TrendingUp, Building2 } from 'lucide-react';
+import { apiClient, Brand, Industry } from '@/lib/api-client';
+import DataTable, { Column } from '@/components/common/DataTable';
+import CrudDialog, { FormField } from '@/components/common/CrudDialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import useLoadingState from '@/hooks/useLoadingState';
+import useErrorHandler from '@/hooks/useErrorHandler';
 
 export default function BrandsPage() {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newBrand, setNewBrand] = useState({
-    name: '',
-    industry: '',
-    description: ''
-  });
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [industries, setIndustries] = useState<Industry[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'delete' | 'view'>('create');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortColumn, setSortColumn] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [filterIndustryId, setFilterIndustryId] = useState<number | null>(null);
 
-  // API 훅 사용
-  const { data: brandsData, isLoading, error, refetch } = useBrands();
-  const createBrandMutation = useCreateBrand();
+  const { isLoading, withLoading } = useLoadingState();
+  const { handleError } = useErrorHandler();
 
-  const brands = brandsData?.data || [];
-
-  const handleCreateBrand = async () => {
-    if (!newBrand.name || !newBrand.industry) {
-      toast.error('브랜드명과 업종을 입력해주세요.');
-      return;
-    }
-
+  // 업종 목록 조회
+  const fetchIndustries = useCallback(async () => {
     try {
-      await createBrandMutation.mutateAsync(newBrand);
-      setNewBrand({ name: '', industry: '', description: '' });
-      setIsCreateDialogOpen(false);
+      const response = await apiClient.getIndustries({ per_page: 100 });
+      if (response.success) {
+        setIndustries(response.data);
+      }
     } catch (error) {
-      console.error('브랜드 생성 실패:', error);
+      handleError(error as Error);
+    }
+  }, [handleError]);
+
+  // 브랜드 목록 조회
+  const fetchBrands = useCallback(async () => {
+    await withLoading(async () => {
+      try {
+        const response = await apiClient.getBrands({
+          page: currentPage,
+          per_page: 10,
+          search: searchTerm,
+          sort_by: sortColumn,
+          sort_order: sortOrder,
+          industry_id: filterIndustryId || undefined,
+        });
+
+        if (response.success) {
+          setBrands(response.data);
+          setTotalItems(response.pagination?.total || response.data.length);
+        }
+      } catch (error) {
+        handleError(error as Error);
+      }
+    });
+  }, [currentPage, searchTerm, sortColumn, sortOrder, filterIndustryId, withLoading, handleError]);
+
+  // 브랜드 통계 카드
+  const renderStatsCards = () => {
+    const totalStores = brands.reduce((sum, brand) => sum + (brand.store_count || 0), 0);
+    const totalEmployees = brands.reduce((sum, brand) => sum + (brand.employee_count || 0), 0);
+    const avgStoresPerBrand = brands.length > 0 ? (totalStores / brands.length).toFixed(1) : '0';
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">전체 브랜드</CardTitle>
+            <Store className="h-4 w-4 text-cyan-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{totalItems}</div>
+            <p className="text-xs text-slate-400">등록된 브랜드 수</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">전체 매장</CardTitle>
+            <MapPin className="h-4 w-4 text-purple-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{totalStores}</div>
+            <p className="text-xs text-slate-400">브랜드별 매장 합계</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">전체 직원</CardTitle>
+            <Users className="h-4 w-4 text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{totalEmployees}</div>
+            <p className="text-xs text-slate-400">브랜드별 직원 합계</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">평균 매장</CardTitle>
+            <TrendingUp className="h-4 w-4 text-orange-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{avgStoresPerBrand}</div>
+            <p className="text-xs text-slate-400">브랜드당 평균 매장 수</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">활성 브랜드</CardTitle>
+            <Building2 className="h-4 w-4 text-pink-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {brands.filter(brand => brand.store_count > 0).length}
+            </div>
+            <p className="text-xs text-slate-400">매장이 있는 브랜드</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  // 컬럼 정의
+  const columns: Column<Brand>[] = [
+    {
+      key: 'id',
+      header: 'ID',
+      width: 'w-16',
+      align: 'center',
+    },
+    {
+      key: 'name',
+      header: '브랜드명',
+      sortable: true,
+      searchable: true,
+    },
+    {
+      key: 'code',
+      header: '브랜드 코드',
+      sortable: true,
+      searchable: true,
+    },
+    {
+      key: 'industry_name',
+      header: '업종',
+      sortable: true,
+      render: (value: string, row: Brand) => (
+        <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">
+          {value || row.industry_name || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'description',
+      header: '설명',
+      render: (value: string) => (
+        <span className="text-sm text-slate-400 truncate block max-w-xs">
+          {value || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'store_count',
+      header: '매장 수',
+      align: 'center',
+      sortable: true,
+      render: (value: number) => (
+        <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs">
+          {value || 0}개
+        </span>
+      ),
+    },
+    {
+      key: 'employee_count',
+      header: '직원 수',
+      align: 'center',
+      sortable: true,
+      render: (value: number) => (
+        <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs">
+          {value || 0}명
+        </span>
+      ),
+    },
+    {
+      key: 'created_at',
+      header: '생성일',
+      sortable: true,
+      render: (value: string) => {
+        if (!value) return '-';
+        return new Date(value).toLocaleDateString('ko-KR');
+      },
+    },
+  ];
+
+  // 폼 필드 정의
+  const formFields: FormField[] = [
+    {
+      name: 'industry_id',
+      label: '업종',
+      type: 'select',
+      required: true,
+      options: industries.map(ind => ({
+        value: ind.id,
+        label: ind.name,
+      })),
+    },
+    {
+      name: 'name',
+      label: '브랜드명',
+      type: 'text',
+      placeholder: '예: 스타벅스',
+      required: true,
+      validation: (value: string) => {
+        if (value.length < 2) return '브랜드명은 2자 이상이어야 합니다.';
+        if (value.length > 50) return '브랜드명은 50자 이하여야 합니다.';
+        return undefined;
+      },
+    },
+    {
+      name: 'code',
+      label: '브랜드 코드',
+      type: 'text',
+      placeholder: '예: STARBUCKS',
+      required: true,
+      validation: (value: string) => {
+        if (!/^[A-Z0-9_]+$/.test(value)) {
+          return '브랜드 코드는 대문자, 숫자, 언더스코어만 사용 가능합니다.';
+        }
+        if (value.length < 2 || value.length > 30) {
+          return '브랜드 코드는 2-30자여야 합니다.';
+        }
+        return undefined;
+      },
+    },
+    {
+      name: 'description',
+      label: '설명',
+      type: 'textarea',
+      placeholder: '브랜드에 대한 설명을 입력하세요.',
+      required: false,
+    },
+  ];
+
+  // CRUD 핸들러
+  const handleAdd = () => {
+    setSelectedBrand(null);
+    setDialogMode('create');
+    setDialogOpen(true);
+  };
+
+  const handleEdit = (brand: Brand) => {
+    setSelectedBrand(brand);
+    setDialogMode('edit');
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (brand: Brand) => {
+    setSelectedBrand(brand);
+    setDialogMode('delete');
+    setDialogOpen(true);
+  };
+
+  const handleView = (brand: Brand) => {
+    setSelectedBrand(brand);
+    setDialogMode('view');
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = async (data: Brand) => {
+    try {
+      if (dialogMode === 'create') {
+        const response = await apiClient.createBrand(data);
+        if (response.success) {
+          toast.success('브랜드가 생성되었습니다.');
+          await fetchBrands();
+        }
+      } else if (dialogMode === 'edit' && selectedBrand) {
+        const response = await apiClient.updateBrand(selectedBrand.id, data);
+        if (response.success) {
+          toast.success('브랜드가 수정되었습니다.');
+          await fetchBrands();
+        }
+      } else if (dialogMode === 'delete' && selectedBrand) {
+        const response = await apiClient.deleteBrand(selectedBrand.id);
+        if (response.success) {
+          toast.success('브랜드가 삭제되었습니다.');
+          await fetchBrands();
+        }
+      }
+    } catch (error) {
+      handleError(error as Error);
+      throw error;
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">브랜드 정보를 불러오는 중...</p>
-        </div>
-      </div>
-    );
-  }
+  // 초기 데이터 로드
+  useEffect(() => {
+    fetchIndustries();
+  }, [fetchIndustries]);
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-red-500">브랜드 정보를 불러오는데 실패했습니다.</p>
-          <Button onClick={() => refetch()} className="mt-4">
-            다시 시도
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchBrands();
+  }, [fetchBrands]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* 헤더 */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">브랜드 관리</h1>
-            <p className="text-gray-600 mt-1">등록된 브랜드 목록을 확인하고 관리하세요.</p>
-          </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                새 브랜드 추가
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>새 브랜드 추가</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">브랜드명 *</Label>
-                  <Input
-                    id="name"
-                    value={newBrand.name}
-                    onChange={(e) => setNewBrand({ ...newBrand, name: e.target.value })}
-                    placeholder="브랜드명을 입력하세요"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="industry">업종 *</Label>
-                  <Input
-                    id="industry"
-                    value={newBrand.industry}
-                    onChange={(e) => setNewBrand({ ...newBrand, industry: e.target.value })}
-                    placeholder="업종을 입력하세요 (예: 카페, 레스토랑)"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">설명</Label>
-                  <Input
-                    id="description"
-                    value={newBrand.description}
-                    onChange={(e) => setNewBrand({ ...newBrand, description: e.target.value })}
-                    placeholder="브랜드에 대한 설명을 입력하세요"
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    취소
-                  </Button>
-                  <Button 
-                    onClick={handleCreateBrand}
-                    disabled={createBrandMutation.isPending}
-                  >
-                    {createBrandMutation.isPending ? '생성 중...' : '생성'}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">총 브랜드</CardTitle>
-              <Building className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{brands.length}</div>
-              <p className="text-xs text-muted-foreground">
-                활성 브랜드 수
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">총 매장</CardTitle>
-              <Building className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                                 {brands.reduce((total: number, brand: any) => total + (brand.branch_count || 0), 0)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                전체 매장 수
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">총 직원</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                                 {brands.reduce((total: number, brand: any) => total + (brand.employee_count || 0), 0)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                전체 직원 수
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">이번 달 매출</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                                 {brands.reduce((total: number, brand: any) => total + (brand.monthly_sales || 0), 0).toLocaleString()}원
-              </div>
-              <p className="text-xs text-muted-foreground">
-                전체 브랜드 합계
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 브랜드 목록 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                     {brands.map((brand: any) => (
-            <Card key={brand.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{brand.name}</CardTitle>
-                    <p className="text-sm text-gray-600">{brand.industry}</p>
-                  </div>
-                  <Badge variant={brand.status === 'active' ? 'default' : 'secondary'}>
-                    {brand.status === 'active' ? '활성' : '비활성'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-700 mb-4">
-                  {brand.description || '설명이 없습니다.'}
-                </p>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">매장 수:</span>
-                    <span className="font-medium">{brand.branch_count || 0}개</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">직원 수:</span>
-                    <span className="font-medium">{brand.employee_count || 0}명</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">등록일:</span>
-                    <span className="font-medium">
-                      {new Date(brand.created_at).toLocaleDateString('ko-KR')}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    상세보기
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    매장 관리
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* 빈 상태 */}
-        {brands.length === 0 && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Building className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">등록된 브랜드가 없습니다</h3>
-              <p className="text-gray-600 mb-4">새 브랜드를 추가하여 시작하세요.</p>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                첫 번째 브랜드 추가
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+    <div className="p-6">
+      {/* 헤더 */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white mb-2">브랜드 관리</h1>
+        <p className="text-slate-400">업종별 브랜드를 관리합니다.</p>
       </div>
+
+      {/* 통계 카드 */}
+      {renderStatsCards()}
+
+      {/* 필터 */}
+      <div className="mb-6">
+        <Select
+          value={filterIndustryId?.toString() || 'all'}
+          onValueChange={(value) => {
+            setFilterIndustryId(value === 'all' ? null : parseInt(value));
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger className="w-64 bg-slate-800/50 border-slate-700">
+            <SelectValue placeholder="업종 선택" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 업종</SelectItem>
+            {industries.map(industry => (
+              <SelectItem key={industry.id} value={industry.id.toString()}>
+                {industry.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* 데이터 테이블 */}
+      <Card className="bg-slate-800/50 border-slate-700">
+        <CardContent className="p-0">
+          <DataTable
+            data={brands}
+            columns={columns}
+            pageSize={10}
+            totalItems={totalItems}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onSort={(column, order) => {
+              setSortColumn(column);
+              setSortOrder(order);
+            }}
+            onSearch={setSearchTerm}
+            onAdd={handleAdd}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+            onRefresh={fetchBrands}
+            isLoading={isLoading}
+            emptyMessage="등록된 브랜드가 없습니다."
+          />
+        </CardContent>
+      </Card>
+
+      {/* CRUD 다이얼로그 */}
+      <CrudDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        mode={dialogMode}
+        title={
+          dialogMode === 'create' ? '새 브랜드 추가' :
+          dialogMode === 'edit' ? '브랜드 수정' :
+          dialogMode === 'delete' ? '브랜드 삭제' :
+          '브랜드 상세'
+        }
+        data={selectedBrand}
+        fields={formFields}
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 } 
