@@ -3,7 +3,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChefHat } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
-import { useAuthStore } from "@/store/auth-store"
+import { useAuthStore } from "@/store/useAuthStore"
 
 export default function ComfortableLoginPage() {
   const [username, setUsername] = useState("")
@@ -27,9 +27,19 @@ export default function ComfortableLoginPage() {
     try {
       const result = await login({ username, password })
       
-      if (result.success) {
+      if (result.success && result.data?.user) {
         // 인증 스토어에 사용자 정보 저장
-        setUser(result.data.user)
+        const userData = {
+          ...result.data.user,
+          email: (result.data.user as any).email || '',
+          name: (result.data.user as any).name || result.data.user.username,
+          role: result.data.user.role as 'admin' | 'brand_admin' | 'store_admin' | 'manager' | 'employee',
+          status: 'approved' as const,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          grade: (result.data.user as any).grade as 'manager' | 'staff' | 'ceo' | 'director'
+        };
+        setUser(userData)
         
         // 권한에 따라 리다이렉트
         if (result.data.user.role === 'admin' || result.data.user.role === 'super_admin') {

@@ -322,6 +322,13 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
     }
   }, []);
 
+  // 메시지 전송 함수 추가
+  const sendMessage = (data: any) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('message', data);
+    }
+  };
+
   // 컴포넌트 마운트 시 연결
   useEffect(() => {
     if (autoConnect) {
@@ -368,16 +375,16 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
     fetchNotificationHistory,
     
     // 유틸리티
-    ping
+    ping,
+    sendMessage // 추가
   };
 };
 
 // 특정 기능별 WebSocket 훅들
 export const useClockInOutWebSocket = (user_id: string) => {
-  const { isConnected, sendMessage, lastMessage, error } = useWebSocket({
-    url: 'ws://localhost:8765',
-    user_id,
-    user_type: 'employee'
+  const { status, sendMessage } = useWebSocket({
+    userId: user_id,
+    // user_type: 'employee' // 필요시 추가
   });
 
   const clockIn = useCallback(() => {
@@ -397,19 +404,16 @@ export const useClockInOutWebSocket = (user_id: string) => {
   }, [sendMessage, user_id]);
 
   return {
-    isConnected,
+    isConnected: status.connected,
     clockIn,
-    clockOut,
-    lastMessage,
-    error
+    clockOut
   };
 };
 
 export const useAdminWebSocket = (user_id: string) => {
-  const { isConnected, sendMessage, lastMessage, error } = useWebSocket({
-    url: 'ws://localhost:8765',
-    user_id,
-    user_type: 'admin'
+  const { status, sendMessage } = useWebSocket({
+    userId: user_id,
+    // user_type: 'admin' // 필요시 추가
   });
 
   const sendNotification = useCallback((target_type: string, target_id: string, message: string) => {
@@ -437,51 +441,30 @@ export const useAdminWebSocket = (user_id: string) => {
   }, [sendMessage]);
 
   return {
-    isConnected,
+    isConnected: status.connected,
     sendNotification,
     sendSystemAlert,
-    requestDashboardData,
-    lastMessage,
-    error
+    requestDashboardData
   };
 };
 
 export const useChatWebSocket = (user_id: string, room: string) => {
-  const { isConnected, sendMessage, lastMessage, error } = useWebSocket({
-    url: 'ws://localhost:8765',
-    user_id,
-    user_type: 'employee'
+  const { status, sendMessage } = useWebSocket({
+    userId: user_id
   });
-
-  const joinRoom = useCallback(() => {
-    sendMessage({
-      type: 'join_room',
-      room
-    });
-  }, [sendMessage, room]);
-
-  const leaveRoom = useCallback(() => {
-    sendMessage({
-      type: 'leave_room',
-      room
-    });
-  }, [sendMessage, room]);
 
   const sendChatMessage = useCallback((message: string) => {
     sendMessage({
-      type: 'chat',
+      type: 'chat_message',
       room,
       user_id,
-      message
+      message,
+      timestamp: new Date().toISOString()
     });
   }, [sendMessage, room, user_id]);
 
   return {
-    isConnected,
-    joinRoom,
-    leaveRoom,
-    sendChatMessage,
-    lastMessage,
-    error
+    isConnected: status.connected,
+    sendChatMessage
   };
 }; 

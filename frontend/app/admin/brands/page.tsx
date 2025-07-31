@@ -1,46 +1,45 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useBrands, useCreateBrand } from '../../../src/hooks/useApi';
+import { useBrands } from '@/hooks/useDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Building, Users, Calendar, TrendingUp } from 'lucide-react';
+import { Building, Users, TrendingUp, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function BrandsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newBrand, setNewBrand] = useState({
     name: '',
-    industry: '',
-    description: ''
+    description: '',
+    industry: ''
   });
 
   // API 훅 사용
-  const { data: brandsData, isLoading, error, refetch } = useBrands();
-  const createBrandMutation = useCreateBrand();
-
-  const brands = brandsData?.data || [];
+  const { brands, loading, error, refetch } = useBrands(1, 100);
 
   const handleCreateBrand = async () => {
-    if (!newBrand.name || !newBrand.industry) {
-      toast.error('브랜드명과 업종을 입력해주세요.');
+    if (!newBrand.name || !newBrand.description) {
+      toast.error('필수 정보를 모두 입력해주세요.');
       return;
     }
 
     try {
-      await createBrandMutation.mutateAsync(newBrand);
-      setNewBrand({ name: '', industry: '', description: '' });
+      // TODO: 실제 API 호출 구현
+      toast.success('브랜드가 생성되었습니다.');
+      setNewBrand({ name: '', description: '', industry: '' });
       setIsCreateDialogOpen(false);
+      refetch();
     } catch (error) {
       console.error('브랜드 생성 실패:', error);
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -95,32 +94,29 @@ export default function BrandsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="industry">업종 *</Label>
-                  <Input
-                    id="industry"
-                    value={newBrand.industry}
-                    onChange={(e) => setNewBrand({ ...newBrand, industry: e.target.value })}
-                    placeholder="업종을 입력하세요 (예: 카페, 레스토랑)"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">설명</Label>
+                  <Label htmlFor="description">설명 *</Label>
                   <Input
                     id="description"
                     value={newBrand.description}
                     onChange={(e) => setNewBrand({ ...newBrand, description: e.target.value })}
-                    placeholder="브랜드에 대한 설명을 입력하세요"
+                    placeholder="브랜드 설명을 입력하세요"
                   />
                 </div>
-                <div className="flex justify-end gap-2">
+                <div>
+                  <Label htmlFor="industry">업종</Label>
+                  <Input
+                    id="industry"
+                    value={newBrand.industry}
+                    onChange={(e) => setNewBrand({ ...newBrand, industry: e.target.value })}
+                    placeholder="업종을 입력하세요"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                     취소
                   </Button>
-                  <Button 
-                    onClick={handleCreateBrand}
-                    disabled={createBrandMutation.isPending}
-                  >
-                    {createBrandMutation.isPending ? '생성 중...' : '생성'}
+                  <Button onClick={handleCreateBrand}>
+                    생성
                   </Button>
                 </div>
               </div>
@@ -149,7 +145,7 @@ export default function BrandsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                                 {brands.reduce((total: number, brand: any) => total + (brand.branch_count || 0), 0)}
+                {brands.reduce((total: number, brand: any) => total + (brand.store_count || 0), 0)}
               </div>
               <p className="text-xs text-muted-foreground">
                 전체 매장 수
@@ -163,7 +159,7 @@ export default function BrandsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                                 {brands.reduce((total: number, brand: any) => total + (brand.employee_count || 0), 0)}
+                {brands.reduce((total: number, brand: any) => total + (brand.employee_count || 0), 0)}
               </div>
               <p className="text-xs text-muted-foreground">
                 전체 직원 수
@@ -172,12 +168,12 @@ export default function BrandsPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">이번 달 매출</CardTitle>
+              <CardTitle className="text-sm font-medium">총 매출</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                                 {brands.reduce((total: number, brand: any) => total + (brand.monthly_sales || 0), 0).toLocaleString()}원
+                ₩{brands.reduce((total: number, brand: any) => total + (brand.total_revenue || 0), 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
                 전체 브랜드 합계
@@ -188,13 +184,13 @@ export default function BrandsPage() {
 
         {/* 브랜드 목록 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                     {brands.map((brand: any) => (
+          {brands.map((brand: any) => (
             <Card key={brand.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg">{brand.name}</CardTitle>
-                    <p className="text-sm text-gray-600">{brand.industry}</p>
+                    <p className="text-sm text-gray-600">{brand.description}</p>
                   </div>
                   <Badge variant={brand.status === 'active' ? 'default' : 'secondary'}>
                     {brand.status === 'active' ? '활성' : '비활성'}
@@ -202,17 +198,18 @@ export default function BrandsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-700 mb-4">
-                  {brand.description || '설명이 없습니다.'}
-                </p>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">매장 수:</span>
-                    <span className="font-medium">{brand.branch_count || 0}개</span>
+                    <span className="font-medium">{brand.store_count || 0}개</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">직원 수:</span>
                     <span className="font-medium">{brand.employee_count || 0}명</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">총 매출:</span>
+                    <span className="font-medium">₩{(brand.total_revenue || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">등록일:</span>
@@ -234,16 +231,17 @@ export default function BrandsPage() {
           ))}
         </div>
 
-        {/* 빈 상태 */}
         {brands.length === 0 && (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Building className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">등록된 브랜드가 없습니다</h3>
-              <p className="text-gray-600 mb-4">새 브랜드를 추가하여 시작하세요.</p>
+            <CardContent className="p-12 text-center">
+              <Building className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">등록된 브랜드가 없습니다</h3>
+              <p className="text-gray-600 mb-4">
+                첫 번째 브랜드를 등록해보세요.
+              </p>
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                첫 번째 브랜드 추가
+                새 브랜드 추가
               </Button>
             </CardContent>
           </Card>

@@ -106,9 +106,9 @@ const AdvancedFeatures: React.FC = () => {
 
       const newMessage: ChatMessage = {
         message: chatMessage,
-        response: response.data.response,
-        intent: response.data.intent,
-        timestamp: response.data.timestamp
+        response: (response as any).data.response,
+        intent: (response as any).data.intent,
+        timestamp: (response as any).data.timestamp
       };
 
       setChatHistory(prev => [...prev, newMessage]);
@@ -168,7 +168,7 @@ const AdvancedFeatures: React.FC = () => {
         audio_data: audioData
       });
 
-      setVoiceResult(response.data);
+      setVoiceResult((response as any).data);
     } catch (err: any) {
       setError(err.response?.data?.error || '음성 처리에 실패했습니다.');
     } finally {
@@ -201,7 +201,7 @@ const AdvancedFeatures: React.FC = () => {
           analysis_types: analysisTypes
         });
 
-        setImageAnalysis(response.data.results);
+        setImageAnalysis((response as any).data.results);
       };
       reader.readAsDataURL(selectedImage);
     } catch (err: any) {
@@ -224,7 +224,7 @@ const AdvancedFeatures: React.FC = () => {
         target_language: targetLanguage
       });
 
-      setTranslationResult(response.data);
+      setTranslationResult((response as any).data);
     } catch (err: any) {
       setError(err.response?.data?.error || '번역에 실패했습니다.');
     } finally {

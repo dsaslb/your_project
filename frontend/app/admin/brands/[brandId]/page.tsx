@@ -1,17 +1,19 @@
 import { notFound } from 'next/navigation';
 import React from 'react';
 
-export default async function BrandDashboard({ params }: { params: { brandId: string } }) {
+export default async function BrandDashboard({ params }: { params: Promise<{ brandId: string }> }) {
+  const { brandId } = await params;
+  
   // 브랜드 상세 데이터 불러오기
-  const res = await fetch(`http://localhost:5000/api/brands/${params.brandId}`, { cache: 'no-store' });
+  const res = await fetch(`http://localhost:5000/api/brands/${brandId}`, { cache: 'no-store' });
   if (!res.ok) return notFound();
   const brand = await res.json();
 
   // 매장, 매출, 개선 등 추가 데이터 불러오기
   const [storesRes, salesRes, improvementsRes] = await Promise.all([
-    fetch(`http://localhost:5000/api/brands/${params.brandId}/stores`, { cache: 'no-store' }),
-    fetch(`http://localhost:5000/api/brands/${params.brandId}/sales`, { cache: 'no-store' }),
-    fetch(`http://localhost:5000/api/brands/${params.brandId}/improvements`, { cache: 'no-store' })
+    fetch(`http://localhost:5000/api/brands/${brandId}/stores`, { cache: 'no-store' }),
+    fetch(`http://localhost:5000/api/brands/${brandId}/sales`, { cache: 'no-store' }),
+    fetch(`http://localhost:5000/api/brands/${brandId}/improvements`, { cache: 'no-store' })
   ]);
   const stores = storesRes.ok ? await storesRes.json() : [];
   const sales = salesRes.ok ? await salesRes.json() : [];

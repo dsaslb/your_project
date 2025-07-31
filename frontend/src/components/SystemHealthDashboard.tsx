@@ -13,7 +13,7 @@ import {
   Database, 
   HardDrive, 
   Cpu, 
-  Memory, 
+  Activity as Memory, 
   Network, 
   CheckCircle, 
   AlertTriangle, 
@@ -325,7 +325,7 @@ const SystemHealthDashboard: React.FC = () => {
                       <div className="space-y-3">
                         <div className="flex justify-between">
                           <span>상태:</span>
-                          <Badge className={getStatusColor(systemHealth.backend.status === 'healthy' ? 0 : 100)}>
+                          <Badge className={getStatusColor(systemHealth.backend.status)}>
                             {systemHealth.backend.status === 'healthy' ? '정상' : '문제'}
                           </Badge>
                         </div>
@@ -357,7 +357,7 @@ const SystemHealthDashboard: React.FC = () => {
                       <div className="space-y-3">
                         <div className="flex justify-between">
                           <span>상태:</span>
-                          <Badge className={getStatusColor(systemHealth.frontend.status === 'healthy' ? 0 : 100)}>
+                          <Badge className={getStatusColor(systemHealth.frontend.status)}>
                             {systemHealth.frontend.status === 'healthy' ? '정상' : '문제'}
                           </Badge>
                         </div>
@@ -400,7 +400,7 @@ const SystemHealthDashboard: React.FC = () => {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
-                        <Memory className="h-5 w-5" />
+                        <Activity className="h-5 w-5" />
                         <span>메모리 사용률</span>
                       </CardTitle>
                     </CardHeader>
@@ -464,7 +464,7 @@ const SystemHealthDashboard: React.FC = () => {
                         </div>
                         <div className="flex justify-between">
                           <span>상태:</span>
-                          <Badge className={getStatusColor(systemHealth.database.status === 'healthy' ? 0 : 100)}>
+                          <Badge className={getStatusColor(systemHealth.database.status)}>
                             {systemHealth.database.status === 'healthy' ? '정상' : '문제'}
                           </Badge>
                         </div>

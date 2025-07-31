@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
 
 // 최적화된 사용자 목록 조회
 export const useOptimizedUsers = (params?: {

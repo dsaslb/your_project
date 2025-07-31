@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiFetch } from '../../utils/api';
+import { apiClient } from '../../utils/api';
 
 type Plugin = {
   id: string;
@@ -26,8 +26,8 @@ const PluginManager: React.FC<PluginManagerProps> = ({ level }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<Plugin[]>(`/api/plugins?level=${level}`);
-      setPlugins(data);
+      const response = await apiClient.get<Plugin[]>(`/api/plugins?level=${level}`);
+      setPlugins(response.data);
     } catch (e) {
       setPlugins([
         { id: 'attendance', name: '출근 관리', description: '직원 출근/퇴근 관리', is_active: true },
@@ -45,10 +45,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ level }) => {
     setUpdating(pluginId);
     try {
       const endpoint = isActive ? 'enable' : 'disable';
-      await apiFetch(`/api/plugins/${pluginId}/${endpoint}`, {
-        method: 'POST',
-        body: JSON.stringify({ level })
-      });
+      await apiClient.post(`/api/plugins/${pluginId}/${endpoint}`, { level });
       
       // 로컬 상태 업데이트
       setPlugins(prev => prev.map(plugin => 
@@ -63,13 +60,10 @@ const PluginManager: React.FC<PluginManagerProps> = ({ level }) => {
   async function updatePermission(pluginId: string, targetType: string, targetId: string, isAllowed: boolean) {
     setUpdating(pluginId);
     try {
-      await apiFetch(`/api/plugins/${pluginId}/access-control/${targetType}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          [`${targetType}_id`]: targetId,
-          is_allowed: isAllowed,
-          access_type: 'use'
-        })
+      await apiClient.post(`/api/plugins/${pluginId}/access-control/${targetType}`, {
+        [`${targetType}_id`]: targetId,
+        is_allowed: isAllowed,
+        access_type: 'use'
       });
     } catch (e) {
       setError(`권한 설정 실패`);

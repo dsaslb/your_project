@@ -96,10 +96,10 @@ const IoTDashboard: React.FC = () => {
         apiClient.get('/api/iot/dashboard')
       ]);
 
-      if (devicesRes.data.success) setDevices(devicesRes.data.data);
-      if (dataRes.data.success) setLatestData(dataRes.data.data);
-      if (alertsRes.data.success) setAlerts(alertsRes.data.data);
-      if (dashboardRes.data.success) setDashboardData(dashboardRes.data.data);
+      if ((devicesRes as any).data.success) setDevices((devicesRes as any).data.data);
+      if ((dataRes as any).data.success) setLatestData((dataRes as any).data.data);
+      if ((alertsRes as any).data.success) setAlerts((alertsRes as any).data.data);
+      if ((dashboardRes as any).data.success) setDashboardData((dashboardRes as any).data.data);
 
     } catch (err: any) {
       setError(err.response?.data?.error || '데이터 로드 중 오류가 발생했습니다.');

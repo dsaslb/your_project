@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { UtensilsCrossed, Search, Filter, Clock, CheckCircle, AlertCircle, XCircle, Eye } from "lucide-react"
+import { UtensilsCrossed, Search, Filter, Clock, CheckCircle, AlertCircle, XCircle, Eye, Menu } from "lucide-react"
 
 const orders = [
   {
@@ -109,7 +109,9 @@ export default function OrdersPage() {
   return (
     <SidebarInset className="bg-black min-h-screen">
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-cyan-500/20 bg-black/50 backdrop-blur-xl px-4">
-        <SidebarTrigger className="text-cyan-400 hover:bg-cyan-500/10" />
+        <SidebarTrigger className="text-cyan-400 hover:bg-cyan-500/10">
+          <Menu className="h-4 w-4" />
+        </SidebarTrigger>
         <div className="flex items-center gap-2">
           <UtensilsCrossed className="h-5 w-5 text-cyan-400" />
           <span className="text-cyan-400 font-semibold">Order Management</span>

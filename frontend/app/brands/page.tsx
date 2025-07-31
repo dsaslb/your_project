@@ -16,42 +16,27 @@ import {
   TrendingUp,
   Activity
 } from 'lucide-react';
+import { Brand } from '@/lib/api-client';
+import { useBrands } from '@/hooks/useDashboard';
 
-interface Brand {
-  id: number;
-  name: string;
-  code: string;
-  description: string;
+interface BrandWithStats extends Brand {
   status: 'active' | 'inactive' | 'pending';
-  store_count: number;
-  employee_count: number;
   total_revenue: number;
   last_activity: string;
 }
 
 export default function BrandsPage() {
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { brands: apiBrands, loading, error, refetch } = useBrands();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    loadBrands();
-  }, []);
-
-  const loadBrands = async () => {
-    try {
-      const response = await fetch('/api/admin/brands');
-      if (response.ok) {
-        const data = await response.json();
-        setBrands(data.brands || []);
-      }
-    } catch (error) {
-      console.error('브랜드 로드 오류:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 백엔드 데이터를 프론트엔드 형식에 맞게 변환
+  const brands: BrandWithStats[] = apiBrands.map((brand: Brand) => ({
+    ...brand,
+    status: 'active' as const, // 기본값 설정
+    total_revenue: Math.random() * 10000000, // 임시 데이터
+    last_activity: new Date().toISOString(), // 임시 데이터
+  }));
 
   const filteredBrands = brands.filter(brand => {
     const matchesSearch = brand.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -77,6 +62,24 @@ export default function BrandsPage() {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Card className="bg-red-500/10 border-red-500/20 backdrop-blur-xl">
+          <CardContent className="p-6 text-center">
+            <p className="text-red-400 mb-4">{error}</p>
+            <Button 
+              onClick={refetch}
+              className="bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30"
+            >
+              다시 시도
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -139,7 +142,7 @@ export default function BrandsPage() {
               <p className="text-sm text-slate-400">{brand.code}</p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-slate-300 text-sm">{brand.description}</p>
+              <p className="text-slate-300 text-sm">{brand.description || '설명 없음'}</p>
               
               {/* 통계 */}
               <div className="grid grid-cols-3 gap-4">

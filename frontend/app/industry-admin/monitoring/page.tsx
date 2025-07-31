@@ -3,11 +3,22 @@
 import React, { useEffect, useState } from 'react';
 import { Line, Pie } from 'react-chartjs-2';
 
+interface KpiData {
+  dates: string[];
+  values: number[];
+}
+
+interface AlertStats {
+  success: number;
+  warning: number;
+  error: number;
+}
+
 export default function IndustryAdminMonitoringPage() {
   const [status, setStatus] = useState('정상');
   const [alerts, setAlerts] = useState<string[]>([]);
-  const [kpi, setKpi] = useState<any>({ dates: [], values: [] });
-  const [alertStats, setAlertStats] = useState<any>({ success: 0, warning: 0, error: 0 });
+  const [kpi, setKpi] = useState<KpiData>({ dates: [], values: [] });
+  const [alertStats, setAlertStats] = useState<AlertStats>({ success: 0, warning: 0, error: 0 });
 
   useEffect(() => {
     // WebSocket 연동 (더미 주소)
@@ -25,7 +36,7 @@ export default function IndustryAdminMonitoringPage() {
   // 더미 실시간 데이터 (WebSocket 미연결 시)
   useEffect(() => {
     const interval = setInterval(() => {
-      setKpi(prev => {
+      setKpi((prev: KpiData) => {
         const now = new Date();
         const dates = [...(prev.dates || []), now.toLocaleTimeString()].slice(-7);
         return {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
 
 // 매출 분석 조회
 export const useSalesAnalytics = (params?: {

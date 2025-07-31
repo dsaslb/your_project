@@ -71,7 +71,7 @@ export const usePerformanceMonitor = (options: UsePerformanceMonitorOptions = {}
     const clsObserver = new PerformanceObserver((list) => {
       let cls = 0;
       for (const entry of list.getEntries()) {
-        if (!entry.hadRecentInput) {
+        if (!(entry as any).hadRecentInput) {
           cls += (entry as any).value;
         }
       }
@@ -83,7 +83,7 @@ export const usePerformanceMonitor = (options: UsePerformanceMonitorOptions = {}
     const fidObserver = new PerformanceObserver((list) => {
       const entries = list.getEntries();
       const fid = entries[entries.length - 1];
-      metrics.firstInputDelay = fid.processingStart - fid.startTime;
+      metrics.firstInputDelay = (fid as any).processingStart - fid.startTime;
     });
     fidObserver.observe({ entryTypes: ['first-input'] });
 
@@ -105,7 +105,7 @@ export const usePerformanceMonitor = (options: UsePerformanceMonitorOptions = {}
     // Time to Interactive 측정
     const ttiObserver = new PerformanceObserver((list) => {
       const entries = list.getEntries();
-      const tti = entries[entriesEntries.length - 1];
+      const tti = entries[entries.length - 1];
       
       const finalMetrics: PerformanceMetrics = {
         pageLoadTime: pageLoadTime || 0,

@@ -379,11 +379,7 @@ const IntegratedDashboard: React.FC = () => {
 
   const setupSSEConnection = () => {
     try {
-      const eventSource = new EventSource('/api/dashboard/stream', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const eventSource = new EventSource('/api/dashboard/stream');
 
       eventSource.onopen = () => {
         setIsConnected(true);

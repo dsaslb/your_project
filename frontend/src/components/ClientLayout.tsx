@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import Sidebar from "@/components/Sidebar";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -23,7 +23,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     <SidebarProvider>
       <div className="flex h-screen w-screen overflow-hidden">
         <div className="h-full flex-shrink-0 w-64 border-r bg-background">
-          <AppSidebar />
+          <Sidebar />
         </div>
         <main className="flex-1 h-full overflow-y-auto bg-background p-6">
           {children}

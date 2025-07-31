@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, X, Star, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,7 +73,7 @@ export const SidebarSearch = ({
   }, [searchTerm, filterCategory, menuItems, isHidden]);
 
   // 검색 결과를 부모 컴포넌트에 전달
-  useMemo(() => {
+  useEffect(() => {
     onSearch(filteredMenus);
   }, [filteredMenus, onSearch]);
 

@@ -1,426 +1,258 @@
-# Your Program Frontend
+# 멀티테넌시 관리 시스템 프론트엔드
 
-Your Program 관리 시스템의 프론트엔드 애플리케이션입니다.
+## 📋 프로젝트 개요
+
+업종/브랜드/매장/직원의 계층적 구조를 관리하는 멀티테넌시 시스템의 프론트엔드입니다.
+
+## 🏗️ 아키텍처
+
+### 기술 스택
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + Shadcn UI
+- **State Management**: Zustand
+- **HTTP Client**: Axios (API Client)
+- **Icons**: Lucide React
+
+### 프로젝트 구조
+```
+frontend/
+├── app/                    # Next.js App Router
+│   ├── dashboard/         # 메인 대시보드
+│   ├── industry-management/  # 업종 관리
+│   ├── brand-management/     # 브랜드 관리
+│   ├── store-management/     # 매장 관리
+│   └── employee-management/  # 직원 관리
+├── src/
+│   ├── components/        # 재사용 가능한 컴포넌트
+│   ├── hooks/            # 커스텀 훅
+│   ├── store/            # Zustand 스토어
+│   └── lib/              # 유틸리티 및 설정
+└── lib/                  # API 클라이언트
+```
 
 ## 🚀 주요 기능
 
-- **실시간 동기화**: WebSocket 기반 실시간 데이터 동기화
-- **권한별 대시보드**: 사용자 역할에 따른 자동 메뉴 분기
-- **오프라인 지원**: 네트워크 연결이 없어도 기본 기능 사용 가능
-- **반응형 디자인**: 모바일, 태블릿, 데스크톱 지원
-- **PWA 지원**: Progressive Web App 기능
-- **실시간 알림**: 브라우저 및 시스템 알림
+### 1. 계층별 관리 시스템
+- **업종 관리**: 업종 CRUD, 통계, 검색
+- **브랜드 관리**: 브랜드 CRUD, 업종별 필터링, 통계
+- **매장 관리**: 매장 CRUD, 브랜드별 필터링, 상태 관리
+- **직원 관리**: 직원 CRUD, 매장별 필터링, 근무 관리
 
-## 🛠 기술 스택
+### 2. 통합 대시보드
+- **실시간 통계**: 업종/브랜드/매장/직원 현황
+- **시스템 모니터링**: 백엔드 연결 상태, 오류 현황
+- **빠른 액션**: 각 관리 페이지로의 빠른 이동
+- **데이터 분석**: 계층별 분포 및 시스템 상태 시각화
 
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand
-- **Testing**: Jest, React Testing Library, Playwright
-- **Real-time**: WebSocket
-- **PWA**: next-pwa
+### 3. 고급 기능
+- **전역 에러 처리**: ErrorBoundary + useErrorHandler
+- **데이터 캐싱**: useDataCache로 성능 최적화
+- **로딩 상태 관리**: useLoadingState로 일관된 UX
+- **접근성 지원**: 고대비, 큰 글씨, 모션 감소 옵션
 
-## 📋 요구사항
+## 🔧 API 연동
 
-- Node.js 18.0.0 이상
-- npm 9.0.0 이상
-- Git
+### 백엔드 엔드포인트
+| 데이터 유형 | GET (조회) | POST (생성) | PUT (수정) | DELETE (삭제) |
+|------------|------------|-------------|------------|---------------|
+| 업종 | `/api/admin/industries` | `/api/admin/industries` | `/api/admin/industries/{id}` | `/api/admin/industries/{id}` |
+| 브랜드 | `/api/admin/brands` | `/api/admin/brands` | `/api/admin/brands/{id}` | `/api/admin/brands/{id}` |
+| 매장 | `/api/admin/branches` | `/api/admin/branches` | `/api/admin/branches/{id}` | `/api/admin/branches/{id}` |
+| 직원 | `/api/admin/employees` | `/api/admin/employees` | `/api/admin/employees/{id}` | `/api/admin/employees/{id}` |
 
-## 🚀 빠른 시작
+### API 클라이언트 특징
+- **자동 인증**: 토큰 관리 및 자동 갱신
+- **에러 처리**: 표준화된 에러 응답 및 전역 처리
+- **데이터 동기화**: 변경 시 자동 캐시 무효화
+- **타입 안전성**: TypeScript 인터페이스로 완전한 타입 지원
 
-### 1. 저장소 클론
+## 🎨 UI/UX 특징
 
+### 디자인 시스템
+- **다크 테마**: 슬레이트 기반의 모던한 다크 테마
+- **그라데이션**: 사이버펑크 스타일의 네온 그라데이션
+- **반응형**: 모바일부터 데스크톱까지 완전 반응형
+- **접근성**: WCAG 가이드라인 준수
+
+### 컴포넌트 라이브러리
+- **Shadcn UI**: 일관된 디자인 시스템
+- **커스텀 컴포넌트**: 프로젝트 특화 컴포넌트
+- **로딩 상태**: 다양한 로딩 스피너 및 스켈레톤
+- **에러 처리**: 사용자 친화적인 에러 메시지
+
+## 🔐 권한 관리
+
+### 역할별 접근 제어
+- **super_admin**: 모든 기능 접근 가능
+- **brand_manager**: 브랜드 및 하위 관리
+- **store_manager**: 매장 및 직원 관리
+- **employee**: 제한된 기능만 접근
+
+### 동적 메뉴 구성
+- 권한에 따른 사이드바 메뉴 자동 구성
+- 실시간 권한 변경 감지
+- 계층별 데이터 필터링
+
+## 📱 반응형 디자인
+
+### 브레이크포인트
+- **모바일**: 320px ~ 768px
+- **태블릿**: 768px ~ 1024px
+- **데스크톱**: 1024px 이상
+
+### 컴포넌트별 최적화
+- **DashboardContainer**: 7xl 최대 너비
+- **CardContainer**: 4xl 최대 너비
+- **FormContainer**: 2xl 최대 너비
+- **ModalContainer**: lg 최대 너비
+
+## 🚀 성능 최적화
+
+### 데이터 캐싱
+- **TTL**: 5분 기본 캐시 시간
+- **Stale While Revalidate**: 30초 동안 캐시된 데이터 표시
+- **자동 새로고침**: 1분마다 백그라운드 업데이트
+
+### 코드 최적화
+- **React.memo**: 불필요한 리렌더링 방지
+- **useCallback/useMemo**: 메모이제이션으로 성능 향상
+- **동적 임포트**: 코드 스플리팅으로 초기 로딩 최적화
+
+## 🛠️ 개발 환경 설정
+
+### 필수 요구사항
+- Node.js 18+ 
+- npm 또는 yarn
+
+### 설치 및 실행
 ```bash
-git clone <repository-url>
-cd your_program_frontend
-```
-
-### 2. 의존성 설치
-
-```bash
+# 의존성 설치
 npm install
-```
 
-### 3. 환경 변수 설정
-
-```bash
-cp .env.example .env.local
-```
-
-`.env.local` 파일을 편집하여 필요한 환경 변수를 설정하세요:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5001
-NEXT_PUBLIC_WS_URL=ws://localhost:5001
-NODE_ENV=development
-```
-
-### 4. 개발 서버 실행
-
-```bash
+# 개발 서버 실행
 npm run dev
-```
 
-브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 애플리케이션을 확인하세요.
-
-## 🧪 테스트
-
-### 단위 테스트
-
-```bash
-# 모든 테스트 실행
-npm test
-
-# 테스트 감시 모드
-npm run test:watch
-
-# 커버리지 리포트와 함께 테스트
-npm run test:coverage
-
-# CI 환경용 테스트
-npm run test:ci
-```
-
-### E2E 테스트
-
-```bash
-# E2E 테스트 실행
-npm run test:e2e
-
-# E2E 테스트 UI 모드
-npm run test:e2e:ui
-```
-
-### 테스트 커버리지
-
-테스트 커버리지는 다음 기준을 충족해야 합니다:
-- **Branches**: 70% 이상
-- **Functions**: 70% 이상
-- **Lines**: 70% 이상
-- **Statements**: 70% 이상
-
-## 🏗 빌드
-
-### 개발 빌드
-
-```bash
+# 빌드
 npm run build
+
+# 프로덕션 서버 실행
+npm start
 ```
 
-### 프로덕션 빌드
-
-```bash
-NODE_ENV=production npm run build
+### 환경 변수
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=멀티테넌시 관리 시스템
 ```
 
-## 🚀 배포
+## 📊 상태 관리
 
-### 자동 배포 스크립트 사용
+### Zustand 스토어
+- **useUserStore**: 사용자 인증 및 권한 관리
+- **useAuthStore**: 인증 토큰 관리
+- **useOrderStore**: 주문 데이터 관리
+- **uiStore**: UI 상태 관리
 
-```bash
-# 개발 환경 배포
-./scripts/deploy.sh dev
-
-# 스테이징 환경 배포
-./scripts/deploy.sh staging
-
-# 프로덕션 환경 배포
-./scripts/deploy.sh prod
-```
-
-### 수동 배포
-
-1. **빌드**
-   ```bash
-   npm run build
-   ```
-
-2. **테스트**
-   ```bash
-   npm run test:ci
-   ```
-
-3. **배포**
-   ```bash
-   npm start
-   ```
-
-## 🧹 정리
-
-### 자동 정리 스크립트 사용
-
-```bash
-# 모든 캐시 및 빌드 파일 정리
-./scripts/cleanup.sh all
-
-# 캐시만 정리
-./scripts/cleanup.sh cache
-
-# 빌드 파일만 정리
-./scripts/cleanup.sh build
-
-# 테스트 파일만 정리
-./scripts/cleanup.sh test
-
-# node_modules 정리
-./scripts/cleanup.sh node_modules
-```
-
-### 수동 정리
-
-```bash
-# 캐시 정리
-rm -rf .next .cache coverage
-
-# node_modules 재설치
-rm -rf node_modules package-lock.json
-npm install
-```
-
-## 📁 프로젝트 구조
-
-```
-your_program_frontend/
-├── src/
-│   ├── app/                    # Next.js App Router 페이지
-│   │   ├── dashboard/          # 대시보드 페이지
-│   │   ├── orders/            # 주문 관리 페이지
-│   │   ├── inventory/         # 재고 관리 페이지
-│   │   └── layout.tsx         # 루트 레이아웃
-│   ├── components/            # 재사용 가능한 컴포넌트
-│   │   ├── ui/               # 기본 UI 컴포넌트
-│   │   ├── Sidebar.tsx       # 사이드바 컴포넌트
-│   │   └── RealTimeSync.tsx  # 실시간 동기화 컴포넌트
-│   ├── store/                # Zustand 상태 관리
-│   │   ├── useUserStore.ts   # 사용자 상태 관리
-│   │   └── useOrderStore.ts  # 주문 상태 관리
-│   ├── hooks/                # 커스텀 훅
-│   ├── lib/                  # 유틸리티 라이브러리
-│   └── utils/                # 유틸리티 함수
-├── public/                   # 정적 파일
-├── scripts/                  # 배포 및 유틸리티 스크립트
-├── tests/                    # 테스트 파일
-└── docs/                     # 문서
-```
+### 커스텀 훅
+- **useOptimizedData**: 데이터 캐싱 및 최적화
+- **useLoadingState**: 로딩 상태 관리
+- **useErrorHandler**: 에러 처리
+- **useDataCache**: 클라이언트 사이드 캐싱
 
 ## 🔧 개발 가이드
 
-### 컴포넌트 작성
+### 컴포넌트 작성 규칙
+1. **TypeScript**: 모든 컴포넌트는 TypeScript로 작성
+2. **Props 인터페이스**: 명시적인 Props 타입 정의
+3. **에러 경계**: ErrorBoundary로 감싸기
+4. **접근성**: ARIA 라벨 및 키보드 네비게이션 지원
 
-```tsx
-// components/Example.tsx
-'use client'
-
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-
-interface ExampleProps {
-  title: string
-  onAction?: () => void
-}
-
-export default function Example({ title, onAction }: ExampleProps) {
-  const [count, setCount] = useState(0)
-
-  return (
-    <div className="p-4 border rounded-lg">
-      <h2 className="text-xl font-bold">{title}</h2>
-      <p>Count: {count}</p>
-      <Button onClick={() => setCount(count + 1)}>
-        Increment
-      </Button>
-    </div>
-  )
-}
+### API 호출 패턴
+```typescript
+// 최적화된 데이터 훅 사용
+const { data, isLoading, error, refreshData } = useOptimizedData({
+  key: 'unique-cache-key',
+  fetchFunction: () => apiClient.getData(),
+  ttl: 5 * 60 * 1000,
+  autoRefresh: true
+});
 ```
 
-### Store 작성
+### 에러 처리
+```typescript
+// 전역 에러 핸들러 사용
+const { handleError } = useErrorHandler();
 
-```tsx
-// store/useExampleStore.ts
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-
-interface ExampleState {
-  data: any[]
-  isLoading: boolean
-  fetchData: () => Promise<void>
-}
-
-export const useExampleStore = create<ExampleState>()(
-  persist(
-    (set, get) => ({
-      data: [],
-      isLoading: false,
-      fetchData: async () => {
-        set({ isLoading: true })
-        try {
-          const response = await fetch('/api/data')
-          const data = await response.json()
-          set({ data, isLoading: false })
-        } catch (error) {
-          set({ isLoading: false })
-        }
-      },
-    }),
-    {
-      name: 'example-store',
-    }
-  )
-)
-```
-
-### 테스트 작성
-
-```tsx
-// __tests__/components/Example.test.tsx
-import { render, screen, fireEvent } from '@testing-library/react'
-import Example from '@/components/Example'
-
-describe('Example Component', () => {
-  it('renders correctly', () => {
-    render(<Example title="Test Title" />)
-    expect(screen.getByText('Test Title')).toBeInTheDocument()
-  })
-
-  it('increments count when button is clicked', () => {
-    render(<Example title="Test" />)
-    const button = screen.getByText('Increment')
-    fireEvent.click(button)
-    expect(screen.getByText('Count: 1')).toBeInTheDocument()
-  })
-})
-```
-
-## 🔐 권한 시스템
-
-### 사용자 역할
-
-- **super_admin**: 최고 관리자 (모든 기능 접근)
-- **brand_manager**: 브랜드 관리자 (브랜드별 관리)
-- **store_manager**: 매장 관리자 (매장별 관리)
-- **employee**: 직원 (제한된 기능)
-
-### 권한 체크
-
-```tsx
-import useUserStore from '@/store/useUserStore'
-
-function MyComponent() {
-  const { hasRole } = useUserStore()
-  
-  if (hasRole('super_admin')) {
-    return <AdminPanel />
-  }
-  
-  if (hasRole(['store_manager', 'employee'])) {
-    return <UserPanel />
-  }
-  
-  return <AccessDenied />
+try {
+  await apiCall();
+} catch (error) {
+  handleError(error);
 }
 ```
 
-## 🔄 실시간 동기화
+## 🧪 테스트
 
-### WebSocket 연결
+### 테스트 환경
+- **Jest**: 단위 테스트
+- **React Testing Library**: 컴포넌트 테스트
+- **MSW**: API 모킹
 
-```tsx
-import { useOrderStore } from '@/store/useOrderStore'
-
-function OrderList() {
-  const { orders, connectWebSocket } = useOrderStore()
-  
-  useEffect(() => {
-    connectWebSocket()
-  }, [])
-  
-  return (
-    <div>
-      {orders.map(order => (
-        <OrderItem key={order.id} order={order} />
-      ))}
-    </div>
-  )
-}
-```
-
-### 오프라인 지원
-
-```tsx
-import { offlineStorage } from '@/utils/offlineStorage'
-
-// 오프라인 데이터 저장
-await offlineStorage.saveOfflineData('orders', 'create', orderData)
-
-// 온라인 복구 시 동기화
-await offlineStorage.syncOfflineData()
-```
-
-## 🐛 문제 해결
-
-### 일반적인 문제
-
-1. **빌드 실패**
-   ```bash
-   npm run cleanup:all
-   npm install
-   npm run build
-   ```
-
-2. **테스트 실패**
-   ```bash
-   npm run test:coverage
-   # 커버리지 리포트 확인 후 테스트 수정
-   ```
-
-3. **실시간 동기화 문제**
-   ```bash
-   # WebSocket 연결 상태 확인
-   # 브라우저 개발자 도구에서 네트워크 탭 확인
-   ```
-
-### 로그 확인
-
+### 테스트 실행
 ```bash
-# 개발 서버 로그
-npm run dev
+# 전체 테스트 실행
+npm test
 
-# 빌드 로그
-npm run build
-
-# 테스트 로그
+# 커버리지 포함
 npm run test:coverage
+
+# 감시 모드
+npm run test:watch
 ```
 
-## 📚 추가 문서
+## 📈 배포
 
-- [API 문서](./docs/API.md)
-- [컴포넌트 가이드](./docs/COMPONENTS.md)
-- [테스트 가이드](./docs/TESTING.md)
-- [배포 가이드](./docs/DEPLOYMENT.md)
+### 빌드 최적화
+- **Next.js 최적화**: 자동 코드 스플리팅
+- **이미지 최적화**: Next.js Image 컴포넌트
+- **번들 분석**: webpack-bundle-analyzer
 
-## 🤝 기여하기
+### 배포 환경
+- **Vercel**: 권장 배포 플랫폼
+- **Docker**: 컨테이너화 지원
+- **CI/CD**: GitHub Actions 자동화
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## 🤝 기여 가이드
 
-## 📄 라이선스
+### 코드 스타일
+- **ESLint**: 코드 품질 검사
+- **Prettier**: 코드 포맷팅
+- **Husky**: Git 훅으로 자동 검사
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+### 커밋 메시지
+```
+feat: 새로운 기능 추가
+fix: 버그 수정
+docs: 문서 업데이트
+style: 코드 스타일 변경
+refactor: 코드 리팩토링
+test: 테스트 추가/수정
+chore: 빌드 프로세스 변경
+```
 
 ## 📞 지원
 
-문제가 있거나 질문이 있으시면 다음 방법으로 연락하세요:
+### 이슈 리포트
+- GitHub Issues를 통한 버그 리포트
+- 기능 요청 및 개선 제안
 
-- [Issues](../../issues) - 버그 리포트 및 기능 요청
-- [Discussions](../../discussions) - 일반적인 질문 및 토론
-- Email: support@yourprogram.com
+### 문서
+- [API 문서](./docs/api.md)
+- [컴포넌트 문서](./docs/components.md)
+- [배포 가이드](./docs/deployment.md)
 
 ---
 
-**Your Program Frontend** - 효율적인 관리 시스템을 위한 현대적인 웹 애플리케이션
+**개발팀**: 멀티테넌시 관리 시스템 개발팀  
+**최종 업데이트**: 2024년 7월  
+**버전**: 1.0.0

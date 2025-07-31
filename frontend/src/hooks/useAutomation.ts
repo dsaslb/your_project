@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
 
 // 자동화 규칙 조회
 export const useAutomationRules = (params?: {

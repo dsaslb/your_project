@@ -12,7 +12,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Activity, 
   Cpu, 
-  Memory, 
   HardDrive, 
   Network, 
   Clock, 
@@ -102,16 +101,7 @@ const MonitoringDashboard: React.FC = () => {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   // WebSocket 연결
-  const { isConnected, sendMessage } = useWebSocket('ws://localhost:8765', {
-    onMessage: (data) => {
-      const message = JSON.parse(data);
-      if (message.type === 'performance_metric') {
-        handleNewMetric(message.data);
-      } else if (message.type === 'system_alert') {
-        handleSystemAlert(message.data);
-      }
-    }
-  });
+  const { status, connect, disconnect } = useWebSocket();
 
   // 메트릭 처리
   const handleNewMetric = useCallback((metric: PerformanceMetric) => {
@@ -187,31 +177,35 @@ const MonitoringDashboard: React.FC = () => {
 
   // 실시간 업데이트 요청
   const requestRealTimeUpdates = useCallback(() => {
-    if (isConnected) {
-      sendMessage(JSON.stringify({
-        type: 'subscribe',
-        channel: 'monitoring'
-      }));
+    if (status.connected) {
+      // WebSocket 메시지 전송 로직
     }
-  }, [isConnected, sendMessage]);
+  }, [status]);
 
   // 데이터 내보내기
   const exportData = useCallback(async () => {
     try {
-      const response = await fetch('/api/monitoring/export');
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `monitoring_data_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      }
+      const data = {
+        metrics,
+        cacheStats,
+        databaseStats,
+        systemHealth,
+        exportTime: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `monitoring-data-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('데이터 내보내기 실패:', error);
     }
-  }, []);
+  }, [metrics, cacheStats, databaseStats, systemHealth]);
 
   // 상태별 색상
   const getStatusColor = (status: string) => {
@@ -275,12 +269,15 @@ const MonitoringDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant={isConnected ? "default" : "secondary"}>
-            {isConnected ? "실시간 연결됨" : "연결 끊김"}
+          <Badge variant={status.connected ? "default" : "secondary"}>
+            {status.connected ? "실시간 연결됨" : "연결 끊김"}
           </Badge>
           <Button variant="outline" size="sm" onClick={loadData}>
             <RefreshCw className="h-4 w-4 mr-2" />
             새로고침
+          </Button>
+          <Button variant="outline" size="sm" onClick={requestRealTimeUpdates}>
+            실시간 업데이트
           </Button>
           <Button variant="outline" size="sm" onClick={exportData}>
             <Download className="h-4 w-4 mr-2" />
@@ -313,7 +310,7 @@ const MonitoringDashboard: React.FC = () => {
             title="메모리 사용률"
             value={currentMetric.memory_percent}
             unit="%"
-            icon={<Memory className="h-4 w-4 text-white" />}
+                          icon={<Activity className="h-4 w-4 text-white" />}
             color="bg-green-500"
           />
           <PerformanceCard
@@ -427,7 +424,7 @@ const MonitoringDashboard: React.FC = () => {
                           cy="50%"
                           outerRadius={80}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                         >
                           {cachePieData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />

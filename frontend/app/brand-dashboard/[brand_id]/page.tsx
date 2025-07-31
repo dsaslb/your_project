@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../src/components/ui/card';
 import { Button } from '../../../src/components/ui/button';
-import { useBrandDetail, useBrandStores, useBrandEmployees, useDataSync } from '../../../hooks/useHierarchyData';
+import { useBrands, useStores, useEmployees } from '@/hooks/useDashboard';
 import { toast } from 'sonner';
 import { Building2, Users, TrendingUp, ArrowLeft, RefreshCw } from 'lucide-react';
 
@@ -22,24 +22,12 @@ export default function BrandDashboardPage() {
   const router = useRouter();
   
   // 새로운 통합 Hook 사용
-  const { data: brandDetail, loading: brandLoading, error: brandError, refresh: refreshBrand } = useBrandDetail(
-    brandId ? parseInt(brandId) : null,
-    { immediate: true, refreshInterval: 0 }
-  );
+  const { brands, loading: brandLoading, error: brandError, refetch: refreshBrand } = useBrands();
+  const { stores, loading: storesLoading, refetch: refreshStores } = useStores(1, 50, '', '', brandId ? parseInt(brandId) : undefined);
+  const { employees, loading: employeesLoading, refetch: refreshEmployees } = useEmployees(1, 50, '', '', undefined, brandId ? parseInt(brandId) : undefined);
   
-  const { data: stores, loading: storesLoading, refresh: refreshStores } = useBrandStores(
-    brandId ? parseInt(brandId) : null,
-    { page: 1, per_page: 50 },
-    { immediate: true, refreshInterval: 0 }
-  );
-  
-  const { data: employees, loading: employeesLoading, refresh: refreshEmployees } = useBrandEmployees(
-    brandId ? parseInt(brandId) : null,
-    { page: 1, per_page: 50 },
-    { immediate: true, refreshInterval: 0 }
-  );
-  
-  const { refreshAll, refreshing } = useDataSync();
+  // 현재 브랜드 정보 찾기
+  const brandDetail = brands.find(brand => brand.id === parseInt(brandId));
   
   // 기존 sales, improvements는 임시로 빈 배열 (추후 API 추가 필요)
   const [sales, setSales] = useState<Sale[]>([]);
@@ -85,11 +73,11 @@ export default function BrandDashboardPage() {
           </Button>
           <Button
             onClick={handleRefresh}
-            disabled={refreshing || loading}
+            disabled={loading}
             className="flex items-center gap-2"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? '새로고침 중...' : '새로고침'}
+            <RefreshCw className="w-4 h-4" />
+            새로고침
           </Button>
         </div>
       </div>

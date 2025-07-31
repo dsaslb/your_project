@@ -285,14 +285,13 @@ export const useAuth = () => {
   const login = async ({ username, password }: { username: string; password: string }) => {
     setIsLoading(true);
     try {
-      const { default: api } = await import('@/utils/api');
-      const result = await api.login({ username, password });
-      if (result.success && result.data) {
-        setCurrentUser(result.data.user);
-        // 토큰 저장 등 필요시 추가
+      // 개발용: 더미 로그인 처리
+      if (username === 'admin' && password === 'admin') {
+        setCurrentUser(dummyUser);
+        return { success: true, data: { user: dummyUser } };
+      } else {
+        return { success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' };
       }
-      // 서버에서 내려온 message가 있으면 error로 전달
-      return { ...result, error: result.error || result.message };
     } catch (error) {
       return { success: false, error: '로그인 중 오류가 발생했습니다.' };
     } finally {

@@ -17,7 +17,14 @@ import {
   SmartphoneIcon as MobileIcon, MonitorIcon as DesktopIcon
 } from "lucide-react";
 
-const dummyPlugins = [
+const dummyPlugins: {
+  id: number;
+  name: string;
+  display_name: string;
+  supported_platforms: PlatformType[];
+  current_platform: PlatformType;
+  ui_schema: Record<PlatformType, { layout: string; components: string[] }>;
+}[] = [
   {
     id: 1,
     name: "ai_schedule_optimizer",
@@ -27,7 +34,8 @@ const dummyPlugins = [
     ui_schema: {
       web: { layout: "sidebar", components: ["header", "sidebar", "content"] },
       mobile: { layout: "stacked", components: ["header", "content", "navigation"] },
-      tablet: { layout: "grid", components: ["sidebar", "content", "toolbar"] }
+      tablet: { layout: "grid", components: ["sidebar", "content", "toolbar"] },
+      pos: { layout: "touch", components: ["header", "content", "keypad"] }
     }
   },
   {
@@ -38,7 +46,9 @@ const dummyPlugins = [
     current_platform: "mobile",
     ui_schema: {
       web: { layout: "sidebar", components: ["header", "sidebar", "content"] },
-      mobile: { layout: "stacked", components: ["header", "content", "navigation"] }
+      mobile: { layout: "stacked", components: ["header", "content", "navigation"] },
+      tablet: { layout: "grid", components: ["sidebar", "content", "toolbar"] },
+      pos: { layout: "touch", components: ["header", "content", "keypad"] }
     }
   },
   {
@@ -49,13 +59,22 @@ const dummyPlugins = [
     current_platform: "pos",
     ui_schema: {
       web: { layout: "sidebar", components: ["header", "sidebar", "content"] },
+      mobile: { layout: "stacked", components: ["header", "content", "navigation"] },
       tablet: { layout: "grid", components: ["sidebar", "content", "toolbar"] },
       pos: { layout: "touch", components: ["header", "content", "keypad"] }
     }
   }
 ];
 
-const platformConfigs = {
+type PlatformType = 'web' | 'mobile' | 'tablet' | 'pos';
+
+const platformConfigs: Record<PlatformType, {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  description: string;
+  features: string[];
+  limitations: string[];
+}> = {
   web: {
     icon: DesktopIcon,
     label: "웹",
@@ -145,7 +164,7 @@ export default function AdminPluginPlatformPage() {
     { id: "languages", label: "다국어 설정", icon: Languages },
   ];
 
-  const handlePlatformToggle = (platform: string, enabled: boolean) => {
+  const handlePlatformToggle = (platform: PlatformType, enabled: boolean) => {
     setPlatformSettings(prev => ({
       ...prev,
       [`${platform}_enabled`]: enabled
@@ -183,7 +202,7 @@ export default function AdminPluginPlatformPage() {
     }
   };
 
-  const handlePreviewPlatform = (platform: string) => {
+  const handlePreviewPlatform = (platform: PlatformType) => {
     toast.info(`${platformConfigs[platform].label} 플랫폼 미리보기를 시작합니다.`);
   };
 
@@ -227,7 +246,7 @@ export default function AdminPluginPlatformPage() {
             {Object.entries(platformConfigs).map(([platform, config]) => {
               const Icon = config.icon;
               const supportedCount = plugins.filter(p => 
-                p.supported_platforms.includes(platform)
+                p.supported_platforms.includes(platform as PlatformType)
               ).length;
               
               return (
@@ -279,7 +298,7 @@ export default function AdminPluginPlatformPage() {
                     
                     <div className="flex gap-2">
                       {Object.entries(platformConfigs).map(([platform, config]) => {
-                        const isSupported = plugin.supported_platforms.includes(platform);
+                        const isSupported = plugin.supported_platforms.includes(platform as PlatformType);
                         const Icon = config.icon;
                         
                         return (
@@ -321,8 +340,8 @@ export default function AdminPluginPlatformPage() {
                       </div>
                     </div>
                     <Switch
-                      checked={platformSettings[`${platform}_enabled`]}
-                      onCheckedChange={(enabled) => handlePlatformToggle(platform, enabled)}
+                      checked={platformSettings[`${platform}_enabled` as keyof typeof platformSettings]}
+                      onCheckedChange={(enabled) => handlePlatformToggle(platform as PlatformType, enabled)}
                     />
                   </div>
                 </CardHeader>
@@ -360,7 +379,7 @@ export default function AdminPluginPlatformPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handlePreviewPlatform(platform)}
+                      onClick={() => handlePreviewPlatform(platform as PlatformType)}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       미리보기

@@ -79,9 +79,9 @@ export function LazyBrandsPage() {
         {/* 브랜드 카드 - 지연 로딩 */}
         <Suspense fallback={<CardLoading />}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <MemoizedCard
-              title="로딩 중..."
-              content={<div className="h-20 bg-gray-100 rounded animate-pulse"></div>}
+            <MemoizedCard 
+              title="로딩 중..." 
+              value="..."
             />
           </div>
         </Suspense>

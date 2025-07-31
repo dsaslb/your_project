@@ -559,20 +559,20 @@ const EnhancedMarketplace: React.FC = () => {
               {(selectedPlugin.homepage || selectedPlugin.repository) && (
                 <div className="flex space-x-4">
                   {selectedPlugin.homepage && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={selectedPlugin.homepage} target="_blank" rel="noopener noreferrer">
+                    <a href={selectedPlugin.homepage} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">
                         <Globe className="w-4 h-4 mr-2" />
                         홈페이지
-                      </a>
-                    </Button>
+                      </Button>
+                    </a>
                   )}
                   {selectedPlugin.repository && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={selectedPlugin.repository} target="_blank" rel="noopener noreferrer">
+                    <a href={selectedPlugin.repository} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">
                         <Code className="w-4 h-4 mr-2" />
                         저장소
-                      </a>
-                    </Button>
+                      </Button>
+                    </a>
                   )}
                 </div>
               )}

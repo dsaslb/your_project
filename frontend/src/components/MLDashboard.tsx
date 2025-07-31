@@ -70,7 +70,7 @@ const MLDashboard: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiClient.get('/api/ml/status');
-      setModelStatus(response.data.status);
+      setModelStatus((response as any).data.status);
     } catch (err) {
       setError('모델 상태를 불러오는데 실패했습니다.');
       console.error('Model status error:', err);
@@ -85,7 +85,7 @@ const MLDashboard: React.FC = () => {
       setError(null);
       
       const response = await apiClient.post('/api/ml/predict/sales', salesFeatures);
-      setPredictionResult(response.data.prediction);
+      setPredictionResult((response as any).data.prediction);
     } catch (err: any) {
       setError(err.response?.data?.error || '매출 예측에 실패했습니다.');
       console.error('Sales prediction error:', err);
@@ -100,7 +100,7 @@ const MLDashboard: React.FC = () => {
       setError(null);
       
       const response = await apiClient.post('/api/ml/predict/staff', staffFeatures);
-      setPredictionResult(response.data.prediction);
+      setPredictionResult((response as any).data.prediction);
     } catch (err: any) {
       setError(err.response?.data?.error || '직원 예측에 실패했습니다.');
       console.error('Staff prediction error:', err);
@@ -115,7 +115,7 @@ const MLDashboard: React.FC = () => {
       setError(null);
       
       const response = await apiClient.post('/api/ml/predict/inventory', inventoryFeatures);
-      setPredictionResult(response.data.prediction);
+      setPredictionResult((response as any).data.prediction);
     } catch (err: any) {
       setError(err.response?.data?.error || '재고 예측에 실패했습니다.');
       console.error('Inventory prediction error:', err);

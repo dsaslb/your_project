@@ -2,7 +2,7 @@
 'use client';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
-import { Dialog } from '@headlessui/react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import useUserStore from '@/store/useUserStore';
 import { toast } from 'react-hot-toast';
@@ -107,10 +107,11 @@ export default function BrandSalesPage() {
           <div className="mb-4 text-red-500">권한이 없습니다. 관리자에게 문의하세요.</div>
         )}
         {/* 매출 등록 모달 */}
-        <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} className="fixed z-50 inset-0 flex items-center justify-center">
-          <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
-          <div className="relative bg-white rounded p-6 w-full max-w-md mx-auto">
-            <Dialog.Title className="text-lg font-bold mb-2">매출 등록</Dialog.Title>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>매출 등록</DialogTitle>
+            </DialogHeader>
             <form onSubmit={handleAddSale} className="space-y-4">
               <div>
                 <label htmlFor="saleAmount" className="block text-sm font-medium">금액(원)</label>
@@ -145,7 +146,7 @@ export default function BrandSalesPage() {
                 </button>
               </div>
             </form>
-          </div>
+          </DialogContent>
         </Dialog>
         {loading ? (
           <div>로딩 중...</div>

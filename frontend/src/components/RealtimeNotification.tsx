@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { useToast } from '../store/toastStore';
+import { toast } from 'sonner';
 
 interface Notification {
   id: string;
@@ -14,36 +14,43 @@ interface Notification {
 export const RealtimeNotification: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const { showToast } = useToast();
   
-  const { isConnected, lastMessage } = useWebSocket({
-    url: 'ws://localhost:5000',
-    user_id: 'current_user',
-    user_type: 'employee'
+  const { status, notifications: wsNotifications } = useWebSocket({
+    userId: 'current_user',
+    autoConnect: true
   });
 
   useEffect(() => {
-    if (lastMessage && lastMessage.type === 'notification') {
-      const newNotification: Notification = {
-        id: Date.now().toString(),
-        type: lastMessage.notification.type || 'info',
-        title: lastMessage.notification.title || '새 알림',
-        message: lastMessage.notification.message,
-        timestamp: lastMessage.timestamp,
-        read: false
-      };
-
-      setNotifications(prev => [newNotification, ...prev]);
-      setUnreadCount(prev => prev + 1);
+    // WebSocket 알림 처리 (실제로는 WebSocket 메시지로 처리)
+    // 현재는 더미 데이터로 시뮬레이션
+    const interval = setInterval(() => {
+      const shouldShowNotification = Math.random() > 0.8; // 20% 확률로 알림 생성
       
-      // Toast 알림 표시
-      showToast({
-        type: newNotification.type,
-        title: newNotification.title,
-        message: newNotification.message
-      });
-    }
-  }, [lastMessage, showToast]);
+      if (shouldShowNotification) {
+        const types: ('info' | 'success' | 'warning' | 'error')[] = ['info', 'success', 'warning', 'error'];
+        const randomType = types[Math.floor(Math.random() * types.length)];
+        
+        const newNotification: Notification = {
+          id: Date.now().toString(),
+          type: randomType,
+          title: '새 알림',
+          message: `새로운 ${randomType} 알림이 도착했습니다.`,
+          timestamp: new Date().toISOString(),
+          read: false
+        };
+
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        
+        // Toast 알림 표시
+        toast[randomType](newNotification.message, {
+          description: newNotification.title
+        });
+      }
+    }, 10000); // 10초마다 체크
+
+    return () => clearInterval(interval);
+  }, []);
 
   const markAsRead = (id: string) => {
     setNotifications(prev => 
@@ -79,7 +86,7 @@ export const RealtimeNotification: React.FC = () => {
       </button>
 
       {/* 연결 상태 표시 */}
-      <div className={`absolute top-0 right-0 w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+      <div className={`absolute top-0 right-0 w-2 h-2 rounded-full ${status.connected ? 'bg-green-500' : 'bg-red-500'}`} />
 
       {/* 알림 패널 */}
       <div id="notification-panel" className="hidden absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
@@ -109,20 +116,29 @@ export const RealtimeNotification: React.FC = () => {
                 }`}
                 onClick={() => markAsRead(notification.id)}
               >
-                <div className="flex items-start">
-                  <div className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                    notification.type === 'success' ? 'bg-green-500' :
-                    notification.type === 'warning' ? 'bg-yellow-500' :
-                    notification.type === 'error' ? 'bg-red-500' :
-                    'bg-blue-500'
-                  }`} />
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{notification.title}</h4>
-                    <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                    <div className="flex items-center space-x-2">
+                      <span className={`inline-block w-2 h-2 rounded-full ${
+                        notification.type === 'error' ? 'bg-red-500' :
+                        notification.type === 'warning' ? 'bg-yellow-500' :
+                        notification.type === 'success' ? 'bg-green-500' :
+                        'bg-blue-500'
+                      }`} />
+                      <h4 className="text-sm font-medium text-gray-900">
+                        {notification.title}
+                      </h4>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {notification.message}
+                    </p>
                     <p className="text-xs text-gray-400 mt-2">
                       {new Date(notification.timestamp).toLocaleString()}
                     </p>
                   </div>
+                  {!notification.read && (
+                    <div className="w-2 h-2 bg-blue-500 rounded-full ml-2" />
+                  )}
                 </div>
               </div>
             ))

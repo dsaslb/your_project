@@ -1,6 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useStores, useEmployees, useOrders, useInventory } from '@/hooks/useDashboard';
+import DashboardLayout, { StatCard } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,77 +14,88 @@ import {
   Activity,
   Package,
   Calendar,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 
 export default function StoreDashboard() {
+  const [selectedStoreId, setSelectedStoreId] = useState<number | undefined>(1); // 기본값 설정
+
+  // API 훅 사용
+  const { stores, loading: storesLoading, error: storesError, refetch: refetchStores } = useStores(1, 10);
+  const { employees, loading: employeesLoading, error: employeesError, refetch: refetchEmployees } = useEmployees(1, 10, '', '', selectedStoreId);
+  const { orders, loading: ordersLoading, error: ordersError, refetch: refetchOrders } = useOrders(1, 10, '', '', selectedStoreId);
+  const { inventory, loading: inventoryLoading, error: inventoryError, refetch: refetchInventory } = useInventory(1, 10, '', '', selectedStoreId);
+
+  const loading = storesLoading || employeesLoading || ordersLoading || inventoryLoading;
+  const error = storesError || employeesError || ordersError || inventoryError;
+
+  // 통계 데이터
+  const stats = [
+    {
+      label: '총 매출',
+      value: `₩${orders.reduce((total, order) => total + (order.total_amount || 0), 0).toLocaleString()}`,
+      icon: <DollarSign className="w-4 h-4" />,
+      color: 'text-emerald-400',
+      trend: '+12.5%',
+      trendValue: '지난달 대비'
+    },
+    {
+      label: '직원 수',
+      value: `${employees.length}명`,
+      icon: <Users className="w-4 h-4" />,
+      color: 'text-purple-400',
+      trend: '+2명',
+      trendValue: '이번 주'
+    },
+    {
+      label: '주문 수',
+      value: `${orders.length}건`,
+      icon: <Package className="w-4 h-4" />,
+      color: 'text-blue-400',
+      trend: '오늘 기준',
+      trendValue: ''
+    },
+    {
+      label: '재고 알림',
+      value: `${inventory.filter(item => (item.quantity || 0) < (item.min_quantity || 0)).length}건`,
+      icon: <AlertTriangle className="w-4 h-4" />,
+      color: 'text-orange-400',
+      trend: '발주 필요',
+      trendValue: ''
+    }
+  ];
+
+  const actions = [
+    {
+      label: '새로고침',
+      icon: <RefreshCw className="w-4 h-4" />,
+      onClick: () => {
+        refetchStores();
+        refetchEmployees();
+        refetchOrders();
+        refetchInventory();
+      }
+    }
+  ];
+
+  const handleRefresh = () => {
+    refetchStores();
+    refetchEmployees();
+    refetchOrders();
+    refetchInventory();
+  };
+
   return (
-    <div className="p-6 space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-600 bg-clip-text text-transparent">
-            매장 대시보드
-          </h1>
-          <p className="text-slate-400 mt-2">매장 운영 현황 및 관리</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
-            운영 중
-          </Badge>
-          <Button variant="outline" className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10">
-            새로고침
-          </Button>
-        </div>
-      </div>
-
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-black/50 border-cyan-500/20 backdrop-blur-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-300">총 매출</CardTitle>
-            <DollarSign className="h-4 w-4 text-emerald-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">₩12,345,678</div>
-            <p className="text-xs text-emerald-400">+12.5% 지난달 대비</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-black/50 border-purple-500/20 backdrop-blur-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-300">직원 수</CardTitle>
-            <Users className="h-4 w-4 text-purple-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">24명</div>
-            <p className="text-xs text-purple-400">+2명 이번 주</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-black/50 border-blue-500/20 backdrop-blur-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-300">주문 수</CardTitle>
-            <Package className="h-4 w-4 text-blue-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">156건</div>
-            <p className="text-xs text-blue-400">오늘 기준</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-black/50 border-orange-500/20 backdrop-blur-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-300">재고 알림</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">3건</div>
-            <p className="text-xs text-orange-400">발주 필요</p>
-          </CardContent>
-        </Card>
-      </div>
-
+    <DashboardLayout
+      title="매장 대시보드"
+      subtitle="매장 운영 현황 및 관리"
+      icon={<Store className="w-6 h-6" />}
+      stats={stats}
+      actions={actions}
+      onRefresh={handleRefresh}
+      loading={loading}
+    >
       {/* 메인 콘텐츠 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 실시간 활동 */}
@@ -94,99 +107,86 @@ export default function StoreDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-slate-300">새 주문 접수</span>
+            {orders.slice(0, 5).map((order, index) => (
+              <div key={order.id || index} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-slate-300">주문 #{order.id}</span>
+                </div>
+                <span className="text-sm text-slate-400">₩{order.total_amount?.toLocaleString()}</span>
               </div>
-              <span className="text-xs text-slate-400">2분 전</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-slate-300">직원 출근</span>
-              </div>
-              <span className="text-xs text-slate-400">5분 전</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-slate-300">재고 부족 알림</span>
-              </div>
-              <span className="text-xs text-slate-400">10분 전</span>
-            </div>
+            ))}
           </CardContent>
         </Card>
 
-        {/* 근무표 */}
+        {/* 직원 현황 */}
         <Card className="bg-black/50 border-purple-500/20 backdrop-blur-xl">
           <CardHeader>
             <CardTitle className="text-purple-400 flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              오늘 근무표
+              <Users className="h-5 w-5" />
+              직원 현황
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-white">김철수</p>
-                <p className="text-xs text-slate-400">매니저</p>
+          <CardContent className="space-y-4">
+            {employees.slice(0, 5).map((employee, index) => (
+              <div key={employee.id || index} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-white">
+                      {employee.name?.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-300">{employee.name}</p>
+                    <p className="text-xs text-slate-400">{employee.position}</p>
+                  </div>
+                </div>
+                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
+                  근무 중
+                </Badge>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-white">09:00 - 18:00</p>
-                <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">출근</Badge>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-white">이영희</p>
-                <p className="text-xs text-slate-400">직원</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-white">10:00 - 19:00</p>
-                <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">출근</Badge>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-white">박민수</p>
-                <p className="text-xs text-slate-400">직원</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-white">14:00 - 23:00</p>
-                <Badge className="bg-yellow-500/20 text-yellow-400 text-xs">대기</Badge>
-              </div>
-            </div>
+            ))}
           </CardContent>
         </Card>
       </div>
 
-      {/* 빠른 액션 */}
-      <Card className="bg-black/50 border-slate-500/20 backdrop-blur-xl">
+      {/* 재고 현황 */}
+      <Card className="bg-black/50 border-orange-500/20 backdrop-blur-xl">
         <CardHeader>
-          <CardTitle className="text-white">빠른 액션</CardTitle>
+          <CardTitle className="text-orange-400 flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            재고 현황
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4">
-            <Button className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50 hover:bg-emerald-500/30">
-              <Package className="h-4 w-4 mr-2" />
-              주문 관리
-            </Button>
-            <Button className="bg-blue-500/20 text-blue-400 border-blue-500/50 hover:bg-blue-500/30">
-              <Users className="h-4 w-4 mr-2" />
-              직원 관리
-            </Button>
-            <Button className="bg-purple-500/20 text-purple-400 border-purple-500/50 hover:bg-purple-500/30">
-              <Calendar className="h-4 w-4 mr-2" />
-              근무표 관리
-            </Button>
-            <Button className="bg-orange-500/20 text-orange-400 border-orange-500/50 hover:bg-orange-500/30">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              매출 리포트
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {inventory.slice(0, 6).map((item, index) => (
+              <div key={item.id || index} className="p-4 bg-slate-800/50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-slate-300">{item.name}</h4>
+                  <Badge 
+                    className={
+                      (item.quantity || 0) < (item.min_quantity || 0) 
+                        ? 'bg-red-500/20 text-red-400 border-red-500/50'
+                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                    }
+                  >
+                    {item.quantity}/{item.max_quantity}
+                  </Badge>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-cyan-400 to-purple-600 h-2 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${Math.min(100, ((item.quantity || 0) / (item.max_quantity || 1)) * 100)}%` 
+                    }}
+                  ></div>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
-    </div>
+    </DashboardLayout>
   );
 } 

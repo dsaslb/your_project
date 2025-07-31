@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Wifi, WifiOff, Server } from "lucide-react";
-import apiClient from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
 
 interface BackendStatusIndicatorProps {
   children?: React.ReactNode;

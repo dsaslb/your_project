@@ -22,29 +22,8 @@ export const RealtimeChat: React.FC<RealtimeChatProps> = ({ room, user_id }) => 
   
   const { 
     isConnected, 
-    lastMessage, 
-    joinRoom, 
-    leaveRoom, 
     sendChatMessage 
   } = useChatWebSocket(user_id, room);
-
-  useEffect(() => {
-    joinRoom();
-    return () => leaveRoom();
-  }, [joinRoom, leaveRoom]);
-
-  useEffect(() => {
-    if (lastMessage && lastMessage.type === 'new_message') {
-      const newMessage: ChatMessage = {
-        id: Date.now().toString(),
-        sender: lastMessage.sender || 'Unknown',
-        message: lastMessage.message,
-        timestamp: lastMessage.timestamp,
-        type: 'message'
-      };
-      setMessages(prev => [...prev, newMessage]);
-    }
-  }, [lastMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,6 +33,16 @@ export const RealtimeChat: React.FC<RealtimeChatProps> = ({ room, user_id }) => 
     e.preventDefault();
     if (inputMessage.trim() && isConnected) {
       sendChatMessage(inputMessage.trim());
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: user_id,
+          message: inputMessage.trim(),
+          timestamp: new Date().toISOString(),
+          type: 'message'
+        }
+      ]);
       setInputMessage('');
     }
   };

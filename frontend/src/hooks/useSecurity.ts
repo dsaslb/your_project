@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
 
 // 사용자 입력 검증
 export const useValidateUserInput = () => {
