@@ -1,0 +1,464 @@
+name: Frontend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci-cd.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci-cd.yml'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  NEXT_VERSION: '15'
+
+jobs:
+  # 프론트엔드 코드 품질 검사
+  frontend-code-quality:
+    name: Frontend Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Run npm audit (보안 검사)
+      working-directory: frontend
+      run: npm audit --audit-level=moderate || true
+      
+    - name: Run Prettier check (코드 포맷팅 검사)
+      working-directory: frontend
+      run: npm run format:check
+      
+    - name: Run ESLint (코드 품질 검사)
+      working-directory: frontend
+      run: npm run lint
+      
+    - name: Run TypeScript type check
+      working-directory: frontend
+      run: npm run type-check
+      
+    - name: Upload lint results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: frontend-lint-results
+        path: frontend/.eslintcache
+        retention-days: 7
+
+  # 프론트엔드 단위 테스트
+  frontend-unit-tests:
+    name: Frontend Unit Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: ['16', '18']
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Run unit tests with coverage
+      working-directory: frontend
+      run: |
+        npm run test:coverage -- --watchAll=false --ci --coverageReporters=text --coverageReporters=lcov --coverageReporters=html
+        
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-coverage-${{ matrix.node-version }}
+        path: frontend/coverage/
+        retention-days: 30
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: frontend-test-results-${{ matrix.node-version }}
+        path: frontend/test-results/
+        retention-days: 7
+
+  # 프론트엔드 E2E 테스트
+  frontend-e2e-tests:
+    name: Frontend E2E Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-unit-tests]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Install Playwright browsers
+      working-directory: frontend
+      run: npx playwright install --with-deps
+      
+    - name: Setup Next.js cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          frontend/.next/cache
+        key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nextjs-
+          
+    - name: Build frontend for testing
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Start frontend server
+      working-directory: frontend
+      run: |
+        npm run start &
+        sleep 15
+        
+    - name: Run E2E tests
+      working-directory: frontend
+      run: npm run test:e2e:ci
+      
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: frontend-e2e-results
+        path: frontend/playwright-report/
+        retention-days: 7
+
+  # 프론트엔드 성능 테스트
+  frontend-performance:
+    name: Frontend Performance Test
+    runs-on: ubuntu-latest
+    needs: [frontend-unit-tests]
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Setup Next.js cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          frontend/.next/cache
+        key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nextjs-
+          
+    - name: Build frontend
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Analyze bundle size
+      working-directory: frontend
+      run: |
+        echo "# Frontend Performance Report" > performance-report.md
+        echo "" >> performance-report.md
+        echo "## Bundle Size Analysis" >> performance-report.md
+        echo "" >> performance-report.md
+        echo "### JavaScript Chunks:" >> performance-report.md
+        du -sh .next/static/chunks/*.js | sort -hr >> performance-report.md
+        echo "" >> performance-report.md
+        echo "### CSS Files:" >> performance-report.md
+        du -sh .next/static/css/*.css | sort -hr >> performance-report.md
+        echo "" >> performance-report.md
+        echo "### Total Bundle Size:" >> performance-report.md
+        du -sh .next/static/chunks/ >> performance-report.md
+        du -sh .next/static/css/ >> performance-report.md
+        echo "" >> performance-report.md
+        echo "## Build Time:" >> performance-report.md
+        echo "Build completed at: $(date)" >> performance-report.md
+        
+    - name: Run Lighthouse CI
+      working-directory: frontend
+      run: |
+        npm install -g @lhci/cli
+        lhci autorun --upload.target=temporary-public-storage || true
+        
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-performance-report
+        path: frontend/performance-report.md
+        retention-days: 30
+
+  # 프론트엔드 보안 스캔
+  frontend-security-scan:
+    name: Frontend Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Run npm audit
+      working-directory: frontend
+      run: npm audit --audit-level=moderate --json > npm-audit-report.json || true
+      
+    - name: Run Snyk security scan
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+      continue-on-error: true
+      
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-security-reports
+        path: |
+          frontend/npm-audit-report.json
+          snyk-report.json
+        retention-days: 30
+
+  # 프론트엔드 빌드 및 패키징
+  frontend-build:
+    name: Frontend Build & Package
+    runs-on: ubuntu-latest
+    needs: [frontend-code-quality, frontend-unit-tests, frontend-e2e-tests, frontend-security-scan]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Setup Next.js cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          frontend/.next/cache
+        key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nextjs-
+          
+    - name: Build frontend
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Analyze bundle size
+      working-directory: frontend
+      run: |
+        npm install -g webpack-bundle-analyzer
+        npx webpack-bundle-analyzer .next/static/chunks/*.js --mode static --report bundle-analysis.html || true
+        
+    - name: Create deployment package
+      run: |
+        mkdir -p deployment/frontend
+        cp -r frontend/.next deployment/frontend/
+        cp -r frontend/public deployment/frontend/
+        cp frontend/package.json deployment/frontend/
+        cp frontend/next.config.js deployment/frontend/
+        cd deployment
+        tar -czf ../frontend-deployment.tar.gz .
+        
+    - name: Create Docker image
+      run: |
+        cd frontend
+        docker build -t your-program-frontend:${{ github.sha }} .
+        docker save your-program-frontend:${{ github.sha }} | gzip > ../frontend-docker-image.tar.gz
+        
+    - name: Upload deployment artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-deployment
+        path: |
+          frontend-deployment.tar.gz
+          frontend-docker-image.tar.gz
+          frontend/bundle-analysis.html
+        retention-days: 90
+
+  # 프론트엔드 배포 (개발 환경)
+  frontend-deploy-dev:
+    name: Deploy Frontend to Development
+    runs-on: ubuntu-latest
+    needs: [frontend-build]
+    if: github.ref == 'refs/heads/develop'
+    environment: development
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download deployment package
+      uses: actions/download-artifact@v3
+      with:
+        name: frontend-deployment
+        
+    - name: Deploy to development server
+      run: |
+        echo "Deploying frontend to development environment..."
+        # 실제 배포 스크립트 (예: Vercel, Netlify, 서버 배포)
+        # vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+        # 또는 서버 배포 스크립트
+        
+    - name: Run health check
+      run: |
+        echo "Running frontend health check..."
+        sleep 30
+        curl -f http://dev-frontend:3000 || exit 1
+        
+    - name: Run smoke tests
+      run: |
+        echo "Running frontend smoke tests..."
+        # 기본 페이지 로드 테스트
+        curl -f http://dev-frontend:3000/api/health || exit 1
+
+  # 프론트엔드 배포 (프로덕션 환경)
+  frontend-deploy-prod:
+    name: Deploy Frontend to Production
+    runs-on: ubuntu-latest
+    needs: [frontend-build]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download deployment package
+      uses: actions/download-artifact@v3
+      with:
+        name: frontend-deployment
+        
+    - name: Deploy to production server
+      run: |
+        echo "Deploying frontend to production environment..."
+        # 실제 배포 스크립트
+        
+    - name: Run health check
+      run: |
+        echo "Running production health check..."
+        sleep 30
+        curl -f https://prod-frontend || exit 1
+        
+    - name: Run production smoke tests
+      run: |
+        echo "Running production smoke tests..."
+        curl -f https://prod-frontend/api/health || exit 1
+        
+    - name: Notify deployment success
+      run: |
+        echo "Frontend production deployment completed successfully!"
+        # 슬랙, 이메일 등으로 알림 전송
+
+  # 프론트엔드 모니터링 및 알림
+  frontend-monitoring:
+    name: Frontend Monitoring & Notifications
+    runs-on: ubuntu-latest
+    needs: [frontend-code-quality, frontend-unit-tests, frontend-e2e-tests, frontend-security-scan, frontend-build]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Generate frontend test summary
+      run: |
+        echo "## Frontend Test Summary" > frontend-test-summary.md
+        echo "" >> frontend-test-summary.md
+        echo "### Test Results:" >> frontend-test-summary.md
+        echo "- Code Quality: ${{ needs.frontend-code-quality.result }}" >> frontend-test-summary.md
+        echo "- Unit Tests: ${{ needs.frontend-unit-tests.result }}" >> frontend-test-summary.md
+        echo "- E2E Tests: ${{ needs.frontend-e2e-tests.result }}" >> frontend-test-summary.md
+        echo "- Security Scan: ${{ needs.frontend-security-scan.result }}" >> frontend-test-summary.md
+        echo "- Build: ${{ needs.frontend-build.result }}" >> frontend-test-summary.md
+        echo "" >> frontend-test-summary.md
+        echo "### Coverage:" >> frontend-test-summary.md
+        echo "- Unit Test Coverage: [View Coverage Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> frontend-test-summary.md
+        echo "" >> frontend-test-summary.md
+        echo "### Performance:" >> frontend-test-summary.md
+        echo "- Performance Report: [View Performance Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> frontend-test-summary.md
+        echo "" >> frontend-test-summary.md
+        echo "### Bundle Analysis:" >> frontend-test-summary.md
+        echo "- Bundle Analysis: [View Bundle Analysis](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> frontend-test-summary.md
+        
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('frontend-test-summary.md', 'utf8');
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+          
+    - name: Upload test summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-test-summary
+        path: frontend-test-summary.md
+        retention-days: 30 
