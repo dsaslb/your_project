@@ -335,7 +335,7 @@
         // 매장 목록 로드
         function loadStores(filters = {}) {
             const queryParams = new URLSearchParams(filters).toString();
-            fetch(`/api/admin/stores?${queryParams}`)
+            fetch(`/api/admin/branches?${queryParams}`)
                 .then(response => response.json())
                 .then(data => {
                     const tableBody = document.getElementById('stores-table-body');
@@ -438,7 +438,7 @@
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
             
-            fetch('/api/admin/stores', {
+            fetch('/api/admin/branches', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

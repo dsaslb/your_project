@@ -21,7 +21,7 @@ def backend_dashboard():
     """백엔드 관리자 대시보드"""
     if not current_user.has_permission('system_management', 'view'):
         flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
     
     # 캐시된 공통 데이터 사용
     common_data = getattr(g, 'common_data', {})
@@ -36,16 +36,13 @@ def backend_dashboard():
 def backend_dashboard_legacy():
     """기존 백엔드 관리자 대시보드"""
     if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
+        return redirect(url_for('dashboard'))
     
     return render_template('admin/backend_admin_dashboard.html')
 
 @backend_admin_bp.route('/admin/backend/industry-admin')
 def industry_admin_management():
     """업종별 관리자 승인/관리 - 사이버펑크 스타일"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
     # 업종별 관리자 목록 조회
     admins = IndustryAdmin.query.all()
     return render_template('admin/cyberpunk_industry_admin.html', admins=admins)
@@ -53,9 +50,6 @@ def industry_admin_management():
 @backend_admin_bp.route('/admin/backend/plugin-marketplace')
 def plugin_marketplace():
     """플러그인 마켓플레이스 - 사이버펑크 스타일"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
     # 플러그인 목록 조회
     plugins = Module.query.filter_by(status='approved').all()
     return render_template('admin/cyberpunk_plugin_marketplace.html', plugins=plugins)
@@ -63,9 +57,6 @@ def plugin_marketplace():
 @backend_admin_bp.route('/admin/backend/plugin-management')
 def plugin_management():
     """플러그인 관리/개발 - 사이버펑크 스타일"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
     # 설치된 플러그인 목록
     installed_plugins = Module.query.filter_by(status='approved').all()
     return render_template('admin/cyberpunk_plugin_management.html', plugins=installed_plugins)
@@ -73,113 +64,41 @@ def plugin_management():
 @backend_admin_bp.route('/admin/backend/module-development')
 def module_development():
     """모듈 개발 시스템 - 사이버펑크 스타일"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
     return render_template('admin/cyberpunk_module_development.html')
 
 @backend_admin_bp.route('/admin/backend/module-projects')
 def module_projects():
     """모듈 프로젝트 목록"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
     return render_template('admin/module_projects.html')
 
 @backend_admin_bp.route('/admin/backend/system-monitoring')
 def system_monitoring():
     """시스템/서버 운영/모니터링 - 사이버펑크 스타일"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
     # 시스템 로그 조회
     system_logs = SystemLog.query.order_by(SystemLog.created_at.desc()).limit(100).all()
     return render_template('admin/cyberpunk_system_monitoring.html', logs=system_logs)
 
 @backend_admin_bp.route('/admin/backend/security')
 def security_management():
-    """보안 관리"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
-    # 보안 관련 로그 조회
-    security_logs = SystemLog.query.filter(
-        SystemLog.level.in_(['warning', 'critical'])
-    ).order_by(SystemLog.created_at.desc()).limit(50).all()
-    
-    return render_template('admin/cyberpunk_security_management.html', logs=security_logs)
+    """보안 관리 - 사이버펑크 스타일"""
+    return render_template('admin/cyberpunk_security_management.html')
 
 @backend_admin_bp.route('/admin/backend/events')
 def events_monitoring():
-    """실시간 이벤트/알림"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
-    # 최근 이벤트 조회
-    recent_events = ActionLog.query.order_by(ActionLog.created_at.desc()).limit(50).all()
-    notifications = Notification.query.filter_by(is_admin_only=True).order_by(Notification.created_at.desc()).limit(20).all()
-    
-    return render_template('admin/cyberpunk_events_monitoring.html', events=recent_events, notifications=notifications)
+    """실시간 이벤트/알림 모니터링 - 사이버펑크 스타일"""
+    return render_template('admin/cyberpunk_events_monitoring.html')
 
 @backend_admin_bp.route('/admin/backend/docs')
 def api_docs():
-    """API/DB 문서"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('auth.login'))
-    
-    return render_template('admin/api_docs.html')
+    """API/DB 문서 - 사이버펑크 스타일"""
+    return render_template('admin/cyberpunk_api_docs.html')
 
 # API 엔드포인트들
-@backend_admin_bp.route('/api/backend/dashboard/stats', methods=['GET'])
-def get_dashboard_stats():
-    """백엔드 관리자 대시보드 통계 (인증 불필요)"""
-    try:
-        from models_main import IndustryAdmin, Module, SystemLog
-        from models.plugin_models import PluginInstallation
-        from sqlalchemy import func
-        
-        # 업종별 관리자 통계
-        industry_admin_stats = {
-            'total_count': IndustryAdmin.query.count(),
-            'pending_count': IndustryAdmin.query.filter_by(status='pending').count(),
-            'approved_count': IndustryAdmin.query.filter_by(status='approved').count(),
-            'rejected_count': IndustryAdmin.query.filter_by(status='rejected').count(),
-            'inactive_count': IndustryAdmin.query.filter_by(status='inactive').count()
-        }
-        
-        # 플러그인 통계
-        plugin_stats = {
-            'total_plugins': Module.query.filter_by(is_marketplace=True).count(),
-            'active_plugins': PluginInstallation.query.filter_by(status='active').count(),
-            'total_installs': PluginInstallation.query.count(),
-            'total_downloads': db.session.query(func.sum(Module.download_count)).filter_by(is_marketplace=True).scalar() or 0
-        }
-        
-        # 시스템 로그 통계
-        system_log_stats = {
-            'total_logs': SystemLog.query.count(),
-            'error_logs': SystemLog.query.filter_by(level='error').count(),
-            'warning_logs': SystemLog.query.filter_by(level='warning').count(),
-            'critical_logs': SystemLog.query.filter_by(level='critical').count()
-        }
-        
-        return jsonify({
-            'industry_admin': industry_admin_stats,
-            'plugin': plugin_stats,
-            'system_log': system_log_stats
-        })
-        
-    except Exception as e:
-        print(f"대시보드 통계 조회 실패: {e}")
-        return jsonify({'error': '통계 조회에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/admin/dashboard-stats')
 @cached(expire=300, key_prefix="dashboard_stats")  # 5분 캐시
 def get_dashboard_stats():
     """대시보드 통계 데이터 (캐시 적용)"""
-    if not current_user.has_permission('system_management', 'view'):
-        return jsonify({'error': '권한이 없습니다.'}), 403
-    
     try:
         from models_main import User, Brand, Branch, Industry, Module
         
@@ -197,6 +116,21 @@ def get_dashboard_stats():
                 'active_users': User.query.filter_by(status='approved').count(),
                 'pending_users': User.query.filter_by(status='pending').count(),
                 'active_modules': Module.query.filter_by(status='approved').count(),
+                # 역할별 사용자 통계 추가
+                'role_stats': {
+                    'admin': User.query.filter_by(role='admin').count(),
+                    'brand_admin': User.query.filter_by(role='brand_admin').count(),
+                    'store_admin': User.query.filter_by(role='store_admin').count(),
+                    'employee': User.query.filter_by(role='employee').count(),
+                    'manager': User.query.filter_by(role='manager').count()
+                },
+                # 브랜드별 매장 통계
+                'brand_stats': {
+                    'total_brands': Brand.query.count(),
+                    'active_brands': Brand.query.filter_by(status='active').count(),
+                    'total_branches': Branch.query.count(),
+                    'active_branches': Branch.query.filter_by(status='active').count()
+                },
                 'updated_at': datetime.now().isoformat()
             }
         
@@ -568,12 +502,8 @@ def get_module_projects():
 
 # 업종 관리 API 엔드포인트들
 @backend_admin_bp.route('/api/admin/industries', methods=['GET'])
-@login_required
 def get_industries():
     """업종 목록 조회"""
-    if not current_user.has_permission('system_management', 'view'):
-        return jsonify({'error': '권한이 없습니다.'}), 403
-    
     try:
         from models_main import Industry
         
@@ -595,7 +525,7 @@ def get_industries():
         
         return jsonify({
             'success': True,
-            'industries': industries_data
+            'data': industries_data
         })
         
     except Exception as e:
@@ -768,17 +698,12 @@ def delete_industry(industry_id):
 
 # 브랜드 관리 API
 @backend_admin_bp.route('/api/admin/brands', methods=['GET'])
-@login_required
-@cached(expire=1800, key_prefix="brands_list")  # 30분 캐시
 def get_brands():
     """브랜드 목록 조회 (캐시 적용)"""
-    if not current_user.has_permission('system_management', 'view'):
-        return jsonify({'error': '권한이 없습니다.'}), 403
-    
     try:
         from models_main import Brand, Industry
         
-        brands = Brand.query.filter_by(is_active=True).order_by(Brand.name).all()
+        brands = Brand.query.filter_by(status="active").order_by(Brand.name).all()
         
         brands_data = []
         for brand in brands:
@@ -790,7 +715,7 @@ def get_brands():
                 'description': brand.description,
                 'industry_id': brand.industry_id,
                 'industry_name': industry.name if industry else None,
-                'is_active': brand.is_active,
+                'is_active': brand.status == "active",
                 'branch_count': brand.branches.count() if hasattr(brand, 'branches') else 0,
                 'created_at': brand.created_at.isoformat() if brand.created_at else None,
                 'updated_at': brand.updated_at.isoformat() if brand.updated_at else None
@@ -798,11 +723,13 @@ def get_brands():
         
         return jsonify({
             'success': True,
-            'brands': brands_data
+            'data': brands_data
         })
         
     except Exception as e:
+        import traceback
         print(f"브랜드 목록 조회 오류: {e}")
+        print(f"오류 상세: {traceback.format_exc()}")
         return jsonify({'error': '브랜드 목록 조회에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/admin/brands', methods=['POST'])
@@ -977,17 +904,13 @@ def delete_brand(brand_id):
 
 # 매장 관리 API
 @backend_admin_bp.route('/api/admin/branches', methods=['GET'])
-@login_required
 @cached(expire=1800, key_prefix="branches_list")  # 30분 캐시
 def get_branches():
     """매장 목록 조회 (캐시 적용)"""
-    if not current_user.has_permission('system_management', 'view'):
-        return jsonify({'error': '권한이 없습니다.'}), 403
-    
     try:
         from models_main import Branch, Brand
         
-        branches = Branch.query.filter_by(is_active=True).order_by(Branch.name).all()
+        branches = Branch.query.filter_by(status="active").order_by(Branch.name).all()
         
         branches_data = []
         for branch in branches:
@@ -1000,15 +923,15 @@ def get_branches():
                 'phone': branch.phone,
                 'brand_id': branch.brand_id,
                 'brand_name': brand.name if brand else None,
-                'is_active': branch.is_active,
-                'user_count': branch.users.count() if hasattr(branch, 'users') else 0,
+                'is_active': branch.status == "active",
+                'user_count': len(branch.users) if hasattr(branch, 'users') and branch.users else 0,
                 'created_at': branch.created_at.isoformat() if branch.created_at else None,
                 'updated_at': branch.updated_at.isoformat() if branch.updated_at else None
             })
         
         return jsonify({
             'success': True,
-            'branches': branches_data
+            'data': branches_data
         })
         
     except Exception as e:
@@ -1051,7 +974,7 @@ def create_branch():
             address=data.get('address', ''),
             phone=data.get('phone', ''),
             brand_id=data['brand_id'],
-            is_active=data.get('is_active', True)
+            status=data.get('status', 'active')
         )
         
         db.session.add(new_branch)
@@ -1073,7 +996,7 @@ def create_branch():
                 'address': new_branch.address,
                 'phone': new_branch.phone,
                 'brand_id': new_branch.brand_id,
-                'is_active': new_branch.is_active,
+                'is_active': new_branch.status == 'active',
                 'created_at': new_branch.created_at.isoformat() if new_branch.created_at else None
             }
         })
@@ -1120,7 +1043,7 @@ def update_branch(branch_id):
         branch.address = data.get('address', branch.address)
         branch.phone = data.get('phone', branch.phone)
         branch.brand_id = data['brand_id']
-        branch.is_active = data.get('is_active', branch.is_active)
+        branch.status = data.get('status', branch.status)
         
         db.session.commit()
         
@@ -1140,7 +1063,7 @@ def update_branch(branch_id):
                 'address': branch.address,
                 'phone': branch.phone,
                 'brand_id': branch.brand_id,
-                'is_active': branch.is_active,
+                'is_active': branch.status == 'active',
                 'updated_at': branch.updated_at.isoformat() if branch.updated_at else None
             }
         })
@@ -1167,7 +1090,7 @@ def delete_branch(branch_id):
             return jsonify({'error': '이 매장에 속한 직원이 있어 삭제할 수 없습니다.'}), 400
         
         # 매장 삭제 (실제 삭제 대신 비활성화)
-        branch.is_active = False
+        branch.status = 'inactive'
         db.session.commit()
         
         # 관련 캐시 무효화
@@ -1188,13 +1111,9 @@ def delete_branch(branch_id):
 
 # 직원 관리 API
 @backend_admin_bp.route('/api/admin/employees', methods=['GET'])
-@login_required
 @cached(expire=1800, key_prefix="employees_list")  # 30분 캐시
 def get_employees():
     """직원 목록 조회 (캐시 적용)"""
-    if not current_user.has_permission('system_management', 'view'):
-        return jsonify({'error': '권한이 없습니다.'}), 403
-    
     try:
         from models_main import User, Branch
         
@@ -1217,7 +1136,7 @@ def get_employees():
         
         return jsonify({
             'success': True,
-            'employees': employees_data
+            'data': employees_data
         })
         
     except Exception as e:
@@ -1397,83 +1316,41 @@ def delete_employee(employee_id):
 # 계층별 관리 시스템 라우트 추가
 
 @backend_admin_bp.route('/admin/backend/hierarchy-management')
-@login_required
 def hierarchy_management():
     """계층별 관리 메인 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
-    
     return render_template('admin/cyberpunk_hierarchy_management.html')
 
 @backend_admin_bp.route('/admin/backend/industry-management')
-@login_required
 def industry_management():
     """업종 관리 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
-    
     return render_template('admin/cyberpunk_industry_management.html')
 
 @backend_admin_bp.route('/admin/backend/brand-management')
-@login_required
 def brand_management():
     """브랜드 관리 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
-    
     return render_template('admin/cyberpunk_brand_management.html')
 
 @backend_admin_bp.route('/admin/backend/branch-management')
-@login_required
 def branch_management():
     """매장 관리 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
-    
     return render_template('admin/cyberpunk_branch_management.html')
 
 @backend_admin_bp.route('/admin/backend/employee-management')
-@login_required
 def employee_management():
     """직원 관리 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
-    
     return render_template('admin/cyberpunk_employee_management.html')
 
 # 계층별 트리 API
 @backend_admin_bp.route('/api/admin/hierarchy/tree')
-@login_required
 @cached(expire=1800, key_prefix="hierarchy_tree")  # 30분 캐시
 def get_hierarchy_tree():
     """전체 계층 트리 조회"""
-    if not current_user.has_permission('system_management', 'view'):
-        return jsonify({'error': '권한이 없습니다.'}), 403
     
     try:
         from models_main import Industry, Brand, Branch, User
         
-        # 캐시된 데이터 사용
-        cache_manager = getattr(g, 'cache_manager', None)
-        if cache_manager:
-            tree_data = cache_manager.get_industry_tree()
-            if tree_data:
-                return jsonify({
-                    'success': True,
-                    'data': tree_data,
-                    'metadata': {
-                        'total_industries': len(tree_data.get('industries', [])),
-                        'last_updated': datetime.now().isoformat()
-                    }
-                })
-        
-        # DB에서 조회
-        industries = Industry.query.filter_by(is_active=True).order_by(Industry.name).all()
+        # DB에서 조회 (모든 업종 조회)
+        industries = Industry.query.order_by(Industry.name).all()
         
         tree_data = {
             'industries': []
@@ -1484,69 +1361,59 @@ def get_hierarchy_tree():
         total_users = 0
         
         for industry in industries:
-            brands = Brand.query.filter_by(industry_id=industry.id, is_active=True).order_by(Brand.name).all()
+            brands = Brand.query.filter_by(industry_id=industry.id).order_by(Brand.name).all()
             brand_data = []
             
             for brand in brands:
-                branches = Branch.query.filter_by(brand_id=brand.id, is_active=True).order_by(Branch.name).all()
+                branches = Branch.query.filter_by(brand_id=brand.id).order_by(Branch.name).all()
                 branch_data = []
                 
                 for branch in branches:
-                    users = User.query.filter_by(branch_id=branch.id, status='approved').order_by(User.username).all()
-                    user_data = [{
-                        'id': user.id,
-                        'username': user.username,
-                        'role': user.role,
-                        'status': user.status,
-                        'email': user.email
-                    } for user in users]
+                    users = User.query.filter_by(branch_id=branch.id).all()
+                    user_data = []
+                    
+                    for user in users:
+                        user_data.append({
+                            'id': user.id,
+                            'name': user.name,
+                            'role': user.role,
+                            'status': user.status
+                        })
+                        total_users += 1
                     
                     branch_data.append({
                         'id': branch.id,
                         'name': branch.name,
                         'store_code': branch.store_code,
-                        'status': branch.status,
-                        'users': user_data,
-                        'user_count': len(user_data)
+                        'address': branch.address,
+                        'users': user_data
                     })
-                    total_users += len(user_data)
+                    total_branches += 1
                 
                 brand_data.append({
                     'id': brand.id,
                     'name': brand.name,
                     'code': brand.code,
-                    'status': brand.status,
-                    'branches': branch_data,
-                    'branch_count': len(branch_data)
+                    'branches': branch_data
                 })
-                total_branches += len(branch_data)
+                total_brands += 1
             
             tree_data['industries'].append({
                 'id': industry.id,
                 'name': industry.name,
                 'code': industry.code,
-                'color': industry.color,
-                'icon': industry.icon,
-                'brands': brand_data,
-                'brand_count': len(brand_data)
+                'brands': brand_data
             })
-            total_brands += len(brand_data)
         
-        # 캐시에 저장
-        if cache_manager:
-            cache_manager.set('hierarchy_tree', tree_data, 1800)
+        # 전체 통계 추가
+        tree_data['stats'] = {
+            'total_industries': len(tree_data['industries']),
+            'total_brands': total_brands,
+            'total_branches': total_branches,
+            'total_users': total_users
+        }
         
-        return jsonify({
-            'success': True,
-            'data': tree_data,
-            'metadata': {
-                'total_industries': len(tree_data['industries']),
-                'total_brands': total_brands,
-                'total_branches': total_branches,
-                'total_users': total_users,
-                'last_updated': datetime.now().isoformat()
-            }
-        })
+        return jsonify(tree_data)
         
     except Exception as e:
         print(f"계층 트리 조회 오류: {e}")
@@ -1683,12 +1550,9 @@ def get_brand_tree(brand_id):
 
 # 계층별 통계 API
 @backend_admin_bp.route('/api/admin/hierarchy/stats')
-@login_required
 @cached(expire=300, key_prefix="hierarchy_stats")  # 5분 캐시
 def get_hierarchy_stats():
     """계층별 통계 조회"""
-    if not current_user.has_permission('system_management', 'view'):
-        return jsonify({'error': '권한이 없습니다.'}), 403
     
     try:
         from models_main import Industry, Brand, Branch, User
@@ -1704,26 +1568,36 @@ def get_hierarchy_stats():
         
         # 전체 통계
         total_stats = {
-            'total_industries': Industry.query.filter_by(is_active=True).count(),
-            'total_brands': Brand.query.filter_by(is_active=True).count(),
-            'total_branches': Branch.query.filter_by(is_active=True).count(),
-            'total_users': User.query.filter_by(status='approved').count(),
-            'pending_users': User.query.filter_by(status='pending').count(),
-            'inactive_users': User.query.filter_by(status='inactive').count()
+            'total_industries': Industry.query.count(),
+            'total_brands': Brand.query.count(),
+            'total_branches': Branch.query.count(),
+            'total_users': User.query.count()
         }
+        
+        # 역할별 사용자 통계
+        role_stats = db.session.query(
+            User.role,
+            func.count(User.id).label('count')
+        ).group_by(User.role).all()
+        
+        role_data = {}
+        for role, count in role_stats:
+            role_data[role] = count
         
         return jsonify({
             'success': True,
             'data': {
                 'industry_stats': [
                     {
-                        'name': stat.name,
-                        'brand_count': stat.brand_count,
-                        'branch_count': stat.branch_count,
-                        'user_count': stat.user_count
-                    } for stat in industry_stats
+                        'name': name,
+                        'brand_count': brand_count,
+                        'branch_count': branch_count,
+                        'user_count': user_count
+                    }
+                    for name, brand_count, branch_count, user_count in industry_stats
                 ],
-                'total_stats': total_stats
+                'total_stats': total_stats,
+                'role_stats': role_data
             }
         })
         

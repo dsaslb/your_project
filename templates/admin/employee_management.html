@@ -346,7 +346,7 @@
             const storeFilter = document.getElementById('store-filter');
             const employeeStore = document.getElementById('employee-store');
             
-            const url = brandId ? `/api/admin/stores?brand_id=${brandId}` : '/api/admin/stores';
+            const url = brandId ? `/api/admin/branches?brand_id=${brandId}` : '/api/admin/branches';
             
             fetch(url)
                 .then(response => response.json())

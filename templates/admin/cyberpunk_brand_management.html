@@ -3,318 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>브랜드 관리 - 사이버펑크</title>
+    <title>브랜드 관리 - 시스템 관리</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .cyber-font { font-family: 'Orbitron', monospace; }
-        .cyber-text { font-family: 'Rajdhani', sans-serif; }
-        .cyber-bg { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%); }
-        .cyber-orange { color: #ff6b35; }
-        .cyber-orange-glow { color: #ff6b35; text-shadow: 0 0 10px #ff6b35, 0 0 20px #ff6b35; }
-        .cyber-blue { color: #4ecdc4; }
-        .cyber-blue-glow { color: #4ecdc4; text-shadow: 0 0 10px #4ecdc4, 0 0 20px #4ecdc4; }
-        .cyber-red { color: #ff4757; }
-        .cyber-red-glow { color: #ff4757; text-shadow: 0 0 10px #ff4757, 0 0 20px #ff4757; }
-        .cyber-green { color: #2ed573; }
-        .cyber-green-glow { color: #2ed573; text-shadow: 0 0 10px #2ed573, 0 0 20px #2ed573; }
-        .cyber-yellow { color: #ffa502; }
-        .cyber-yellow-glow { color: #ffa502; text-shadow: 0 0 10px #ffa502, 0 0 20px #ffa502; }
-        .cyber-text-dim { color: #a0a0a0; }
-        .cyber-border { border: 1px solid #333; }
-        .cyber-border-orange { border: 1px solid #ff6b35; }
-        .cyber-border-blue { border: 1px solid #4ecdc4; }
-        .cyber-card { background: rgba(26, 26, 46, 0.8); border: 1px solid #333; backdrop-filter: blur(10px); }
-        .cyber-card:hover { border-color: #4ecdc4; box-shadow: 0 0 20px rgba(78, 205, 196, 0.3); }
-        .cyber-button { background: linear-gradient(45deg, #4ecdc4, #44a08d); border: none; color: white; transition: all 0.3s; }
-        .cyber-button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4); }
-        .cyber-input { background: rgba(26, 26, 46, 0.8); border: 1px solid #333; color: #e0e0e0; }
-        .cyber-input:focus { border-color: #4ecdc4; box-shadow: 0 0 10px rgba(78, 205, 196, 0.3); }
-        .cyber-table { background: rgba(26, 26, 46, 0.6); border: 1px solid #333; }
-        .cyber-table th { background: rgba(78, 205, 196, 0.2); border-bottom: 1px solid #4ecdc4; }
-        .cyber-table td { border-bottom: 1px solid #333; }
-        .cyber-table tr:hover { background: rgba(78, 205, 196, 0.1); }
-        .cyber-modal { background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); }
-        .cyber-modal-content { background: rgba(26, 26, 46, 0.95); border: 1px solid #4ecdc4; }
-        .cyber-status-active { color: #2ed573; }
-        .cyber-status-inactive { color: #ff4757; }
-        .cyber-badge { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-        .cyber-badge-brand { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; border: 1px solid #4ecdc4; }
-        .cyber-badge-industry { background: rgba(255, 107, 53, 0.2); color: #ff6b35; border: 1px solid #ff6b35; }
+        .cyberpunk-bg {
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        .neon-border {
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .neon-text {
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.2);
+        }
     </style>
 </head>
-<body class="cyber-bg min-h-screen cyber-text text-gray-300">
-    <!-- 헤더 -->
-    <header class="cyber-card p-4 mb-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="cyber-font text-3xl font-bold cyber-blue-glow">브랜드 관리</h1>
-                <p class="cyber-text-dim">브랜드 정보 생성, 수정, 삭제 관리</p>
+<body class="cyberpunk-bg min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- 헤더 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold neon-text mb-4">
+                <i class="fas fa-trademark mr-3"></i>브랜드 관리
+            </h1>
+            <p class="text-gray-300 text-lg">브랜드 정보 등록 및 관리</p>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-lg p-6 neon-border card-hover">
+                <div class="flex items-center">
+                    <i class="fas fa-trademark text-3xl text-green-400 mr-4"></i>
+                    <div>
+                        <h3 class="text-lg font-semibold">총 브랜드</h3>
+                        <p class="text-2xl font-bold text-green-400" id="total-brands">0</p>
+                    </div>
+                </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <button id="add-brand-btn" class="cyber-button px-4 py-2 rounded flex items-center space-x-2">
-                    <i data-feather="plus" class="w-4 h-4"></i>
-                    <span>새 브랜드 추가</span>
+            <div class="bg-gray-800 rounded-lg p-6 neon-border card-hover">
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle text-3xl text-blue-400 mr-4"></i>
+                    <div>
+                        <h3 class="text-lg font-semibold">활성 브랜드</h3>
+                        <p class="text-2xl font-bold text-blue-400" id="active-brands">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6 neon-border card-hover">
+                <div class="flex items-center">
+                    <i class="fas fa-store text-3xl text-yellow-400 mr-4"></i>
+                    <div>
+                        <h3 class="text-lg font-semibold">총 매장</h3>
+                        <p class="text-2xl font-bold text-yellow-400" id="total-stores">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6 neon-border card-hover">
+                <div class="flex items-center">
+                    <i class="fas fa-users text-3xl text-purple-400 mr-4"></i>
+                    <div>
+                        <h3 class="text-lg font-semibold">총 직원</h3>
+                        <p class="text-2xl font-bold text-purple-400" id="total-employees">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 관리 버튼 -->
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="showCreateModal()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                <i class="fas fa-plus mr-2"></i>새 브랜드 등록
+            </button>
+            <div class="flex space-x-4">
+                <button onclick="refreshData()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i class="fas fa-refresh mr-2"></i>새로고침
                 </button>
-                <a href="/admin/backend/hierarchy-management" class="cyber-button px-4 py-2 rounded flex items-center space-x-2">
-                    <i data-feather="arrow-left" class="w-4 h-4"></i>
-                    <span>뒤로가기</span>
+                <a href="/admin/backend/hierarchy-management" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>뒤로가기
                 </a>
             </div>
         </div>
-    </header>
 
-    <!-- 검색 및 필터 -->
-    <div class="cyber-card p-4 mb-6">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center space-x-4">
-                <div class="flex items-center space-x-2">
-                    <input type="text" id="search-input" placeholder="브랜드명 검색..." class="cyber-input px-3 py-2 rounded">
-                    <button id="search-btn" class="cyber-button px-4 py-2 rounded">
-                        <i data-feather="search" class="w-4 h-4"></i>
-                    </button>
-                </div>
-                <select id="industry-filter" class="cyber-input px-3 py-2 rounded">
-                    <option value="">전체 업종</option>
-                </select>
-                <select id="status-filter" class="cyber-input px-3 py-2 rounded">
-                    <option value="">전체 상태</option>
-                    <option value="active">활성</option>
-                    <option value="inactive">비활성</option>
-                </select>
-            </div>
-            <div class="flex items-center space-x-2">
-                <button id="refresh-btn" class="cyber-button px-3 py-2 rounded">
-                    <i data-feather="refresh-cw" class="w-4 h-4"></i>
-                </button>
-                <span id="total-count" class="cyber-text-dim">총 0개</span>
+        <!-- 브랜드 목록 테이블 -->
+        <div class="bg-gray-800 rounded-lg p-6 neon-border">
+            <h2 class="text-2xl font-bold mb-4 neon-text">
+                <i class="fas fa-list mr-2"></i>브랜드 목록
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-700">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold">브랜드명</th>
+                            <th class="px-4 py-3 font-semibold">업종</th>
+                            <th class="px-4 py-3 font-semibold">코드</th>
+                            <th class="px-4 py-3 font-semibold">매장 수</th>
+                            <th class="px-4 py-3 font-semibold">직원 수</th>
+                            <th class="px-4 py-3 font-semibold">상태</th>
+                            <th class="px-4 py-3 font-semibold">등록일</th>
+                            <th class="px-4 py-3 font-semibold">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="brand-table-body">
+                        <tr>
+                            <td colspan="8" class="px-4 py-8 text-center text-gray-400">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>데이터를 불러오는 중...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- 브랜드 목록 테이블 -->
-    <div class="cyber-card p-6">
-        <div class="overflow-x-auto">
-            <table class="cyber-table w-full">
-                <thead>
-                    <tr>
-                        <th class="px-4 py-3 text-left">브랜드명</th>
-                        <th class="px-4 py-3 text-left">코드</th>
-                        <th class="px-4 py-3 text-left">업종</th>
-                        <th class="px-4 py-3 text-left">매장 수</th>
-                        <th class="px-4 py-3 text-left">상태</th>
-                        <th class="px-4 py-3 text-left">생성일</th>
-                        <th class="px-4 py-3 text-center">관리</th>
-                    </tr>
-                </thead>
-                <tbody id="brand-table-body">
-                    <!-- 브랜드 목록이 여기에 동적으로 로드됩니다 -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- 브랜드 추가/수정 모달 -->
-    <div id="brand-modal" class="cyber-modal fixed inset-0 flex items-center justify-center z-50 hidden">
-        <div class="cyber-modal-content p-8 rounded-lg w-full max-w-md">
-            <div class="flex items-center justify-between mb-6">
-                <h3 id="modal-title" class="cyber-font text-xl font-bold cyber-blue-glow">새 브랜드 추가</h3>
-                <button id="close-modal" class="text-gray-400 hover:text-white">
-                    <i data-feather="x" class="w-6 h-6"></i>
-                </button>
+    <!-- 브랜드 등록/수정 모달 -->
+    <div id="brand-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-lg p-6 neon-border w-full max-w-md">
+                <h3 id="modal-title" class="text-xl font-bold mb-4 neon-text">새 브랜드 등록</h3>
+                <form id="brand-form">
+                    <input type="hidden" id="brand-id">
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold mb-2">업종</label>
+                        <select id="brand-industry" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none" required>
+                            <option value="">업종을 선택하세요</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold mb-2">브랜드명</label>
+                        <input type="text" id="brand-name" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold mb-2">코드</label>
+                        <input type="text" id="brand-code" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold mb-2">설명</label>
+                        <textarea id="brand-description" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none" rows="3"></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold mb-2">상태</label>
+                        <select id="brand-status" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none">
+                            <option value="active">활성</option>
+                            <option value="inactive">비활성</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                            저장
+                        </button>
+                        <button type="button" onclick="hideModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                            취소
+                        </button>
+                    </div>
+                </form>
             </div>
-            
-            <form id="brand-form" class="space-y-4">
-                <input type="hidden" id="brand-id" name="id">
-                
-                <div>
-                    <label for="brand-name" class="block cyber-text-dim text-sm mb-2">브랜드명 *</label>
-                    <input type="text" id="brand-name" name="name" required class="cyber-input w-full px-3 py-2 rounded">
-                </div>
-                
-                <div>
-                    <label for="brand-code" class="block cyber-text-dim text-sm mb-2">코드 *</label>
-                    <input type="text" id="brand-code" name="code" required class="cyber-input w-full px-3 py-2 rounded">
-                </div>
-                
-                <div>
-                    <label for="brand-industry" class="block cyber-text-dim text-sm mb-2">업종 *</label>
-                    <select id="brand-industry" name="industry_id" required class="cyber-input w-full px-3 py-2 rounded">
-                        <option value="">업종을 선택하세요</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label for="brand-description" class="block cyber-text-dim text-sm mb-2">설명</label>
-                    <textarea id="brand-description" name="description" rows="3" class="cyber-input w-full px-3 py-2 rounded"></textarea>
-                </div>
-                
-                <div>
-                    <label for="brand-status" class="block cyber-text-dim text-sm mb-2">상태</label>
-                    <select id="brand-status" name="is_active" class="cyber-input w-full px-3 py-2 rounded">
-                        <option value="true">활성</option>
-                        <option value="false">비활성</option>
-                    </select>
-                </div>
-                
-                <div class="flex items-center justify-end space-x-3 pt-4">
-                    <button type="button" id="cancel-btn" class="cyber-button px-4 py-2 rounded bg-gray-600 hover:bg-gray-700">
-                        취소
-                    </button>
-                    <button type="submit" id="save-btn" class="cyber-button px-4 py-2 rounded">
-                        저장
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 
     <!-- 삭제 확인 모달 -->
-    <div id="delete-modal" class="cyber-modal fixed inset-0 flex items-center justify-center z-50 hidden">
-        <div class="cyber-modal-content p-8 rounded-lg w-full max-w-md">
-            <div class="text-center">
-                <i data-feather="alert-triangle" class="w-16 h-16 cyber-red mx-auto mb-4"></i>
-                <h3 class="cyber-font text-xl font-bold cyber-red-glow mb-4">브랜드 삭제 확인</h3>
-                <p class="cyber-text-dim mb-6">정말로 이 브랜드를 삭제하시겠습니까?</p>
-                <p class="cyber-text-dim text-sm mb-6">관련된 모든 매장과 직원도 함께 삭제됩니다.</p>
-                
-                <div class="flex items-center justify-center space-x-3">
-                    <button id="cancel-delete" class="cyber-button px-4 py-2 rounded bg-gray-600 hover:bg-gray-700">
-                        취소
-                    </button>
-                    <button id="confirm-delete" class="cyber-button px-4 py-2 rounded bg-red-600 hover:bg-red-700">
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-lg p-6 neon-border w-full max-w-md">
+                <h3 class="text-xl font-bold mb-4 text-red-400">브랜드 삭제 확인</h3>
+                <p class="text-gray-300 mb-6">정말로 이 브랜드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+                <div class="flex space-x-4">
+                    <button onclick="confirmDelete()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-semibold transition-colors">
                         삭제
+                    </button>
+                    <button onclick="hideDeleteModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                        취소
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 로딩 오버레이 -->
-    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="cyber-card p-8 text-center">
-            <div class="mb-4">
-                <i data-feather="loader" class="w-8 h-8 cyber-blue mx-auto animate-spin"></i>
-            </div>
-            <p class="cyber-font">처리 중...</p>
-        </div>
-    </div>
-
     <script>
-        // 전역 변수
         let brands = [];
         let industries = [];
-        let currentBrandId = null;
+        let deleteTargetId = null;
 
-        // 초기화
+        // 페이지 로드 시 데이터 가져오기
         document.addEventListener('DOMContentLoaded', function() {
-            feather.replace();
-            loadIndustries();
             loadBrands();
-            setupEventListeners();
+            loadIndustries();
+            setupFormHandler();
         });
 
-        // 이벤트 리스너 설정
-        function setupEventListeners() {
-            // 새 브랜드 추가 버튼
-            document.getElementById('add-brand-btn').addEventListener('click', function() {
-                openModal();
-            });
-
-            // 모달 닫기
-            document.getElementById('close-modal').addEventListener('click', closeModal);
-            document.getElementById('cancel-btn').addEventListener('click', closeModal);
-
-            // 폼 제출
-            document.getElementById('brand-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveBrand();
-            });
-
-            // 검색
-            document.getElementById('search-btn').addEventListener('click', function() {
-                filterBrands();
-            });
-
-            // 필터
-            document.getElementById('industry-filter').addEventListener('change', function() {
-                filterBrands();
-            });
-            document.getElementById('status-filter').addEventListener('change', function() {
-                filterBrands();
-            });
-
-            // 새로고침
-            document.getElementById('refresh-btn').addEventListener('click', function() {
-                loadBrands();
-            });
-
-            // 삭제 모달
-            document.getElementById('cancel-delete').addEventListener('click', closeDeleteModal);
-            document.getElementById('confirm-delete').addEventListener('click', deleteBrand);
+        // 브랜드 목록 로드
+        function loadBrands() {
+            fetch('/api/admin/brands')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        brands = data.data;
+                        renderBrandTable();
+                        updateStatistics();
+                    } else {
+                        showError('브랜드 목록을 불러올 수 없습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('브랜드 목록 로드 실패:', error);
+                    showError('네트워크 오류가 발생했습니다.');
+                });
         }
 
         // 업종 목록 로드
-        async function loadIndustries() {
-            try {
-                const response = await fetch('/api/admin/industries');
-                const result = await response.json();
-                
-                if (result.success) {
-                    industries = result.industries;
-                    populateIndustryFilters();
-                }
-            } catch (error) {
-                console.error('업종 목록 로드 오류:', error);
-            }
+        function loadIndustries() {
+            fetch('/api/admin/industries')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        industries = data.data;
+                        populateIndustrySelect();
+                    }
+                })
+                .catch(error => {
+                    console.error('업종 목록 로드 실패:', error);
+                });
         }
 
-        // 업종 필터 채우기
-        function populateIndustryFilters() {
-            const industryFilter = document.getElementById('industry-filter');
-            const brandIndustry = document.getElementById('brand-industry');
+        // 업종 선택 옵션 채우기
+        function populateIndustrySelect() {
+            const select = document.getElementById('brand-industry');
+            select.innerHTML = '<option value="">업종을 선택하세요</option>';
             
-            let options = '<option value="">업종을 선택하세요</option>';
             industries.forEach(industry => {
-                options += `<option value="${industry.id}">${industry.name}</option>`;
-            });
-            
-            industryFilter.innerHTML = options;
-            brandIndustry.innerHTML = options;
-        }
-
-        // 브랜드 목록 로드
-        async function loadBrands() {
-            showLoading();
-            try {
-                const response = await fetch('/api/admin/brands');
-                const result = await response.json();
-                
-                if (result.success) {
-                    brands = result.brands;
-                    renderBrands();
-                    updateTotalCount();
-                } else {
-                    showError('브랜드 목록 로드에 실패했습니다.');
+                if (industry.is_active) {
+                    const option = document.createElement('option');
+                    option.value = industry.id;
+                    option.textContent = industry.name;
+                    select.appendChild(option);
                 }
-            } catch (error) {
-                console.error('브랜드 목록 로드 오류:', error);
-                showError('네트워크 오류가 발생했습니다.');
-            } finally {
-                hideLoading();
-            }
+            });
         }
 
-        // 브랜드 목록 렌더링
-        function renderBrands() {
+        // 브랜드 테이블 렌더링
+        function renderBrandTable() {
             const tbody = document.getElementById('brand-table-body');
             
-            if (!brands || brands.length === 0) {
+            if (brands.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="px-4 py-8 text-center cyber-text-dim">
-                            브랜드가 없습니다.
+                        <td colspan="8" class="px-4 py-8 text-center text-gray-400">
+                            <i class="fas fa-inbox text-2xl mb-2"></i>
+                            <p>등록된 브랜드가 없습니다.</p>
                         </td>
                     </tr>
                 `;
@@ -323,33 +266,35 @@
 
             let html = '';
             brands.forEach(brand => {
+                const statusClass = brand.is_active ? 'text-green-400' : 'text-red-400';
+                const statusText = brand.is_active ? '활성' : '비활성';
                 const industry = industries.find(i => i.id === brand.industry_id);
+                
                 html += `
-                    <tr class="hover:bg-opacity-10 hover:bg-blue-500">
+                    <tr class="border-b border-gray-700 hover:bg-gray-700">
                         <td class="px-4 py-3">
-                            <div class="flex items-center space-x-3">
-                                <span class="cyber-badge cyber-badge-brand">🏢</span>
-                                <span class="cyber-font font-semibold">${brand.name}</span>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded mr-3" style="background-color: ${industry ? industry.color : '#666'}"></div>
+                                <span class="font-semibold">${brand.name}</span>
                             </div>
                         </td>
-                        <td class="px-4 py-3 cyber-text-dim">${brand.code}</td>
+                        <td class="px-4 py-3 text-gray-300">${industry ? industry.name : '-'}</td>
+                        <td class="px-4 py-3 text-gray-300">${brand.code}</td>
+                        <td class="px-4 py-3 text-gray-300">${brand.branch_count || 0}개</td>
+                        <td class="px-4 py-3 text-gray-300">${brand.employee_count || 0}명</td>
                         <td class="px-4 py-3">
-                            <span class="cyber-badge cyber-badge-industry">${industry ? industry.name : '알 수 없음'}</span>
-                        </td>
-                        <td class="px-4 py-3 cyber-text-dim">${brand.branch_count || 0}개</td>
-                        <td class="px-4 py-3">
-                            <span class="cyber-status-${brand.is_active ? 'active' : 'inactive'}">
-                                ● ${brand.is_active ? '활성' : '비활성'}
+                            <span class="${statusClass}">
+                                <i class="fas fa-circle text-xs mr-1"></i>${statusText}
                             </span>
                         </td>
-                        <td class="px-4 py-3 cyber-text-dim">${formatDate(brand.created_at)}</td>
-                        <td class="px-4 py-3 text-center">
-                            <div class="flex items-center justify-center space-x-2">
-                                <button onclick="editBrand(${brand.id})" class="cyber-button px-2 py-1 rounded text-sm">
-                                    <i data-feather="edit" class="w-3 h-3"></i>
+                        <td class="px-4 py-3 text-gray-300">${formatDate(brand.created_at)}</td>
+                        <td class="px-4 py-3">
+                            <div class="flex space-x-2">
+                                <button onclick="editBrand(${brand.id})" class="text-blue-400 hover:text-blue-300">
+                                    <i class="fas fa-edit"></i>
                                 </button>
-                                <button onclick="confirmDelete(${brand.id})" class="cyber-button px-2 py-1 rounded text-sm bg-red-600 hover:bg-red-700">
-                                    <i data-feather="trash-2" class="w-3 h-3"></i>
+                                <button onclick="deleteBrand(${brand.id})" class="text-red-400 hover:text-red-300">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </td>
@@ -358,236 +303,146 @@
             });
 
             tbody.innerHTML = html;
-            feather.replace();
         }
 
-        // 브랜드 필터링
-        function filterBrands() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const industryFilter = document.getElementById('industry-filter').value;
-            const statusFilter = document.getElementById('status-filter').value;
-            
-            const filtered = brands.filter(brand => {
-                const matchesSearch = brand.name.toLowerCase().includes(searchTerm) ||
-                                    brand.code.toLowerCase().includes(searchTerm);
-                const matchesIndustry = !industryFilter || brand.industry_id.toString() === industryFilter;
-                const matchesStatus = !statusFilter || 
-                                    (statusFilter === 'active' && brand.is_active) ||
-                                    (statusFilter === 'inactive' && !brand.is_active);
-                
-                return matchesSearch && matchesIndustry && matchesStatus;
+        // 통계 업데이트
+        function updateStatistics() {
+            const total = brands.length;
+            const active = brands.filter(b => b.is_active).length;
+            const totalStores = brands.reduce((sum, b) => sum + (b.branch_count || 0), 0);
+            const totalEmployees = brands.reduce((sum, b) => sum + (b.employee_count || 0), 0);
+
+            document.getElementById('total-brands').textContent = total;
+            document.getElementById('active-brands').textContent = active;
+            document.getElementById('total-stores').textContent = totalStores;
+            document.getElementById('total-employees').textContent = totalEmployees;
+        }
+
+        // 폼 핸들러 설정
+        function setupFormHandler() {
+            document.getElementById('brand-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveBrand();
             });
-
-            renderFilteredBrands(filtered);
         }
 
-        // 필터링된 브랜드 렌더링
-        function renderFilteredBrands(filteredBrands) {
-            const tbody = document.getElementById('brand-table-body');
-            
-            if (!filteredBrands || filteredBrands.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="px-4 py-8 text-center cyber-text-dim">
-                            검색 결과가 없습니다.
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            let html = '';
-            filteredBrands.forEach(brand => {
-                const industry = industries.find(i => i.id === brand.industry_id);
-                html += `
-                    <tr class="hover:bg-opacity-10 hover:bg-blue-500">
-                        <td class="px-4 py-3">
-                            <div class="flex items-center space-x-3">
-                                <span class="cyber-badge cyber-badge-brand">🏢</span>
-                                <span class="cyber-font font-semibold">${brand.name}</span>
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 cyber-text-dim">${brand.code}</td>
-                        <td class="px-4 py-3">
-                            <span class="cyber-badge cyber-badge-industry">${industry ? industry.name : '알 수 없음'}</span>
-                        </td>
-                        <td class="px-4 py-3 cyber-text-dim">${brand.branch_count || 0}개</td>
-                        <td class="px-4 py-3">
-                            <span class="cyber-status-${brand.is_active ? 'active' : 'inactive'}">
-                                ● ${brand.is_active ? '활성' : '비활성'}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 cyber-text-dim">${formatDate(brand.created_at)}</td>
-                        <td class="px-4 py-3 text-center">
-                            <div class="flex items-center justify-center space-x-2">
-                                <button onclick="editBrand(${brand.id})" class="cyber-button px-2 py-1 rounded text-sm">
-                                    <i data-feather="edit" class="w-3 h-3"></i>
-                                </button>
-                                <button onclick="confirmDelete(${brand.id})" class="cyber-button px-2 py-1 rounded text-sm bg-red-600 hover:bg-red-700">
-                                    <i data-feather="trash-2" class="w-3 h-3"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            tbody.innerHTML = html;
-            feather.replace();
+        // 새 브랜드 등록 모달 표시
+        function showCreateModal() {
+            document.getElementById('modal-title').textContent = '새 브랜드 등록';
+            document.getElementById('brand-id').value = '';
+            document.getElementById('brand-industry').value = '';
+            document.getElementById('brand-name').value = '';
+            document.getElementById('brand-code').value = '';
+            document.getElementById('brand-description').value = '';
+            document.getElementById('brand-status').value = 'active';
+            document.getElementById('brand-modal').classList.remove('hidden');
         }
 
-        // 모달 열기
-        function openModal(brand = null) {
-            const modal = document.getElementById('brand-modal');
-            const title = document.getElementById('modal-title');
-            const form = document.getElementById('brand-form');
-            
-            if (brand) {
-                title.textContent = '브랜드 수정';
-                currentBrandId = brand.id;
-                
-                // 폼에 데이터 채우기
-                document.getElementById('brand-id').value = brand.id;
-                document.getElementById('brand-name').value = brand.name;
-                document.getElementById('brand-code').value = brand.code;
-                document.getElementById('brand-industry').value = brand.industry_id;
-                document.getElementById('brand-description').value = brand.description || '';
-                document.getElementById('brand-status').value = brand.is_active.toString();
-            } else {
-                title.textContent = '새 브랜드 추가';
-                currentBrandId = null;
-                form.reset();
-                document.getElementById('brand-status').value = 'true';
-            }
-            
-            modal.classList.remove('hidden');
+        // 브랜드 수정 모달 표시
+        function editBrand(id) {
+            const brand = brands.find(b => b.id === id);
+            if (!brand) return;
+
+            document.getElementById('modal-title').textContent = '브랜드 수정';
+            document.getElementById('brand-id').value = brand.id;
+            document.getElementById('brand-industry').value = brand.industry_id;
+            document.getElementById('brand-name').value = brand.name;
+            document.getElementById('brand-code').value = brand.code;
+            document.getElementById('brand-description').value = brand.description || '';
+            document.getElementById('brand-status').value = brand.is_active ? 'active' : 'inactive';
+            document.getElementById('brand-modal').classList.remove('hidden');
         }
 
-        // 모달 닫기
-        function closeModal() {
+        // 모달 숨기기
+        function hideModal() {
             document.getElementById('brand-modal').classList.add('hidden');
-            currentBrandId = null;
         }
 
         // 브랜드 저장
-        async function saveBrand() {
-            const formData = new FormData(document.getElementById('brand-form'));
+        function saveBrand() {
+            const id = document.getElementById('brand-id').value;
             const data = {
-                name: formData.get('name'),
-                code: formData.get('code'),
-                industry_id: parseInt(formData.get('industry_id')),
-                description: formData.get('description'),
-                is_active: formData.get('is_active') === 'true'
+                industry_id: parseInt(document.getElementById('brand-industry').value),
+                name: document.getElementById('brand-name').value,
+                code: document.getElementById('brand-code').value,
+                description: document.getElementById('brand-description').value,
+                is_active: document.getElementById('brand-status').value === 'active'
             };
 
-            showLoading();
-            try {
-                const url = currentBrandId ? 
-                    `/api/admin/brands/${currentBrandId}` : 
-                    '/api/admin/brands';
-                
-                const method = currentBrandId ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
+            const url = id ? `/api/admin/brands/${id}` : '/api/admin/brands';
+            const method = id ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
                 if (result.success) {
-                    showSuccess(currentBrandId ? '브랜드가 수정되었습니다.' : '브랜드가 추가되었습니다.');
-                    closeModal();
+                    showSuccess(id ? '브랜드가 수정되었습니다.' : '브랜드가 등록되었습니다.');
+                    hideModal();
                     loadBrands();
                 } else {
                     showError(result.error || '저장에 실패했습니다.');
                 }
-            } catch (error) {
-                console.error('브랜드 저장 오류:', error);
+            })
+            .catch(error => {
+                console.error('저장 실패:', error);
                 showError('네트워크 오류가 발생했습니다.');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // 브랜드 수정
-        function editBrand(id) {
-            const brand = brands.find(b => b.id === id);
-            if (brand) {
-                openModal(brand);
-            }
-        }
-
-        // 삭제 확인
-        function confirmDelete(id) {
-            currentBrandId = id;
-            document.getElementById('delete-modal').classList.remove('hidden');
-        }
-
-        // 삭제 모달 닫기
-        function closeDeleteModal() {
-            document.getElementById('delete-modal').classList.add('hidden');
-            currentBrandId = null;
+            });
         }
 
         // 브랜드 삭제
-        async function deleteBrand() {
-            if (!currentBrandId) return;
-            
-            showLoading();
-            try {
-                const response = await fetch(`/api/admin/brands/${currentBrandId}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
+        function deleteBrand(id) {
+            deleteTargetId = id;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        // 삭제 확인
+        function confirmDelete() {
+            if (!deleteTargetId) return;
+
+            fetch(`/api/admin/brands/${deleteTargetId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
                 if (result.success) {
                     showSuccess('브랜드가 삭제되었습니다.');
-                    closeDeleteModal();
+                    hideDeleteModal();
                     loadBrands();
                 } else {
                     showError(result.error || '삭제에 실패했습니다.');
                 }
-            } catch (error) {
-                console.error('브랜드 삭제 오류:', error);
+            })
+            .catch(error => {
+                console.error('삭제 실패:', error);
                 showError('네트워크 오류가 발생했습니다.');
-            } finally {
-                hideLoading();
-            }
+            });
         }
 
-        // 총 개수 업데이트
-        function updateTotalCount() {
-            document.getElementById('total-count').textContent = `총 ${brands.length}개`;
+        // 삭제 모달 숨기기
+        function hideDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            deleteTargetId = null;
+        }
+
+        // 데이터 새로고침
+        function refreshData() {
+            loadBrands();
+            loadIndustries();
         }
 
         // 유틸리티 함수들
-        function showLoading() {
-            document.getElementById('loading-overlay').classList.remove('hidden');
-        }
-
-        function hideLoading() {
-            document.getElementById('loading-overlay').classList.add('hidden');
-        }
-
         function showSuccess(message) {
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 cyber-card p-4 cyber-green-glow z-50';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            alert(message);
         }
 
         function showError(message) {
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 cyber-card p-4 cyber-red-glow z-50';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            alert('오류: ' + message);
         }
 
         function formatDate(dateString) {

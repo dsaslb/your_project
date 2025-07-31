@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매장 관리 - 사이버펑크 스타일</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .cyberpunk-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .neon-glow {
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+        .hologram-effect {
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+            background-size: 200% 200%;
+            animation: hologram 3s ease-in-out infinite;
+        }
+        @keyframes hologram {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .stat-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- 네비게이션 바 -->
+    <nav class="bg-black border-b border-blue-500 p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <i class="fas fa-store text-blue-400 text-2xl"></i>
+                <h1 class="text-xl font-bold text-blue-400">매장 관리 시스템</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="/admin/backend" class="text-gray-300 hover:text-blue-400 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>뒤로가기
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="container mx-auto p-6">
+        <!-- 통계 카드 -->
+        <div class="data-grid mb-8">
+            <div class="stat-card hologram-effect">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-blue-400">총 매장 수</h3>
+                        <p class="text-3xl font-bold" id="total-stores">-</p>
+                    </div>
+                    <i class="fas fa-store text-4xl text-blue-400"></i>
+                </div>
+            </div>
+            
+            <div class="stat-card hologram-effect">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-green-400">활성 매장</h3>
+                        <p class="text-3xl font-bold" id="active-stores">-</p>
+                    </div>
+                    <i class="fas fa-check-circle text-4xl text-green-400"></i>
+                </div>
+            </div>
+            
+            <div class="stat-card hologram-effect">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-yellow-400">총 직원 수</h3>
+                        <p class="text-3xl font-bold" id="total-employees">-</p>
+                    </div>
+                    <i class="fas fa-users text-4xl text-yellow-400"></i>
+                </div>
+            </div>
+            
+            <div class="stat-card hologram-effect">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-purple-400">평균 매출</h3>
+                        <p class="text-3xl font-bold" id="avg-revenue">-</p>
+                    </div>
+                    <i class="fas fa-chart-line text-4xl text-purple-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 매장 관리 섹션 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 매장 목록 -->
+            <div class="bg-black border border-blue-500 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-blue-400">
+                        <i class="fas fa-list mr-2"></i>매장 목록
+                    </h2>
+                    <button onclick="openCreateStoreModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors neon-glow">
+                        <i class="fas fa-plus mr-2"></i>새 매장 추가
+                    </button>
+                </div>
+                
+                <div class="space-y-4" id="stores-list">
+                    <!-- 매장 목록이 여기에 동적으로 로드됩니다 -->
+                </div>
+            </div>
+
+            <!-- 매장 상세 정보 -->
+            <div class="bg-black border border-blue-500 rounded-lg p-6">
+                <h2 class="text-xl font-bold text-blue-400 mb-6">
+                    <i class="fas fa-info-circle mr-2"></i>매장 상세 정보
+                </h2>
+                
+                <div id="store-details" class="space-y-4">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-store text-4xl mb-4"></i>
+                        <p>매장을 선택하여 상세 정보를 확인하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 매장별 직원 현황 -->
+        <div class="mt-8 bg-black border border-blue-500 rounded-lg p-6">
+            <h2 class="text-xl font-bold text-blue-400 mb-6">
+                <i class="fas fa-users mr-2"></i>매장별 직원 현황
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-blue-500">
+                            <th class="text-left py-3 px-4 text-blue-400">매장명</th>
+                            <th class="text-left py-3 px-4 text-blue-400">브랜드</th>
+                            <th class="text-left py-3 px-4 text-blue-400">직원 수</th>
+                            <th class="text-left py-3 px-4 text-blue-400">상태</th>
+                            <th class="text-left py-3 px-4 text-blue-400">작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employees-table">
+                        <!-- 직원 현황이 여기에 동적으로 로드됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 새 매장 추가 모달 -->
+    <div id="create-store-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 border border-blue-500 rounded-lg p-6 w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-blue-400">새 매장 추가</h3>
+                    <button onclick="closeCreateStoreModal()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form id="create-store-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">매장명</label>
+                        <input type="text" name="name" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">브랜드</label>
+                        <select name="brand_id" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                            <option value="">브랜드를 선택하세요</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">주소</label>
+                        <input type="text" name="address" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">전화번호</label>
+                        <input type="tel" name="phone" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" onclick="closeCreateStoreModal()" class="px-4 py-2 text-gray-300 hover:text-white transition-colors">
+                            취소
+                        </button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                            추가
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 페이지 로드 시 데이터 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStoreStats();
+            loadStoresList();
+            loadEmployeesTable();
+            loadBrandsForSelect();
+        });
+
+        // 매장 통계 로드
+        function loadStoreStats() {
+            fetch('/api/admin/branches')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const stores = data.data;
+                        const activeStores = stores.filter(store => store.status === 'active').length;
+                        const totalEmployees = stores.reduce((sum, store) => sum + (store.employee_count || 0), 0);
+                        
+                        document.getElementById('total-stores').textContent = stores.length;
+                        document.getElementById('active-stores').textContent = activeStores;
+                        document.getElementById('total-employees').textContent = totalEmployees;
+                        document.getElementById('avg-revenue').textContent = '₩2.5M'; // 예시 데이터
+                    }
+                })
+                .catch(error => {
+                    console.error('매장 통계 로드 실패:', error);
+                });
+        }
+
+        // 매장 목록 로드
+        function loadStoresList() {
+            fetch('/api/admin/branches')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const storesList = document.getElementById('stores-list');
+                        storesList.innerHTML = '';
+                        
+                        data.data.forEach(store => {
+                            const storeCard = document.createElement('div');
+                            storeCard.className = 'bg-gray-800 border border-gray-700 rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors';
+                            storeCard.onclick = () => showStoreDetails(store);
+                            
+                            storeCard.innerHTML = `
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h3 class="font-semibold text-white">${store.name}</h3>
+                                        <p class="text-sm text-gray-400">${store.brand_name || '브랜드 없음'}</p>
+                                        <p class="text-xs text-gray-500">${store.address || '주소 없음'}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="inline-block px-2 py-1 text-xs rounded-full ${store.status === 'active' ? 'bg-green-600 text-green-100' : 'bg-red-600 text-red-100'}">
+                                            ${store.status === 'active' ? '활성' : '비활성'}
+                                        </span>
+                                        <p class="text-xs text-gray-400 mt-1">직원 ${store.employee_count || 0}명</p>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            storesList.appendChild(storeCard);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('매장 목록 로드 실패:', error);
+                });
+        }
+
+        // 매장 상세 정보 표시
+        function showStoreDetails(store) {
+            const detailsContainer = document.getElementById('store-details');
+            detailsContainer.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold text-white mb-2">${store.name}</h3>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-400">브랜드:</span>
+                                <span class="text-white">${store.brand_name || '없음'}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">업종:</span>
+                                <span class="text-white">${store.industry_name || '없음'}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">주소:</span>
+                                <span class="text-white">${store.address || '없음'}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">직원 수:</span>
+                                <span class="text-white">${store.employee_count || 0}명</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">상태:</span>
+                                <span class="inline-block px-2 py-1 text-xs rounded-full ${store.status === 'active' ? 'bg-green-600 text-green-100' : 'bg-red-600 text-red-100'}">
+                                    ${store.status === 'active' ? '활성' : '비활성'}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">생성일:</span>
+                                <span class="text-white">${store.created_at ? new Date(store.created_at).toLocaleDateString() : '없음'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <button onclick="editStore(${store.id})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm">
+                            <i class="fas fa-edit mr-1"></i>수정
+                        </button>
+                        <button onclick="deleteStore(${store.id})" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm">
+                            <i class="fas fa-trash mr-1"></i>삭제
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 직원 현황 테이블 로드
+        function loadEmployeesTable() {
+            fetch('/api/admin/branches')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tableBody = document.getElementById('employees-table');
+                        tableBody.innerHTML = '';
+                        
+                        data.data.forEach(store => {
+                            const row = document.createElement('tr');
+                            row.className = 'border-b border-gray-700 hover:bg-gray-800 transition-colors';
+                            
+                            row.innerHTML = `
+                                <td class="py-3 px-4">${store.name}</td>
+                                <td class="py-3 px-4">${store.brand_name || '없음'}</td>
+                                <td class="py-3 px-4">${store.employee_count || 0}명</td>
+                                <td class="py-3 px-4">
+                                    <span class="inline-block px-2 py-1 text-xs rounded-full ${store.status === 'active' ? 'bg-green-600 text-green-100' : 'bg-red-600 text-red-100'}">
+                                        ${store.status === 'active' ? '활성' : '비활성'}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button onclick="viewStoreEmployees(${store.id})" class="text-blue-400 hover:text-blue-300 text-sm">
+                                        <i class="fas fa-eye mr-1"></i>직원 보기
+                                    </button>
+                                </td>
+                            `;
+                            
+                            tableBody.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('직원 현황 로드 실패:', error);
+                });
+        }
+
+        // 브랜드 목록 로드 (셀렉트 박스용)
+        function loadBrandsForSelect() {
+            fetch('/api/admin/brands')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const select = document.querySelector('select[name="brand_id"]');
+                        data.data.forEach(brand => {
+                            const option = document.createElement('option');
+                            option.value = brand.id;
+                            option.textContent = brand.name;
+                            select.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('브랜드 목록 로드 실패:', error);
+                });
+        }
+
+        // 모달 관련 함수들
+        function openCreateStoreModal() {
+            document.getElementById('create-store-modal').classList.remove('hidden');
+        }
+
+        function closeCreateStoreModal() {
+            document.getElementById('create-store-modal').classList.add('hidden');
+        }
+
+        // 새 매장 생성
+        document.getElementById('create-store-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            fetch('/api/admin/branches', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('매장이 성공적으로 생성되었습니다.');
+                    closeCreateStoreModal();
+                    loadStoreStats();
+                    loadStoresList();
+                    loadEmployeesTable();
+                    e.target.reset();
+                } else {
+                    alert('매장 생성에 실패했습니다: ' + result.error);
+                }
+            })
+            .catch(error => {
+                console.error('매장 생성 오류:', error);
+                alert('매장 생성 중 오류가 발생했습니다.');
+            });
+        });
+
+        // 매장 수정
+        function editStore(storeId) {
+            // 매장 수정 로직 구현
+            alert('매장 수정 기능은 개발 중입니다.');
+        }
+
+        // 매장 삭제
+        function deleteStore(storeId) {
+            if (confirm('정말로 이 매장을 삭제하시겠습니까?')) {
+                fetch(`/api/admin/branches/${storeId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('매장이 성공적으로 삭제되었습니다.');
+                        loadStoreStats();
+                        loadStoresList();
+                        loadEmployeesTable();
+                    } else {
+                        alert('매장 삭제에 실패했습니다: ' + result.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('매장 삭제 오류:', error);
+                    alert('매장 삭제 중 오류가 발생했습니다.');
+                });
+            }
+        }
+
+        // 매장별 직원 보기
+        function viewStoreEmployees(storeId) {
+            // 매장별 직원 상세 보기 로직 구현
+            alert('매장별 직원 상세 보기 기능은 개발 중입니다.');
+        }
+    </script>
+</body>
+</html> 

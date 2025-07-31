@@ -199,19 +199,30 @@
             box-shadow: 0 0 20px var(--cyber-orange);
         }
 
-        .cyber-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
+        /* 사이드바 링크 스타일 개선 */
+        nav a {
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            position: relative;
+            z-index: 1;
         }
 
-        .cyber-button:hover::before {
-            left: 100%;
+        nav a:hover {
+            text-decoration: none;
+        }
+
+        /* 계층별 관리 링크 스타일 */
+        .hierarchy-link {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hierarchy-link:hover {
+            background: rgba(255, 107, 53, 0.1);
+            border-left: 3px solid var(--cyber-orange);
         }
 
         .cyber-status {
@@ -385,23 +396,23 @@
                 <div class="border-t border-gray-700 my-4 pt-4">
                     <h3 class="cyber-font text-sm font-bold cyber-blue mb-3">계층별 관리</h3>
                     <div class="space-y-2">
-                        <a href="/admin/backend/hierarchy-management" class="flex items-center px-4 py-2 cyber-text-dim hover:cyber-blue transition-colors text-sm">
+                        <a href="/admin/backend/hierarchy-management" class="hierarchy-link flex items-center px-4 py-2 cyber-text-dim hover:cyber-blue transition-colors text-sm">
                             <i data-feather="layers" class="w-4 h-4 mr-3"></i>
                             전체 계층 관리
                         </a>
-                        <a href="/admin/backend/industry-management" class="flex items-center px-4 py-2 cyber-text-dim hover:cyber-orange transition-colors text-sm">
+                        <a href="/admin/backend/industry-management" class="hierarchy-link flex items-center px-4 py-2 cyber-text-dim hover:cyber-orange transition-colors text-sm">
                             <i data-feather="briefcase" class="w-4 h-4 mr-3"></i>
                             업종 관리
                         </a>
-                        <a href="/admin/backend/brand-management" class="flex items-center px-4 py-2 cyber-text-dim hover:cyber-blue transition-colors text-sm">
+                        <a href="/admin/backend/brand-management" class="hierarchy-link flex items-center px-4 py-2 cyber-text-dim hover:cyber-blue transition-colors text-sm">
                             <i data-feather="home" class="w-4 h-4 mr-3"></i>
                             브랜드 관리
                         </a>
-                        <a href="/admin/backend/branch-management" class="flex items-center px-4 py-2 cyber-text-dim hover:cyber-green transition-colors text-sm">
+                        <a href="/admin/backend/branch-management" class="hierarchy-link flex items-center px-4 py-2 cyber-text-dim hover:cyber-green transition-colors text-sm">
                             <i data-feather="map-pin" class="w-4 h-4 mr-3"></i>
                             매장 관리
                         </a>
-                        <a href="/admin/backend/employee-management" class="flex items-center px-4 py-2 cyber-text-dim hover:cyber-red transition-colors text-sm">
+                        <a href="/admin/backend/employee-management" class="hierarchy-link flex items-center px-4 py-2 cyber-text-dim hover:cyber-red transition-colors text-sm">
                             <i data-feather="users" class="w-4 h-4 mr-3"></i>
                             직원 관리
                         </a>
@@ -455,35 +466,30 @@
                         <h3 class="cyber-font text-lg font-bold cyber-orange-glow mb-4">사용자 현황</h3>
                         <div class="grid grid-cols-3 gap-4 mb-6">
                             <div class="text-center">
-                                <div class="cyber-font text-2xl font-bold cyber-green" id="active-field">190</div>
-                                <div class="cyber-text-dim text-sm">업종별 관리자</div>
+                                <div class="cyber-font text-2xl font-bold cyber-green" id="admin-count">-</div>
+                                <div class="cyber-text-dim text-sm">업종 관리자</div>
                             </div>
                             <div class="text-center">
-                                <div class="cyber-font text-2xl font-bold cyber-blue" id="undercover">990</div>
+                                <div class="cyber-font text-2xl font-bold cyber-blue" id="brand-admin-count">-</div>
                                 <div class="cyber-text-dim text-sm">브랜드 관리자</div>
                             </div>
                             <div class="text-center">
-                                <div class="cyber-font text-2xl font-bold cyber-purple" id="training">290</div>
+                                <div class="cyber-font text-2xl font-bold cyber-purple" id="store-admin-count">-</div>
                                 <div class="cyber-text-dim text-sm">매장 관리자</div>
                             </div>
                         </div>
-                        <div class="space-y-2">
-                            <div class="flex items-center justify-between">
-                                <span class="cyber-text-dim">스타벅스 관리자</span>
-                                <span class="cyber-status online"></span>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="text-center">
+                                <div class="cyber-font text-xl font-bold cyber-orange" id="employee-count">-</div>
+                                <div class="cyber-text-dim text-sm">일반 직원</div>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <span class="cyber-text-dim">배스킨라빈스 관리자</span>
-                                <span class="cyber-status warning"></span>
+                            <div class="text-center">
+                                <div class="cyber-font text-xl font-bold cyber-red" id="total-users">-</div>
+                                <div class="cyber-text-dim text-sm">전체 사용자</div>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <span class="cyber-text-dim">투썸플레이스 관리자</span>
-                                <span class="cyber-status online"></span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="cyber-text-dim">할리스 관리자</span>
-                                <span class="cyber-status offline"></span>
-                            </div>
+                        </div>
+                        <div class="space-y-2" id="manager-status">
+                            <!-- 관리자 상태가 동적으로 로드됩니다 -->
                         </div>
                     </div>
 
@@ -709,11 +715,68 @@
             document.getElementById('network-load').textContent = Math.floor(Math.random() * 40 + 10) + '%';
         }
 
+        // 대시보드 통계 로드
+        function loadDashboardStats() {
+            fetch('/api/admin/dashboard-stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.stats) {
+                        const stats = data.stats;
+                        const roleStats = stats.role_stats || {};
+                        
+                        // 사용자 현황 업데이트
+                        document.getElementById('admin-count').textContent = roleStats.admin || 0;
+                        document.getElementById('brand-admin-count').textContent = roleStats.brand_admin || 0;
+                        document.getElementById('store-admin-count').textContent = roleStats.store_admin || 0;
+                        document.getElementById('employee-count').textContent = roleStats.employee || 0;
+                        document.getElementById('total-users').textContent = stats.total_users || 0;
+                        
+                        // 관리자 상태 업데이트
+                        updateManagerStatus();
+                    }
+                })
+                .catch(error => {
+                    console.error('대시보드 통계 로드 실패:', error);
+                });
+        }
+
+        // 관리자 상태 업데이트
+        function updateManagerStatus() {
+            fetch('/api/admin/employees')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const employees = data.data;
+                        const managerStatus = document.getElementById('manager-status');
+                        managerStatus.innerHTML = '';
+                        
+                        // 관리자 역할의 사용자들만 필터링
+                        const managers = employees.filter(emp => 
+                            emp.role === 'admin' || emp.role === 'brand_admin' || emp.role === 'store_admin'
+                        );
+                        
+                        managers.forEach(manager => {
+                            const statusDiv = document.createElement('div');
+                            statusDiv.className = 'flex items-center justify-between';
+                            statusDiv.innerHTML = `
+                                <span class="cyber-text-dim">${manager.username} (${manager.role})</span>
+                                <span class="cyber-status ${manager.status === 'active' ? 'online' : 'offline'}"></span>
+                            `;
+                            managerStatus.appendChild(statusDiv);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('관리자 상태 로드 실패:', error);
+                });
+        }
+
         // 1초마다 업데이트
         setInterval(updateDashboard, 1000);
 
         // 초기 업데이트
         updateDashboard();
+        loadDashboardStats(); // 대시보드 통계 로드
 
         // 활동 로그 자동 스크롤
         const activityLog = document.getElementById('activity-log');
@@ -722,6 +785,34 @@
         // 채팅 로그 자동 스크롤
         const chatLog = document.getElementById('chat-log');
         chatLog.scrollTop = chatLog.scrollHeight;
+
+        // 사이드바 링크 디버깅
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarLinks = document.querySelectorAll('nav a[href]');
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    console.log('링크 클릭됨:', this.href);
+                    // 링크가 제대로 작동하는지 확인
+                    if (this.href.includes('admin/backend')) {
+                        console.log('백엔드 관리 링크:', this.href);
+                    }
+                });
+            });
+
+            // 계층별 관리 링크 특별 처리
+            const hierarchyLinks = document.querySelectorAll('.hierarchy-link');
+            hierarchyLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    console.log('계층별 관리 링크 클릭:', this.href);
+                    // 링크가 제대로 작동하는지 확인
+                    if (this.href) {
+                        console.log('이동할 URL:', this.href);
+                        // 실제로 페이지 이동
+                        window.location.href = this.href;
+                    }
+                });
+            });
+        });
     </script>
 </body>
 </html> 

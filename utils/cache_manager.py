@@ -302,7 +302,8 @@ def cached(expire: int = 3600, key_prefix: str = ""):
         @wraps(func)
         def wrapper(*args, **kwargs):
             # 캐시 키 생성
-            cache_key = f"{key_prefix}:{func.__name__}:{hashlib.md5(str(args) + str(kwargs).encode()).hexdigest()}"
+            args_str = str(args) + str(kwargs)
+            cache_key = f"{key_prefix}:{func.__name__}:{hashlib.md5(args_str.encode()).hexdigest()}"
             
             # 캐시에서 조회
             cache_manager = getattr(g, 'cache_manager', None)

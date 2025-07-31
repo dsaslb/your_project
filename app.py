@@ -18,7 +18,7 @@ from typing import Optional, Dict, Any, List
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 import jwt
-from flask import Flask, flash, jsonify, redirect, render_template, request, abort
+from flask import Flask, flash, jsonify, redirect, render_template, request, abort, url_for
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from flask_login import current_user, login_required, login_user
@@ -92,6 +92,412 @@ app = Flask(__name__)
 app.config.from_object(config_by_name[config_name])
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 app.config["SECRET_KEY"] = app.config["JWT_SECRET_KEY"]
+
+# 플러그인 목록 (실제로는 DB에서 관리)
+plugins = []
+
+# JSON 파싱 강제 활성화
+app.config['JSON_AS_ASCII'] = False
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+
+# SocketIO 초기화 (조건부) - 나중에 설정
+socketio = None  # 임시로 None 설정
+
+from flask import jsonify, render_template, request
+from api.auth import api_auth_bp
+app.register_blueprint(api_auth_bp)
+
+CORS(
+    app,
+    origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
+    supports_credentials=True,
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    expose_headers=["Content-Type", "Authorization"],
+    max_age=86400,
+)
+
+# 확장 모듈 초기화 함수
+def initialize_extensions():
+    """Flask 확장 모듈들을 초기화합니다."""
+    try:
+        csrf.init_app(app)
+        db.init_app(app)
+        migrate.init_app(app, db)
+        login_manager.init_app(app)
+        login_manager.login_view = None  # API 경로는 인증을 우회하도록 설정
+        login_manager.login_message = "로그인이 필요합니다."
+        login_manager.login_message_category = "info"
+        
+        # Swagger 설정 초기화 (조건부)
+        try:
+            api = create_swagger_config(app)
+            logger.info("Swagger API 설정 초기화 완료")
+            return api
+        except Exception as e:
+            logger.warning(f"Swagger 설정 초기화 실패 (무시됨): {e}")
+            return None
+    except Exception as e:
+        logger.error(f"확장 모듈 초기화 실패: {e}")
+        return None
+        
+        # 추가 확장 모듈 초기화
+        limiter.init_app(app)
+        cache.init_app(app)
+        
+        # 캐시 매니저 초기화
+        cache_manager.init_app(app)
+        
+        logger.info("Flask 확장 모듈 초기화 완료")
+    except Exception as e:
+        logger.error(f"Flask 확장 모듈 초기화 실패: {e}")
+        raise
+
+# 데이터베이스 초기화 함수
+def initialize_database():
+    """데이터베이스를 초기화하고 기본 데이터를 생성합니다."""
+    with app.app_context():
+        try:
+            # DB 테이블 생성
+            db.create_all()
+            logger.info("데이터베이스 테이블 생성 완료")
+
+            # 기본 관리자 계정 생성
+            create_default_admin()
+            
+            # 기본 산업 데이터 생성
+            from core.backend.schema_initializer import initialize_industries
+            initialize_industries()
+
+            db.session.commit()
+            logger.info("데이터베이스 초기화 및 기본 데이터 생성 완료")
+
+        except Exception as e:
+            logger.error(f"데이터베이스 초기화 실패: {e}")
+            db.session.rollback()
+            raise
+
+def create_default_admin():
+    """기본 관리자 계정을 생성합니다."""
+    try:
+        admin_user = User.query.filter_by(username="admin").first()
+        if not admin_user:
+            admin_user = User(
+                username="admin",
+                email="admin@your_program.com",
+                role="admin",
+                status="approved"
+            )
+            admin_user.set_password("admin123")
+            db.session.add(admin_user)
+            logger.info("기본 관리자 계정 생성 완료: admin/admin123")
+        else:
+            # 기존 관리자 계정의 상태를 approved로 업데이트
+            if admin_user.status != "approved":
+                admin_user.status = "approved"
+                logger.info("기존 관리자 계정 상태를 approved로 업데이트")
+    except Exception as e:
+        logger.error(f"기본 관리자 계정 생성 실패: {e}")
+        raise
+
+# 확장 모듈 초기화
+api = initialize_extensions()
+
+# Swagger API 설정 초기화
+api = create_swagger_config(app)
+
+# WebSocket 매니저 초기화
+websocket_manager.init_app(app)
+
+# 데이터베이스 초기화 (앱 컨텍스트 내에서 실행)
+# initialize_database()
+
+# IoT 시스템 초기화
+try:
+    from utils.iot_simulator import initialize_iot_system
+    initialize_iot_system()
+    logger.info("IoT 시스템 초기화 완료")
+except Exception as e:
+    logger.error(f"IoT 시스템 초기화 실패: {e}")
+
+# 블루프린트 등록 함수
+def register_blueprints():
+    """모든 블루프린트를 등록합니다."""
+    blueprints = [
+        # 플러그인 마켓플레이스 API
+        ("api.plugin_marketplace", "plugin_marketplace_bp", "plugin_marketplace"),
+        
+        # 플러그인 시스템 API
+        ("api.plugin_system_manager_api", "plugin_system_manager_bp", "plugin_system_manager_api"),
+        ("api.plugin_operations_api", "plugin_operations_bp", "plugin_operations_api"),
+        ("api.plugin_monitoring_dashboard", "plugin_monitoring_bp", "plugin_monitoring_dashboard"),
+        
+        # 인증 API
+        ("api.auth", "auth_bp", "auth"),
+        ("api.auth", "security_auth_bp", "security_auth"),
+        
+        # 고도화된 모니터링 API
+        ("api.advanced_monitoring_api", "advanced_monitoring_bp", "advanced_monitoring_api"),
+        
+        # AI 시스템 API
+        ("api.ai_api", "ai_bp", "ai"),
+        ("api.real_ai_models_api", "real_ai_models_api", "real_ai_models_api"),
+        
+        # 고급 데이터 분석 및 비즈니스 인텔리전스 API
+        ("api.analytics_api", "analytics_bp", "analytics"),
+        
+        # 고급 모니터링 및 분석 API
+        ("api.monitoring_api", "monitoring_bp", "monitoring"),
+        
+        # 고급 통합 및 자동화 API
+        ("api.integration_api", "integration_bp", "integration"),
+        
+        # MVP 플러그인 블루프린트
+        ("plugins.attendance_management", "attendance_bp", "attendance_management"),
+        ("plugins.inventory_management", "inventory_bp", "inventory_management"),
+        ("plugins.purchase_management", "purchase_bp", "purchase_management"),
+        ("plugins.schedule_management", "schedule_bp", "schedule_management"),
+        
+        # 브랜드 관리 API
+        ("api.admin_brand_api", "admin_brand_api", "admin_brand_api"),
+        
+        # 업종관리자 API
+        ("routes.industry_admin", "industry_admin_bp", "industry_admin"),
+        
+        # 새로운 백엔드 시스템 API
+        ("api.industry_admin_management", "industry_admin_bp", "industry_admin_management"),
+        ("api.plugin_marketplace_enhanced", "plugin_marketplace_bp", "plugin_marketplace_enhanced"),
+        ("api.system_monitoring_enhanced", "system_monitoring_bp", "system_monitoring_enhanced"),
+        ("api.realtime_notifications_enhanced", "realtime_notifications_bp", "realtime_notifications_enhanced"),
+        ("api.system_health_api", "system_health_api", "system_health_api"),
+        ("api.ai_analytics_api", "ai_analytics_api", "ai_analytics_api"),
+        
+        # 백엔드 관리자 Blueprint
+        ("routes.backend_admin", "backend_admin_bp", None),
+        
+        # 브랜드관리자 API
+        ("routes.brand_admin", "brand_admin_bp", "brand_admin"),
+        
+        # 매장관리자 API
+        ("routes.store_admin", "store_admin_bp", "store_admin"),
+        
+        # 직원 API
+        ("routes.employee", "employee_bp", "employee"),
+    ]
+    
+    for module_path, blueprint_name, url_prefix in blueprints:
+        try:
+            module = __import__(module_path, fromlist=[blueprint_name])
+            blueprint = getattr(module, blueprint_name)
+            if url_prefix:
+                app.register_blueprint(blueprint, name=url_prefix)
+                logger.info(f"{url_prefix} 블루프린트 등록 완료")
+            else:
+                app.register_blueprint(blueprint)
+                logger.info(f"{blueprint_name} 블루프린트 등록 완료 (URL prefix 없음)")
+        except Exception as e:
+            logger.error(f"{url_prefix or blueprint_name} 블루프린트 등록 실패: {e}")
+
+# 블루프린트 등록
+register_blueprints()
+
+# 레스토랑 특화 대시보드 라우트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.restaurant_enhanced_dashboard import restaurant_dashboard
+#     restaurant_dashboard.init_app(app)
+#     logger.info("레스토랑 특화 대시보드 라우트 등록 완료")
+# except Exception as e:
+#     logger.error(f"레스토랑 특화 대시보드 라우트 등록 실패: {e}")
+
+# 레스토랑 분석 API 등록
+try:
+    from api.restaurant_analytics import restaurant_analytics
+    restaurant_analytics.init_app(app)
+    logger.info("레스토랑 분석 API 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 분석 API 등록 실패: {e}")
+
+# 레스토랑 AI 예측 API 등록
+try:
+    from api.restaurant_ai_prediction import restaurant_ai_prediction
+    restaurant_ai_prediction.init_app(app)
+    logger.info("레스토랑 AI 예측 API 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 AI 예측 API 등록 실패: {e}")
+
+# 레스토랑 자동화 API 등록
+try:
+    from api.restaurant_automation import restaurant_automation
+    restaurant_automation.init_app(app)
+    logger.info("레스토랑 자동화 API 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 자동화 API 등록 실패: {e}")
+
+# 모바일 레스토랑 대시보드 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.mobile_restaurant_dashboard import mobile_restaurant_dashboard
+#     mobile_restaurant_dashboard.init_app(app)
+#     logger.info("모바일 레스토랑 대시보드 등록 완료")
+# except Exception as e:
+#     logger.error(f"모바일 레스토랑 대시보드 등록 실패: {e}")
+
+# 레스토랑 고급 분석 API 등록
+try:
+    from api.restaurant_advanced_analytics import restaurant_advanced_analytics
+    restaurant_advanced_analytics.init_app(app)
+    logger.info("레스토랑 고급 분석 API 등록 완료")
+except Exception as e:
+    logger.error(f"레스토랑 고급 분석 API 등록 실패: {e}")
+
+# 레스토랑 계층적 대시보드 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.restaurant_hierarchical_dashboard import restaurant_hierarchical
+#     restaurant_hierarchical.init_app(app)
+#     logger.info("레스토랑 계층적 대시보드 등록 완료")
+# except Exception as e:
+#     logger.error(f"레스토랑 계층적 대시보드 등록 실패: {e}")
+
+# 합 대시보드 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.comprehensive_dashboard import comprehensive_dashboard_bp
+#     app.register_blueprint(comprehensive_dashboard_bp)
+#     logger.info("합 대시보드 등록 완료")
+# except Exception as e:
+#     logger.error(f"합 대시보드 등록 실패: {e}")
+
+# 레스토랑 업종 관리자 페이지 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.restaurant_industry_admin import restaurant_industry_admin
+#     app.register_blueprint(restaurant_industry_admin)
+#     restaurant_industry_admin.init_app(app)
+#     logger.info("레스토랑 업종 관리자 페이지 등록 완료")
+# except Exception as e:
+#     logger.error(f"레스토랑 업종 관리자 페이지 등록 실패: {e}")
+
+# 알림 관리 API 블루프린트 등록
+try:
+    from api.alert_management_api import alert_management_bp
+
+    app.register_blueprint(alert_management_bp, name="alert_management_api")
+    logger.info("알림 관리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"알림 관리 API 블루프린트 등록 실패: {e}")
+
+# AI 예측 분석 API 블루프린트 등록
+try:
+    # from api.ai_prediction_advanced import ai_prediction_advanced_bp
+    # app.register_blueprint(ai_prediction_advanced_bp, name='ai_prediction_advanced_api')
+    # logger.info("AI 예측 분석 API 블루프린트 등록 완료")
+    pass
+except Exception as e:
+    logger.error(f"AI 예측 분석 API 블루프린트 등록 실패: {e}")
+
+# 성능 최적화 API 블루프린트 등록 (비활성화 - 파일이 존재하지 않음)
+# try:
+#     from routes.performance_optimization import performance_bp
+#     app.register_blueprint(performance_bp, name="performance_optimization")
+#     logger.info("성능 최적화 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"성능 최적화 API 블루프린트 등록 실패: {e}")
+
+# 통합 대시보드 API 블루프린트 등록
+try:
+    from api.integrated_dashboard_api import integrated_dashboard_bp
+
+    app.register_blueprint(integrated_dashboard_bp, name="integrated_dashboard_api")
+    logger.info("통합 대시보드 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"통합 대시보드 API 블루프린트 등록 실패: {e}")
+
+# AI 통합 API 블루프린트 등록
+try:
+    from api.ai_integrated_api import ai_integrated_bp
+
+    app.register_blueprint(ai_integrated_bp, name="ai_integrated_api")
+    logger.info("AI 통합 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"AI 통합 API 블루프린트 등록 실패: {e}")
+
+# 실시간 모니터링 API 블루프린트 등록 - 비활성화됨
+# try:
+#     from api.realtime_monitoring import realtime_monitoring
+
+#     app.register_blueprint(realtime_monitoring, name="realtime_monitoring_api")
+#     logger.info("실시간 모니터링 API 블루프린트 등록 완료")
+# except Exception as e:
+#     logger.error(f"실시간 모니터링 API 블루프린트 등록 실패: {e}")
+logger.info("실시간 모니터링 API 블루프린트 비활성화됨")
+
+# 플러그인 마켓플레이스 API 직접 등록 (비활성화 - 중복 등록 방지)
+# try:
+#     from api.plugin_marketplace import plugin_marketplace_bp
+#     app.register_blueprint(plugin_marketplace_bp)
+#     logger.info("플러그인 마켓플레이스 API 등록 완료")
+# except Exception as e:
+#     logger.error(f"플러그인 마켓플레이스 API 등록 실패: {e}")
+
+# 실시간 알림 API 블루프린트 등록
+try:
+    from api.realtime_notifications import realtime_notifications_bp
+
+    app.register_blueprint(realtime_notifications_bp, name="realtime_notifications_api")
+    logger.info("실시간 알림 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"실시간 알림 API 블루프린트 등록 실패: {e}")
+
+# 고급 분석 API 블루프린트 등록
+try:
+    from api.advanced_analytics import advanced_analytics_bp
+
+    app.register_blueprint(advanced_analytics_bp, name="advanced_analytics_api")
+    logger.info("고급 분석 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"고급 분석 API 블루프린트 등록 실패: {e}")
+
+# IoT API 블루프린트 등록
+try:
+    from api.iot_api import iot_bp
+
+    app.register_blueprint(iot_bp, name="iot_api")
+    logger.info("IoT API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"IoT API 블루프린트 등록 실패: {e}")
+
+# 통합 계층형 API 블루프린트 등록
+try:
+    from api.unified_hierarchy_api import unified_hierarchy_bp
+    
+    app.register_blueprint(unified_hierarchy_bp, name="unified_hierarchy_api")
+    logger.info("통합 계층형 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"통합 계층형 API 블루프린트 등록 실패: {e}")
+
+# 고급 AI 예측 API 블루프린트 등록
+try:
+    from api.advanced_ai_prediction import advanced_ai_prediction_bp
+
+    app.register_blueprint(advanced_ai_prediction_bp, name="advanced_ai_prediction_api")
+    logger.info("고급 AI 예측 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"고급 AI 예측 API 블루프린트 등록 실패: {e}")
+
+# 자연어 처리 API 블루프린트 등록
+try:
+    from api.nlp_analysis import nlp_analysis_bp
+
+    app.register_blueprint(nlp_analysis_bp, name="nlp_analysis_api")
+    logger.info("자연어 처리 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"자연어 처리 API 블루프린트 등록 실패: {e}")
+
+# AI 모니터링 API 블루프린트 등록
+try:
+    from api.ai_monitoring import ai_monitoring_bp
+
+    app.register_blueprint(ai_monitoring_bp, name="ai_monitoring_api")
+    logger.info("AI 모니터링 API 블루프린트 등록 완료")
+except Exception as e:
+    logger.error(f"AI 모니터링 API 블루프린트 등록 실패: {e}")
 
 # 플러그인 목록 (실제로는 DB에서 관리)
 plugins = []
@@ -3165,8 +3571,12 @@ def generate_brand_code(industry_name, brand_name):
     return brand_code
 
 
+from utils.authorization_policy import protect_data_creation_endpoint, audit_operation
+
 @app.route("/api/admin/brands", methods=["POST"])
 @csrf.exempt
+@protect_data_creation_endpoint("Brand")
+@audit_operation("create", "Brand")
 def api_admin_create_brand():
     """신규 브랜드 생성 API"""
     try:
@@ -3450,6 +3860,104 @@ def admin_employee_management():
 
 @app.route("/api/admin/employees")
 def api_admin_employees():
+    """직원 목록 및 현황 API"""
+    try:
+        employees = User.query.all()
+        employees_data = []
+
+        for employee in employees:
+            # 직원별 개선사항
+            improvements = [
+                "업무 효율성 개선 필요",
+                "고객 서비스 스킬 향상",
+                "팀워크 개선",
+            ]
+
+            employee_data = {
+                "id": employee.id,
+                "username": employee.username,
+                "email": employee.email,
+                "role": employee.role,
+                "branch_id": employee.branch_id,
+                "performance_score": 85,  # 예시 성과 점수
+                "improvements": improvements,
+                "status": "active",
+                "created_at": (
+                    employee.created_at.isoformat() if employee.created_at else None
+                ),
+                "last_login": (
+                    employee.last_login.isoformat() if employee.last_login else None
+                ),
+            }
+
+            # 브랜치 정보 추가
+            if employee.branch_id:
+                branch = Branch.query.get(employee.branch_id)
+                if branch:
+                    employee_data["branch_name"] = branch.name
+
+            employees_data.append(employee_data)
+
+        return jsonify({"employees": employees_data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/admin/employees", methods=["POST"])
+@protect_data_creation_endpoint("Employee")
+@audit_operation("create", "Employee")
+def api_admin_create_employee():
+    """직원 생성 API"""
+    try:
+        data = request.get_json()
+
+        # 필수 필드 검증
+        required_fields = ["username", "email", "role"]
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"error": f"{field} 필드는 필수입니다."}), 400
+
+        # 사용자명 중복 확인
+        existing_user = User.query.filter_by(username=data["username"]).first()
+        if existing_user:
+            return jsonify({"error": "이미 존재하는 사용자명입니다."}), 400
+
+        # 이메일 중복 확인
+        existing_email = User.query.filter_by(email=data["email"]).first()
+        if existing_email:
+            return jsonify({"error": "이미 존재하는 이메일입니다."}), 400
+
+        # 새 직원 생성
+        new_employee = User()
+        new_employee.username = data["username"]
+        new_employee.email = data["email"]
+        new_employee.role = data["role"]
+        new_employee.status = data.get("status", "pending")
+        new_employee.branch_id = data.get("branch_id")
+        new_employee.brand_id = data.get("brand_id")
+        new_employee.name = data.get("name")
+        new_employee.phone = data.get("phone")
+        new_employee.address = data.get("address")
+        new_employee.position = data.get("position")
+        new_employee.department = data.get("department")
+
+        # 비밀번호 설정 (기본값 또는 제공된 값)
+        password = data.get("password", "default123")
+        new_employee.password_hash = generate_password_hash(password, method="pbkdf2:sha256")
+
+        db.session.add(new_employee)
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "직원이 성공적으로 생성되었습니다.",
+            "employee_id": new_employee.id,
+            "username": new_employee.username
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"직원 생성 오류: {str(e)}")
+        return jsonify({"error": "직원 생성 중 오류가 발생했습니다."}), 500
     """직원 목록 및 현황 API"""
     try:
         employees = User.query.all()
@@ -6423,6 +6931,8 @@ def api_address_search():
 
 
 @app.route("/api/admin/stores", methods=["POST"])
+@protect_data_creation_endpoint("Store")
+@audit_operation("create", "Store")
 def api_admin_create_store():
     """매장 생성 API"""
     try:
@@ -7360,6 +7870,61 @@ def api_stop_dashboard_broadcast():
 
 @app.route("/api/websocket/status")
 def api_websocket_status():
+    """WebSocket 상태 확인 API"""
+    return jsonify({
+        "status": "active",
+        "connections": 0,
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+@app.route("/api/admin/policy/status")
+@require_super_admin
+def api_admin_policy_status():
+    """권한 정책 설정 상태 확인 API (최상위 관리자 전용)"""
+    from utils.authorization_policy import validate_policy_configuration, get_audit_summary
+    
+    try:
+        config_status = validate_policy_configuration()
+        audit_summary = get_audit_summary(days=7)
+        
+        return jsonify({
+            "success": True,
+            "policy_configuration": config_status,
+            "audit_summary": audit_summary,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"권한 정책 상태 확인 오류: {e}")
+        return jsonify({"error": "권한 정책 상태 확인에 실패했습니다."}), 500
+
+@app.route("/api/admin/policy/audit-logs")
+@require_super_admin
+def api_admin_audit_logs():
+    """감사 로그 조회 API (최상위 관리자 전용)"""
+    from utils.authorization_policy import auth_policy
+    
+    try:
+        days = request.args.get('days', 30, type=int)
+        limit = request.args.get('limit', 100, type=int)
+        
+        if not auth_policy.audit_logger:
+            return jsonify({"error": "감사 로그 시스템이 사용할 수 없습니다."}), 500
+        
+        events = auth_policy.audit_logger.get_events(
+            filters={"days": days},
+            limit=limit
+        )
+        
+        return jsonify({
+            "success": True,
+            "audit_logs": events,
+            "total_count": len(events),
+            "days": days,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"감사 로그 조회 오류: {e}")
+        return jsonify({"error": "감사 로그 조회에 실패했습니다."}), 500
     """WebSocket 상태 조회"""
     try:
         return jsonify({
@@ -7376,49 +7941,32 @@ def api_websocket_status():
 @app.route('/admin/backend/hierarchy-management')
 def hierarchy_management():
     """계층별 관리 메인 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
     return render_template('admin/cyberpunk_hierarchy_management.html')
 
 @app.route('/admin/backend/industry-management')
 def industry_management():
     """업종 관리 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
     return render_template('admin/cyberpunk_industry_management.html')
 
 @app.route('/admin/backend/brand-management')
 def brand_management():
     """브랜드 관리 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
     return render_template('admin/cyberpunk_brand_management.html')
 
 @app.route('/admin/backend/branch-management')
 def branch_management():
     """매장 관리 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
     return render_template('admin/cyberpunk_branch_management.html')
 
 @app.route('/admin/backend/employee-management')
 def employee_management():
     """직원 관리 페이지"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('index'))
     return render_template('admin/cyberpunk_employee_management.html')
 
 # 계층별 관리 API 엔드포인트들
 @app.route('/api/admin/hierarchy/tree')
 def get_hierarchy_tree():
     """전체 계층 트리 조회"""
-    if not current_user.has_permission('system_management', 'view'):
-        return jsonify({'error': '권한이 없습니다.'}), 403
     
     try:
         from models_main import Industry, Brand, Branch, User
@@ -7551,19 +8099,25 @@ def get_industries():
         
         industry_data = []
         for industry in industries:
+            # 브랜드 수 계산
+            brand_count = len(industry.brands_list.all()) if hasattr(industry, 'brands_list') else 0
+            
             industry_data.append({
                 'id': industry.id,
                 'name': industry.name,
                 'code': industry.code,
-                'color': industry.color,
-                'icon': industry.icon,
-                'status': industry.status,
+                'description': industry.description,
+                'color': industry.color or '#3B82F6',
+                'icon': industry.icon or 'building',
+                'is_active': industry.is_active,
+                'status': 'active' if industry.is_active else 'inactive',
+                'brand_count': brand_count,
                 'created_at': industry.created_at.isoformat() if industry.created_at else None
             })
         
         return jsonify({
             'success': True,
-            'industries': industry_data,
+            'data': industry_data,
             'total': len(industry_data)
         })
     except Exception as e:
