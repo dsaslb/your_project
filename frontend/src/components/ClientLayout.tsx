@@ -23,7 +23,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     <SidebarProvider>
       <div className="flex h-screen w-screen overflow-hidden">
         <div className="h-full flex-shrink-0 w-64 border-r bg-background">
-          <Sidebar />
+          <Sidebar isOpen={false} onToggle={() => {}} />
         </div>
         <main className="flex-1 h-full overflow-y-auto bg-background p-6">
           {children}

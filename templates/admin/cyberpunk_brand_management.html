@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>브랜드 관리 - 시스템 관리</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
+    <link href="/static/css/backend-admin.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .cyberpunk-bg {
@@ -133,25 +134,25 @@
                     <input type="hidden" id="brand-id">
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">업종</label>
-                        <select id="brand-industry" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none" required>
+                        <select id="brand-industry" class="backend-select" required>
                             <option value="">업종을 선택하세요</option>
                         </select>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">브랜드명</label>
-                        <input type="text" id="brand-name" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none" required>
+                        <input type="text" id="brand-name" class="backend-input" placeholder="브랜드명을 입력하세요" required>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">코드</label>
-                        <input type="text" id="brand-code" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none" required>
+                        <input type="text" id="brand-code" class="backend-input" placeholder="브랜드 코드를 입력하세요" required>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">설명</label>
-                        <textarea id="brand-description" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none" rows="3"></textarea>
+                        <textarea id="brand-description" class="backend-textarea" rows="3" placeholder="브랜드에 대한 설명을 입력하세요"></textarea>
                     </div>
                     <div class="mb-6">
                         <label class="block text-sm font-semibold mb-2">상태</label>
-                        <select id="brand-status" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-green-400 focus:outline-none">
+                        <select id="brand-status" class="backend-select">
                             <option value="active">활성</option>
                             <option value="inactive">비활성</option>
                         </select>
@@ -366,7 +367,7 @@
                 name: document.getElementById('brand-name').value,
                 code: document.getElementById('brand-code').value,
                 description: document.getElementById('brand-description').value,
-                is_active: document.getElementById('brand-status').value === 'active'
+                status: document.getElementById('brand-status').value
             };
 
             const url = id ? `/api/admin/brands/${id}` : '/api/admin/brands';

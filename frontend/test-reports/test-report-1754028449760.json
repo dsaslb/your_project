@@ -1,0 +1,41 @@
+{
+  "timestamp": "2025-08-01T06:07:29.759Z",
+  "summary": {
+    "totalTests": 4,
+    "passedTests": 0,
+    "failedTests": 4,
+    "coverage": null,
+    "performance": null,
+    "security": null
+  },
+  "details": {
+    "unitTests": {
+      "result": {
+        "success": false,
+        "error": "\n> your-program-frontend@0.1.0 test:unit\n> jest\n\n"
+      },
+      "duration": 300006.9951
+    },
+    "coverage": {
+      "result": {
+        "success": false,
+        "error": "spawnSync C:\\Windows\\system32\\cmd.exe ETIMEDOUT"
+      },
+      "duration": 300019.3403
+    },
+    "performance": {
+      "result": {
+        "success": false,
+        "error": "Command failed: npm run build\n ⚠ The config property `experimental.turbo` is deprecated. Move this setting to `config.turbopack` as Turbopack is now stable.\nFailed to compile.\n\n./app/admin-dashboard/EmployeeList.tsx:6:24\nType error: Cannot find module 'file-saver' or its corresponding type declarations.\n\n\u001b[0m \u001b[90m 4 |\u001b[39m \u001b[36mimport\u001b[39m useUserStore \u001b[36mfrom\u001b[39m \u001b[32m'@/store/useUserStore'\u001b[39m\u001b[33m;\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 5 |\u001b[39m \u001b[36mimport\u001b[39m { toast } \u001b[36mfrom\u001b[39m \u001b[32m'sonner'\u001b[39m\u001b[33m;\u001b[39m\u001b[0m\n\u001b[0m\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 6 |\u001b[39m \u001b[36mimport\u001b[39m { saveAs } \u001b[36mfrom\u001b[39m \u001b[32m'file-saver'\u001b[39m\u001b[33m;\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m   |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 7 |\u001b[39m \u001b[36mimport\u001b[39m \u001b[33mLanguageSwitcher\u001b[39m \u001b[36mfrom\u001b[39m \u001b[32m'../../components/LanguageSwitcher'\u001b[39m\u001b[33m;\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 8 |\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 9 |\u001b[39m \u001b[36minterface\u001b[39m \u001b[33mEmployee\u001b[39m {\u001b[0m\nNext.js build worker exited with code: 1 and signal: null\n"
+      },
+      "duration": 67882.2036
+    },
+    "security": {
+      "result": {
+        "success": false,
+        "error": "Command failed: npm audit --audit-level=moderate"
+      },
+      "duration": 1883.7934
+    }
+  }
+}

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>매장 관리 - 시스템 관리</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
+    <link href="/static/css/backend-admin.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .cyberpunk-bg {
@@ -133,33 +134,33 @@
                     <input type="hidden" id="store-id">
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">브랜드</label>
-                        <select id="store-brand" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-400 focus:outline-none" required>
-                        <option value="">브랜드를 선택하세요</option>
-                    </select>
-                </div>
+                        <select id="store-brand" class="backend-select" required>
+                            <option value="">브랜드를 선택하세요</option>
+                        </select>
+                    </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">매장명</label>
-                        <input type="text" id="store-name" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-400 focus:outline-none" required>
+                        <input type="text" id="store-name" class="backend-input" placeholder="매장명을 입력하세요" required>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">매장 코드</label>
-                        <input type="text" id="store-code" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-400 focus:outline-none" required>
+                        <input type="text" id="store-code" class="backend-input" placeholder="매장 코드를 입력하세요" required>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">주소</label>
-                        <input type="text" id="store-address" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-400 focus:outline-none" required>
-                </div>
+                        <input type="text" id="store-address" class="backend-input" placeholder="매장 주소를 입력하세요" required>
+                    </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">전화번호</label>
-                        <input type="tel" id="store-phone" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-400 focus:outline-none">
-                </div>
+                        <input type="tel" id="store-phone" class="backend-input" placeholder="전화번호를 입력하세요">
+                    </div>
                     <div class="mb-6">
                         <label class="block text-sm font-semibold mb-2">상태</label>
-                        <select id="store-status" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-400 focus:outline-none">
+                        <select id="store-status" class="backend-select">
                             <option value="active">활성</option>
                             <option value="inactive">비활성</option>
-                    </select>
-                </div>
+                        </select>
+                    </div>
                     <div class="flex space-x-4">
                         <button type="submit" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded font-semibold transition-colors">
                             저장
@@ -373,7 +374,7 @@
                 store_code: document.getElementById('store-code').value,
                 address: document.getElementById('store-address').value,
                 phone: document.getElementById('store-phone').value,
-                is_active: document.getElementById('store-status').value === 'active'
+                status: document.getElementById('store-status').value
             };
 
             const url = id ? `/api/admin/branches/${id}` : '/api/admin/branches';

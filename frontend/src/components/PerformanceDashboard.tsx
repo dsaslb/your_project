@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { usePerformanceOptimization } from '../utils/performance';
+import { PerformanceOptimizer } from '../utils/performance';
 
 interface SystemMetrics {
   cpu_percent: number;
@@ -33,7 +33,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
   const [appMetrics, setAppMetrics] = useState<ApplicationMetrics | null>(null);
   const [frontendMetrics, setFrontendMetrics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { getPerformanceReport } = usePerformanceOptimization();
+  const performanceOptimizer = new PerformanceOptimizer();
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -53,7 +53,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
         }
 
         // 프론트엔드 메트릭 조회
-        const frontendReport = getPerformanceReport();
+        const frontendReport = performanceOptimizer.getPerformanceReport();
         setFrontendMetrics(frontendReport);
 
         setIsLoading(false);
@@ -69,7 +69,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
     const interval = setInterval(fetchMetrics, 30000);
     
     return () => clearInterval(interval);
-  }, [getPerformanceReport]);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {

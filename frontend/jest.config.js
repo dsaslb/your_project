@@ -1,16 +1,22 @@
 const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({
-  // Provide the path to your Next.js app to load next.config.js and .env files
+  // Next.js 앱의 경로를 제공하여 next.config.js와 .env 파일을 로드할 수 있도록 합니다
   dir: './',
 })
 
-// Add any custom config to be passed to Jest
+// Jest에 적용할 커스텀 설정을 제공합니다
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  moduleDirectories: ['node_modules', '<rootDir>/'],
   testEnvironment: 'jest-environment-jsdom',
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/components/(.*)$': '<rootDir>/src/components/$1',
+    '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',
+    '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@/store/(.*)$': '<rootDir>/src/store/$1',
+    '^@/lib/(.*)$': '<rootDir>/src/lib/$1',
   },
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
@@ -18,6 +24,8 @@ const customJestConfig = {
     '!src/**/*.stories.{js,jsx,ts,tsx}',
     '!src/**/*.test.{js,jsx,ts,tsx}',
     '!src/**/*.spec.{js,jsx,ts,tsx}',
+    '!src/**/index.{js,jsx,ts,tsx}',
+    '!src/**/types.{js,jsx,ts,tsx}',
   ],
   coverageThreshold: {
     global: {
@@ -34,9 +42,21 @@ const customJestConfig = {
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
-    '<rootDir>/e2e/',
+    '<rootDir>/coverage/',
+    '<rootDir>/dist/',
   ],
+  transform: {
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
+  },
+  transformIgnorePatterns: [
+    '/node_modules/',
+    '^.+\\.module\\.(css|sass|scss)$',
+  ],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  // 성능 테스트를 위한 설정
+  testTimeout: 10000,
+  maxWorkers: '50%',
 }
 
-// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
+// createJestConfig는 이 비동기 함수를 내보내므로 Next.js에서 처리할 수 있습니다
 module.exports = createJestConfig(customJestConfig) 

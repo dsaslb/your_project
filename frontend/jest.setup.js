@@ -1,41 +1,37 @@
 import '@testing-library/jest-dom'
+import 'jest-environment-jsdom'
 
-// Mock WebSocket
-global.WebSocket = class MockWebSocket {
-  constructor(url) {
-    this.url = url
-    this.readyState = WebSocket.CONNECTING
-    this.onopen = null
-    this.onmessage = null
-    this.onclose = null
-    this.onerror = null
-    
-    // Simulate connection
-    setTimeout(() => {
-      this.readyState = WebSocket.OPEN
-      if (this.onopen) this.onopen()
-    }, 100)
-  }
-  
-  send(data) {
-    // Mock send
-  }
-  
-  close() {
-    this.readyState = WebSocket.CLOSED
-    if (this.onclose) this.onclose()
-  }
-}
+// 전역 테스트 환경 설정
+global.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}))
 
-WebSocket.CONNECTING = 0
-WebSocket.OPEN = 1
-WebSocket.CLOSING = 2
-WebSocket.CLOSED = 3
+// IntersectionObserver 모킹
+global.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}))
 
-// Mock fetch
-global.fetch = jest.fn()
+// Performance API 모킹
+Object.defineProperty(window, 'performance', {
+  value: {
+    getEntriesByType: jest.fn(() => []),
+    mark: jest.fn(),
+    measure: jest.fn(),
+    now: jest.fn(() => Date.now()),
+    memory: {
+      usedJSHeapSize: 1000000,
+      totalJSHeapSize: 2000000,
+      jsHeapSizeLimit: 4000000,
+    },
+  },
+  writable: true,
+})
 
-// Mock localStorage
+// localStorage 모킹
 const localStorageMock = {
   getItem: jest.fn(),
   setItem: jest.fn(),
@@ -44,7 +40,7 @@ const localStorageMock = {
 }
 global.localStorage = localStorageMock
 
-// Mock sessionStorage
+// sessionStorage 모킹
 const sessionStorageMock = {
   getItem: jest.fn(),
   setItem: jest.fn(),
@@ -53,37 +49,13 @@ const sessionStorageMock = {
 }
 global.sessionStorage = sessionStorageMock
 
-// Mock IntersectionObserver
-global.IntersectionObserver = class MockIntersectionObserver {
-  constructor(callback) {
-    this.callback = callback
-  }
-  
-  observe() {
-    return null
-  }
-  
-  disconnect() {
-    return null
-  }
-}
+// fetch 모킹
+global.fetch = jest.fn()
 
-// Mock ResizeObserver
-global.ResizeObserver = class MockResizeObserver {
-  constructor(callback) {
-    this.callback = callback
-  }
-  
-  observe() {
-    return null
-  }
-  
-  disconnect() {
-    return null
-  }
-}
+// URL.createObjectURL 모킹
+global.URL.createObjectURL = jest.fn(() => 'mocked-url')
 
-// Mock matchMedia
+// matchMedia 모킹
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation(query => ({
@@ -98,39 +70,72 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
-// Mock window.scrollTo
+// 스크롤 이벤트 모킹
 Object.defineProperty(window, 'scrollTo', {
-  writable: true,
   value: jest.fn(),
+  writable: true,
 })
 
-// Mock console methods in tests
-const originalError = console.error
-const originalWarn = console.warn
+// 뷰포트 크기 모킹
+Object.defineProperty(window, 'innerWidth', {
+  writable: true,
+  configurable: true,
+  value: 1024,
+})
 
-beforeAll(() => {
-  console.error = (...args) => {
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('Warning: ReactDOM.render is deprecated')
-    ) {
-      return
+Object.defineProperty(window, 'innerHeight', {
+  writable: true,
+  configurable: true,
+  value: 768,
+})
+
+// 커스텀 매처 추가
+expect.extend({
+  toBeInTheDocument(received) {
+    const pass = received !== null && received !== undefined
+    if (pass) {
+      return {
+        message: () => `expected ${received} not to be in the document`,
+        pass: true,
+      }
+    } else {
+      return {
+        message: () => `expected ${received} to be in the document`,
+        pass: false,
+      }
     }
-    originalError.call(console, ...args)
-  }
+  },
+})
+
+// 테스트 환경 정리
+afterEach(() => {
+  jest.clearAllMocks()
+  localStorageMock.clear()
+  sessionStorageMock.clear()
+})
+
+// 성능 테스트를 위한 유틸리티
+global.performanceTest = {
+  measure: (name, fn) => {
+    const start = performance.now()
+    const result = fn()
+    const end = performance.now()
+    console.log(`${name} took ${end - start}ms`)
+    return result
+  },
   
-  console.warn = (...args) => {
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('Warning: componentWillReceiveProps has been renamed')
-    ) {
-      return
+  benchmark: (name, iterations, fn) => {
+    const times = []
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now()
+      fn()
+      const end = performance.now()
+      times.push(end - start)
     }
-    originalWarn.call(console, ...args)
-  }
-})
-
-afterAll(() => {
-  console.error = originalError
-  console.warn = originalWarn
-}) 
+    const avg = times.reduce((a, b) => a + b, 0) / times.length
+    const min = Math.min(...times)
+    const max = Math.max(...times)
+    console.log(`${name}: avg=${avg.toFixed(2)}ms, min=${min.toFixed(2)}ms, max=${max.toFixed(2)}ms`)
+    return { avg, min, max, times }
+  },
+} 

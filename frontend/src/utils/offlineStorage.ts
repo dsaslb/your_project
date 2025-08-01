@@ -1,352 +1,305 @@
-// IndexedDB를 활용한 오프라인 임시저장 유틸리티
+'use client';
 
-interface OfflineData {
-  id: string;
-  type: 'create' | 'update' | 'delete';
-  data: any;
-  timestamp: string;
-  retryCount: number;
-}
+// 오프라인 스토리지 유틸리티
+export class OfflineStorage {
+  private static readonly STORAGE_KEYS = {
+    INDUSTRIES: 'offline_industries',
+    BRANDS: 'offline_brands',
+    STORES: 'offline_stores',
+    EMPLOYEES: 'offline_employees',
+    LAST_SYNC: 'last_sync_timestamp',
+    IS_OFFLINE: 'is_offline_mode'
+  };
 
-interface CachedData {
-  key: string;
-  data: any;
-  timestamp: string;
-  version: string;
-}
-
-class OfflineStorage {
-  private readonly OFFLINE_DATA_KEY = 'offline_data';
-  private readonly CACHED_DATA_KEY = 'cached_data';
-  private readonly MAX_RETRY_COUNT = 3;
-  private readonly CACHE_EXPIRY_HOURS = 24;
-
-  // 오프라인 데이터 저장
-  async saveOfflineData(collection: string, type: 'create' | 'update' | 'delete', data: any): Promise<void> {
+  // 데이터 저장
+  static saveData<T>(key: string, data: T): void {
     try {
-      const offlineData: OfflineData = {
-        id: `${collection}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type,
-        data,
-        timestamp: new Date().toISOString(),
-        retryCount: 0
-      };
-
-      const existingData = this.getOfflineData();
-      existingData.push(offlineData);
-      
-      localStorage.setItem(this.OFFLINE_DATA_KEY, JSON.stringify(existingData));
-      
-      // 실시간 동기화: 오프라인 데이터 저장 이벤트 브로드캐스트
-      this.broadcastOfflineDataChange('offline_data_saved', { collection, type, data });
-      
-      console.log(`오프라인 데이터 저장됨: ${collection} - ${type}`, offlineData);
-    } catch (error) {
-      console.error('오프라인 데이터 저장 실패:', error);
-    }
-  }
-
-  // 오프라인 데이터 조회
-  getOfflineData(): OfflineData[] {
-    try {
-      const data = localStorage.getItem(this.OFFLINE_DATA_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('오프라인 데이터 조회 실패:', error);
-      return [];
-    }
-  }
-
-  // 오프라인 데이터 삭제
-  removeOfflineData(id: string): void {
-    try {
-      const existingData = this.getOfflineData();
-      const filteredData = existingData.filter(item => item.id !== id);
-      localStorage.setItem(this.OFFLINE_DATA_KEY, JSON.stringify(filteredData));
-      
-      // 실시간 동기화: 오프라인 데이터 삭제 이벤트 브로드캐스트
-      this.broadcastOfflineDataChange('offline_data_removed', { id });
-    } catch (error) {
-      console.error('오프라인 데이터 삭제 실패:', error);
-    }
-  }
-
-  // 캐시 데이터 저장
-  async saveCachedData(collection: string, key: string, data: any, version?: string): Promise<void> {
-    try {
-      const cachedData: CachedData = {
-        key: `${collection}_${key}`,
-        data,
-        timestamp: new Date().toISOString(),
-        version: version || '1.0'
-      };
-
-      const existingCache = this.getCachedData();
-      const filteredCache = existingCache.filter((item: CachedData) => item.key !== cachedData.key);
-      filteredCache.push(cachedData);
-      
-      localStorage.setItem(this.CACHED_DATA_KEY, JSON.stringify(filteredCache));
-      
-      // 실시간 동기화: 캐시 데이터 저장 이벤트 브로드캐스트
-      this.broadcastOfflineDataChange('cache_data_saved', { collection, key, data });
-    } catch (error) {
-      console.error('캐시 데이터 저장 실패:', error);
-    }
-  }
-
-  // 캐시 데이터 조회
-  getCachedData(collection?: string, key?: string): any {
-    try {
-      const data = localStorage.getItem(this.CACHED_DATA_KEY);
-      if (!data) return null;
-
-      const cachedData: CachedData[] = JSON.parse(data);
-      const now = new Date();
-      
-      // 만료된 캐시 제거
-      const validCache = cachedData.filter((item: CachedData) => {
-        const cacheTime = new Date(item.timestamp);
-        const hoursDiff = (now.getTime() - cacheTime.getTime()) / (1000 * 60 * 60);
-        return hoursDiff < this.CACHE_EXPIRY_HOURS;
-      });
-
-      // 만료된 캐시가 있으면 업데이트
-      if (validCache.length !== cachedData.length) {
-        localStorage.setItem(this.CACHED_DATA_KEY, JSON.stringify(validCache));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(data));
+        console.log(`💾 오프라인 저장 완료: ${key}`, data);
       }
-
-      if (collection && key) {
-        const targetKey = `${collection}_${key}`;
-        const item = validCache.find(cache => cache.key === targetKey);
-        return item ? item.data : null;
-      }
-
-      return validCache;
     } catch (error) {
-      console.error('캐시 데이터 조회 실패:', error);
-      return null;
+      console.error(`❌ 오프라인 저장 실패: ${key}`, error);
     }
   }
 
-  // 캐시 데이터 삭제
-  removeCachedData(collection: string, key: string): void {
+  // 데이터 로드
+  static loadData<T>(key: string): T | null {
     try {
-      const existingCache = this.getCachedData();
-      const targetKey = `${collection}_${key}`;
-      const filteredCache = existingCache.filter((item: CachedData) => item.key !== targetKey);
-      localStorage.setItem(this.CACHED_DATA_KEY, JSON.stringify(filteredCache));
-      
-      // 실시간 동기화: 캐시 데이터 삭제 이벤트 브로드캐스트
-      this.broadcastOfflineDataChange('cache_data_removed', { collection, key });
-    } catch (error) {
-      console.error('캐시 데이터 삭제 실패:', error);
-    }
-  }
-
-  // 오프라인 데이터 동기화 시도
-  async syncOfflineData(): Promise<{ success: boolean; syncedCount: number; errors: string[] }> {
-    const offlineData = this.getOfflineData();
-    const results = {
-      success: true,
-      syncedCount: 0,
-      errors: [] as string[]
-    };
-
-    for (const item of offlineData) {
-      try {
-        const success = await this.syncSingleOfflineData(item);
-        if (success) {
-          this.removeOfflineData(item.id);
-          results.syncedCount++;
-        } else {
-          item.retryCount++;
-          if (item.retryCount >= this.MAX_RETRY_COUNT) {
-            results.errors.push(`최대 재시도 횟수 초과: ${item.id}`);
-            this.removeOfflineData(item.id);
-          }
+      if (typeof window !== 'undefined') {
+        const data = localStorage.getItem(key);
+        if (data) {
+          const parsed = JSON.parse(data);
+          console.log(`📂 오프라인 데이터 로드: ${key}`, parsed);
+          return parsed;
         }
-      } catch (error) {
-        console.error(`오프라인 데이터 동기화 실패: ${item.id}`, error);
-        results.errors.push(`동기화 오류: ${item.id} - ${error}`);
-        results.success = false;
       }
-    }
-
-    // 실시간 동기화: 동기화 완료 이벤트 브로드캐스트
-    this.broadcastOfflineDataChange('offline_sync_completed', results);
-
-    return results;
-  }
-
-  // 단일 오프라인 데이터 동기화
-  private async syncSingleOfflineData(item: OfflineData): Promise<boolean> {
-    try {
-      const { collection, type, data } = this.parseOfflineData(item);
-      
-      switch (type) {
-        case 'create':
-          await this.apiCall('POST', `/api/${collection}`, data);
-          break;
-        case 'update':
-          await this.apiCall('PUT', `/api/${collection}/${data.id}`, data);
-          break;
-        case 'delete':
-          await this.apiCall('DELETE', `/api/${collection}/${data.id}`);
-          break;
-      }
-      
-      return true;
     } catch (error) {
-      console.error(`단일 오프라인 데이터 동기화 실패: ${item.id}`, error);
-      return false;
+      console.error(`❌ 오프라인 데이터 로드 실패: ${key}`, error);
+    }
+    return null;
+  }
+
+  // 업종 데이터 관리
+  static saveIndustries(industries: any[]): void {
+    this.saveData(this.STORAGE_KEYS.INDUSTRIES, industries);
+  }
+
+  static loadIndustries(): any[] {
+    return this.loadData(this.STORAGE_KEYS.INDUSTRIES) || [];
+  }
+
+  // 브랜드 데이터 관리
+  static saveBrands(brands: any[]): void {
+    this.saveData(this.STORAGE_KEYS.BRANDS, brands);
+  }
+
+  static loadBrands(): any[] {
+    return this.loadData(this.STORAGE_KEYS.BRANDS) || [];
+  }
+
+  // 매장 데이터 관리
+  static saveStores(stores: any[]): void {
+    this.saveData(this.STORAGE_KEYS.STORES, stores);
+  }
+
+  static loadStores(): any[] {
+    return this.loadData(this.STORAGE_KEYS.STORES) || [];
+  }
+
+  // 직원 데이터 관리
+  static saveEmployees(employees: any[]): void {
+    this.saveData(this.STORAGE_KEYS.EMPLOYEES, employees);
+  }
+
+  static loadEmployees(): any[] {
+    return this.loadData(this.STORAGE_KEYS.EMPLOYEES) || [];
+  }
+
+  // 마지막 동기화 시간 관리
+  static saveLastSync(): void {
+    this.saveData(this.STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+  }
+
+  static getLastSync(): string | null {
+    return this.loadData(this.STORAGE_KEYS.LAST_SYNC);
+  }
+
+  // 오프라인 모드 상태 관리
+  static setOfflineMode(isOffline: boolean): void {
+    this.saveData(this.STORAGE_KEYS.IS_OFFLINE, isOffline);
+  }
+
+  static isOfflineMode(): boolean {
+    return this.loadData(this.STORAGE_KEYS.IS_OFFLINE) || false;
+  }
+
+  // 모든 데이터 삭제
+  static clearAll(): void {
+    try {
+      if (typeof window !== 'undefined') {
+        Object.values(this.STORAGE_KEYS).forEach(key => {
+          localStorage.removeItem(key);
+        });
+        console.log('🗑️ 모든 오프라인 데이터 삭제 완료');
+      }
+    } catch (error) {
+      console.error('❌ 오프라인 데이터 삭제 실패:', error);
     }
   }
 
-  // 오프라인 데이터 파싱
-  private parseOfflineData(item: OfflineData): { collection: string; type: string; data: any } {
-    const [collection, ...rest] = item.id.split('_');
-    return {
-      collection,
-      type: item.type,
-      data: item.data
-    };
-  }
-
-  // API 호출
-  private async apiCall(method: string, url: string, data?: any): Promise<any> {
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
+  // 기본 데이터 생성 (오프라인 모드용)
+  static createDefaultData() {
+    const defaultIndustries = [
+      {
+        id: 1,
+        name: '음식점',
+        code: 'FOOD',
+        description: '음식점 및 카페 업종',
+        brand_count: 5,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       },
-      body: data ? JSON.stringify(data) : undefined,
-    });
-
-    if (!response.ok) {
-      throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  }
-
-  // 실시간 동기화: 오프라인 데이터 변경 이벤트 브로드캐스트
-  private broadcastOfflineDataChange(action: string, data?: any): void {
-    const broadcastData = {
-      action,
-      data,
-      timestamp: new Date().toISOString()
-    };
-    
-    // localStorage를 통한 다른 탭에 브로드캐스트
-    localStorage.setItem('offline-storage-broadcast', JSON.stringify(broadcastData));
-    localStorage.removeItem('offline-storage-broadcast'); // 즉시 제거하여 중복 방지
-    
-    // WebSocket을 통한 실시간 브로드캐스트
-    if (typeof window !== 'undefined' && (window as any).notificationWebSocket) {
-      try {
-        (window as any).notificationWebSocket.send(JSON.stringify({
-          type: 'offline_storage_update',
-          ...broadcastData
-        }));
-      } catch (error) {
-        console.warn('오프라인 스토리지 WebSocket 브로드캐스트 실패:', error);
+      {
+        id: 2,
+        name: '소매업',
+        code: 'RETAIL',
+        description: '소매 및 도매 업종',
+        brand_count: 3,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        name: '서비스업',
+        code: 'SERVICE',
+        description: '다양한 서비스 업종',
+        brand_count: 4,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
-    }
+    ];
+
+    const defaultBrands = [
+      {
+        id: 1,
+        name: '스타벅스',
+        code: 'SBUX',
+        description: '글로벌 커피 체인',
+        industry_id: 1,
+        store_count: 12,
+        employee_count: 45,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        name: '맥도날드',
+        code: 'MCD',
+        description: '패스트푸드 체인',
+        industry_id: 1,
+        store_count: 8,
+        employee_count: 32,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        name: '올리브영',
+        code: 'OLIVE',
+        description: '뷰티 소매 체인',
+        industry_id: 2,
+        store_count: 15,
+        employee_count: 28,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+
+    const defaultStores = [
+      {
+        id: 1,
+        name: '강남점',
+        code: 'GN001',
+        address: '서울시 강남구 테헤란로 123',
+        phone: '02-1234-5678',
+        manager_name: '김매니저',
+        brand_id: 1,
+        employee_count: 15,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        name: '홍대점',
+        code: 'HD001',
+        address: '서울시 마포구 홍대로 456',
+        phone: '02-2345-6789',
+        manager_name: '이매니저',
+        brand_id: 1,
+        employee_count: 12,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        name: '신촌점',
+        code: 'SC001',
+        address: '서울시 서대문구 신촌로 789',
+        phone: '02-3456-7890',
+        manager_name: '박매니저',
+        brand_id: 2,
+        employee_count: 18,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+
+    const defaultEmployees = [
+      {
+        id: '1',
+        name: '김철수',
+        email: 'kim@example.com',
+        phone: '010-1234-5678',
+        role: '매니저',
+        department: '영업팀',
+        hireDate: '2023-01-15',
+        status: 'active',
+        location: '서울 강남점',
+        lastActive: '2024-01-15 14:30',
+        workHours: 160,
+        performance: 95,
+      },
+      {
+        id: '2',
+        name: '이영희',
+        email: 'lee@example.com',
+        phone: '010-2345-6789',
+        role: '직원',
+        department: '고객서비스팀',
+        hireDate: '2023-03-20',
+        status: 'active',
+        location: '서울 강남점',
+        lastActive: '2024-01-15 15:45',
+        workHours: 140,
+        performance: 88,
+      },
+      {
+        id: '3',
+        name: '박민수',
+        email: 'park@example.com',
+        phone: '010-3456-7890',
+        role: '팀장',
+        department: '개발팀',
+        hireDate: '2022-08-10',
+        status: 'active',
+        location: '서울 홍대점',
+        lastActive: '2024-01-15 16:20',
+        workHours: 180,
+        performance: 92,
+      }
+    ];
+
+    // 기본 데이터 저장
+    this.saveIndustries(defaultIndustries);
+    this.saveBrands(defaultBrands);
+    this.saveStores(defaultStores);
+    this.saveEmployees(defaultEmployees);
+    this.saveLastSync();
+    this.setOfflineMode(true);
+
+    console.log('📦 기본 오프라인 데이터 생성 완료');
+    return { 
+      industries: defaultIndustries, 
+      brands: defaultBrands, 
+      stores: defaultStores, 
+      employees: defaultEmployees 
+    };
   }
 
-  // 오프라인 데이터 변경 구독
-  subscribeToOfflineDataChanges(callback: (action: string, data?: any) => void): () => void {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'offline-storage-broadcast') {
-        try {
-          const broadcastData = JSON.parse(e.newValue || '{}');
-          callback(broadcastData.action, broadcastData.data);
-        } catch (error) {
-          console.error('오프라인 스토리지 브로드캐스트 파싱 오류:', error);
-        }
+  // 데이터 동기화 상태 확인
+  static getSyncStatus() {
+    const lastSync = this.getLastSync();
+    const isOffline = this.isOfflineMode();
+    
+    return {
+      isOffline,
+      lastSync: lastSync ? new Date(lastSync).toLocaleString('ko-KR') : '동기화 없음',
+      hasData: {
+        industries: this.loadIndustries().length > 0,
+        brands: this.loadBrands().length > 0,
+        stores: this.loadStores().length > 0,
+        employees: this.loadEmployees().length > 0
       }
     };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
   }
-
-  // 저장소 정리 (만료된 데이터 제거)
-  cleanup(): void {
-    try {
-      // 만료된 캐시 제거
-      this.getCachedData(); // 내부적으로 만료된 캐시 제거
-      
-      // 오래된 오프라인 데이터 제거 (7일 이상)
-      const offlineData = this.getOfflineData();
-      const now = new Date();
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      
-      const validOfflineData = offlineData.filter((item: OfflineData) => {
-        const itemTime = new Date(item.timestamp);
-        return itemTime > sevenDaysAgo;
-      });
-      
-      if (validOfflineData.length !== offlineData.length) {
-        localStorage.setItem(this.OFFLINE_DATA_KEY, JSON.stringify(validOfflineData));
-        console.log(`오래된 오프라인 데이터 ${offlineData.length - validOfflineData.length}개 제거됨`);
-      }
-    } catch (error) {
-      console.error('저장소 정리 실패:', error);
-    }
-  }
-
-  // 저장소 상태 조회
-  getStorageStatus(): {
-    offlineDataCount: number;
-    cachedDataCount: number;
-    totalSize: number;
-  } {
-    try {
-      const offlineData = this.getOfflineData();
-      const cachedData = this.getCachedData();
-      
-      const offlineSize = JSON.stringify(offlineData).length;
-      const cachedSize = JSON.stringify(cachedData).length;
-      const totalSize = offlineSize + cachedSize;
-      
-      return {
-        offlineDataCount: offlineData.length,
-        cachedDataCount: Array.isArray(cachedData) ? cachedData.length : 0,
-        totalSize
-      };
-    } catch (error) {
-      console.error('저장소 상태 조회 실패:', error);
-      return {
-        offlineDataCount: 0,
-        cachedDataCount: 0,
-        totalSize: 0
-      };
-    }
-  }
-}
-
-export const offlineStorage = new OfflineStorage();
-
-// 네트워크 상태 감지
-export const isOnline = (): boolean => {
-  return navigator.onLine;
-};
-
-// 네트워크 상태 변경 이벤트 리스너
-export const setupNetworkListener = (onOnline: () => void, onOffline: () => void): void => {
-  window.addEventListener('online', onOnline);
-  window.addEventListener('offline', onOffline);
-};
-
-// 정기적인 동기화 설정
-export const setupPeriodicSync = (intervalMs: number = 30000): NodeJS.Timeout => {
-  return setInterval(async () => {
-    if (isOnline()) {
-      await offlineStorage.syncOfflineData();
-    }
-  }, intervalMs);
-}; 
+} 

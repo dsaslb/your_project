@@ -132,7 +132,7 @@ describe('useUserStore', () => {
             username: 'admin',
             name: '관리자',
             email: 'admin@yourprogram.com',
-            role: 'super_admin',
+            role: 'admin',
             is_active: true,
           },
           isAuthenticated: true,
@@ -157,7 +157,7 @@ describe('useUserStore', () => {
         username: 'admin',
         name: '관리자',
         email: 'admin@yourprogram.com',
-        role: 'super_admin' as const,
+        role: 'admin' as const,
         is_active: true,
       }
 
@@ -202,7 +202,7 @@ describe('useUserStore', () => {
             username: 'admin',
             name: '관리자',
             email: 'admin@yourprogram.com',
-            role: 'super_admin',
+            role: 'admin',
             is_active: true,
           },
           isAuthenticated: true,
@@ -213,7 +213,7 @@ describe('useUserStore', () => {
     it('단일 권한 체크가 올바르게 작동해야 함', () => {
       const { result } = renderHook(() => useUserStore())
 
-      expect(result.current.hasRole('super_admin')).toBe(true)
+      expect(result.current.hasRole('admin')).toBe(true)
       expect(result.current.hasRole('store_manager')).toBe(false)
       expect(result.current.hasRole('employee')).toBe(false)
     })
@@ -221,7 +221,7 @@ describe('useUserStore', () => {
     it('다중 권한 체크가 올바르게 작동해야 함', () => {
       const { result } = renderHook(() => useUserStore())
 
-      expect(result.current.hasRole(['super_admin', 'store_manager'])).toBe(true)
+      expect(result.current.hasRole(['admin', 'store_manager'])).toBe(true)
       expect(result.current.hasRole(['store_manager', 'employee'])).toBe(false)
     })
 
@@ -235,8 +235,8 @@ describe('useUserStore', () => {
 
       const { result } = renderHook(() => useUserStore())
 
-      expect(result.current.hasRole('super_admin')).toBe(false)
-      expect(result.current.hasRole(['super_admin', 'store_manager'])).toBe(false)
+      expect(result.current.hasRole('admin')).toBe(false)
+      expect(result.current.hasRole(['admin', 'store_manager'])).toBe(false)
     })
   })
 
@@ -249,7 +249,7 @@ describe('useUserStore', () => {
             username: 'admin',
             name: '관리자',
             email: 'admin@yourprogram.com',
-            role: 'super_admin',
+            role: 'admin',
             is_active: true,
           },
           isAuthenticated: true,
@@ -263,7 +263,7 @@ describe('useUserStore', () => {
         username: 'admin',
         name: '새로운 이름',
         email: 'newemail@yourprogram.com',
-        role: 'super_admin' as const,
+        role: 'admin' as const,
         is_active: true,
       }
 
@@ -396,7 +396,7 @@ describe('useUserStore', () => {
         username: 'admin',
         name: '관리자',
         email: 'admin@yourprogram.com',
-        role: 'super_admin' as const,
+        role: 'admin' as const,
         is_active: true,
       }
 
@@ -419,7 +419,7 @@ describe('useUserStore', () => {
         username: 'admin',
         name: '관리자',
         email: 'admin@yourprogram.com',
-        role: 'super_admin' as const,
+        role: 'admin' as const,
         is_active: true,
       }
 

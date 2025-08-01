@@ -52,7 +52,7 @@ export default function SignaturePad({
     // 배경을 흰색으로 설정
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, rect.width, rect.height);
-  }, [width, height]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // DOM이 렌더링된 후 Canvas 초기화

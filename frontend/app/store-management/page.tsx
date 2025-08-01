@@ -21,12 +21,14 @@ import {
   Store,
   Users,
   Phone,
-  MapPin
+  MapPin,
+  Wifi
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient, Store as StoreType, Brand } from '../../lib/api-client';
 import useLoadingState from '@/hooks/useLoadingState';
 import useErrorHandler from '@/hooks/useErrorHandler';
+import { OfflineStorage } from '@/utils/offlineStorage';
 
 interface StoreFormData {
   name: string;
@@ -56,20 +58,134 @@ export default function StoreManagement() {
 
   const { isLoading, error, withLoading } = useLoadingState();
   const { handleError } = useErrorHandler();
+  const [isOffline, setIsOffline] = useState(false);
 
   // 매장 목록 조회
   const fetchStores = async () => {
-    const response = await apiClient.getStores();
-    if (response.success) {
-      setStores(response.data);
+    try {
+      console.log('🔍 매장 목록 조회 시작...');
+      
+      // 백엔드 API 직접 호출 시도
+      try {
+        const response = await fetch('http://192.168.45.44:5000/api/admin/stores', {
+          signal: AbortSignal.timeout(5000) // 5초 타임아웃
+        });
+        console.log('📊 매장 API 응답 상태:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📋 매장 데이터:', data);
+          
+          if (data.success && data.data) {
+            setStores(data.data);
+            // 온라인 모드: 데이터를 로컬에 저장
+            OfflineStorage.saveStores(data.data);
+            OfflineStorage.saveLastSync();
+            OfflineStorage.setOfflineMode(false);
+            setIsOffline(false);
+            console.log('✅ 온라인 모드: 매장 목록 설정 완료:', data.data.length, '개');
+          } else {
+            throw new Error('API 응답에 데이터가 없음');
+          }
+        } else {
+          throw new Error(`API 호출 실패: ${response.status}`);
+        }
+      } catch (apiError) {
+        console.log('🌐 백엔드 연결 실패, 오프라인 모드로 전환:', apiError);
+        
+        // 오프라인 모드: 로컬 데이터 사용
+        let offlineData = OfflineStorage.loadStores();
+        
+        // 로컬 데이터가 없으면 기본 데이터 생성
+        if (offlineData.length === 0) {
+          console.log('📦 기본 오프라인 매장 데이터 생성');
+          const defaultStores = [
+            {
+              id: 1,
+              name: '강남점',
+              code: 'GN001',
+              address: '서울시 강남구 테헤란로 123',
+              phone: '02-1234-5678',
+              manager_name: '김매니저',
+              brand_id: 1,
+              employee_count: 15,
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            },
+            {
+              id: 2,
+              name: '홍대점',
+              code: 'HD001',
+              address: '서울시 마포구 홍대로 456',
+              phone: '02-2345-6789',
+              manager_name: '이매니저',
+              brand_id: 1,
+              employee_count: 12,
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ];
+          OfflineStorage.saveStores(defaultStores);
+          offlineData = defaultStores;
+        }
+        
+        setStores(offlineData);
+        OfflineStorage.setOfflineMode(true);
+        setIsOffline(true);
+        console.log('✅ 오프라인 모드: 매장 목록 설정 완료:', offlineData.length, '개');
+      }
+    } catch (error) {
+      console.error('❌ 매장 목록 조회 오류:', error);
+      setStores([]);
     }
   };
 
   // 브랜드 목록 조회
   const fetchBrands = async () => {
-    const response = await apiClient.getBrands();
-    if (response.success) {
-      setBrands(response.data);
+    try {
+      console.log('🔍 브랜드 목록 조회 시작...');
+      
+      // 백엔드 API 직접 호출 시도
+      try {
+        const response = await fetch('http://192.168.45.44:5000/api/admin/brands', {
+          signal: AbortSignal.timeout(5000) // 5초 타임아웃
+        });
+        console.log('📊 브랜드 API 응답 상태:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📋 브랜드 데이터:', data);
+          
+          if (data.success && data.data) {
+            setBrands(data.data);
+            console.log('✅ 온라인 모드: 브랜드 목록 설정 완료:', data.data.length, '개');
+          } else {
+            throw new Error('API 응답에 데이터가 없음');
+          }
+        } else {
+          throw new Error(`API 호출 실패: ${response.status}`);
+        }
+      } catch (apiError) {
+        console.log('🌐 백엔드 연결 실패, 오프라인 모드로 전환:', apiError);
+        
+        // 오프라인 모드: 로컬 데이터 사용
+        let offlineData = OfflineStorage.loadBrands();
+        
+        // 로컬 데이터가 없으면 기본 데이터 생성
+        if (offlineData.length === 0) {
+          console.log('📦 기본 오프라인 브랜드 데이터 생성');
+          const defaultData = OfflineStorage.createDefaultData();
+          offlineData = defaultData.brands;
+        }
+        
+        setBrands(offlineData);
+        console.log('✅ 오프라인 모드: 브랜드 목록 설정 완료:', offlineData.length, '개');
+      }
+    } catch (error) {
+      console.error('❌ 브랜드 목록 조회 오류:', error);
+      setBrands([]);
     }
   };
 
@@ -119,42 +235,175 @@ export default function StoreManagement() {
     try {
       if (editingStore) {
         // 수정
-        const response = await apiClient.updateStore(editingStore.id, formData);
-        if (response.success) {
-          toast.success('매장이 성공적으로 수정되었습니다.');
-          setIsCreateDialogOpen(false);
-          resetForm();
-          fetchStores();
+        try {
+          const response = await fetch(`http://192.168.45.44:5000/api/admin/branches/${editingStore.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData),
+            signal: AbortSignal.timeout(5000)
+          });
+          
+          if (response.ok) {
+            toast.success('매장이 성공적으로 수정되었습니다.');
+            setIsCreateDialogOpen(false);
+            resetForm();
+            fetchStores();
+            return;
+          }
+        } catch (apiError) {
+          console.log('🌐 백엔드 연결 실패, 오프라인 모드로 처리:', apiError);
         }
+        
+        // 오프라인 모드: 로컬 데이터 수정
+        const updatedStores = stores.map(store => 
+          store.id === editingStore.id 
+            ? { ...store, ...formData, status: store.status, updated_at: new Date().toISOString() } as StoreType
+            : store
+        );
+        
+        setStores(updatedStores);
+        OfflineStorage.saveStores(updatedStores);
+        OfflineStorage.setOfflineMode(true);
+        toast.success('매장이 오프라인 모드에서 수정되었습니다.');
+        setIsCreateDialogOpen(false);
+        resetForm();
+        
       } else {
         // 생성
-        const response = await apiClient.createStore(formData);
-        if (response.success) {
-          toast.success('매장이 성공적으로 생성되었습니다.');
-          setIsCreateDialogOpen(false);
-          resetForm();
-          fetchStores();
+        try {
+          const response = await fetch('http://192.168.45.44:5000/api/admin/branches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData),
+            signal: AbortSignal.timeout(5000)
+          });
+          
+          if (response.ok) {
+            toast.success('매장이 성공적으로 생성되었습니다.');
+            setIsCreateDialogOpen(false);
+            resetForm();
+            fetchStores();
+            return;
+          }
+        } catch (apiError) {
+          console.log('🌐 백엔드 연결 실패, 오프라인 모드로 처리:', apiError);
         }
+        
+        // 오프라인 모드: 로컬 데이터 생성
+        const newStore = {
+          id: Date.now(),
+          ...formData,
+          employee_count: 0,
+          status: 'active' as const,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as StoreType;
+        
+        const updatedStores = [...stores, newStore];
+        setStores(updatedStores);
+        OfflineStorage.saveStores(updatedStores);
+        OfflineStorage.setOfflineMode(true);
+        toast.success('매장이 오프라인 모드에서 생성되었습니다.');
+        setIsCreateDialogOpen(false);
+        resetForm();
       }
     } catch (error) {
-      handleError(error as Error);
+      console.error('매장 처리 오류:', error);
+      toast.error('매장 처리 중 오류가 발생했습니다.');
     }
   };
 
   // 매장 삭제
   const handleDelete = async (store: StoreType) => {
-    if (!confirm(`"${store.name}" 매장을 삭제하시겠습니까?`)) {
+    if (!confirm(`"${store.name}" 매장을 비활성화하시겠습니까?\n\n⚠️ 관련 직원이 있으면 비활성화할 수 없습니다.`)) {
       return;
     }
 
     try {
-      const response = await apiClient.deleteStore(store.id);
-      if (response.success) {
-        toast.success('매장이 성공적으로 삭제되었습니다.');
-        fetchStores();
+      // 온라인 모드: 백엔드 API 호출
+      try {
+        const response = await fetch(`http://192.168.45.44:5000/api/admin/branches/${store.id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          toast.success(result.message || '매장이 성공적으로 비활성화되었습니다.');
+          fetchStores(); // 목록 새로고침
+          return;
+        } else {
+          // 백엔드에서 오류 응답
+          const errorMessage = result.error || '매장 비활성화에 실패했습니다.';
+          toast.error(errorMessage);
+          
+          // 관련 데이터가 있는 경우 오프라인 모드로 처리하지 않음
+          if (errorMessage.includes('직원이 있어') || errorMessage.includes('사용자가 있어')) {
+            return;
+          }
+        }
+      } catch (apiError) {
+        console.log('🌐 백엔드 연결 실패, 오프라인 모드로 처리:', apiError);
       }
+      
+      // 오프라인 모드: 로컬 데이터 비활성화
+      const updatedStores = stores.map(item => 
+        item.id === store.id 
+          ? { ...item, status: 'inactive' }
+          : item
+      );
+      setStores(updatedStores);
+      OfflineStorage.saveStores(updatedStores);
+      OfflineStorage.setOfflineMode(true);
+      toast.success('매장이 오프라인 모드에서 비활성화되었습니다.');
+      
     } catch (error) {
-      handleError(error as Error);
+      console.error('매장 비활성화 오류:', error);
+      toast.error('매장 비활성화 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 매장 활성화
+  const handleActivate = async (store: StoreType) => {
+    if (!confirm(`"${store.name}" 매장을 활성화하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      // 온라인 모드: 백엔드 API 호출
+      try {
+        const response = await fetch(`http://192.168.45.44:5000/api/admin/branches/${store.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'active' }),
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+          toast.success('매장이 성공적으로 활성화되었습니다.');
+          fetchStores();
+          return;
+        }
+      } catch (apiError) {
+        console.log('🌐 백엔드 연결 실패, 오프라인 모드로 처리:', apiError);
+      }
+      
+      // 오프라인 모드: 로컬 데이터 활성화
+      const updatedStores = stores.map(item => 
+        item.id === store.id 
+          ? { ...item, status: 'active' as const }
+          : item
+      );
+      setStores(updatedStores);
+      OfflineStorage.saveStores(updatedStores);
+      OfflineStorage.setOfflineMode(true);
+      toast.success('매장이 오프라인 모드에서 활성화되었습니다.');
+      
+    } catch (error) {
+      console.error('매장 활성화 오류:', error);
+      toast.error('매장 활성화 중 오류가 발생했습니다.');
     }
   };
 
@@ -201,22 +450,51 @@ export default function StoreManagement() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <Building2 className="w-8 h-8 text-emerald-400" />
-            매장별 관리
-          </h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Building2 className="w-8 h-8 text-emerald-400" />
+              매장별 관리
+            </h1>
+            {isOffline && (
+              <Badge variant="secondary" className="bg-yellow-900 text-yellow-300">
+                <Wifi className="w-3 h-3 mr-1" />
+                오프라인 모드
+              </Badge>
+            )}
+          </div>
           <p className="text-slate-400 mt-2">매장 정보를 관리하고 직원을 조직화합니다.</p>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setIsCreateDialogOpen(true);
-          }}
-          className="bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border-emerald-500/30 hover:from-emerald-500/30 hover:to-cyan-500/30"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          매장 추가
-        </Button>
+        <div className="flex items-center gap-3">
+          {isOffline && (
+            <Button
+              onClick={() => {
+                const loadData = async () => {
+                  try {
+                    await Promise.all([fetchStores(), fetchBrands()]);
+                  } catch (error) {
+                    console.error('동기화 시도 실패:', error);
+                  }
+                };
+                loadData();
+              }}
+              variant="outline"
+              className="border-yellow-600 text-yellow-400 hover:bg-yellow-600/20"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              동기화 시도
+            </Button>
+          )}
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsCreateDialogOpen(true);
+            }}
+            className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700 text-white font-semibold px-6 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            새 매장 추가
+          </Button>
+        </div>
       </div>
 
       {/* 통계 카드 */}
@@ -412,14 +690,27 @@ export default function StoreManagement() {
                         <Edit className="w-3 h-3 mr-1" />
                         수정
                       </Button>
-                      <Button
-                        onClick={() => handleDelete(store)}
-                        size="sm"
-                        variant="outline"
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/20"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+                      {store.status === 'active' ? (
+                        <Button
+                          onClick={() => handleDelete(store)}
+                          size="sm"
+                          variant="outline"
+                          className="border-red-500/30 text-red-400 hover:bg-red-500/20"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          비활성화
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleActivate(store)}
+                          size="sm"
+                          variant="outline"
+                          className="border-green-500/30 text-green-400 hover:bg-green-500/20"
+                        >
+                          <CheckCircle className="w-3 h-3" />
+                          활성화
+                                                </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -431,40 +722,42 @@ export default function StoreManagement() {
 
       {/* 매장 생성/수정 다이얼로그 */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="bg-slate-800/90 border-slate-600 backdrop-blur-xl">
+        <DialogContent className="bg-slate-800/95 border-emerald-500/50 text-white max-w-md mx-auto backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-emerald-400">
+            <DialogTitle className="text-xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
               {editingStore ? '매장 수정' : '매장 추가'}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name" className="text-slate-300">매장명 *</Label>
+              <Label htmlFor="name" className="text-gray-300 block mb-2">매장명 *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="bg-black/50 border-emerald-500/30 text-white focus:border-emerald-500"
+                className="bg-slate-700/50 border-emerald-500/50 text-white placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                 placeholder="매장명을 입력하세요"
+                required
               />
             </div>
             <div>
-              <Label htmlFor="code" className="text-slate-300">매장 코드 *</Label>
+              <Label htmlFor="code" className="text-gray-300 block mb-2">매장 코드 *</Label>
               <Input
                 id="code"
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                className="bg-black/50 border-emerald-500/30 text-white focus:border-emerald-500"
+                className="bg-slate-700/50 border-emerald-500/50 text-white placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                 placeholder="매장 코드를 입력하세요"
+                required
               />
             </div>
             <div>
-              <Label htmlFor="brand" className="text-slate-300">브랜드 *</Label>
+              <Label htmlFor="brand" className="text-gray-300 block mb-2">브랜드 *</Label>
               <Select value={String(formData.brand_id)} onValueChange={(value) => setFormData({ ...formData, brand_id: Number(value) })}>
-                <SelectTrigger className="bg-black/50 border-emerald-500/30 text-white focus:border-emerald-500">
+                <SelectTrigger className="bg-slate-700/50 border-emerald-500/50 text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20">
                   <SelectValue placeholder="브랜드를 선택하세요" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-600">
+                <SelectContent className="bg-slate-800 border-emerald-500/50">
                   {brands.map((brand) => (
                     <SelectItem key={brand.id} value={String(brand.id)}>
                       {brand.name}
@@ -474,49 +767,49 @@ export default function StoreManagement() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="address" className="text-slate-300">주소</Label>
+              <Label htmlFor="address" className="text-gray-300 block mb-2">주소</Label>
               <Input
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="bg-black/50 border-emerald-500/30 text-white focus:border-emerald-500"
+                className="bg-slate-700/50 border-emerald-500/50 text-white placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                 placeholder="매장 주소를 입력하세요"
               />
             </div>
             <div>
-              <Label htmlFor="phone" className="text-slate-300">전화번호</Label>
+              <Label htmlFor="phone" className="text-gray-300 block mb-2">전화번호</Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="bg-black/50 border-emerald-500/30 text-white focus:border-emerald-500"
+                className="bg-slate-700/50 border-emerald-500/50 text-white placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                 placeholder="매장 전화번호를 입력하세요"
               />
             </div>
             <div>
-              <Label htmlFor="manager" className="text-slate-300">매니저명</Label>
+              <Label htmlFor="manager" className="text-gray-300 block mb-2">매니저명</Label>
               <Input
                 id="manager"
                 value={formData.manager_name}
                 onChange={(e) => setFormData({ ...formData, manager_name: e.target.value })}
-                className="bg-black/50 border-emerald-500/30 text-white focus:border-emerald-500"
+                className="bg-slate-700/50 border-emerald-500/50 text-white placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                 placeholder="매니저명을 입력하세요"
               />
             </div>
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="submit"
-                className="flex-1 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border-emerald-500/30 hover:from-emerald-500/30 hover:to-cyan-500/30"
-              >
-                {editingStore ? '수정' : '추가'}
-              </Button>
+            <div className="flex justify-end space-x-2 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsCreateDialogOpen(false)}
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                className="border-gray-600/50 text-gray-300 hover:border-gray-500 hover:text-gray-200"
               >
                 취소
+              </Button>
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700"
+              >
+                {editingStore ? '수정' : '추가'}
               </Button>
             </div>
           </form>

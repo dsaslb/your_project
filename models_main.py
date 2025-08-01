@@ -2711,6 +2711,7 @@ class Industry(db.Model):
     icon = db.Column(db.String(50))
     color = db.Column(db.String(7))  # hex color
     status = db.Column(db.String(20), default="active")  # active, inactive
+    is_active = db.Column(db.Boolean, default=True)  # 활성화 상태
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

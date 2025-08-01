@@ -1,4 +1,5 @@
-import { useCallback, useRef, useEffect, useState } from 'react';
+import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import { PerformanceOptimizer } from '../utils/performance';
 
 interface PerformanceMetrics {
   renderTime: number;
@@ -139,48 +140,238 @@ export const useRenderPerformance = (componentName: string) => {
   });
 };
 
-export const useDebounce = <T>(value: T, delay: number): T => {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-};
-
-export const useThrottle = <T>(value: T, delay: number): T => {
-  const [throttledValue, setThrottledValue] = useState<T>(value);
-  const lastRun = useRef<number>(Date.now());
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (Date.now() - lastRun.current >= delay) {
-        setThrottledValue(value);
-        lastRun.current = Date.now();
-      }
-    }, delay - (Date.now() - lastRun.current));
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return throttledValue;
-};
-
-export const useMemoizedCallback = <T extends (...args: any[]) => any>(
+// 디바운스 훅
+export function useDebounce<T extends (...args: any[]) => any>(
   callback: T,
-  deps: React.DependencyList
-): T => {
-  return useCallback(callback, deps);
-};
+  delay: number
+): T {
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  return useCallback(
+    ((...args: Parameters<T>) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => callback(...args), delay);
+    }) as T,
+    [callback, delay]
+  );
+}
+
+// 쓰로틀 훅
+export function useThrottle<T extends (...args: any[]) => any>(
+  callback: T,
+  limit: number
+): T {
+  const inThrottleRef = useRef(false);
+
+  return useCallback(
+    ((...args: Parameters<T>) => {
+      if (!inThrottleRef.current) {
+        callback(...args);
+        inThrottleRef.current = true;
+        setTimeout(() => (inThrottleRef.current = false), limit);
+      }
+    }) as T,
+    [callback, limit]
+  );
+}
+
+// 무한 스크롤 훅
+export function useInfiniteScroll(
+  callback: () => void,
+  options: {
+    threshold?: number;
+    rootMargin?: string;
+    enabled?: boolean;
+  } = {}
+) {
+  const { threshold = 0.1, rootMargin = '100px', enabled = true } = options;
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const targetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            callback();
+          }
+        });
+      },
+      { threshold, rootMargin }
+    );
+
+    observerRef.current = observer;
+
+    if (targetRef.current) {
+      observer.observe(targetRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [callback, threshold, rootMargin, enabled]);
+
+  return targetRef;
+}
+
+// 메모리 사용량 모니터링 훅
+export function useMemoryMonitor() {
+  const [memoryInfo, setMemoryInfo] = useState<any>(null);
+
+  useEffect(() => {
+    if ('memory' in performance) {
+      const updateMemoryInfo = () => {
+        setMemoryInfo((performance as any).memory);
+      };
+
+      updateMemoryInfo();
+      const interval = setInterval(updateMemoryInfo, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, []);
+
+  return memoryInfo;
+}
+
+// 네트워크 상태 모니터링 훅
+export function useNetworkStatus() {
+  const [isOnline, setIsOnline] = useState(true);
+  const [connection, setConnection] = useState<any>(null);
+
+  useEffect(() => {
+    const updateNetworkStatus = () => {
+      setIsOnline(navigator.onLine);
+      if ('connection' in navigator) {
+        setConnection((navigator as any).connection);
+      }
+    };
+
+    updateNetworkStatus();
+
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+
+    return () => {
+      window.removeEventListener('online', updateNetworkStatus);
+      window.removeEventListener('offline', updateNetworkStatus);
+    };
+  }, []);
+
+  return { isOnline, connection };
+}
+
+// 성능 최적화된 리스트 훅
+export function useOptimizedList<T extends Record<string, any>>(
+  items: T[],
+  options: {
+    pageSize?: number;
+    searchTerm?: string;
+    sortBy?: keyof T;
+    sortDirection?: 'asc' | 'desc';
+  } = {}
+) {
+  const { pageSize = 20, searchTerm = '', sortBy, sortDirection = 'asc' } = options;
+
+  const filteredAndSortedItems = useMemo(() => {
+    let result = [...items];
+
+    // 검색 필터링
+    if (searchTerm) {
+      result = result.filter((item) =>
+        Object.values(item).some((value) =>
+          String(value).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    // 정렬
+    if (sortBy) {
+      result.sort((a, b) => {
+        const aValue = a[sortBy];
+        const bValue = b[sortBy];
+
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [items, searchTerm, sortBy, sortDirection]);
+
+  const paginatedItems = useMemo(() => {
+    return filteredAndSortedItems.slice(0, pageSize);
+  }, [filteredAndSortedItems, pageSize]);
+
+  return {
+    items: paginatedItems,
+    totalItems: filteredAndSortedItems.length,
+    hasMore: filteredAndSortedItems.length > pageSize,
+  };
+}
+
+// 성능 메트릭 수집 훅
+export function usePerformanceMetrics() {
+  const [metrics, setMetrics] = useState<any>(null);
+
+  useEffect(() => {
+    const performanceOptimizer = new PerformanceOptimizer();
+    
+    const updateMetrics = () => {
+      const report = performanceOptimizer.getPerformanceReport();
+      setMetrics(report);
+    };
+
+    updateMetrics();
+    const interval = setInterval(updateMetrics, 10000); // 10초마다 업데이트
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return metrics;
+}
+
+// 이미지 프리로딩 훅
+export function useImagePreload(imageUrls: string[]) {
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const preloadImages = async () => {
+      const promises = imageUrls.map((url) => {
+        return new Promise<string>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(url);
+          img.onerror = () => reject(url);
+          img.src = url;
+        });
+      });
+
+      try {
+        const loadedUrls = await Promise.allSettled(promises);
+        const successfulUrls = loadedUrls
+          .filter((result) => result.status === 'fulfilled')
+          .map((result) => (result as PromiseFulfilledResult<string>).value);
+        
+        setLoadedImages(new Set(successfulUrls));
+      } catch (error) {
+        console.warn('이미지 프리로딩 중 오류:', error);
+      }
+    };
+
+    if (imageUrls.length > 0) {
+      preloadImages();
+    }
+  }, [imageUrls]);
+
+  return loadedImages;
+}
 
 export const useIntersectionObserver = (
   callback: IntersectionObserverCallback,

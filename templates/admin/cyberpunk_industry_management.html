@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>업종 관리 - 시스템 관리</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
+    <link href="/static/css/backend-admin.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .cyberpunk-bg {
@@ -123,19 +124,19 @@
                     <input type="hidden" id="industry-id">
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">업종명</label>
-                        <input type="text" id="industry-name" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-400 focus:outline-none" required>
+                        <input type="text" id="industry-name" class="backend-input" placeholder="업종명을 입력하세요" required>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">코드</label>
-                        <input type="text" id="industry-code" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-400 focus:outline-none" required>
+                        <input type="text" id="industry-code" class="backend-input" placeholder="업종 코드를 입력하세요" required>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">색상</label>
-                        <input type="color" id="industry-color" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 h-12" value="#3B82F6">
+                        <input type="color" id="industry-color" class="backend-color" value="#3B82F6">
                     </div>
                     <div class="mb-6">
                         <label class="block text-sm font-semibold mb-2">상태</label>
-                        <select id="industry-status" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-400 focus:outline-none">
+                        <select id="industry-status" class="backend-select">
                             <option value="active">활성</option>
                             <option value="inactive">비활성</option>
                         </select>
@@ -332,8 +333,11 @@
                 name: document.getElementById('industry-name').value,
                 code: document.getElementById('industry-code').value,
                 color: document.getElementById('industry-color').value,
-                is_active: document.getElementById('industry-status').value === 'active'
+                status: document.getElementById('industry-status').value
             };
+
+            console.log('전송할 데이터:', data);
+            console.log('JSON 문자열:', JSON.stringify(data));
 
             const url = id ? `/api/admin/industries/${id}` : '/api/admin/industries';
             const method = id ? 'PUT' : 'POST';
