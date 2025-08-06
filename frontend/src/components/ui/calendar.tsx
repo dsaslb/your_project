@@ -2,48 +2,13 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker, type NavProps } from "react-day-picker"
+import { DayPicker } from "react-day-picker"
+import { ko } from "date-fns/locale"
 
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { cn } from "../../lib/utils"
+import { buttonVariants } from "./button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
-
-function CustomNav(props: NavProps) {
-  return (
-    <div className="flex items-center justify-between px-2 py-1">
-      <button
-        type="button"
-        onClick={props.onPreviousClick}
-        disabled={!props.previousMonth}
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        )}
-        aria-label="이전 달"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </button>
-      <span className="text-sm font-medium">
-        {(props as any).month
-          ? (props as any).month.toLocaleString("ko-KR", { year: "numeric", month: "long" })
-          : (props as any).displayMonth?.toLocaleString("ko-KR", { year: "numeric", month: "long" })}
-      </span>
-      <button
-        type="button"
-        onClick={props.onNextClick}
-        disabled={!props.nextMonth}
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        )}
-        aria-label="다음 달"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
-    </div>
-  )
-}
 
 function Calendar({
   className,
@@ -55,6 +20,7 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
+      locale={ko}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
@@ -90,7 +56,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Nav: CustomNav,
+        IconLeft: () => <ChevronLeft className="h-4 w-4" />,
+        IconRight: () => <ChevronRight className="h-4 w-4" />,
       }}
       {...props}
     />

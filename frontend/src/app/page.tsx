@@ -18,36 +18,19 @@ import {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <div className="text-3xl mr-4">🏢</div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">멀티테넌시 관리 시스템</h1>
-                <p className="text-sm text-gray-500">레스토랑 업종 계층별 관리 시스템</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button variant="outline" size="sm">
-                  로그인
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* 메인 콘텐츠 */}
-      <main className="max-w-7xl mx-auto py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
         {/* 환영 메시지 */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            레스토랑 업종 관리 시스템에 오신 것을 환영합니다
-          </h2>
+          <div className="flex items-center justify-center mb-6">
+            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4">
+              <Building2 className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900">퀀텀 멀티테넌시</h1>
+              <p className="text-lg text-gray-600">레스토랑 업종 계층별 관리 시스템</p>
+            </div>
+          </div>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
             업종, 브랜드, 매장, 직원의 계층적 구조를 효율적으로 관리할 수 있는 
             종합적인 관리 시스템입니다.
@@ -55,7 +38,7 @@ export default function HomePage() {
         </div>
 
         {/* 계층 구조 설명 */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-12">
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-12 border border-gray-100">
           <h3 className="text-xl font-semibold text-gray-900 mb-6 text-center">시스템 구조</h3>
           <div className="flex items-center justify-center space-x-8">
             <div className="text-center">
@@ -100,7 +83,7 @@ export default function HomePage() {
 
         {/* 관리자 페이지 카드들 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-all duration-300 border border-gray-100">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-blue-600" />
@@ -112,7 +95,7 @@ export default function HomePage() {
                 업종 전체를 관리하고 모든 브랜드의 통계를 확인할 수 있습니다.
               </p>
               <Link href="/industry-admin">
-                <Button className="w-full">
+                <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
                   접속하기
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -120,7 +103,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-all duration-300 border border-gray-100">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Store className="h-5 w-5 text-green-600" />
@@ -132,7 +115,7 @@ export default function HomePage() {
                 특정 브랜드의 매장과 직원을 관리할 수 있습니다.
               </p>
               <Link href="/brand-admin?brandId=1">
-                <Button className="w-full">
+                <Button className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
                   접속하기
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -140,7 +123,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-all duration-300 border border-gray-100">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Home className="h-5 w-5 text-orange-600" />
@@ -152,7 +135,7 @@ export default function HomePage() {
                 특정 매장의 직원과 운영을 관리할 수 있습니다.
               </p>
               <Link href="/branch-admin?branchId=1">
-                <Button className="w-full">
+                <Button className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700">
                   접속하기
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -160,7 +143,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-all duration-300 border border-gray-100">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-purple-600" />
@@ -172,7 +155,7 @@ export default function HomePage() {
                 개별 직원이 자신의 업무와 성과를 확인할 수 있습니다.
               </p>
               <Link href="/staff?staffId=1">
-                <Button className="w-full">
+                <Button className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700">
                   접속하기
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -183,7 +166,7 @@ export default function HomePage() {
 
         {/* 추가 기능들 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card>
+          <Card className="border border-gray-100">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -195,7 +178,7 @@ export default function HomePage() {
                 브랜드, 매장, 직원의 계층적 구조를 한눈에 확인하고 관리할 수 있습니다.
               </p>
               <Link href="/restaurant/hierarchy">
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full border-blue-200 text-blue-600 hover:bg-blue-50">
                   계층 관리 보기
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -203,7 +186,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-gray-100">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-green-600" />
@@ -214,14 +197,14 @@ export default function HomePage() {
               <p className="text-sm text-gray-600 mb-4">
                 매출, 주문, 직원 성과를 실시간으로 모니터링할 수 있습니다.
               </p>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full border-green-200 text-green-600 hover:bg-green-50">
                 모니터링 보기
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

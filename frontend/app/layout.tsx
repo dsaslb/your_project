@@ -5,6 +5,7 @@ import { LayoutWrapper } from '@/components/LayoutWrapper'
 import ErrorBoundary from '../src/components/ErrorBoundary'
 import GlobalErrorHandler from '../src/components/GlobalErrorHandler'
 import { AccessibilityProvider } from '../src/components/AccessibilityProvider'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
             <LayoutWrapper>
               {children}
             </LayoutWrapper>
+            <Toaster position="top-right" richColors />
           </AccessibilityProvider>
         </ErrorBoundary>
       </body>

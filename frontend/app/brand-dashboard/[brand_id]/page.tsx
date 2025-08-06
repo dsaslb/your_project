@@ -3,8 +3,8 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../src/components/ui/card';
-import { Button } from '../../../src/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useBrands, useStores, useEmployees } from '@/hooks/useDashboard';
 import { toast } from 'sonner';
 import { Building2, Users, TrendingUp, ArrowLeft, RefreshCw } from 'lucide-react';

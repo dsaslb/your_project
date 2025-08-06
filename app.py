@@ -9,22 +9,16 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from dataclasses import asdict
-import json
-import shutil
-from typing import Optional, Dict, Any, List
-from functools import wraps
+# 사용하지 않는 import 제거
 
 # 프로젝트 루트를 Python 경로에 추가
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 import jwt
-from flask import Flask, flash, jsonify, redirect, render_template, request, abort, url_for, g, current_app
-from werkzeug.utils import secure_filename
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
-from flask_login import current_user, login_required, login_user
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Gauge
-from werkzeug.security import generate_password_hash, check_password_hash
+# prometheus_client import 제거 (사용하지 않음)
+from werkzeug.security import generate_password_hash
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -65,22 +59,27 @@ except ImportError as e:
 
 # 데이터 모델 import
 from models_main import (
-    Branch,
-    Notification,
-    Order,
-    Schedule,
     User,
     Brand,
-    BrandPlugin,
-    Module,
     Industry,
 )
+
+# 플러그인 모델 import
+try:
+    from plugins.schedule_management.models import (
+        WorkSchedule,
+        ScheduleTemplate,
+        ScheduleRequest,
+        ScheduleSettings
+    )
+    SCHEDULE_PLUGIN_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"스케줄 관리 플러그인 모델을 불러올 수 없습니다: {e}")
+    SCHEDULE_PLUGIN_AVAILABLE = False
 
 # 권한 정책 시스템 import
 from utils.authorization_policy import (
     require_super_admin, 
-    protect_data_creation_endpoint, 
-    audit_operation,
     auth_policy
 )
 
@@ -89,6 +88,10 @@ from utils.system_optimizer import system_optimizer
 
 # 보안 강화 모듈 import
 from utils.security_enhancer import security_enhancer
+from utils.security_middleware import security_middleware
+
+# 캐시 매니저 import
+from utils.cache_manager import cache_manager
 
 # 환경 설정
 config_name = os.getenv("FLASK_ENV", "default")
@@ -100,7 +103,7 @@ app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 app.config["SECRET_KEY"] = app.config["JWT_SECRET_KEY"]
 
 # 플러그인 목록 (실제로는 DB에서 관리)
-plugins = []
+plugins = []  # noqa: F841
 
 # JSON 파싱 강제 활성화
 app.config['JSON_AS_ASCII'] = False
@@ -114,15 +117,31 @@ CORS(
     origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
     supports_credentials=True,
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "X-API-Key"],
     expose_headers=["Content-Type", "Authorization"],
     max_age=86400,
 )
+
+# OPTIONS 요청에 대한 전역 핸들러 추가
+@app.before_request
+def handle_preflight():
+    """CORS preflight 요청 처리"""
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With,Accept,X-API-Key")
+        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        response.headers.add("Access-Control-Max-Age", "86400")
+        return response
 
 # 확장 모듈 초기화 함수
 def initialize_extensions():
     """Flask 확장 모듈들을 초기화합니다."""
     try:
+        # 보안 미들웨어 초기화
+        security_middleware.init_app(app)
+        
         csrf.init_app(app)
         db.init_app(app)
         migrate.init_app(app, db)
@@ -149,7 +168,7 @@ def initialize_extensions():
             logger.info("Swagger 설정 비활성화됨")
             return None
             
-        logger.info("Flask 확장 모듈 초기화 완료")
+        logger.info("Flask 확장 모듈 및 보안 미들웨어 초기화 완료")
     except Exception as e:
         logger.error(f"Flask 확장 모듈 초기화 실패: {e}")
         raise
@@ -200,6 +219,9 @@ def create_default_admin():
 # 확장 모듈 초기화
 api = initialize_extensions()
 
+# 캐시 매니저 초기화
+cache_manager.init_app(app)
+
 # WebSocket 매니저 초기화
 websocket_manager.init_app(app)
 
@@ -211,13 +233,39 @@ def register_blueprints():
     """모든 블루프린트를 등록합니다."""
     blueprints = [
         # 백엔드 관리자 Blueprint
-        ("routes.backend_admin", "backend_admin_bp", None),
+        ("routes.backend_admin", "backend_admin_bp", "backend_admin"),
+        # 멀티테넌시 API Blueprint
+        ("api.multitenancy_api", "multitenancy_bp", "multitenancy_api"),
+        # 스토어 관리 API Blueprint
+        ("api.store_management", "store_management_bp", "store_management"),
+        # 직원 관리 API Blueprint
+        ("api.admin_employees_api", "bp", "admin_employees_api"),
+        # 로드 밸런서 API Blueprint
+        ("api.load_balancer_api", "load_balancer_bp", "load_balancer"),
+        # 메시지 큐 API Blueprint
+        ("api.message_queue_api", "message_queue_bp", "message_queue"),
+        # 캐시 관리 API Blueprint
+        ("api.cache_api", "cache_bp", "cache"),
+        # API 문서 시스템 Blueprint
+        ("api.api_docs_api", "api_docs_bp", "api_docs"),
+        # 스케줄 관리 플러그인 Blueprint
+        ("plugins.schedule_management", "schedule_bp", "schedule"),
+        # 직원 API Blueprint
+        ("api.employee_api", "employee_api", "employee"),
+        # 스케줄 API Blueprint
+        ("api.schedule_api", "schedule_api", "schedule"),
     ]
     
     for module_path, blueprint_name, url_prefix in blueprints:
         try:
             module = __import__(module_path, fromlist=[blueprint_name])
             blueprint = getattr(module, blueprint_name)
+            
+            # 이미 등록된 블루프린트인지 확인
+            if url_prefix in app.blueprints:
+                logger.warning(f"{url_prefix} 블루프린트가 이미 등록되어 있습니다. 건너뜁니다.")
+                continue
+            
             if url_prefix:
                 app.register_blueprint(blueprint, name=url_prefix)
                 logger.info(f"{url_prefix} 블루프린트 등록 완료")
@@ -229,6 +277,14 @@ def register_blueprints():
 
 # 블루프린트 등록
 register_blueprints()
+
+# API 문서 생성기 초기화
+try:
+    from api.api_docs_api import init_docs_generator
+    init_docs_generator(app)
+    print("✅ API 문서 생성기가 초기화되었습니다")
+except Exception as e:
+    print(f"⚠️ API 문서 생성기 초기화 실패: {str(e)}")
 
 # === 기본 라우트들 ===
 
@@ -307,6 +363,11 @@ def api_admin_audit_logs():
         return jsonify({"error": "감사 로그 조회에 실패했습니다."}), 500
 
 # 직원 관리 API 엔드포인트들
+@app.route("/api/employees", methods=["GET"])
+def api_employees():
+    """직원 목록 조회 (호환성을 위한 별칭)"""
+    return api_staff_list()
+
 @app.route("/api/staff/list", methods=["GET"])
 def api_staff_list():
     """직원 목록 조회"""
@@ -551,6 +612,56 @@ def api_staff_delete(staff_id):
             "error": "직원 삭제 중 오류가 발생했습니다."
         }), 500
 
+@app.route("/api/staff/<staff_id>/activate", methods=["PATCH"])
+def api_staff_activate(staff_id):
+    """직원 활성화"""
+    try:
+        user = User.query.get(int(staff_id))
+        if not user:
+            return jsonify({
+                "success": False,
+                "error": "직원을 찾을 수 없습니다."
+            }), 404
+        
+        user.status = "approved"
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "직원이 활성화되었습니다."
+        })
+    except Exception as e:
+        logger.error(f"직원 활성화 오류: {e}")
+        return jsonify({
+            "success": False,
+            "error": "직원 활성화에 실패했습니다."
+        }), 500
+
+@app.route("/api/staff/<staff_id>/deactivate", methods=["PATCH"])
+def api_staff_deactivate(staff_id):
+    """직원 비활성화"""
+    try:
+        user = User.query.get(int(staff_id))
+        if not user:
+            return jsonify({
+                "success": False,
+                "error": "직원을 찾을 수 없습니다."
+            }), 404
+        
+        user.status = "inactive"
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "직원이 비활성화되었습니다."
+        })
+    except Exception as e:
+        logger.error(f"직원 비활성화 오류: {e}")
+        return jsonify({
+            "success": False,
+            "error": "직원 비활성화에 실패했습니다."
+        }), 500
+
 # === 기본 설정 ===
 
 @login_manager.user_loader
@@ -561,28 +672,95 @@ def load_user(user_id):
 @app.errorhandler(400)
 def bad_request(e):
     """400 에러 핸들러"""
-    app.logger.error(f"400 Bad Request: {e}")
-    app.logger.error(f"Request data: {request.get_data()}")
-    app.logger.error(f"Request headers: {dict(request.headers)}")
-    return jsonify({"error": "잘못된 요청입니다.", "details": str(e)}), 400
+    logger.warning(f"400 Bad Request: {request.url} - {e}")
+    return jsonify({
+        "error": "잘못된 요청입니다.", 
+        "code": 400,
+        "message": str(e) if app.debug else "요청 형식이 올바르지 않습니다."
+    }), 400
+
+
+@app.errorhandler(401)
+def unauthorized(e):
+    """401 에러 핸들러"""
+    logger.warning(f"401 Unauthorized: {request.url}")
+    return jsonify({
+        "error": "인증이 필요합니다.", 
+        "code": 401,
+        "message": "로그인이 필요하거나 인증이 만료되었습니다."
+    }), 401
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    """403 에러 핸들러"""
+    logger.warning(f"403 Forbidden: {request.url}")
+    return jsonify({
+        "error": "접근 권한이 없습니다.", 
+        "code": 403,
+        "message": "해당 리소스에 접근할 권한이 없습니다."
+    }), 403
+
 
 @app.errorhandler(404)
 def page_not_found(e):
     """404 에러 핸들러"""
+    logger.info(f"404 Not Found: {request.url}")
     try:
         return render_template('errors/404.html'), 404
     except Exception:
-        # 템플릿 렌더링 실패 시 간단한 JSON 응답
-        return jsonify({"error": "페이지를 찾을 수 없습니다."}), 404
+        return jsonify({
+            "error": "페이지를 찾을 수 없습니다.", 
+            "code": 404,
+            "message": "요청하신 리소스를 찾을 수 없습니다."
+        }), 404
+
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    """405 에러 핸들러"""
+    logger.warning(f"405 Method Not Allowed: {request.method} {request.url}")
+    return jsonify({
+        "error": "허용되지 않는 메서드입니다.", 
+        "code": 405,
+        "message": f"{request.method} 메서드는 지원되지 않습니다."
+    }), 405
+
+
+@app.errorhandler(429)
+def too_many_requests(e):
+    """429 에러 핸들러"""
+    logger.warning(f"429 Too Many Requests: {request.url}")
+    return jsonify({
+        "error": "요청이 너무 많습니다.", 
+        "code": 429,
+        "message": "요청 제한을 초과했습니다. 잠시 후 다시 시도해주세요."
+    }), 429
+
 
 @app.errorhandler(500)
 def server_error(e):
     """500 에러 핸들러"""
+    logger.error(f"500 Internal Server Error: {request.url} - {e}")
     try:
         return render_template('errors/500.html'), 500
     except Exception:
-        # 템플릿 렌더링 실패 시 간단한 JSON 응답
-        return jsonify({"error": "서버 내부 오류가 발생했습니다."}), 500
+        return jsonify({
+            "error": "서버 내부 오류가 발생했습니다.", 
+            "code": 500,
+            "message": "서버에서 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        }), 500
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """예상치 못한 예외 처리"""
+    logger.error(f"Unhandled Exception: {request.url} - {e}", exc_info=True)
+    return jsonify({
+        "error": "예상치 못한 오류가 발생했습니다.", 
+        "code": 500,
+        "message": "시스템 오류가 발생했습니다. 관리자에게 문의해주세요."
+    }), 500
 
 @app.route("/health")
 def health():
@@ -979,55 +1157,70 @@ def api_notifications_mark_read():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# 대시보드 통계 API 개선
-@app.route("/api/admin/dashboard-stats", methods=["GET"])
+# 대시보드 통계 API
+@app.route("/api/dashboard/stats", methods=["GET"])
 def api_dashboard_stats():
-    """대시보드 통계 데이터"""
+    """대시보드 통계 조회 API"""
     try:
-        # 실제 데이터베이스에서 통계 조회
-        total_users = User.query.count()
-        total_industries = Industry.query.count()
-        total_brands = Brand.query.count()
+        from models_main import Staff, Order
         
-        # 최근 활동 통계
-        recent_activities = [
-            {
-                "type": "user_login",
-                "message": "관리자가 로그인했습니다.",
-                "timestamp": "2024-08-01 14:35:00"
-            },
-            {
-                "type": "data_update",
-                "message": "브랜드 정보가 업데이트되었습니다.",
-                "timestamp": "2024-08-01 14:30:00"
-            },
-            {
-                "type": "system_alert",
-                "message": "새로운 알림이 생성되었습니다.",
-                "timestamp": "2024-08-01 14:25:00"
-            }
-        ]
+        # 기본 통계 데이터
+        stats = {
+            "total_staff": Staff.query.count(),
+            "total_orders": Order.query.count() if hasattr(Order, 'query') else 0,
+            "pending_orders": Order.query.filter_by(status='pending').count() if hasattr(Order, 'query') else 0,
+            "completed_orders": Order.query.filter_by(status='completed').count() if hasattr(Order, 'query') else 0,
+            "total_revenue": 0,  # Order 모델에서 계산 필요
+            "active_staff": Staff.query.filter_by(status='active').count() if hasattr(Staff, 'status') else Staff.query.count(),
+            "today_attendance": 0  # 출근 관리 시스템에서 계산 필요
+        }
+        
+        # 매출 계산 (Order 모델이 있는 경우)
+        if hasattr(Order, 'query'):
+            try:
+                total_revenue = db.session.query(db.func.sum(Order.total_amount)).scalar()
+                stats["total_revenue"] = float(total_revenue) if total_revenue else 0
+            except Exception as e:
+                logger.warning(f"Revenue calculation error: {e}")
+                stats["total_revenue"] = 0
+        
+        # 최근 주문 데이터 (최근 5개)
+        recent_orders = []
+        if hasattr(Order, 'query'):
+            try:
+                orders = Order.query.order_by(Order.created_at.desc()).limit(5).all()
+                for order in orders:
+                    recent_orders.append({
+                        "id": order.id,
+                        "status": order.status,
+                        "total_amount": float(order.total_amount) if order.total_amount else 0,
+                        "created_at": order.created_at.isoformat() if order.created_at else None
+                    })
+            except Exception as e:
+                logger.warning(f"Recent orders fetch error: {e}")
         
         return jsonify({
             "success": True,
-            "data": {
-                "summary": {
-                    "total_users": total_users,
-                    "total_industries": total_industries,
-                    "total_brands": total_brands,
-                    "active_sessions": 5,
-                    "system_health": "excellent"
-                },
-                "recent_activities": recent_activities,
-                "performance_metrics": {
-                    "response_time": "120ms",
-                    "uptime": "99.9%",
-                    "error_rate": "0.1%"
-                }
-            }
+            "stats": stats,
+            "recent_orders": recent_orders,
+            "timestamp": datetime.utcnow().isoformat()
         })
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        logger.error(f"Dashboard stats error: {e}")
+        return jsonify({
+            "success": False,
+            "error": "대시보드 통계 조회 실패",
+            "stats": {
+                "total_staff": 0,
+                "total_orders": 0,
+                "pending_orders": 0,
+                "completed_orders": 0,
+                "total_revenue": 0,
+                "active_staff": 0,
+                "today_attendance": 0
+            },
+            "recent_orders": []
+        }), 500
 
 # 고급 검색 및 필터링 API
 @app.route("/api/search/global", methods=["GET"])
@@ -1223,7 +1416,7 @@ def api_ai_analytics_dashboard():
 def api_ai_recommendations():
     """AI 기반 추천 시스템"""
     try:
-        user_id = request.args.get('user_id')
+        # user_id = request.args.get('user_id')  # 사용하지 않는 변수
         
         # 사용자별 맞춤 추천 (실제로는 ML 모델에서 생성)
         recommendations = {
@@ -1567,7 +1760,7 @@ def api_start_monitoring():
         interval = data.get('interval_seconds', 60) if data else 60
         
         # 모니터링 스레드 시작
-        monitor_thread = system_optimizer.start_continuous_monitoring(interval)
+        # monitor_thread = system_optimizer.start_continuous_monitoring(interval)  # 사용하지 않는 변수
         
         return jsonify({
             "success": True,
@@ -2001,6 +2194,191 @@ def api_security_test():
             "error": f"보안 기능 테스트 중 오류가 발생했습니다: {str(e)}"
         }), 500
 
+# 매장 관리 API
+@app.route("/api/stores", methods=["GET"])
+def api_stores():
+    """매장 목록 조회"""
+    try:
+        # 샘플 매장 데이터 반환
+        stores = [
+            {
+                "id": 1,
+                "name": "강남점",
+                "code": "GN001",
+                "address": "서울시 강남구 테헤란로 123",
+                "phone": "02-1234-5678",
+                "manager_name": "김강남",
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 12,
+                "status": "active",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-15T10:30:00Z"
+            },
+            {
+                "id": 2,
+                "name": "홍대점",
+                "code": "HD001",
+                "address": "서울시 마포구 홍대로 456",
+                "phone": "02-2345-6789",
+                "manager_name": "이홍대",
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 10,
+                "status": "active",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-15T09:15:00Z"
+            },
+            {
+                "id": 3,
+                "name": "신촌점",
+                "code": "SC001",
+                "address": "서울시 서대문구 신촌로 789",
+                "phone": "02-3456-7890",
+                "manager_name": "박신촌",
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 8,
+                "status": "active",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-15T08:45:00Z"
+            },
+            {
+                "id": 4,
+                "name": "명동점",
+                "code": "MD001",
+                "address": "서울시 중구 명동길 321",
+                "phone": "02-4567-8901",
+                "manager_name": "최명동",
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 15,
+                "status": "active",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-15T11:20:00Z"
+            },
+            {
+                "id": 5,
+                "name": "잠실점",
+                "code": "JS001",
+                "address": "서울시 송파구 올림픽로 654",
+                "phone": "02-5678-9012",
+                "manager_name": "정잠실",
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 14,
+                "status": "inactive",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-15T07:30:00Z"
+            }
+        ]
+        
+        return jsonify({
+            "success": True,
+            "data": stores,
+            "message": "매장 목록을 성공적으로 조회했습니다.",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
+@app.route("/api/stores/<int:store_id>", methods=["GET"])
+def api_store_detail(store_id):
+    """매장 상세 정보 조회"""
+    try:
+        # 샘플 매장 데이터에서 해당 ID 찾기
+        stores = [
+            {
+                "id": 1,
+                "name": "강남점",
+                "code": "GN001",
+                "address": "서울시 강남구 테헤란로 123",
+                "phone": "02-1234-5678",
+                "manager_name": "김강남",
+                "brand_id": 1,
+                "brand_name": "스타벅스",
+                "employee_count": 12,
+                "status": "active",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-15T10:30:00Z"
+            }
+        ]
+        
+        store = next((s for s in stores if s["id"] == store_id), None)
+        if not store:
+            return jsonify({
+                "success": False,
+                "error": "매장을 찾을 수 없습니다.",
+                "timestamp": datetime.utcnow().isoformat()
+            }), 404
+        
+        return jsonify({
+            "success": True,
+            "data": store,
+            "message": "매장 정보를 성공적으로 조회했습니다.",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
+@app.route("/api/sales", methods=["GET"])
+def api_sales():
+    """매출 데이터 조회"""
+    try:
+        # 샘플 매출 데이터 생성
+        from datetime import datetime, timedelta
+        import random
+        
+        # 최근 30일간의 매출 데이터 생성
+        sales_data = []
+        categories = ['음식', '음료', '디저트', '기타']
+        payment_methods = ['cash', 'card', 'mobile', 'online']
+        store_names = ['강남점', '홍대점', '명동점', '잠실점', '부산점']
+        
+        for i in range(30):
+            date = datetime.now() - timedelta(days=i)
+            for store_id, store_name in enumerate(store_names, 1):
+                # 랜덤 매출 데이터 생성
+                total_amount = random.randint(500000, 3000000)  # 50만원 ~ 300만원
+                order_count = random.randint(50, 200)
+                customer_count = random.randint(30, 150)
+                average_order_value = total_amount / order_count if order_count > 0 else 0
+                
+                sales_data.append({
+                    "id": len(sales_data) + 1,
+                    "date": date.strftime("%Y-%m-%d"),
+                    "store_id": store_id,
+                    "store_name": store_name,
+                    "total_amount": total_amount,
+                    "order_count": order_count,
+                    "customer_count": customer_count,
+                    "average_order_value": round(average_order_value, 2),
+                    "payment_method": random.choice(payment_methods),
+                    "category": random.choice(categories),
+                    "created_at": date.isoformat()
+                })
+        
+        return jsonify({
+            "success": True,
+            "data": sales_data,
+            "message": "매출 데이터를 성공적으로 조회했습니다.",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
 if __name__ == "__main__":
     # 데이터베이스 초기화
     with app.app_context():
@@ -2016,4 +2394,4 @@ if __name__ == "__main__":
         host=os.getenv("FLASK_HOST", "0.0.0.0"),
         port=int(os.getenv("FLASK_PORT", 5000)),
         debug=os.getenv("FLASK_DEBUG", "True").lower() == "true"
-    ) 
+    )

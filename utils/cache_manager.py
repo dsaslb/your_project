@@ -29,6 +29,18 @@ class CacheManager:
         self.app = app
         self.redis_client = None
         self.memory_cache = {}
+        self.cache_stats = {
+            'hits': 0,
+            'misses': 0,
+            'sets': 0,
+            'deletes': 0,
+            'errors': 0
+        }
+        self.performance_metrics = {
+            'avg_get_time': 0,
+            'avg_set_time': 0,
+            'total_operations': 0
+        }
         
         if app is not None:
             self.init_app(app)
@@ -72,42 +84,68 @@ class CacheManager:
     
     def get(self, key: str, default: Any = None) -> Any:
         """캐시에서 데이터 조회"""
-        # 1. 메모리 캐시 확인
-        if key in self.memory_cache:
-            data, expiry = self.memory_cache[key]
-            if expiry > datetime.now():
-                return data
-            else:
-                del self.memory_cache[key]
+        import time
+        start_time = time.time()
         
-        # 2. Redis 캐시 확인
-        if self.redis_client:
-            try:
-                data = self.redis_client.get(key)
-                if data:
-                    return pickle.loads(data)
-            except Exception as e:
-                print(f"Redis 조회 오류: {e}")
-        
-        return default
+        try:
+            # 1. 메모리 캐시 확인
+            if key in self.memory_cache:
+                data, expiry = self.memory_cache[key]
+                if expiry > datetime.now():
+                    self.cache_stats['hits'] += 1
+                    self._update_performance_metrics('get', time.time() - start_time)
+                    return data
+                else:
+                    del self.memory_cache[key]
+            
+            # 2. Redis 캐시 확인
+            if self.redis_client:
+                try:
+                    data = self.redis_client.get(key)
+                    if data:
+                        self.cache_stats['hits'] += 1
+                        self._update_performance_metrics('get', time.time() - start_time)
+                        return pickle.loads(data)
+                except Exception as e:
+                    print(f"Redis 조회 오류: {e}")
+                    self.cache_stats['errors'] += 1
+            
+            self.cache_stats['misses'] += 1
+            self._update_performance_metrics('get', time.time() - start_time)
+            return default
+            
+        except Exception as e:
+            self.cache_stats['errors'] += 1
+            self._update_performance_metrics('get', time.time() - start_time)
+            return default
     
     def set(self, key: str, value: Any, expire: int = 3600) -> bool:
         """캐시에 데이터 저장"""
-        expiry = datetime.now() + timedelta(seconds=expire)
+        import time
+        start_time = time.time()
         
-        # 1. 메모리 캐시 저장
-        self.memory_cache[key] = (value, expiry)
-        
-        # 2. Redis 캐시 저장
-        if self.redis_client:
-            try:
-                self.redis_client.setex(key, expire, pickle.dumps(value))
-                return True
-            except Exception as e:
-                print(f"Redis 저장 오류: {e}")
-                return False
-        
-        return True
+        try:
+            expiry = datetime.now() + timedelta(seconds=expire)
+            
+            # 1. 메모리 캐시 저장
+            self.memory_cache[key] = (value, expiry)
+            
+            # 2. Redis 캐시 저장
+            if self.redis_client:
+                try:
+                    self.redis_client.setex(key, expire, pickle.dumps(value))
+                except Exception as e:
+                    print(f"Redis 저장 오류: {e}")
+                    self.cache_stats['errors'] += 1
+            
+            self.cache_stats['sets'] += 1
+            self._update_performance_metrics('set', time.time() - start_time)
+            return True
+            
+        except Exception as e:
+            self.cache_stats['errors'] += 1
+            self._update_performance_metrics('set', time.time() - start_time)
+            return False
     
     def delete(self, key: str) -> bool:
         """캐시에서 데이터 삭제"""
@@ -293,6 +331,81 @@ class CacheManager:
         """관리자 관련 캐시 무효화"""
         self.delete("admin_stats")
         self.delete("system_status")
+    
+    def _update_performance_metrics(self, operation: str, duration: float):
+        """성능 메트릭 업데이트"""
+        self.performance_metrics['total_operations'] += 1
+        
+        if operation == 'get':
+            current_avg = self.performance_metrics['avg_get_time']
+            total_ops = self.cache_stats['hits'] + self.cache_stats['misses']
+            self.performance_metrics['avg_get_time'] = (current_avg * (total_ops - 1) + duration) / total_ops
+        elif operation == 'set':
+            current_avg = self.performance_metrics['avg_set_time']
+            total_sets = self.cache_stats['sets']
+            self.performance_metrics['avg_set_time'] = (current_avg * (total_sets - 1) + duration) / total_sets
+    
+    def get_cache_stats(self) -> Dict:
+        """캐시 통계 조회"""
+        total_requests = self.cache_stats['hits'] + self.cache_stats['misses']
+        hit_rate = (self.cache_stats['hits'] / total_requests * 100) if total_requests > 0 else 0
+        
+        return {
+            'stats': self.cache_stats.copy(),
+            'performance': self.performance_metrics.copy(),
+            'hit_rate': round(hit_rate, 2),
+            'memory_cache_size': len(self.memory_cache),
+            'redis_available': self.redis_client is not None
+        }
+    
+    def get_cache_health(self) -> Dict:
+        """캐시 상태 모니터링"""
+        stats = self.get_cache_stats()
+        
+        health_status = "healthy"
+        warnings = []
+        
+        # 히트율 체크
+        if stats['hit_rate'] < 50:
+            health_status = "warning"
+            warnings.append(f"캐시 히트율이 낮습니다: {stats['hit_rate']}%")
+        
+        # 에러율 체크
+        total_ops = stats['stats']['hits'] + stats['stats']['misses'] + stats['stats']['sets']
+        error_rate = (stats['stats']['errors'] / total_ops * 100) if total_ops > 0 else 0
+        
+        if error_rate > 5:
+            health_status = "critical"
+            warnings.append(f"캐시 에러율이 높습니다: {error_rate:.1f}%")
+        
+        # 메모리 캐시 크기 체크
+        if stats['memory_cache_size'] > 1000:
+            health_status = "warning"
+            warnings.append(f"메모리 캐시 크기가 큽니다: {stats['memory_cache_size']}개")
+        
+        return {
+            'status': health_status,
+            'stats': stats,
+            'warnings': warnings,
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    def clear_expired_cache(self):
+        """만료된 캐시 정리"""
+        current_time = datetime.now()
+        expired_keys = []
+        
+        for key, (value, expiry) in self.memory_cache.items():
+            if expiry <= current_time:
+                expired_keys.append(key)
+        
+        for key in expired_keys:
+            del self.memory_cache[key]
+        
+        if expired_keys:
+            print(f"만료된 캐시 {len(expired_keys)}개 정리 완료")
+        
+        return len(expired_keys)
 
 
 # 캐시 데코레이터

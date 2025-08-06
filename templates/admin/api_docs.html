@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API/DB 문서</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
@@ -357,7 +357,9 @@
 
     <script>
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         // 탭 전환
         document.getElementById('tab-api').addEventListener('click', () => switchDocumentTab('api'));

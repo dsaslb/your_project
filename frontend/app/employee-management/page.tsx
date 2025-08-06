@@ -62,26 +62,76 @@ export default function EmployeeManagement() {
 
   // 직원 목록 조회
   const fetchEmployees = async () => {
-    const response = await apiClient.getEmployees();
-    if (response.success) {
-      setEmployees(response.data);
-    }
+    // 임시로 샘플 데이터 사용
+    const sampleEmployees = [
+      {
+        id: 1,
+        name: '김철수',
+        email: 'kim@starbucks.co.kr',
+        phone: '010-1234-5678',
+        position: '매니저',
+        store_id: 1,
+        store_name: '강남점',
+        brand_id: 1,
+        brand_name: '스타벅스',
+        status: 'active',
+        hire_date: '2023-01-15',
+        created_at: '2023-01-15T00:00:00Z',
+        updated_at: '2024-01-15T10:30:00Z'
+      },
+      {
+        id: 2,
+        name: '이영희',
+        email: 'lee@starbucks.co.kr',
+        phone: '010-2345-6789',
+        position: '바리스타',
+        store_id: 1,
+        store_name: '강남점',
+        brand_id: 1,
+        brand_name: '스타벅스',
+        status: 'active',
+        hire_date: '2023-03-20',
+        created_at: '2023-03-20T00:00:00Z',
+        updated_at: '2024-01-15T09:15:00Z'
+      },
+      {
+        id: 3,
+        name: '박민수',
+        email: 'park@starbucks.co.kr',
+        phone: '010-3456-7890',
+        position: '매니저',
+        store_id: 2,
+        store_name: '홍대점',
+        brand_id: 1,
+        brand_name: '스타벅스',
+        status: 'active',
+        hire_date: '2023-02-10',
+        created_at: '2023-02-10T00:00:00Z',
+        updated_at: '2024-01-15T08:45:00Z'
+      }
+    ];
+    setEmployees(sampleEmployees);
   };
 
   // 매장 목록 조회
   const fetchStores = async () => {
-    const response = await apiClient.getStores();
-    if (response.success) {
-      setStores(response.data);
-    }
+    // 임시로 샘플 데이터 사용
+    const sampleStores = [
+      { id: 1, name: '강남점', brand_id: 1, brand_name: '스타벅스' },
+      { id: 2, name: '홍대점', brand_id: 1, brand_name: '스타벅스' },
+      { id: 3, name: '신촌점', brand_id: 1, brand_name: '스타벅스' }
+    ];
+    setStores(sampleStores);
   };
 
   // 브랜드 목록 조회
   const fetchBrands = async () => {
-    const response = await apiClient.getBrands();
-    if (response.success) {
-      setBrands(response.data);
-    }
+    // 임시로 샘플 데이터 사용
+    const sampleBrands = [
+      { id: 1, name: '스타벅스', code: 'SB' },
+      { id: 2, name: '투썸플레이스', code: 'TS' }
+    ];
+    setBrands(sampleBrands);
   };
 
   // 초기 데이터 로드
@@ -129,25 +179,15 @@ export default function EmployeeManagement() {
     }
 
     try {
+      // 임시로 성공 메시지만 표시
       if (editingEmployee) {
-        // 수정
-        const response = await apiClient.updateEmployee(editingEmployee.id, formData);
-        if (response.success) {
-          toast.success('직원이 성공적으로 수정되었습니다.');
-          setIsCreateDialogOpen(false);
-          resetForm();
-          fetchEmployees();
-        }
+        toast.success('직원이 성공적으로 수정되었습니다. (데모 모드)');
       } else {
-        // 생성
-        const response = await apiClient.createEmployee(formData);
-        if (response.success) {
-          toast.success('직원이 성공적으로 생성되었습니다.');
-          setIsCreateDialogOpen(false);
-          resetForm();
-          fetchEmployees();
-        }
+        toast.success('직원이 성공적으로 생성되었습니다. (데모 모드)');
       }
+      setIsCreateDialogOpen(false);
+      resetForm();
+      fetchEmployees();
     } catch (error) {
       handleError(error as Error);
     }
@@ -160,11 +200,9 @@ export default function EmployeeManagement() {
     }
 
     try {
-      const response = await apiClient.deleteEmployee(employee.id);
-      if (response.success) {
-        toast.success('직원이 성공적으로 삭제되었습니다.');
-        fetchEmployees();
-      }
+      // 임시로 성공 메시지만 표시
+      toast.success('직원이 성공적으로 삭제되었습니다. (데모 모드)');
+      fetchEmployees();
     } catch (error) {
       handleError(error as Error);
     }

@@ -1,188 +1,292 @@
 "use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Store, Users, DollarSign, TrendingUp, Building, Activity } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Brand {
+  id: number;
+  name: string;
+  industry_id: number;
+  description?: string;
+  status: string;
+  created_at: string;
+}
+
+interface Branch {
+  id: number;
+  name: string;
+  brand_id: number;
+  address: string;
+  phone: string;
+  status: string;
+  created_at: string;
+}
+
+interface Employee {
+  id: number;
+  username: string;
+  name?: string;
+  email?: string;
+  role: string;
+  position?: string;
+  department?: string;
+  status: string;
+  branch_id?: number;
+  created_at: string;
+}
+
+interface BrandStats {
+  totalStores: number;
+  totalEmployees: number;
+  activeStores: number;
+  activeEmployees: number;
+  totalRevenue: number;
+  growthRate: number;
+}
 
 export default function BrandAdminPage() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [stats, setStats] = useState<BrandStats>({
+    totalStores: 0,
+    totalEmployees: 0,
+    activeStores: 0,
+    activeEmployees: 0,
+    totalRevenue: 0,
+    growthRate: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* 헤더 */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">브랜드 관리자 대시보드</h1>
-              <p className="text-sm text-gray-500">스타벅스 브랜드 관리</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
-                설정
-              </button>
-              <Link href="/restaurant/hierarchy" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                계층 관리
-              </Link>
-            </div>
-          </div>
-        </div>
+  useEffect(() => {
+    fetchBrandData();
+  }, []);
 
-        {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-sm font-medium text-gray-500">전체 매장</h3>
-            <p className="text-2xl font-bold">5개</p>
-            <p className="text-xs text-gray-500">운영 중인 매장</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-sm font-medium text-gray-500">전체 직원</h3>
-            <p className="text-2xl font-bold">45명</p>
-            <p className="text-xs text-gray-500">근무 중인 직원</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-sm font-medium text-gray-500">오늘 매출</h3>
-            <p className="text-2xl font-bold">₩15,000,000</p>
-            <p className="text-xs text-gray-500">브랜드 전체 매출</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-sm font-medium text-gray-500">평균 주문</h3>
-            <p className="text-2xl font-bold">₩8,500</p>
-            <p className="text-xs text-gray-500">매장당 평균</p>
-          </div>
-        </div>
+  const fetchBrandData = async () => {
+    try {
+      setLoading(true);
+      
+      // 모든 API 호출을 병렬로 실행
+      const [brandsRes, branchesRes, employeesRes] = await Promise.all([
+        fetch('/api/admin/brands'),
+        fetch('/api/admin/branches'),
+        fetch('/api/admin/employees')
+      ]);
 
-        {/* 탭 네비게이션 */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="border-b">
-            <div className="flex">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-6 py-3 font-medium ${
-                  activeTab === 'overview' 
-                    ? 'border-b-2 border-blue-500 text-blue-600' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                개요
-              </button>
-              <button
-                onClick={() => setActiveTab('branches')}
-                className={`px-6 py-3 font-medium ${
-                  activeTab === 'branches' 
-                    ? 'border-b-2 border-blue-500 text-blue-600' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                매장 관리
-              </button>
-              <button
-                onClick={() => setActiveTab('staff')}
-                className={`px-6 py-3 font-medium ${
-                  activeTab === 'staff' 
-                    ? 'border-b-2 border-blue-500 text-blue-600' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                직원 관리
-              </button>
-              <button
-                onClick={() => setActiveTab('analytics')}
-                className={`px-6 py-3 font-medium ${
-                  activeTab === 'analytics' 
-                    ? 'border-b-2 border-blue-500 text-blue-600' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                분석
-              </button>
-            </div>
-          </div>
-          <div className="p-6">
-            {activeTab === 'overview' && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">브랜드 개요</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold mb-2">최근 활동</h4>
-                    <ul className="space-y-2 text-sm">
-                      <li>• 강남점 매출 증가 (15%)</li>
-                      <li>• 홍대점 신규 직원 채용</li>
-                      <li>• 신촌점 리모델링 완료</li>
-                    </ul>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold mb-2">성과 지표</h4>
-                    <ul className="space-y-2 text-sm">
-                      <li>• 평균 매출: ₩3,000,000/매장</li>
-                      <li>• 고객 만족도: 4.7/5.0</li>
-                      <li>• 직원 만족도: 4.3/5.0</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-            {activeTab === 'branches' && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">매장 관리</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold">강남점</h4>
-                    <p className="text-sm text-gray-600">12명 직원</p>
-                    <p className="text-sm text-green-600">₩3,500,000</p>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold">홍대점</h4>
-                    <p className="text-sm text-gray-600">10명 직원</p>
-                    <p className="text-sm text-green-600">₩2,800,000</p>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold">신촌점</h4>
-                    <p className="text-sm text-gray-600">8명 직원</p>
-                    <p className="text-sm text-green-600">₩2,200,000</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {activeTab === 'staff' && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">직원 관리</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold">김철수</h4>
-                    <p className="text-sm text-gray-600">매니저, 강남점</p>
-                    <p className="text-sm text-blue-600">근무 중</p>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold">이영희</h4>
-                    <p className="text-sm text-gray-600">바리스타, 강남점</p>
-                    <p className="text-sm text-blue-600">근무 중</p>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold">박민수</h4>
-                    <p className="text-sm text-gray-600">매니저, 홍대점</p>
-                    <p className="text-sm text-blue-600">근무 중</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {activeTab === 'analytics' && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">분석</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold mb-2">매출 트렌드</h4>
-                    <p className="text-sm text-gray-600">이번 달 매출이 지난 달 대비 8% 증가</p>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold mb-2">인기 매장</h4>
-                    <p className="text-sm text-gray-600">강남점이 가장 높은 매출을 기록</p>
-                  </div>
-                </div>
-              </div>
-            )}
+      let brandsList: Brand[] = [];
+      let branchesList: Branch[] = [];
+      let employeesList: Employee[] = [];
+
+      // 브랜드 데이터
+      if (brandsRes.ok) {
+        const brandsData = await brandsRes.json();
+        brandsList = brandsData.data || brandsData.brands || [];
+        setBrands(brandsList);
+      }
+
+      // 매장 데이터
+      if (branchesRes.ok) {
+        const branchesData = await branchesRes.json();
+        branchesList = branchesData.data || branchesData.branches || [];
+        setBranches(branchesList);
+      }
+
+      // 직원 데이터
+      if (employeesRes.ok) {
+        const employeesData = await employeesRes.json();
+        employeesList = employeesData.data || employeesData.employees || [];
+        setEmployees(employeesList);
+      }
+
+      // 통계 계산
+      const activeStores = branchesList.filter(branch => branch.status === 'active').length;
+      const activeEmployees = employeesList.filter(emp => emp.status === 'active').length;
+      
+      // 샘플 매출 데이터 (실제로는 API에서 가져와야 함)
+      const totalRevenue = branchesList.length * 2500000; // 매장당 평균 250만원
+      const growthRate = 12.5; // 샘플 성장률
+
+      setStats({
+        totalStores: branchesList.length,
+        totalEmployees: employeesList.length,
+        activeStores,
+        activeEmployees,
+        totalRevenue,
+        growthRate
+      });
+
+    } catch (error) {
+      console.error('브랜드 데이터 로딩 오류:', error);
+      toast.error('데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 브랜드 ID로 브랜드 정보 찾기
+  const getBrandName = (brandId: number) => {
+    const brand = brands.find(b => b.id === brandId);
+    return brand?.name || '알 수 없음';
+  };
+
+  // 매장별 직원 수 계산
+  const getEmployeeCount = (branchId: number) => {
+    return employees.filter(emp => emp.branch_id === branchId).length;
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-lg mb-2">로딩 중...</div>
+            <div className="text-sm text-gray-500">브랜드 데이터를 가져오는 중입니다</div>
           </div>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">브랜드 관리자</h1>
+        <p className="text-gray-600">브랜드별 매장 및 직원 관리</p>
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="border border-gray-100">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">총 매장</CardTitle>
+            <Store className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalStores}개</div>
+            <p className="text-xs text-muted-foreground">운영 중: {stats.activeStores}개</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-100">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">총 직원</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalEmployees}명</div>
+            <p className="text-xs text-muted-foreground">활성: {stats.activeEmployees}명</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-100">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">총 브랜드</CardTitle>
+            <Building className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{brands.length}개</div>
+            <p className="text-xs text-muted-foreground">활성 브랜드</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-100">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">성장률</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+{stats.growthRate}%</div>
+            <p className="text-xs text-muted-foreground">전월 대비</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 브랜드별 현황 */}
+      <Card className="border border-gray-100 mb-8">
+        <CardHeader>
+          <CardTitle>브랜드별 현황</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {brands.slice(0, 6).map((brand) => {
+              const brandBranches = branches.filter(branch => branch.brand_id === brand.id);
+              const brandEmployees = employees.filter(emp => 
+                brandBranches.some(branch => branch.id === emp.branch_id)
+              );
+              const activeBranches = brandBranches.filter(branch => branch.status === 'active');
+              const activeEmployees = brandEmployees.filter(emp => emp.status === 'active');
+              
+              return (
+                <div key={brand.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-lg">{brand.name}</h4>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      brand.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {brand.status === 'active' ? '활성' : '비활성'}
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <p>매장: {brandBranches.length}개 (활성: {activeBranches.length}개)</p>
+                    <p>직원: {brandEmployees.length}명 (활성: {activeEmployees.length}명)</p>
+                    {brand.description && (
+                      <p className="text-xs text-gray-500">{brand.description}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {brands.length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                등록된 브랜드가 없습니다.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 매장 목록 */}
+      <Card className="border border-gray-100">
+        <CardHeader>
+          <CardTitle>매장 현황</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {branches.slice(0, 9).map((branch) => {
+              const employeeCount = getEmployeeCount(branch.id);
+              const activeEmployees = employees.filter(emp => 
+                emp.branch_id === branch.id && emp.status === 'active'
+              ).length;
+              
+              return (
+                <div key={branch.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold">{branch.name}</h4>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      branch.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {branch.status === 'active' ? '활성' : '비활성'}
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p>브랜드: {getBrandName(branch.brand_id)}</p>
+                    <p>직원: {employeeCount}명 (활성: {activeEmployees}명)</p>
+                    <p className="text-xs text-gray-500">{branch.address}</p>
+                    <p className="text-xs text-gray-500">{branch.phone}</p>
+                  </div>
+                </div>
+              );
+            })}
+            {branches.length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                등록된 매장이 없습니다.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

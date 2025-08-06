@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { useEffect } from 'react'
-import { initializePerformanceMonitoring, cleanupPerformanceMonitoring } from '@/utils/performance'
+import { ClientProviders } from '@/components/ClientLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -60,42 +59,7 @@ export const metadata: Metadata = {
   },
 }
 
-// 성능 모니터링 컴포넌트
-function PerformanceMonitor() {
-  useEffect(() => {
-    // 성능 모니터링 초기화
-    initializePerformanceMonitoring();
 
-    // 컴포넌트 언마운트 시 정리
-    return () => {
-      cleanupPerformanceMonitoring();
-    };
-  }, []);
-
-  return null; // 이 컴포넌트는 UI를 렌더링하지 않음
-}
-
-// Google Analytics 스크립트
-function GoogleAnalytics() {
-  useEffect(() => {
-    // Google Analytics 초기화
-    if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_GA_ID) {
-      // Google Analytics 4 설정
-      (window as any).dataLayer = (window as any).dataLayer || [];
-      function gtag(...args: any[]) {
-        (window as any).dataLayer.push(args);
-      }
-      (window as any).gtag = gtag;
-      gtag('js', new Date());
-      gtag('config', process.env.NEXT_PUBLIC_GA_ID, {
-        page_title: document.title,
-        page_location: window.location.href,
-      });
-    }
-  }, []);
-
-  return null;
-}
 
 export default function RootLayout({
   children,
@@ -160,16 +124,9 @@ export default function RootLayout({
         )}
       </head>
       <body className={`${inter.className} h-full antialiased`}>
-        {/* 성능 모니터링 */}
-        <PerformanceMonitor />
-        
-        {/* Google Analytics */}
-        <GoogleAnalytics />
-        
-        {/* 메인 컨텐츠 */}
-        <div id="root" className="h-full">
+        <ClientProviders>
           {children}
-        </div>
+        </ClientProviders>
         
         {/* 성능 최적화 스크립트 */}
         <script

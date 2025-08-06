@@ -6,7 +6,7 @@
     <title>실시간 이벤트/알림 - 사이버펑크</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
     <style>
         .cyber-font { font-family: 'Orbitron', monospace; }
         .cyber-text { font-family: 'Rajdhani', sans-serif; }
@@ -313,7 +313,9 @@
 
     <script>
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         let currentEventsPage = 1;
 
@@ -373,13 +375,17 @@
                             <p class="cyber-text">이벤트 로드 중 오류가 발생했습니다</p>
                         </div>
                     `;
-                    feather.replace();
+                    if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
                 })
                 .finally(() => {
                     // 로딩 상태 해제
                     refreshBtn.classList.remove('loading');
                     refreshBtn.innerHTML = '<i data-feather="refresh-cw" class="w-4 h-4"></i> 새로고침';
-                    feather.replace();
+                    if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
                 });
         }
 
@@ -395,7 +401,9 @@
                         <p class="cyber-text">표시할 이벤트가 없습니다</p>
                     </div>
                 `;
-                feather.replace();
+                if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
                 return;
             }
 
@@ -427,7 +435,9 @@
             });
             
             // Feather 아이콘 다시 초기화
+            if (typeof feather !== 'undefined') {
             feather.replace();
+        }
         }
 
         // 알림 로드
@@ -454,7 +464,9 @@
                         <p class="cyber-text">표시할 알림이 없습니다</p>
                     </div>
                 `;
-                feather.replace();
+                if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
                 return;
             }
 
@@ -482,7 +494,9 @@
                 container.appendChild(notificationDiv);
             });
             
+            if (typeof feather !== 'undefined') {
             feather.replace();
+        }
         }
 
         // 이벤트 히스토리 로드
@@ -625,7 +639,9 @@
                 pagination.appendChild(nextBtn);
             }
             
+            if (typeof feather !== 'undefined') {
             feather.replace();
+        }
         }
 
         // 알림 모달 표시
@@ -690,7 +706,9 @@
                 // 로딩 상태 해제
                 sendBtn.disabled = false;
                 sendBtn.innerHTML = '<i data-feather="send" class="w-4 h-4 mr-1"></i> 전송';
-                feather.replace();
+                if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
             });
         }
 
@@ -713,7 +731,9 @@
             `;
             
             document.body.appendChild(notification);
+            if (typeof feather !== 'undefined') {
             feather.replace();
+        }
             
             // 5초 후 자동 제거
             setTimeout(() => {

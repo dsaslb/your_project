@@ -3,19 +3,20 @@
 엔터프라이즈급 보안 기능을 위한 REST API
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, g
 from flask_cors import cross_origin
 from datetime import datetime, timedelta
 import logging
 import traceback
 import secrets
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 # 보안 모듈 임포트
 from security.multi_factor_auth import MultiFactorAuth, BiometricAuth
 from security.encryption_manager import KeyManager, EncryptionManager
 from security.audit_system import AuditSystem, AuditEvent, EventType, SecurityLevel
+from security.security_manager import SecurityManager, SecurityConfig, UserSession, SecurityEvent
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +31,19 @@ key_manager = None
 encryption_manager = None
 audit_system = None
 biometric_auth = None
+
+# 보안 관리자 초기화
+security_config = SecurityConfig(
+    jwt_secret="your-super-secret-key-change-this-in-production",
+    jwt_algorithm="HS256",
+    jwt_expiration_hours=24,
+    password_min_length=8,
+    max_login_attempts=5,
+    lockout_duration_minutes=30,
+    session_timeout_minutes=60
+)
+
+security_manager = SecurityManager(security_config)
 
 def init_security_systems():
     """보안 시스템 초기화"""
@@ -94,6 +108,402 @@ def log_security_event(event_type: EventType, user_id: Optional[str] = None,
             audit_system.log_event(event)
     except Exception as e:
         logger.error(f"보안 이벤트 로깅 오류: {e}")
+
+# 인증 데코레이터
+def require_auth(f):
+    """인증이 필요한 엔드포인트용 데코레이터"""
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        
+        if not auth_header:
+            return jsonify({'error': '인증 토큰이 필요합니다'}), 401
+        
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': '유효하지 않은 토큰 형식입니다'}), 401
+        
+        token = auth_header[7:]  # 'Bearer ' 제거
+        payload = security_manager.verify_jwt_token(token)
+        
+        if not payload:
+            return jsonify({'error': '유효하지 않은 토큰입니다'}), 401
+        
+        g.user_id = payload['user_id']
+        g.user_roles = payload.get('roles', [])
+        return f(*args, **kwargs)
+    
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+# 권한 검증 데코레이터
+def require_role(required_role: str):
+    """특정 역할이 필요한 엔드포인트용 데코레이터"""
+    def decorator(f):
+        def decorated_function(*args, **kwargs):
+            if not hasattr(g, 'user_roles'):
+                return jsonify({'error': '인증이 필요합니다'}), 401
+            
+            if required_role not in g.user_roles:
+                return jsonify({'error': '권한이 부족합니다'}), 403
+            
+            return f(*args, **kwargs)
+        
+        decorated_function.__name__ = f.__name__
+        return decorated_function
+    return decorator
+
+@security_bp.route('/login', methods=['POST'])
+def login():
+    """사용자 로그인"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({'error': '사용자명과 비밀번호가 필요합니다'}), 400
+        
+        # IP 주소 가져오기
+        ip_address = request.remote_addr
+        
+        # 계정 잠금 확인
+        if security_manager.is_account_locked(username):
+            return jsonify({
+                'error': '계정이 잠겼습니다. 잠시 후 다시 시도해주세요',
+                'locked': True
+            }), 423
+        
+        # 실제 구현에서는 데이터베이스에서 사용자 정보를 조회해야 함
+        # 여기서는 예시 데이터 사용
+        mock_users = {
+            'admin': {
+                'password_hash': security_manager.hash_password('admin123'),
+                'roles': ['admin', 'user'],
+                'user_id': 'admin'
+            },
+            'user': {
+                'password_hash': security_manager.hash_password('user123'),
+                'roles': ['user'],
+                'user_id': 'user'
+            }
+        }
+        
+        if username not in mock_users:
+            security_manager.track_login_attempt(username, ip_address, False)
+            return jsonify({'error': '잘못된 사용자명 또는 비밀번호입니다'}), 401
+        
+        user = mock_users[username]
+        
+        # 비밀번호 검증
+        if not security_manager.verify_password(password, user['password_hash']):
+            security_manager.track_login_attempt(username, ip_address, False)
+            return jsonify({'error': '잘못된 사용자명 또는 비밀번호입니다'}), 401
+        
+        # 로그인 성공
+        security_manager.track_login_attempt(username, ip_address, True)
+        
+        # JWT 토큰 생성
+        token = security_manager.generate_jwt_token(user['user_id'], user['roles'])
+        
+        # 세션 생성
+        session_id = security_manager.create_session(
+            user['user_id'], 
+            ip_address, 
+            request.headers.get('User-Agent', '')
+        )
+        
+        return jsonify({
+            'message': '로그인 성공',
+            'token': token,
+            'session_id': session_id,
+            'user': {
+                'user_id': user['user_id'],
+                'roles': user['roles']
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"로그인 오류: {e}")
+        return jsonify({'error': '로그인 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/logout', methods=['POST'])
+@require_auth
+def logout():
+    """사용자 로그아웃"""
+    try:
+        session_id = request.headers.get('X-Session-ID')
+        if session_id:
+            security_manager.invalidate_session(session_id)
+        
+        return jsonify({'message': '로그아웃 성공'}), 200
+        
+    except Exception as e:
+        logger.error(f"로그아웃 오류: {e}")
+        return jsonify({'error': '로그아웃 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/validate-token', methods=['POST'])
+def validate_token():
+    """토큰 유효성 검증"""
+    try:
+        auth_header = request.headers.get('Authorization')
+        
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'valid': False, 'error': '유효하지 않은 토큰 형식입니다'}), 401
+        
+        token = auth_header[7:]
+        payload = security_manager.verify_jwt_token(token)
+        
+        if not payload:
+            return jsonify({'valid': False, 'error': '유효하지 않은 토큰입니다'}), 401
+        
+        return jsonify({
+            'valid': True,
+            'user_id': payload['user_id'],
+            'roles': payload.get('roles', [])
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"토큰 검증 오류: {e}")
+        return jsonify({'valid': False, 'error': '토큰 검증 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/change-password', methods=['POST'])
+@require_auth
+def change_password():
+    """비밀번호 변경"""
+    try:
+        data = request.get_json()
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not current_password or not new_password:
+            return jsonify({'error': '현재 비밀번호와 새 비밀번호가 필요합니다'}), 400
+        
+        # 비밀번호 강도 검증
+        password_validation = security_manager.validate_password_strength(new_password)
+        if not password_validation['is_valid']:
+            return jsonify({
+                'error': '비밀번호가 요구사항을 충족하지 않습니다',
+                'errors': password_validation['errors'],
+                'warnings': password_validation['warnings']
+            }), 400
+        
+        # 실제 구현에서는 데이터베이스에서 현재 비밀번호를 확인해야 함
+        # 여기서는 예시로 간단히 처리
+        mock_users = {
+            'admin': {'password_hash': security_manager.hash_password('admin123')},
+            'user': {'password_hash': security_manager.hash_password('user123')}
+        }
+        
+        if g.user_id not in mock_users:
+            return jsonify({'error': '사용자를 찾을 수 없습니다'}), 404
+        
+        user = mock_users[g.user_id]
+        
+        # 현재 비밀번호 확인
+        if not security_manager.verify_password(current_password, user['password_hash']):
+            return jsonify({'error': '현재 비밀번호가 올바르지 않습니다'}), 400
+        
+        # 새 비밀번호 해시화 (실제로는 데이터베이스에 저장)
+        new_password_hash = security_manager.hash_password(new_password)
+        
+        # 보안 이벤트 기록
+        security_manager.log_security_event(
+            user_id=g.user_id,
+            event_type='password_changed',
+            description=f'비밀번호 변경: {g.user_id}',
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', ''),
+            severity='medium'
+        )
+        
+        return jsonify({
+            'message': '비밀번호가 성공적으로 변경되었습니다',
+            'password_score': password_validation['score']
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"비밀번호 변경 오류: {e}")
+        return jsonify({'error': '비밀번호 변경 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/validate-password', methods=['POST'])
+def validate_password():
+    """비밀번호 강도 검증"""
+    try:
+        data = request.get_json()
+        password = data.get('password')
+        
+        if not password:
+            return jsonify({'error': '비밀번호가 필요합니다'}), 400
+        
+        validation_result = security_manager.validate_password_strength(password)
+        
+        return jsonify({
+            'is_valid': validation_result['is_valid'],
+            'score': validation_result['score'],
+            'errors': validation_result['errors'],
+            'warnings': validation_result['warnings']
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"비밀번호 검증 오류: {e}")
+        return jsonify({'error': '비밀번호 검증 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/sessions', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_sessions():
+    """활성 세션 조회 (관리자만)"""
+    try:
+        sessions = []
+        for session_id, session in security_manager.active_sessions.items():
+            sessions.append({
+                'session_id': session.session_id,
+                'user_id': session.user_id,
+                'created_at': session.created_at.isoformat(),
+                'last_activity': session.last_activity.isoformat(),
+                'ip_address': session.ip_address,
+                'user_agent': session.user_agent,
+                'is_active': session.is_active
+            })
+        
+        return jsonify({
+            'sessions': sessions,
+            'total_count': len(sessions)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"세션 조회 오류: {e}")
+        return jsonify({'error': '세션 조회 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/sessions/<session_id>', methods=['DELETE'])
+@require_auth
+@require_role('admin')
+def invalidate_session(session_id):
+    """세션 무효화 (관리자만)"""
+    try:
+        security_manager.invalidate_session(session_id)
+        
+        return jsonify({'message': '세션이 무효화되었습니다'}), 200
+        
+    except Exception as e:
+        logger.error(f"세션 무효화 오류: {e}")
+        return jsonify({'error': '세션 무효화 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/events', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_security_events():
+    """보안 이벤트 조회 (관리자만)"""
+    try:
+        # 쿼리 파라미터
+        user_id = request.args.get('user_id')
+        event_type = request.args.get('event_type')
+        severity = request.args.get('severity')
+        limit = int(request.args.get('limit', 100))
+        
+        events = security_manager.get_security_events(
+            user_id=user_id,
+            event_type=event_type,
+            severity=severity,
+            limit=limit
+        )
+        
+        event_list = []
+        for event in events:
+            event_list.append({
+                'event_id': event.event_id,
+                'user_id': event.user_id,
+                'event_type': event.event_type,
+                'description': event.description,
+                'ip_address': event.ip_address,
+                'user_agent': event.user_agent,
+                'timestamp': event.timestamp.isoformat(),
+                'severity': event.severity,
+                'status': event.status
+            })
+        
+        return jsonify({
+            'events': event_list,
+            'total_count': len(event_list)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"보안 이벤트 조회 오류: {e}")
+        return jsonify({'error': '보안 이벤트 조회 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/events/<event_id>/status', methods=['PUT'])
+@require_auth
+@require_role('admin')
+def update_event_status(event_id):
+    """보안 이벤트 상태 업데이트 (관리자만)"""
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if new_status not in ['pending', 'reviewed', 'resolved']:
+            return jsonify({'error': '유효하지 않은 상태입니다'}), 400
+        
+        # 이벤트 찾기 및 상태 업데이트
+        for event in security_manager.security_events:
+            if event.event_id == event_id:
+                event.status = new_status
+                return jsonify({'message': '이벤트 상태가 업데이트되었습니다'}), 200
+        
+        return jsonify({'error': '이벤트를 찾을 수 없습니다'}), 404
+        
+    except Exception as e:
+        logger.error(f"이벤트 상태 업데이트 오류: {e}")
+        return jsonify({'error': '이벤트 상태 업데이트 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/stats', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_security_stats():
+    """보안 통계 조회 (관리자만)"""
+    try:
+        stats = security_manager.get_security_stats()
+        
+        return jsonify({
+            'active_sessions': stats['active_sessions'],
+            'total_events_24h': stats['total_events_24h'],
+            'failed_logins_24h': stats['failed_logins_24h'],
+            'locked_accounts': stats['locked_accounts'],
+            'security_score': stats['security_score']
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"보안 통계 조회 오류: {e}")
+        return jsonify({'error': '보안 통계 조회 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/cleanup', methods=['POST'])
+@require_auth
+@require_role('admin')
+def cleanup_sessions():
+    """만료된 세션 정리 (관리자만)"""
+    try:
+        security_manager.cleanup_expired_sessions()
+        
+        return jsonify({'message': '만료된 세션이 정리되었습니다'}), 200
+        
+    except Exception as e:
+        logger.error(f"세션 정리 오류: {e}")
+        return jsonify({'error': '세션 정리 중 오류가 발생했습니다'}), 500
+
+@security_bp.route('/health', methods=['GET'])
+def health_check():
+    """보안 시스템 상태 확인"""
+    try:
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'security_manager': 'active'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"상태 확인 오류: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 500
 
 # MFA 관련 엔드포인트
 @security_bp.route('/mfa/setup/totp', methods=['POST'])

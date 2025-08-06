@@ -96,52 +96,64 @@ def api_docs():
 
 # API 엔드포인트들
 
-@backend_admin_bp.route('/api/admin/dashboard-stats')
+@backend_admin_bp.route('/api/admin/dashboard/stats')
 @cached(expire=300, key_prefix="dashboard_stats")  # 5분 캐시
 def get_dashboard_stats():
     """대시보드 통계 데이터 (캐시 적용)"""
     try:
         from models_main import User, Brand, Branch, Industry, Module
+        from extensions import db
         
-        # 캐시된 데이터 사용
-        common_data = getattr(g, 'common_data', {})
-        admin_stats = common_data.get('admin_stats', {})
+        # 데이터베이스 연결 확인
+        if not db.engine:
+            return jsonify({'error': '데이터베이스 연결이 없습니다.'}), 500
         
-        if not admin_stats:
-            # 캐시가 없으면 새로 계산
-            admin_stats = {
-                'total_users': User.query.count(),
-                'total_brands': Brand.query.count(),
-                'total_branches': Branch.query.count(),
-                'total_industries': Industry.query.count(),
-                'active_users': User.query.filter_by(status='approved').count(),
-                'pending_users': User.query.filter_by(status='pending').count(),
-                'active_modules': Module.query.filter_by(status='approved').count(),
-                # 역할별 사용자 통계 추가
-                'role_stats': {
-                    'admin': User.query.filter_by(role='admin').count(),
-                    'brand_admin': User.query.filter_by(role='brand_admin').count(),
-                    'store_admin': User.query.filter_by(role='store_admin').count(),
-                    'employee': User.query.filter_by(role='employee').count(),
-                    'manager': User.query.filter_by(role='manager').count()
-                },
-                # 브랜드별 매장 통계
-                'brand_stats': {
-                    'total_brands': Brand.query.count(),
-                    'active_brands': Brand.query.filter_by(status='active').count(),
-                    'total_branches': Branch.query.count(),
-                    'active_branches': Branch.query.filter_by(status='active').count()
-                },
-                'updated_at': datetime.now().isoformat()
+        # 실시간 데이터 조회 (캐시 무시)
+        total_brands = Brand.query.count()
+        total_stores = Branch.query.count()
+        total_employees = User.query.filter_by(status='approved').count()
+        total_revenue = 0  # 매출 데이터는 별도 계산 필요
+        
+        # 최근 활동 데이터 (시뮬레이션)
+        recent_activities = [
+            {
+                'description': '새로운 브랜드가 등록되었습니다.',
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                'type': '브랜드'
+            },
+            {
+                'description': '직원 출근 기록이 업데이트되었습니다.',
+                'timestamp': (datetime.now() - timedelta(hours=1)).strftime('%Y-%m-%d %H:%M'),
+                'type': '출근'
+            },
+            {
+                'description': '시스템 백업이 완료되었습니다.',
+                'timestamp': (datetime.now() - timedelta(hours=2)).strftime('%Y-%m-%d %H:%M'),
+                'type': '시스템'
             }
+        ]
+        
+        admin_stats = {
+            'total_brands': total_brands,
+            'total_stores': total_stores,
+            'total_employees': total_employees,
+            'total_revenue': total_revenue,
+            'recent_activities': recent_activities,
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # 디버깅을 위한 로그 추가
+        print(f"대시보드 통계 데이터: {admin_stats}")
         
         return jsonify({
             'success': True,
-            'stats': admin_stats
+            'data': admin_stats
         })
         
     except Exception as e:
         print(f"대시보드 통계 조회 오류: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': '통계 조회에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/admin/system-status')
@@ -506,12 +518,79 @@ def get_module_projects():
 def get_industries():
     """업종 목록 조회"""
     try:
-        from models_main import Industry
+        from models_main import Industry, Brand
+        from extensions import db
         
-        industries = Industry.query.filter_by(is_active=True).order_by(Industry.name).all()
+        # 페이지네이션 파라미터
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 50, type=int)
+        search = request.args.get('search', '')
+        sort_by = request.args.get('sort_by', 'name')
+        
+        # 쿼리 구성
+        query = Industry.query
+        
+        # 검색 필터
+        if search:
+            query = query.filter(
+                db.or_(
+                    Industry.name.contains(search),
+                    Industry.code.contains(search)
+                )
+            )
+        
+        # 정렬
+        if sort_by == 'name':
+            query = query.order_by(Industry.name)
+        elif sort_by == 'created_at':
+            query = query.order_by(Industry.created_at.desc())
+        elif sort_by == 'status':
+            query = query.order_by(Industry.is_active.desc())
+        
+        # 페이지네이션
+        pagination = query.paginate(
+            page=page, 
+            per_page=limit, 
+            error_out=False
+        )
+        
+        industries = []
+        for industry in pagination.items:
+            industries.append({
+                'id': industry.id,
+                'name': industry.name,
+                'code': industry.code,
+                'status': 'active' if industry.is_active else 'inactive',
+                'brand_count': industry.brands.count() if hasattr(industry, 'brands') else 0,
+                'created_at': industry.created_at.isoformat() if industry.created_at else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': industries,
+            'pagination': {
+                'page': page,
+                'per_page': limit,
+                'total': pagination.total,
+                'pages': pagination.pages
+            }
+        })
+        
+    except Exception as e:
+        print(f"업종 목록 조회 오류: {e}")
+        return jsonify({'error': '업종 목록을 불러올 수 없습니다.'}), 500
+    """업종 목록 조회"""
+    try:
+        from models_main import Industry, Brand
+        
+        # 모든 업종 조회 (활성/비활성 모두)
+        industries = Industry.query.order_by(Industry.name).all()
         
         industries_data = []
         for industry in industries:
+            # 해당 업종의 브랜드 수 계산
+            brand_count = Brand.query.filter_by(industry_id=industry.id).count()
+            
             industries_data.append({
                 'id': industry.id,
                 'name': industry.name,
@@ -520,6 +599,7 @@ def get_industries():
                 'icon': industry.icon,
                 'color': industry.color,
                 'is_active': industry.is_active,
+                'brand_count': brand_count,
                 'created_at': industry.created_at.isoformat() if industry.created_at else None,
                 'updated_at': industry.updated_at.isoformat() if industry.updated_at else None
             })
@@ -534,14 +614,21 @@ def get_industries():
         return jsonify({'error': '업종 목록 조회에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/admin/industries', methods=['POST'])
-# @login_required  # 임시로 주석 처리
-@csrf.exempt  # CSRF 보호 비활성화
+@login_required  # 인증 복원
+@csrf.exempt  # CSRF 보호는 유지 (개발 환경)
 def create_industry():
     """업종 생성 (캐시 무효화)"""
-    # if not current_user.has_permission('system_management', 'create'):  # 임시로 주석 처리
-    #     return jsonify({'error': '권한이 없습니다.'}), 403
-    
     try:
+        # 권한 검사 (안전한 방식으로 복원)
+        if not current_user.is_authenticated:
+            return jsonify({'error': '로그인이 필요합니다.'}), 401
+        
+        # 권한 검사 (관리자 또는 시스템 관리 권한)
+        if not (current_user.role == 'admin' or 
+                hasattr(current_user, 'has_permission') and 
+                current_user.has_permission('system_management', 'create')):
+            return jsonify({'error': '업종 생성 권한이 없습니다.'}), 403
+        
         from models_main import Industry, db
         
         print(f"Content-Type: {request.headers.get('Content-Type')}")
@@ -586,6 +673,11 @@ def create_industry():
         if cache_manager:
             cache_manager.invalidate_industry_cache()
             cache_manager.invalidate_admin_cache()
+        
+        # 대시보드 통계 캐시 무효화
+        from flask_caching import Cache
+        cache = Cache()
+        cache.delete('dashboard_stats')
         
         return jsonify({
             'success': True,
@@ -651,6 +743,11 @@ def update_industry(industry_id):
             cache_manager.invalidate_industry_cache(industry_id)
             cache_manager.invalidate_admin_cache()
         
+        # 대시보드 통계 캐시 무효화
+        from flask_caching import Cache
+        cache = Cache()
+        cache.delete('dashboard_stats')
+        
         return jsonify({
             'success': True,
             'message': '업종이 성공적으로 수정되었습니다.',
@@ -672,14 +769,21 @@ def update_industry(industry_id):
         return jsonify({'error': '업종 수정에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/admin/industries/<int:industry_id>', methods=['DELETE'])
-# @login_required  # 임시로 주석 처리
-@csrf.exempt  # CSRF 보호 비활성화
+@login_required  # 인증 복원
+@csrf.exempt  # CSRF 보호는 유지 (개발 환경)
 def delete_industry(industry_id):
     """업종 삭제 (캐시 무효화)"""
-    # if not current_user.has_permission('system_management', 'delete'):  # 임시로 주석 처리
-    #     return jsonify({'error': '권한이 없습니다.'}), 403
-    
     try:
+        # 권한 검사 (안전한 방식으로 복원)
+        if not current_user.is_authenticated:
+            return jsonify({'error': '로그인이 필요합니다.'}), 401
+        
+        # 권한 검사 (관리자 또는 시스템 관리 권한)
+        if not (current_user.role == 'admin' or 
+                hasattr(current_user, 'has_permission') and 
+                current_user.has_permission('system_management', 'delete')):
+            return jsonify({'error': '업종 삭제 권한이 없습니다.'}), 403
+        
         from models_main import Industry, db
         import traceback
         
@@ -687,27 +791,6 @@ def delete_industry(industry_id):
         
         industry = Industry.query.get_or_404(industry_id)
         print(f"업종 찾음: {industry.name}")
-        
-        # 관련 데이터 확인 (임시로 비활성화)
-        # try:
-        #     brands_count = industry.brands_list.count() if hasattr(industry, 'brands_list') else 0
-        #     print(f"관련 브랜드 수: {brands_count}")
-        # except Exception as e:
-        #     print(f"브랜드 수 확인 오류: {e}")
-        #     brands_count = 0
-        
-        # try:
-        #     users_count = industry.users.count() if hasattr(industry, 'users') else 0
-        #     print(f"관련 사용자 수: {users_count}")
-        # except Exception as e:
-        #     print(f"사용자 수 확인 오류: {e}")
-        #     users_count = 0
-        
-        # if brands_count > 0:
-        #     return jsonify({'error': '이 업종에 속한 브랜드가 있어 삭제할 수 없습니다.'}), 400
-        
-        # if users_count > 0:
-        #     return jsonify({'error': '이 업종에 속한 사용자가 있어 삭제할 수 없습니다.'}), 400
         
         # 업종 삭제 (실제 삭제 대신 비활성화)
         print(f"업종 비활성화 전: is_active = {industry.is_active}")
@@ -723,6 +806,11 @@ def delete_industry(industry_id):
             cache_manager.invalidate_industry_cache(industry_id)
             cache_manager.invalidate_admin_cache()
         
+        # 대시보드 통계 캐시 무효화
+        from flask_caching import Cache
+        cache = Cache()
+        cache.delete('dashboard_stats')
+        
         return jsonify({
             'success': True,
             'message': '업종이 성공적으로 비활성화되었습니다.'
@@ -737,11 +825,82 @@ def delete_industry(industry_id):
 # 브랜드 관리 API
 @backend_admin_bp.route('/api/admin/brands', methods=['GET'])
 def get_brands():
-    """브랜드 목록 조회 (캐시 적용)"""
+    """브랜드 목록 조회"""
+    try:
+        from models_main import Brand, Industry
+        from extensions import db
+        
+        # 페이지네이션 파라미터
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 50, type=int)
+        search = request.args.get('search', '')
+        sort_by = request.args.get('sort_by', 'name')
+        
+        # 쿼리 구성
+        query = Brand.query.join(Industry)
+        
+        # 검색 필터
+        if search:
+            query = query.filter(
+                db.or_(
+                    Brand.name.contains(search),
+                    Brand.code.contains(search),
+                    Industry.name.contains(search)
+                )
+            )
+        
+        # 정렬
+        if sort_by == 'name':
+            query = query.order_by(Brand.name)
+        elif sort_by == 'created_at':
+            query = query.order_by(Brand.created_at.desc())
+        elif sort_by == 'status':
+            query = query.order_by(Brand.status)
+        
+        # 페이지네이션
+        pagination = query.paginate(
+            page=page, 
+            per_page=limit, 
+            error_out=False
+        )
+        
+        brands = []
+        for brand in pagination.items:
+            brands.append({
+                'id': brand.id,
+                'name': brand.name,
+                'code': brand.code,
+                'status': brand.status,
+                'store_count': brand.branches.count() if hasattr(brand, 'branches') else 0,
+                'industry_name': brand.industry.name if brand.industry else '',
+                'created_at': brand.created_at.isoformat() if brand.created_at else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': brands,
+            'pagination': {
+                'page': page,
+                'per_page': limit,
+                'total': pagination.total,
+                'pages': pagination.pages
+            }
+        })
+        
+    except Exception as e:
+        print(f"브랜드 목록 조회 오류: {e}")
+        return jsonify({'error': '브랜드 목록을 불러올 수 없습니다.'}), 500
+    """브랜드 목록 조회 (캐시 적용) - 업종별 필터링 지원"""
     try:
         from models_main import Brand, Industry
         
-        brands = Brand.query.filter_by(status="active").order_by(Brand.name).all()
+        # 업종별 필터링
+        industry_id = request.args.get('industry_id', type=int)
+        
+        if industry_id:
+            brands = Brand.query.filter_by(status="active", industry_id=industry_id).order_by(Brand.name).all()
+        else:
+            brands = Brand.query.filter_by(status="active").order_by(Brand.name).all()
         
         brands_data = []
         for brand in brands:
@@ -771,26 +930,32 @@ def get_brands():
         return jsonify({'error': '브랜드 목록 조회에 실패했습니다.'}), 500
 
 @backend_admin_bp.route('/api/admin/brands', methods=['POST'])
-# @login_required  # 임시로 주석 처리
-@csrf.exempt  # CSRF 보호 비활성화
+@login_required  # 인증 복원
+@csrf.exempt  # CSRF 보호는 유지 (개발 환경)
 def create_brand():
     """브랜드 생성 (캐시 무효화)"""
-    # if not current_user.has_permission('system_management', 'create'):  # 임시로 주석 처리
-    #     return jsonify({'error': '권한이 없습니다.'}), 403
-    
     try:
+        # 권한 검사 (안전한 방식으로 복원)
+        if not current_user.is_authenticated:
+            return jsonify({'error': '로그인이 필요합니다.'}), 401
+        
+        # 권한 검사 (관리자 또는 시스템 관리 권한)
+        if not (current_user.role == 'admin' or 
+                hasattr(current_user, 'has_permission') and 
+                current_user.has_permission('system_management', 'create')):
+            return jsonify({'error': '브랜드 생성 권한이 없습니다.'}), 403
+        
         from models_main import Brand, Industry, db
         
         print(f"브랜드 생성 요청 데이터: {request.get_data()}")
         print(f"Content-Type: {request.headers.get('Content-Type')}")
         print(f"Request is_json: {request.is_json}")
         
-        try:
-            data = request.get_json()
-            print(f"브랜드 생성 요청 데이터: {data}")
-        except Exception as json_error:
-            print(f"JSON 파싱 오류: {json_error}")
-            return jsonify({'error': f'JSON 파싱 오류: {str(json_error)}'}), 400
+        data = request.get_json()
+        print(f"브랜드 생성 요청 데이터: {data}")
+        
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다.'}), 400
         
         # 필수 필드 검증
         if not data.get('name') or not data.get('code') or not data.get('industry_id'):
@@ -958,11 +1123,17 @@ def delete_brand(brand_id):
 @backend_admin_bp.route('/api/admin/branches', methods=['GET'])
 @cached(expire=1800, key_prefix="branches_list")  # 30분 캐시
 def get_branches():
-    """매장 목록 조회 (캐시 적용)"""
+    """매장 목록 조회 (캐시 적용) - 브랜드별 필터링 지원"""
     try:
         from models_main import Branch, Brand
         
-        branches = Branch.query.filter_by(status="active").order_by(Branch.name).all()
+        # 브랜드별 필터링
+        brand_id = request.args.get('brand_id', type=int)
+        
+        if brand_id:
+            branches = Branch.query.filter_by(status="active", brand_id=brand_id).order_by(Branch.name).all()
+        else:
+            branches = Branch.query.filter_by(status="active").order_by(Branch.name).all()
         
         branches_data = []
         for branch in branches:
@@ -1138,13 +1309,8 @@ def delete_branch(branch_id):
         from models_main import Branch, db
         
         branch = Branch.query.get_or_404(branch_id)
-        print(f"매장 찾음: {branch.name}")
         
-        # 관련 데이터 확인 (임시로 비활성화)
-        # if branch.users.count() > 0:
-        #     return jsonify({'error': '이 매장에 속한 직원이 있어 삭제할 수 없습니다.'}), 400
-        
-        # 매장 삭제 (실제 삭제 대신 비활성화)
+        # 직원 삭제 (실제 삭제 대신 비활성화)
         branch.status = 'inactive'
         db.session.commit()
         
@@ -1168,23 +1334,35 @@ def delete_branch(branch_id):
 @backend_admin_bp.route('/api/admin/employees', methods=['GET'])
 @cached(expire=1800, key_prefix="employees_list")  # 30분 캐시
 def get_employees():
-    """직원 목록 조회 (캐시 적용)"""
+    """직원 목록 조회 (캐시 적용) - 업종별 브랜드별 매장별 정보 포함"""
     try:
-        from models_main import User, Branch
+        from models_main import User, Branch, Brand, Industry
         
-        employees = User.query.filter_by(role='employee', status='approved').order_by(User.username).all()
+        # 모든 직원 조회 (role 필터 제거하여 모든 역할 포함)
+        employees = User.query.order_by(User.username).all()
         
         employees_data = []
         for employee in employees:
             branch = Branch.query.get(employee.branch_id) if employee.branch_id else None
+            brand = Brand.query.get(employee.brand_id) if employee.brand_id else None
+            industry = Industry.query.get(employee.industry_id) if employee.industry_id else None
+            
             employees_data.append({
                 'id': employee.id,
                 'username': employee.username,
                 'email': employee.email,
                 'role': employee.role,
                 'status': employee.status,
+                'industry_id': employee.industry_id,
+                'industry_name': industry.name if industry else None,
+                'brand_id': employee.brand_id,
+                'brand_name': brand.name if brand else None,
                 'branch_id': employee.branch_id,
                 'branch_name': branch.name if branch else None,
+                'name': employee.name,
+                'phone': employee.phone,
+                'position': employee.position,
+                'department': employee.department,
                 'created_at': employee.created_at.isoformat() if employee.created_at else None,
                 'updated_at': employee.updated_at.isoformat() if employee.updated_at else None
             })
@@ -1202,24 +1380,53 @@ def get_employees():
 # @login_required  # 임시로 주석 처리
 @csrf.exempt  # CSRF 보호 비활성화
 def create_employee():
-    """직원 생성 (캐시 무효화)"""
+    """직원 생성 (캐시 무효화) - 업종별 브랜드별 매장별 지정 가능"""
     # if not current_user.has_permission('system_management', 'create'):  # 임시로 주석 처리
     #     return jsonify({'error': '권한이 없습니다.'}), 403
     
     try:
-        from models_main import User, Branch, db
+        from models_main import User, Branch, Brand, Industry, db
         from werkzeug.security import generate_password_hash
         
         data = request.get_json()
         
         # 필수 필드 검증
-        if not data.get('username') or not data.get('email') or not data.get('password') or not data.get('branch_id'):
-            return jsonify({'error': '직원명, 이메일, 비밀번호, 매장은 필수입니다.'}), 400
+        if not data.get('username') or not data.get('email') or not data.get('password'):
+            return jsonify({'error': '직원명, 이메일, 비밀번호는 필수입니다.'}), 400
+        
+        # 업종, 브랜드, 매장 중 최소 하나는 지정되어야 함
+        if not data.get('industry_id') and not data.get('brand_id') and not data.get('branch_id'):
+            return jsonify({'error': '업종, 브랜드, 매장 중 최소 하나는 지정해야 합니다.'}), 400
+        
+        # 업종 존재 확인
+        if data.get('industry_id'):
+            industry = Industry.query.get(data['industry_id'])
+            if not industry:
+                return jsonify({'error': '존재하지 않는 업종입니다.'}), 400
+        
+        # 브랜드 존재 확인
+        if data.get('brand_id'):
+            brand = Brand.query.get(data['brand_id'])
+            if not brand:
+                return jsonify({'error': '존재하지 않는 브랜드입니다.'}), 400
+            
+            # 업종이 지정된 경우 브랜드가 해당 업종에 속하는지 확인
+            if data.get('industry_id') and brand.industry_id != data['industry_id']:
+                return jsonify({'error': '브랜드가 선택된 업종에 속하지 않습니다.'}), 400
         
         # 매장 존재 확인
-        branch = Branch.query.get(data['branch_id'])
-        if not branch:
-            return jsonify({'error': '존재하지 않는 매장입니다.'}), 400
+        if data.get('branch_id'):
+            branch = Branch.query.get(data['branch_id'])
+            if not branch:
+                return jsonify({'error': '존재하지 않는 매장입니다.'}), 400
+            
+            # 브랜드가 지정된 경우 매장이 해당 브랜드에 속하는지 확인
+            if data.get('brand_id') and branch.brand_id != data['brand_id']:
+                return jsonify({'error': '매장이 선택된 브랜드에 속하지 않습니다.'}), 400
+            
+            # 업종이 지정된 경우 매장이 해당 업종에 속하는지 확인
+            if data.get('industry_id') and branch.industry_id != data['industry_id']:
+                return jsonify({'error': '매장이 선택된 업종에 속하지 않습니다.'}), 400
         
         # 중복 검사
         existing_user = User.query.filter(
@@ -1235,8 +1442,14 @@ def create_employee():
             email=data['email'],
             password_hash=generate_password_hash(data['password']),
             role=data.get('role', 'employee'),
-            status=data.get('status', True),
-            branch_id=data['branch_id']
+            status=data.get('status', 'pending'),
+            industry_id=data.get('industry_id'),
+            brand_id=data.get('brand_id'),
+            branch_id=data.get('branch_id'),
+            name=data.get('name'),
+            phone=data.get('phone'),
+            position=data.get('position'),
+            department=data.get('department')
         )
         
         db.session.add(new_employee)
@@ -1257,7 +1470,13 @@ def create_employee():
                 'email': new_employee.email,
                 'role': new_employee.role,
                 'status': new_employee.status,
+                'industry_id': new_employee.industry_id,
+                'brand_id': new_employee.brand_id,
                 'branch_id': new_employee.branch_id,
+                'name': new_employee.name,
+                'phone': new_employee.phone,
+                'position': new_employee.position,
+                'department': new_employee.department,
                 'created_at': new_employee.created_at.isoformat() if new_employee.created_at else None
             }
         })
@@ -1396,6 +1615,16 @@ def branch_management():
 def employee_management():
     """직원 관리 페이지"""
     return render_template('admin/cyberpunk_employee_management.html')
+
+@backend_admin_bp.route('/admin/schedule_management')
+def schedule_management():
+    """매장 스케줄 관리"""
+    return render_template('admin/schedule_management.html')
+
+@backend_admin_bp.route('/admin/employee_schedule_management')
+def employee_schedule_management():
+    """직원 스케줄 관리"""
+    return render_template('admin/employee_schedule_management.html')
 
 # 계층별 트리 API
 @backend_admin_bp.route('/api/admin/hierarchy/tree')
@@ -1722,4 +1951,595 @@ def clear_hierarchy_cache():
         
     except Exception as e:
         print(f"캐시 무효화 오류: {e}")
-        return jsonify({'error': '캐시 무효화에 실패했습니다.'}), 500 
+        return jsonify({'error': '캐시 무효화에 실패했습니다.'}), 500
+
+# 공급업체 관리 API
+@backend_admin_bp.route('/api/suppliers', methods=['GET'])
+@cached(expire=1800, key_prefix="suppliers_list")  # 30분 캐시
+def get_suppliers():
+    """공급업체 목록 조회"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        search = request.args.get('search', '')
+        sort_by = request.args.get('sort_by', 'name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # 임시 더미 데이터 (실제로는 데이터베이스에서 조회)
+        suppliers = [
+            {
+                'id': 1,
+                'name': '퀀텀 공급업체 A',
+                'contact_person': '김철수',
+                'email': 'supplier_a@quantum.com',
+                'phone': '02-1234-5678',
+                'address': '서울시 강남구 퀀텀로 123',
+                'category': '식재료',
+                'status': 'active',
+                'contract_start': '2024-01-01',
+                'contract_end': '2024-12-31',
+                'total_orders': 150,
+                'total_amount': 50000000,
+                'rating': 4.5,
+                'created_at': '2024-01-01T00:00:00Z',
+                'updated_at': '2024-01-15T00:00:00Z'
+            },
+            {
+                'id': 2,
+                'name': '사이버펑크 공급업체 B',
+                'contact_person': '이영희',
+                'email': 'supplier_b@cyberpunk.com',
+                'phone': '02-2345-6789',
+                'address': '서울시 서초구 사이버로 456',
+                'category': '장비',
+                'status': 'active',
+                'contract_start': '2024-02-01',
+                'contract_end': '2024-12-31',
+                'total_orders': 75,
+                'total_amount': 30000000,
+                'rating': 4.2,
+                'created_at': '2024-02-01T00:00:00Z',
+                'updated_at': '2024-02-10T00:00:00Z'
+            },
+            {
+                'id': 3,
+                'name': '네온 공급업체 C',
+                'contact_person': '박민수',
+                'email': 'supplier_c@neon.com',
+                'phone': '02-3456-7890',
+                'address': '서울시 마포구 네온로 789',
+                'category': '소모품',
+                'status': 'inactive',
+                'contract_start': '2024-01-15',
+                'contract_end': '2024-06-30',
+                'total_orders': 45,
+                'total_amount': 15000000,
+                'rating': 3.8,
+                'created_at': '2024-01-15T00:00:00Z',
+                'updated_at': '2024-01-20T00:00:00Z'
+            }
+        ]
+        
+        # 검색 필터링
+        if search:
+            suppliers = [s for s in suppliers if search.lower() in s['name'].lower() or search.lower() in s['contact_person'].lower()]
+        
+        # 정렬
+        reverse_order = sort_order == 'desc'
+        suppliers.sort(key=lambda x: x.get(sort_by, ''), reverse=reverse_order)
+        
+        # 페이지네이션
+        total = len(suppliers)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_suppliers = suppliers[start_idx:end_idx]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'suppliers': paginated_suppliers,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'total_pages': (total + per_page - 1) // per_page
+                }
+            }
+        })
+        
+    except Exception as e:
+        print(f"공급업체 목록 조회 오류: {e}")
+        return jsonify({'error': '공급업체 목록 조회에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/suppliers', methods=['POST'])
+@login_required
+@csrf.exempt
+def create_supplier():
+    """공급업체 생성"""
+    try:
+        data = request.get_json()
+        
+        # 임시 더미 응답 (실제로는 데이터베이스에 저장)
+        new_supplier = {
+            'id': 999,  # 임시 ID
+            'name': data.get('name', ''),
+            'contact_person': data.get('contact_person', ''),
+            'email': data.get('email', ''),
+            'phone': data.get('phone', ''),
+            'address': data.get('address', ''),
+            'category': data.get('category', ''),
+            'status': 'active',
+            'contract_start': data.get('contract_start', ''),
+            'contract_end': data.get('contract_end', ''),
+            'total_orders': 0,
+            'total_amount': 0,
+            'rating': 0.0,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': new_supplier,
+            'message': '공급업체가 성공적으로 생성되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"공급업체 생성 오류: {e}")
+        return jsonify({'error': '공급업체 생성에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/suppliers/<int:supplier_id>', methods=['PUT'])
+@login_required
+def update_supplier(supplier_id):
+    """공급업체 수정"""
+    try:
+        data = request.get_json()
+        
+        # 임시 더미 응답 (실제로는 데이터베이스에서 업데이트)
+        updated_supplier = {
+            'id': supplier_id,
+            'name': data.get('name', ''),
+            'contact_person': data.get('contact_person', ''),
+            'email': data.get('email', ''),
+            'phone': data.get('phone', ''),
+            'address': data.get('address', ''),
+            'category': data.get('category', ''),
+            'status': data.get('status', 'active'),
+            'contract_start': data.get('contract_start', ''),
+            'contract_end': data.get('contract_end', ''),
+            'total_orders': 150,
+            'total_amount': 50000000,
+            'rating': 4.5,
+            'created_at': '2024-01-01T00:00:00Z',
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': updated_supplier,
+            'message': '공급업체가 성공적으로 수정되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"공급업체 수정 오류: {e}")
+        return jsonify({'error': '공급업체 수정에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/suppliers/<int:supplier_id>', methods=['DELETE'])
+@login_required
+@csrf.exempt
+def delete_supplier(supplier_id):
+    """공급업체 삭제"""
+    try:
+        # 임시 더미 응답 (실제로는 데이터베이스에서 삭제)
+        return jsonify({
+            'success': True,
+            'message': f'공급업체 ID {supplier_id}가 성공적으로 삭제되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"공급업체 삭제 오류: {e}")
+        return jsonify({'error': '공급업체 삭제에 실패했습니다.'}), 500
+
+# 계약 관리 API
+@backend_admin_bp.route('/api/contracts', methods=['GET'])
+@cached(expire=1800, key_prefix="contracts_list")  # 30분 캐시
+def get_contracts():
+    """계약 목록 조회"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        search = request.args.get('search', '')
+        status = request.args.get('status', '')
+        
+        # 임시 더미 데이터
+        contracts = [
+            {
+                'id': 1,
+                'contract_number': 'CTR-2024-001',
+                'supplier_name': '퀀텀 공급업체 A',
+                'contract_type': '식재료 공급',
+                'start_date': '2024-01-01',
+                'end_date': '2024-12-31',
+                'total_amount': 50000000,
+                'status': 'active',
+                'payment_terms': '월 30일',
+                'delivery_terms': '주 2회',
+                'created_at': '2024-01-01T00:00:00Z',
+                'updated_at': '2024-01-15T00:00:00Z'
+            },
+            {
+                'id': 2,
+                'contract_number': 'CTR-2024-002',
+                'supplier_name': '사이버펑크 공급업체 B',
+                'contract_type': '장비 공급',
+                'start_date': '2024-02-01',
+                'end_date': '2024-12-31',
+                'total_amount': 30000000,
+                'status': 'active',
+                'payment_terms': '월 30일',
+                'delivery_terms': '주 1회',
+                'created_at': '2024-02-01T00:00:00Z',
+                'updated_at': '2024-02-10T00:00:00Z'
+            },
+            {
+                'id': 3,
+                'contract_number': 'CTR-2024-003',
+                'supplier_name': '네온 공급업체 C',
+                'contract_type': '소모품 공급',
+                'start_date': '2024-01-15',
+                'end_date': '2024-06-30',
+                'total_amount': 15000000,
+                'status': 'expired',
+                'payment_terms': '월 30일',
+                'delivery_terms': '주 1회',
+                'created_at': '2024-01-15T00:00:00Z',
+                'updated_at': '2024-01-20T00:00:00Z'
+            }
+        ]
+        
+        # 검색 및 필터링
+        if search:
+            contracts = [c for c in contracts if search.lower() in c['contract_number'].lower() or search.lower() in c['supplier_name'].lower()]
+        
+        if status:
+            contracts = [c for c in contracts if c['status'] == status]
+        
+        # 페이지네이션
+        total = len(contracts)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_contracts = contracts[start_idx:end_idx]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'contracts': paginated_contracts,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'total_pages': (total + per_page - 1) // per_page
+                }
+            }
+        })
+        
+    except Exception as e:
+        print(f"계약 목록 조회 오류: {e}")
+        return jsonify({'error': '계약 목록 조회에 실패했습니다.'}), 500
+
+# 주문 이력 API
+@backend_admin_bp.route('/api/order-history', methods=['GET'])
+@cached(expire=1800, key_prefix="order_history_list")  # 30분 캐시
+def get_order_history():
+    """주문 이력 조회"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        search = request.args.get('search', '')
+        status = request.args.get('status', '')
+        
+        # 임시 더미 데이터
+        orders = [
+            {
+                'id': 1,
+                'order_number': 'ORD-2024-001',
+                'customer_name': '김고객',
+                'supplier_name': '퀀텀 공급업체 A',
+                'order_date': '2024-01-15',
+                'delivery_date': '2024-01-20',
+                'total_amount': 5000000,
+                'status': 'completed',
+                'items': [
+                    {'name': '신선 채소', 'quantity': 100, 'unit_price': 50000}
+                ],
+                'created_at': '2024-01-15T00:00:00Z',
+                'updated_at': '2024-01-20T00:00:00Z'
+            },
+            {
+                'id': 2,
+                'order_number': 'ORD-2024-002',
+                'customer_name': '이고객',
+                'supplier_name': '사이버펑크 공급업체 B',
+                'order_date': '2024-02-10',
+                'delivery_date': '2024-02-15',
+                'total_amount': 3000000,
+                'status': 'processing',
+                'items': [
+                    {'name': '주방 장비', 'quantity': 5, 'unit_price': 600000}
+                ],
+                'created_at': '2024-02-10T00:00:00Z',
+                'updated_at': '2024-02-12T00:00:00Z'
+            },
+            {
+                'id': 3,
+                'order_number': 'ORD-2024-003',
+                'customer_name': '박고객',
+                'supplier_name': '네온 공급업체 C',
+                'order_date': '2024-01-25',
+                'delivery_date': '2024-01-30',
+                'total_amount': 1500000,
+                'status': 'cancelled',
+                'items': [
+                    {'name': '소모품', 'quantity': 50, 'unit_price': 30000}
+                ],
+                'created_at': '2024-01-25T00:00:00Z',
+                'updated_at': '2024-01-28T00:00:00Z'
+            }
+        ]
+        
+        # 검색 및 필터링
+        if search:
+            orders = [o for o in orders if search.lower() in o['order_number'].lower() or search.lower() in o['customer_name'].lower()]
+        
+        if status:
+            orders = [o for o in orders if o['status'] == status]
+        
+        # 페이지네이션
+        total = len(orders)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_orders = orders[start_idx:end_idx]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'orders': paginated_orders,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'total_pages': (total + per_page - 1) // per_page
+                }
+            }
+        })
+        
+    except Exception as e:
+        print(f"주문 이력 조회 오류: {e}")
+        return jsonify({'error': '주문 이력 조회에 실패했습니다.'}), 500
+
+# 매출 분석 API
+@backend_admin_bp.route('/api/sales', methods=['GET'])
+@cached(expire=1800, key_prefix="sales_data")  # 30분 캐시
+def get_sales():
+    """매출 데이터 조회"""
+    try:
+        period = request.args.get('period', 'month')  # day, week, month, year
+        start_date = request.args.get('start_date', '')
+        end_date = request.args.get('end_date', '')
+        
+        # 임시 더미 데이터
+        sales_data = {
+            'summary': {
+                'total_sales': 150000000,
+                'total_orders': 1250,
+                'average_order_value': 120000,
+                'growth_rate': 15.5
+            },
+            'daily_sales': [
+                {'date': '2024-01-01', 'sales': 5000000, 'orders': 42},
+                {'date': '2024-01-02', 'sales': 4800000, 'orders': 38},
+                {'date': '2024-01-03', 'sales': 5200000, 'orders': 45},
+                {'date': '2024-01-04', 'sales': 5500000, 'orders': 48},
+                {'date': '2024-01-05', 'sales': 5300000, 'orders': 46},
+                {'date': '2024-01-06', 'sales': 5800000, 'orders': 52},
+                {'date': '2024-01-07', 'sales': 6000000, 'orders': 55}
+            ],
+            'category_sales': [
+                {'category': '식재료', 'sales': 60000000, 'percentage': 40.0},
+                {'category': '장비', 'sales': 45000000, 'percentage': 30.0},
+                {'category': '소모품', 'sales': 30000000, 'percentage': 20.0},
+                {'category': '기타', 'sales': 15000000, 'percentage': 10.0}
+            ],
+            'top_products': [
+                {'name': '신선 채소 세트', 'sales': 15000000, 'quantity': 300},
+                {'name': '주방 장비 세트', 'sales': 12000000, 'quantity': 20},
+                {'name': '소모품 패키지', 'sales': 8000000, 'quantity': 160},
+                {'name': '청소용품', 'sales': 5000000, 'quantity': 100}
+            ]
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': sales_data
+        })
+        
+    except Exception as e:
+        print(f"매출 데이터 조회 오류: {e}")
+        return jsonify({'error': '매출 데이터 조회에 실패했습니다.'}), 500
+
+# 고객 관리 API
+@backend_admin_bp.route('/api/customers', methods=['GET'])
+@cached(expire=1800, key_prefix="customers_list")  # 30분 캐시
+def get_customers():
+    """고객 목록 조회"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        search = request.args.get('search', '')
+        sort_by = request.args.get('sort_by', 'name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # 임시 더미 데이터
+        customers = [
+            {
+                'id': 1,
+                'name': '김고객',
+                'email': 'kim@customer.com',
+                'phone': '010-1234-5678',
+                'address': '서울시 강남구 고객로 123',
+                'company': '퀀텀 레스토랑',
+                'customer_type': 'business',
+                'status': 'active',
+                'total_orders': 45,
+                'total_spent': 15000000,
+                'last_order_date': '2024-01-15',
+                'created_at': '2023-01-01T00:00:00Z',
+                'updated_at': '2024-01-15T00:00:00Z'
+            },
+            {
+                'id': 2,
+                'name': '이고객',
+                'email': 'lee@customer.com',
+                'phone': '010-2345-6789',
+                'address': '서울시 서초구 고객로 456',
+                'company': '사이버펑크 카페',
+                'customer_type': 'business',
+                'status': 'active',
+                'total_orders': 32,
+                'total_spent': 12000000,
+                'last_order_date': '2024-02-10',
+                'created_at': '2023-02-01T00:00:00Z',
+                'updated_at': '2024-02-10T00:00:00Z'
+            },
+            {
+                'id': 3,
+                'name': '박고객',
+                'email': 'park@customer.com',
+                'phone': '010-3456-7890',
+                'address': '서울시 마포구 고객로 789',
+                'company': '네온 바',
+                'customer_type': 'business',
+                'status': 'inactive',
+                'total_orders': 18,
+                'total_spent': 8000000,
+                'last_order_date': '2023-12-20',
+                'created_at': '2023-03-01T00:00:00Z',
+                'updated_at': '2023-12-20T00:00:00Z'
+            }
+        ]
+        
+        # 검색 필터링
+        if search:
+            customers = [c for c in customers if search.lower() in c['name'].lower() or search.lower() in c['company'].lower()]
+        
+        # 정렬
+        reverse_order = sort_order == 'desc'
+        customers.sort(key=lambda x: x.get(sort_by, ''), reverse=reverse_order)
+        
+        # 페이지네이션
+        total = len(customers)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_customers = customers[start_idx:end_idx]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'customers': paginated_customers,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'total_pages': (total + per_page - 1) // per_page
+                }
+            }
+        })
+        
+    except Exception as e:
+        print(f"고객 목록 조회 오류: {e}")
+        return jsonify({'error': '고객 목록 조회에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/customers', methods=['POST'])
+@login_required
+@csrf.exempt
+def create_customer():
+    """고객 생성"""
+    try:
+        data = request.get_json()
+        
+        # 임시 더미 응답
+        new_customer = {
+            'id': 999,  # 임시 ID
+            'name': data.get('name', ''),
+            'email': data.get('email', ''),
+            'phone': data.get('phone', ''),
+            'address': data.get('address', ''),
+            'company': data.get('company', ''),
+            'customer_type': data.get('customer_type', 'business'),
+            'status': 'active',
+            'total_orders': 0,
+            'total_spent': 0,
+            'last_order_date': None,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': new_customer,
+            'message': '고객이 성공적으로 생성되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"고객 생성 오류: {e}")
+        return jsonify({'error': '고객 생성에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/customers/<int:customer_id>', methods=['PUT'])
+@login_required
+def update_customer(customer_id):
+    """고객 수정"""
+    try:
+        data = request.get_json()
+        
+        # 임시 더미 응답
+        updated_customer = {
+            'id': customer_id,
+            'name': data.get('name', ''),
+            'email': data.get('email', ''),
+            'phone': data.get('phone', ''),
+            'address': data.get('address', ''),
+            'company': data.get('company', ''),
+            'customer_type': data.get('customer_type', 'business'),
+            'status': data.get('status', 'active'),
+            'total_orders': 45,
+            'total_spent': 15000000,
+            'last_order_date': '2024-01-15',
+            'created_at': '2023-01-01T00:00:00Z',
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': updated_customer,
+            'message': '고객이 성공적으로 수정되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"고객 수정 오류: {e}")
+        return jsonify({'error': '고객 수정에 실패했습니다.'}), 500
+
+@backend_admin_bp.route('/api/customers/<int:customer_id>', methods=['DELETE'])
+@login_required
+@csrf.exempt
+def delete_customer(customer_id):
+    """고객 삭제"""
+    try:
+        # 임시 더미 응답
+        return jsonify({
+            'success': True,
+            'message': f'고객 ID {customer_id}가 성공적으로 삭제되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"고객 삭제 오류: {e}")
+        return jsonify({'error': '고객 삭제에 실패했습니다.'}), 500

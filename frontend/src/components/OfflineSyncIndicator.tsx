@@ -1,12 +1,12 @@
 ﻿import React from 'react';
-import { isOnline, setupNetworkListener, setupPeriodicSync } from '@/utils/offlineStorage';
+import { OfflineStorage } from '@/utils/offlineStorage';
 
 const OfflineSyncIndicator: React.FC = () => {
   const [online, setOnline] = React.useState(true);
   const [syncing, setSyncing] = React.useState(false);
 
   React.useEffect(() => {
-    setOnline(isOnline());
+    setOnline(OfflineStorage.isOnline());
 
     const handleOnline = () => {
       setOnline(true);
@@ -19,12 +19,22 @@ const OfflineSyncIndicator: React.FC = () => {
       setOnline(false);
     };
 
-    setupNetworkListener(handleOnline, handleOffline);
+    // 네트워크 상태 리스너 설정
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     // 정기적인 동기화 설정 (30초마다)
-    const syncInterval = setupPeriodicSync(30000);
+    const syncInterval = setInterval(() => {
+      if (OfflineStorage.isOnline()) {
+        setSyncing(true);
+        // 동기화 로직 실행
+        setTimeout(() => setSyncing(false), 1000);
+      }
+    }, 30000);
 
     return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       clearInterval(syncInterval);
     };
   }, []);

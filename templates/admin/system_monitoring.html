@@ -6,7 +6,7 @@
     <title>시스템/서버 운영/모니터링</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
@@ -137,7 +137,9 @@
 
     <script>
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         let currentLogsPage = 1;
         let systemResourcesChart, responseTimeChart;

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>직원 스케줄 관리 - Quantum System</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        .cyberpunk-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .neon-glow {
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+        .schedule-card {
+            transition: all 0.3s ease;
+        }
+        .schedule-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+        .time-slot {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- 네비게이션 -->
+    <nav class="glass-effect border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-600">
+                        직원 스케줄 관리
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+                        <i data-lucide="user-plus" class="w-4 h-4 inline mr-2"></i>
+                        직원 추가
+                    </button>
+                    <button class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                        <i data-lucide="filter" class="w-4 h-4 inline mr-2"></i>
+                        필터
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 직원 목록과 스케줄 뷰 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 직원 목록 -->
+            <div class="lg:col-span-1">
+                <div class="glass-effect rounded-xl p-6 neon-glow">
+                    <h2 class="text-xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-600">
+                        직원 목록
+                    </h2>
+                    
+                    <!-- 검색 -->
+                    <div class="mb-6">
+                        <div class="relative">
+                            <input type="text" placeholder="직원 검색..." 
+                                   class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+                            <i data-lucide="search" class="absolute right-3 top-2.5 w-5 h-5 text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- 직원 카드들 -->
+                    <div class="space-y-4">
+                        <div class="schedule-card glass-effect rounded-lg p-4 cursor-pointer border-l-4 border-green-500">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-semibold">김철수</h3>
+                                    <p class="text-sm text-gray-400">매니저</p>
+                                </div>
+                                <span class="px-2 py-1 bg-green-600 text-xs rounded-full">근무중</span>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-400">
+                                오늘: 09:00 - 17:00
+                            </div>
+                        </div>
+
+                        <div class="schedule-card glass-effect rounded-lg p-4 cursor-pointer">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-semibold">이영희</h3>
+                                    <p class="text-sm text-gray-400">직원</p>
+                                </div>
+                                <span class="px-2 py-1 bg-blue-600 text-xs rounded-full">대기중</span>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-400">
+                                오늘: 17:00 - 22:00
+                            </div>
+                        </div>
+
+                        <div class="schedule-card glass-effect rounded-lg p-4 cursor-pointer">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-semibold">박민수</h3>
+                                    <p class="text-sm text-gray-400">매니저</p>
+                                </div>
+                                <span class="px-2 py-1 bg-gray-600 text-xs rounded-full">휴무</span>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-400">
+                                오늘: 휴무
+                            </div>
+                        </div>
+
+                        <div class="schedule-card glass-effect rounded-lg p-4 cursor-pointer">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-semibold">최지영</h3>
+                                    <p class="text-sm text-gray-400">직원</p>
+                                </div>
+                                <span class="px-2 py-1 bg-gray-600 text-xs rounded-full">휴무</span>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-400">
+                                오늘: 휴무
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 스케줄 뷰 -->
+            <div class="lg:col-span-2">
+                <div class="glass-effect rounded-xl p-6 neon-glow">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-600">
+                            상세 스케줄
+                        </h2>
+                        <div class="flex space-x-2">
+                            <button class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            </button>
+                            <span class="px-4 py-2 bg-gray-700 rounded-lg">2024년 1월 15일 - 21일</span>
+                            <button class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 시간대별 스케줄 -->
+                    <div class="space-y-4">
+                        <!-- 시간대 헤더 -->
+                        <div class="grid grid-cols-8 gap-2 text-sm font-medium text-gray-400">
+                            <div class="p-2"></div>
+                            <div class="p-2 text-center">월</div>
+                            <div class="p-2 text-center">화</div>
+                            <div class="p-2 text-center">수</div>
+                            <div class="p-2 text-center">목</div>
+                            <div class="p-2 text-center">금</div>
+                            <div class="p-2 text-center">토</div>
+                            <div class="p-2 text-center">일</div>
+                        </div>
+
+                        <!-- 오전 시간대 -->
+                        <div class="grid grid-cols-8 gap-2">
+                            <div class="p-2 text-sm font-medium text-gray-400">오전</div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">09:00-12:00</div>
+                                <div class="text-sm font-medium">김철수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">09:00-12:00</div>
+                                <div class="text-sm font-medium">박민수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">09:00-12:00</div>
+                                <div class="text-sm font-medium">김철수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">09:00-12:00</div>
+                                <div class="text-sm font-medium">박민수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">09:00-12:00</div>
+                                <div class="text-sm font-medium">김철수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-purple-400">10:00-12:00</div>
+                                <div class="text-sm font-medium">박민수</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-2 min-h-[60px] flex items-center justify-center">
+                                <span class="text-xs text-gray-500">휴무</span>
+                            </div>
+                        </div>
+
+                        <!-- 오후 시간대 -->
+                        <div class="grid grid-cols-8 gap-2">
+                            <div class="p-2 text-sm font-medium text-gray-400">오후</div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">13:00-17:00</div>
+                                <div class="text-sm font-medium">김철수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">13:00-17:00</div>
+                                <div class="text-sm font-medium">박민수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">13:00-17:00</div>
+                                <div class="text-sm font-medium">김철수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">13:00-17:00</div>
+                                <div class="text-sm font-medium">박민수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-blue-400">13:00-17:00</div>
+                                <div class="text-sm font-medium">김철수</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-purple-400">13:00-18:00</div>
+                                <div class="text-sm font-medium">박민수</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-2 min-h-[60px] flex items-center justify-center">
+                                <span class="text-xs text-gray-500">휴무</span>
+                            </div>
+                        </div>
+
+                        <!-- 저녁 시간대 -->
+                        <div class="grid grid-cols-8 gap-2">
+                            <div class="p-2 text-sm font-medium text-gray-400">저녁</div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-green-400">17:00-22:00</div>
+                                <div class="text-sm font-medium">이영희</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-green-400">17:00-22:00</div>
+                                <div class="text-sm font-medium">최지영</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-green-400">17:00-22:00</div>
+                                <div class="text-sm font-medium">이영희</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-green-400">17:00-22:00</div>
+                                <div class="text-sm font-medium">최지영</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-green-400">17:00-22:00</div>
+                                <div class="text-sm font-medium">이영희</div>
+                            </div>
+                            <div class="time-slot rounded-lg p-2 min-h-[60px]">
+                                <div class="text-xs text-orange-400">18:00-23:00</div>
+                                <div class="text-sm font-medium">최지영</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-2 min-h-[60px] flex items-center justify-center">
+                                <span class="text-xs text-gray-500">휴무</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 통계 및 요약 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                    <div class="glass-effect rounded-xl p-6 neon-glow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-400">총 근무 시간</p>
+                                <p class="text-2xl font-bold">168시간</p>
+                            </div>
+                            <i data-lucide="clock" class="w-8 h-8 text-blue-400"></i>
+                        </div>
+                    </div>
+
+                    <div class="glass-effect rounded-xl p-6 neon-glow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-400">평균 근무 시간</p>
+                                <p class="text-2xl font-bold">42시간</p>
+                            </div>
+                            <i data-lucide="users" class="w-8 h-8 text-green-400"></i>
+                        </div>
+                    </div>
+
+                    <div class="glass-effect rounded-xl p-6 neon-glow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-400">근무 직원 수</p>
+                                <p class="text-2xl font-bold">4명</p>
+                            </div>
+                            <i data-lucide="user-check" class="w-8 h-8 text-purple-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lucide 아이콘 초기화
+        lucide.createIcons();
+
+        // 직원 카드 클릭 이벤트
+        document.addEventListener('DOMContentLoaded', function() {
+            const employeeCards = document.querySelectorAll('.schedule-card');
+            employeeCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // 모든 카드에서 선택 상태 제거
+                    employeeCards.forEach(c => {
+                        c.classList.remove('border-l-4', 'border-green-500');
+                    });
+                    // 클릭된 카드에 선택 상태 추가
+                    this.classList.add('border-l-4', 'border-green-500');
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

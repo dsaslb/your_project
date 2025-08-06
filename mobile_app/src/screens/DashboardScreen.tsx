@@ -7,527 +7,332 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
-  Dimensions,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useNotifications } from '../contexts/NotificationContext';
-import { API_BASE_URL } from '../utils/config';
+import { Ionicons } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
-
-interface DashboardData {
-  totalSales: number;
-  totalOrders: number;
-  activeUsers: number;
-  systemHealth: string;
-  recentActivity: Array<{
-    id: string;
-    type: string;
-    message: string;
-    timestamp: string;
-  }>;
-  quickStats: {
-    todaySales: number;
-    weeklyGrowth: number;
-    monthlyGrowth: number;
-  };
+interface DashboardStats {
+  totalStores: number;
+  activeOrders: number;
+  lowStockItems: number;
+  todaySales: number;
+  pendingTasks: number;
+  notifications: number;
 }
 
-const DashboardScreen: React.FC = () => {
-  const { theme } = useTheme();
-  const { user, token } = useAuth();
-  const { unreadCount } = useNotifications();
-  
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export default function DashboardScreen() {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalStores: 0,
+    activeOrders: 0,
+    lowStockItems: 0,
+    todaySales: 0,
+    pendingTasks: 0,
+    notifications: 0,
+  });
   const [refreshing, setRefreshing] = useState(false);
 
-  // 대시보드 데이터 가져오기
-  const fetchDashboardData = async () => {
+  // 데이터 로드
+  const loadDashboardData = async () => {
     try {
-      if (!token) return;
-
-      const response = await fetch(`${API_BASE_URL}/api/dashboard/mobile`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDashboardData(data);
-      } else {
-        throw new Error('대시보드 데이터를 가져올 수 없습니다');
-      }
+      // 실제 API 호출로 대체
+      const mockData: DashboardStats = {
+        totalStores: 12,
+        activeOrders: 8,
+        lowStockItems: 5,
+        todaySales: 1250000,
+        pendingTasks: 3,
+        notifications: 7,
+      };
+      setStats(mockData);
     } catch (error) {
-      console.error('대시보드 데이터 가져오기 오류:', error);
-      Alert.alert('오류', '대시보드 데이터를 불러올 수 없습니다.');
-    } finally {
-      setIsLoading(false);
+      Alert.alert('오류', '데이터를 불러오는데 실패했습니다.');
     }
   };
 
   // 새로고침
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchDashboardData();
+    await loadDashboardData();
     setRefreshing(false);
   };
 
-  // 초기화
   useEffect(() => {
-    fetchDashboardData();
-  }, [token]);
-
-  // 로딩 화면
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <Icon name="refresh" size={40} color={theme.colors.primary} />
-          <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-            대시보드 로딩 중...
-          </Text>
-        </View>
-      </View>
-    );
-  }
+    loadDashboardData();
+  }, []);
 
   // 통계 카드 컴포넌트
-  const StatCard = ({ title, value, icon, color, onPress }: {
-    title: string;
-    value: string | number;
-    icon: string;
-    color: string;
-    onPress?: () => void;
-  }) => (
-    <TouchableOpacity
-      style={[styles.statCard, { backgroundColor: theme.colors.surface }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.statIcon, { backgroundColor: color }]}>
-        <Icon name={icon} size={24} color="white" />
-      </View>
+  const StatCard = ({ title, value, icon, color, onPress }: any) => (
+    <TouchableOpacity style={[styles.statCard, { borderLeftColor: color }]} onPress={onPress}>
       <View style={styles.statContent}>
-        <Text style={[styles.statValue, { color: theme.colors.text }]}>
-          {typeof value === 'number' ? value.toLocaleString() : value}
-        </Text>
-        <Text style={[styles.statTitle, { color: theme.colors.textSecondary }]}>
-          {title}
-        </Text>
+        <View style={[styles.iconContainer, { backgroundColor: color }]}>
+          <Ionicons name={icon} size={24} color="white" />
+        </View>
+        <View style={styles.statText}>
+          <Text style={styles.statValue}>{value}</Text>
+          <Text style={styles.statTitle}>{title}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
 
-  // 시스템 상태 컴포넌트
-  const SystemStatusCard = () => {
-    if (!dashboardData) return null;
-
-    const getStatusColor = (status: string) => {
-      switch (status.toLowerCase()) {
-        case 'healthy':
-          return theme.colors.success;
-        case 'warning':
-          return theme.colors.warning;
-        case 'error':
-          return theme.colors.error;
-        default:
-          return theme.colors.gray;
-      }
-    };
-
-    return (
-      <View style={[styles.systemStatusCard, { backgroundColor: theme.colors.surface }]}>
-        <View style={styles.systemStatusHeader}>
-          <Icon name="computer" size={20} color={theme.colors.primary} />
-          <Text style={[styles.systemStatusTitle, { color: theme.colors.text }]}>
-            시스템 상태
-          </Text>
-        </View>
-        <View style={styles.systemStatusContent}>
-          <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(dashboardData.systemHealth) }]} />
-          <Text style={[styles.systemStatusText, { color: theme.colors.text }]}>
-            {dashboardData.systemHealth}
-          </Text>
-        </View>
-      </View>
-    );
-  };
-
-  // 최근 활동 컴포넌트
-  const RecentActivityCard = () => {
-    if (!dashboardData?.recentActivity) return null;
-
-    return (
-      <View style={[styles.recentActivityCard, { backgroundColor: theme.colors.surface }]}>
-        <View style={styles.recentActivityHeader}>
-          <Icon name="history" size={20} color={theme.colors.primary} />
-          <Text style={[styles.recentActivityTitle, { color: theme.colors.text }]}>
-            최근 활동
-          </Text>
-        </View>
-        <View style={styles.recentActivityList}>
-          {dashboardData.recentActivity.slice(0, 5).map((activity, index) => (
-            <View key={activity.id} style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: theme.colors.primary }]}>
-                <Icon name="fiber-manual-record" size={8} color="white" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={[styles.activityMessage, { color: theme.colors.text }]}>
-                  {activity.message}
-                </Text>
-                <Text style={[styles.activityTime, { color: theme.colors.textSecondary }]}>
-                  {new Date(activity.timestamp).toLocaleString()}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-    );
-  };
-
   // 빠른 액션 컴포넌트
-  const QuickActionsCard = () => (
-    <View style={[styles.quickActionsCard, { backgroundColor: theme.colors.surface }]}>
-      <Text style={[styles.quickActionsTitle, { color: theme.colors.text }]}>
-        빠른 액션
-      </Text>
-      <View style={styles.quickActionsGrid}>
-        <TouchableOpacity style={styles.quickActionButton}>
-          <Icon name="add" size={24} color={theme.colors.primary} />
-          <Text style={[styles.quickActionText, { color: theme.colors.text }]}>
-            새 주문
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionButton}>
-          <Icon name="analytics" size={24} color={theme.colors.primary} />
-          <Text style={[styles.quickActionText, { color: theme.colors.text }]}>
-            분석
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionButton}>
-          <Icon name="notifications" size={24} color={theme.colors.primary} />
-          <Text style={[styles.quickActionText, { color: theme.colors.text }]}>
-            알림
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionButton}>
-          <Icon name="settings" size={24} color={theme.colors.primary} />
-          <Text style={[styles.quickActionText, { color: theme.colors.text }]}>
-            설정
-          </Text>
-        </TouchableOpacity>
+  const QuickAction = ({ title, icon, onPress }: any) => (
+    <TouchableOpacity style={styles.quickAction} onPress={onPress}>
+      <View style={styles.quickActionIcon}>
+        <Ionicons name={icon} size={28} color="#3b82f6" />
       </View>
-    </View>
+      <Text style={styles.quickActionText}>{title}</Text>
+    </TouchableOpacity>
   );
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    <ScrollView 
+      style={styles.container}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
-      showsVerticalScrollIndicator={false}
     >
-      {/* 환영 메시지 */}
-      <View style={styles.welcomeSection}>
-        <Text style={[styles.welcomeText, { color: theme.colors.text }]}>
-          안녕하세요, {user?.name}님!
-        </Text>
-        <Text style={[styles.welcomeSubtext, { color: theme.colors.textSecondary }]}>
-          오늘도 좋은 하루 되세요.
-        </Text>
+      {/* 헤더 */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>대시보드</Text>
+        <Text style={styles.headerSubtitle}>오늘의 현황을 확인하세요</Text>
       </View>
 
-      {/* 통계 카드들 */}
-      {dashboardData && (
-        <View style={styles.statsGrid}>
-          <StatCard
-            title="총 매출"
-            value={dashboardData.totalSales}
-            icon="attach-money"
-            color={theme.colors.success}
+      {/* 통계 카드 */}
+      <View style={styles.statsContainer}>
+        <StatCard
+          title="총 매장"
+          value={stats.totalStores}
+          icon="business"
+          color="#3b82f6"
+          onPress={() => Alert.alert('매장 관리', '매장 관리 화면으로 이동')}
+        />
+        <StatCard
+          title="진행중 주문"
+          value={stats.activeOrders}
+          icon="cart"
+          color="#10b981"
+          onPress={() => Alert.alert('주문 관리', '주문 관리 화면으로 이동')}
+        />
+        <StatCard
+          title="재고 부족"
+          value={stats.lowStockItems}
+          icon="warning"
+          color="#f59e0b"
+          onPress={() => Alert.alert('재고 관리', '재고 관리 화면으로 이동')}
+        />
+        <StatCard
+          title="오늘 매출"
+          value={`₩${stats.todaySales.toLocaleString()}`}
+          icon="trending-up"
+          color="#8b5cf6"
+          onPress={() => Alert.alert('매출 분석', '매출 분석 화면으로 이동')}
+        />
+      </View>
+
+      {/* 빠른 액션 */}
+      <View style={styles.quickActionsContainer}>
+        <Text style={styles.sectionTitle}>빠른 액션</Text>
+        <View style={styles.quickActionsGrid}>
+          <QuickAction
+            title="새 주문"
+            icon="add-circle"
+            onPress={() => Alert.alert('새 주문', '새 주문 생성')}
           />
-          <StatCard
-            title="총 주문"
-            value={dashboardData.totalOrders}
-            icon="shopping-cart"
-            color={theme.colors.primary}
+          <QuickAction
+            title="재고 확인"
+            icon="cube"
+            onPress={() => Alert.alert('재고 확인', '재고 현황 확인')}
           />
-          <StatCard
-            title="활성 사용자"
-            value={dashboardData.activeUsers}
-            icon="people"
-            color={theme.colors.secondary}
+          <QuickAction
+            title="스케줄"
+            icon="calendar"
+            onPress={() => Alert.alert('스케줄', '스케줄 관리')}
           />
-          <StatCard
-            title="읽지 않은 알림"
-            value={unreadCount}
+          <QuickAction
+            title="알림"
             icon="notifications"
-            color={theme.colors.warning}
+            onPress={() => Alert.alert('알림', '알림 확인')}
           />
         </View>
-      )}
+      </View>
 
-      {/* 성장률 카드 */}
-      {dashboardData?.quickStats && (
-        <View style={[styles.growthCard, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.growthTitle, { color: theme.colors.text }]}>
-            성장률
-          </Text>
-          <View style={styles.growthStats}>
-            <View style={styles.growthItem}>
-              <Text style={[styles.growthLabel, { color: theme.colors.textSecondary }]}>
-                오늘 매출
-              </Text>
-              <Text style={[styles.growthValue, { color: theme.colors.success }]}>
-                +{dashboardData.quickStats.todaySales.toLocaleString()}원
-              </Text>
+      {/* 최근 활동 */}
+      <View style={styles.recentActivityContainer}>
+        <Text style={styles.sectionTitle}>최근 활동</Text>
+        <View style={styles.activityList}>
+          <View style={styles.activityItem}>
+            <View style={[styles.activityIcon, { backgroundColor: '#10b981' }]}>
+              <Ionicons name="checkmark" size={16} color="white" />
             </View>
-            <View style={styles.growthItem}>
-              <Text style={[styles.growthLabel, { color: theme.colors.textSecondary }]}>
-                주간 성장
-              </Text>
-              <Text style={[styles.growthValue, { color: theme.colors.primary }]}>
-                +{dashboardData.quickStats.weeklyGrowth}%
-              </Text>
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle}>주문 #1234 완료</Text>
+              <Text style={styles.activityTime}>5분 전</Text>
             </View>
-            <View style={styles.growthItem}>
-              <Text style={[styles.growthLabel, { color: theme.colors.textSecondary }]}>
-                월간 성장
-              </Text>
-              <Text style={[styles.growthValue, { color: theme.colors.secondary }]}>
-                +{dashboardData.quickStats.monthlyGrowth}%
-              </Text>
+          </View>
+          <View style={styles.activityItem}>
+            <View style={[styles.activityIcon, { backgroundColor: '#f59e0b' }]}>
+              <Ionicons name="warning" size={16} color="white" />
+            </View>
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle}>재고 부족 알림</Text>
+              <Text style={styles.activityTime}>15분 전</Text>
+            </View>
+          </View>
+          <View style={styles.activityItem}>
+            <View style={[styles.activityIcon, { backgroundColor: '#3b82f6' }]}>
+              <Ionicons name="person" size={16} color="white" />
+            </View>
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle}>새 직원 등록</Text>
+              <Text style={styles.activityTime}>1시간 전</Text>
             </View>
           </View>
         </View>
-      )}
-
-      {/* 시스템 상태 */}
-      <SystemStatusCard />
-
-      {/* 빠른 액션 */}
-      <QuickActionsCard />
-
-      {/* 최근 활동 */}
-      <RecentActivityCard />
-
-      {/* 하단 여백 */}
-      <View style={styles.bottomSpacing} />
+      </View>
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f8fafc',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  welcomeSection: {
+  header: {
     padding: 20,
-    paddingBottom: 10,
+    backgroundColor: '#3b82f6',
   },
-  welcomeText: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
+    color: 'white',
     marginBottom: 4,
   },
-  welcomeSubtext: {
+  headerSubtitle: {
     fontSize: 16,
+    color: '#e0e7ff',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 10,
-    marginBottom: 20,
+  statsContainer: {
+    padding: 16,
   },
   statCard: {
-    width: (width - 40) / 2,
-    margin: 5,
-    padding: 16,
+    backgroundColor: 'white',
     borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  statContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginRight: 16,
   },
-  statContent: {
+  statText: {
     flex: 1,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#1f2937',
     marginBottom: 4,
   },
   statTitle: {
     fontSize: 14,
+    color: '#6b7280',
   },
-  growthCard: {
-    margin: 15,
-    padding: 20,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  quickActionsContainer: {
+    padding: 16,
   },
-  growthTitle: {
-    fontSize: 18,
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  growthStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  growthItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  growthLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  growthValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  systemStatusCard: {
-    margin: 15,
-    padding: 20,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  systemStatusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  systemStatusTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  systemStatusContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  systemStatusText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  quickActionsCard: {
-    margin: 15,
-    padding: 20,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  quickActionsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: '#1f2937',
     marginBottom: 16,
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  quickActionButton: {
-    width: (width - 70) / 4,
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  quickActionText: {
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  recentActivityCard: {
-    margin: 15,
-    padding: 20,
+  quickAction: {
+    backgroundColor: 'white',
     borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    width: '48%',
+    marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  recentActivityHeader: {
-    flexDirection: 'row',
+  quickActionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  recentActivityTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 8,
+  quickActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
   },
-  recentActivityList: {
-    gap: 12,
+  recentActivityContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  activityList: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   activityItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   activityIcon: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 6,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
   activityContent: {
     flex: 1,
   },
-  activityMessage: {
-    fontSize: 14,
-    marginBottom: 4,
+  activityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 2,
   },
   activityTime: {
-    fontSize: 12,
+    fontSize: 14,
+    color: '#6b7280',
   },
-  bottomSpacing: {
-    height: 20,
-  },
-});
-
-export default DashboardScreen; 
+}); 

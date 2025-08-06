@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>시스템 모니터링 - 백엔드 관리자</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Feather Icons와 Chart.js는 로컬 패키지로 대체됨 -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
         
@@ -439,7 +438,9 @@
 
     <script>
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         // 성능 차트 초기화
         const ctx = document.getElementById('performance-chart').getContext('2d');
@@ -522,13 +523,17 @@
                 monitoringActive = false;
                 button.textContent = '모니터링 시작';
                 icon.setAttribute('data-feather', 'play');
-                feather.replace();
+                if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
             } else {
                 // 모니터링 시작
                 monitoringActive = true;
                 button.textContent = '모니터링 중지';
                 icon.setAttribute('data-feather', 'square');
-                feather.replace();
+                if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
                 
                 // 2초마다 데이터 업데이트
                 monitoringInterval = setInterval(updateSystemData, 2000);

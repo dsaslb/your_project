@@ -37,7 +37,9 @@ class SecurityConfig:
                 'require_digits': True,
                 'require_special_chars': True,
                 'max_age_days': 90,
-                'prevent_reuse_count': 5
+                'prevent_reuse_count': 5,
+                'password_history_size': 10,  # 비밀번호 히스토리 크기
+                'complexity_score_min': 3  # 최소 복잡도 점수
             },
             'session_policy': {
                 'max_session_duration_hours': 24,
@@ -45,28 +47,36 @@ class SecurityConfig:
                 'max_concurrent_sessions': 3,
                 'require_secure_cookies': True,
                 'require_http_only': True,
-                'same_site_policy': 'Lax'
+                'same_site_policy': 'Lax',
+                'session_regeneration': True,  # 세션 재생성
+                'absolute_timeout_hours': 48  # 절대 타임아웃
             },
             'authentication_policy': {
                 'max_login_attempts': 5,
                 'lockout_duration_minutes': 30,
                 'require_mfa': False,
                 'mfa_methods': ['totp', 'email', 'sms'],
-                'remember_me_days': 30
+                'remember_me_days': 30,
+                'account_lockout_threshold': 10,  # 계정 잠금 임계값
+                'progressive_delay': True  # 점진적 지연
             },
             'api_security': {
                 'rate_limit_requests': 100,
                 'rate_limit_window_minutes': 15,
                 'require_api_key': True,
                 'api_key_expiry_days': 365,
-                'max_request_size_mb': 16
+                'max_request_size_mb': 16,
+                'request_signature_validation': True,  # 요청 서명 검증
+                'api_versioning': True  # API 버전 관리
             },
             'data_protection': {
                 'encrypt_sensitive_data': True,
                 'encryption_algorithm': 'AES-256-GCM',
                 'key_rotation_days': 90,
                 'data_retention_days': 2555,  # 7년
-                'secure_deletion': True
+                'secure_deletion': True,
+                'data_masking': True,  # 데이터 마스킹
+                'pseudonymization': True  # 가명화
             },
             'network_security': {
                 'require_https': True,
@@ -74,14 +84,26 @@ class SecurityConfig:
                 'cors_allowed_origins': ['http://localhost:3000'],
                 'cors_allowed_methods': ['GET', 'POST', 'PUT', 'DELETE'],
                 'cors_allowed_headers': ['Content-Type', 'Authorization'],
-                'block_suspicious_ips': True
+                'block_suspicious_ips': True,
+                'ip_whitelist': [],  # IP 화이트리스트
+                'request_origin_validation': True  # 요청 출처 검증
             },
             'logging_policy': {
                 'log_security_events': True,
                 'log_user_actions': True,
                 'log_api_calls': True,
                 'log_retention_days': 90,
-                'log_encryption': True
+                'log_encryption': True,
+                'audit_trail': True,  # 감사 추적
+                'real_time_alerting': True  # 실시간 알림
+            },
+            'input_validation': {
+                'sql_injection_protection': True,
+                'xss_protection': True,
+                'csrf_protection': True,
+                'file_upload_validation': True,
+                'input_sanitization': True,
+                'max_input_length': 10000  # 최대 입력 길이
             }
         }
         

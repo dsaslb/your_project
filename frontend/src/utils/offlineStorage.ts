@@ -108,6 +108,31 @@ export class OfflineStorage {
     }
   }
 
+  // 네트워크 상태 확인
+  static isOnline(): boolean {
+    return typeof navigator !== 'undefined' && navigator.onLine;
+  }
+
+  // 네트워크 리스너 설정
+  static setupNetworkListener(callback: (isOnline: boolean) => void): void {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => callback(true));
+      window.addEventListener('offline', () => callback(false));
+    }
+  }
+
+  // 주기적 동기화 설정
+  static setupPeriodicSync(interval: number = 30000): void {
+    if (typeof window !== 'undefined') {
+      setInterval(() => {
+        if (this.isOnline()) {
+          console.log('🔄 주기적 동기화 실행');
+          // 여기에 실제 동기화 로직 추가
+        }
+      }, interval);
+    }
+  }
+
   // 기본 데이터 생성 (오프라인 모드용)
   static createDefaultData() {
     const defaultIndustries = [
@@ -226,42 +251,45 @@ export class OfflineStorage {
 
     const defaultEmployees = [
       {
-        id: '1',
+        id: 1,
         name: '김철수',
         email: 'kim@example.com',
         phone: '010-1234-5678',
         role: '매니저',
         department: '영업팀',
+        store_id: 1,
         hireDate: '2023-01-15',
-        status: 'active',
+        status: 'active' as const,
         location: '서울 강남점',
         lastActive: '2024-01-15 14:30',
         workHours: 160,
         performance: 95,
       },
       {
-        id: '2',
+        id: 2,
         name: '이영희',
         email: 'lee@example.com',
         phone: '010-2345-6789',
         role: '직원',
         department: '고객서비스팀',
+        store_id: 1,
         hireDate: '2023-03-20',
-        status: 'active',
+        status: 'active' as const,
         location: '서울 강남점',
         lastActive: '2024-01-15 15:45',
         workHours: 140,
         performance: 88,
       },
       {
-        id: '3',
+        id: 3,
         name: '박민수',
         email: 'park@example.com',
         phone: '010-3456-7890',
         role: '팀장',
         department: '개발팀',
+        store_id: 2,
         hireDate: '2022-08-10',
-        status: 'active',
+        status: 'active' as const,
         location: '서울 홍대점',
         lastActive: '2024-01-15 16:20',
         workHours: 180,
@@ -303,3 +331,11 @@ export class OfflineStorage {
     };
   }
 } 
+
+// 기본 인스턴스 export
+export const offlineStorage = new OfflineStorage();
+
+// 유틸리티 함수들 export
+export const isOnline = OfflineStorage.isOnline;
+export const setupNetworkListener = OfflineStorage.setupNetworkListener;
+export const setupPeriodicSync = OfflineStorage.setupPeriodicSync; 

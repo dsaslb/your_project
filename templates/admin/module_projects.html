@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>모듈 프로젝트 목록 - 백엔드 관리자</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
+    <!-- Feather Icons는 로컬 패키지로 대체됨 -->
 </head>
 <body class="bg-background">
     <!-- 사이드바 -->
@@ -227,7 +227,9 @@
 
     <script>
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         // 프로젝트 목록 로드
         async function loadProjects() {

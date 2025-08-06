@@ -1,172 +1,210 @@
-# 레스토랑 관리 모바일 앱
+# 퀀텀 모바일 앱
 
-React Native와 Expo를 사용한 레스토랑 관리 모바일 애플리케이션입니다.
+퀀텀 비즈니스 관리 시스템의 모바일 애플리케이션입니다.
 
-## 주요 기능
+## 기능
 
-- 🔐 사용자 인증 (로그인/로그아웃)
-- 📊 대시보드 (주문 현황, 재고 알림, 직원 출근)
-- 👥 직원 관리
-- 📦 재고 관리
-- 🛒 주문 관리
-- ⚙️ 설정
+### 📊 대시보드
+- 실시간 통계 및 현황 확인
+- 빠른 액션 버튼
+- 최근 활동 내역
+
+### 🏪 매장 관리
+- 매장 목록 조회 및 관리
+- 매장 상태 모니터링
+- 매장별 통계 확인
+
+### 📦 재고 관리
+- 재고 현황 실시간 확인
+- 재고 부족 알림
+- 입출고 관리
+- 카테고리별 필터링
+
+### 🛒 주문 관리
+- 실시간 주문 현황
+- 주문 상태 추적
+- 주문 처리 및 완료
+
+### 📅 스케줄 관리
+- 직원 스케줄 확인
+- 근무 상태 모니터링
+- 스케줄 생성 및 수정
+
+### 🔔 알림 시스템
+- 실시간 알림 수신
+- 알림 타입별 분류
+- 읽음/읽지 않음 상태 관리
+
+### 👤 프로필 관리
+- 사용자 정보 관리
+- 앱 설정
+- 보안 설정
+- 지원 및 도움말
 
 ## 기술 스택
 
-- **React Native** - 모바일 앱 개발
-- **Expo** - 개발 도구 및 배포 플랫폼
+- **React Native** - 크로스 플랫폼 모바일 개발
+- **Expo** - 개발 환경 및 빌드 도구
+- **React Navigation** - 네비게이션 관리
 - **TypeScript** - 타입 안전성
-- **React Navigation** - 네비게이션
-- **AsyncStorage** - 로컬 데이터 저장
-- **Expo Notifications** - 푸시 알림
-- **Axios** - HTTP 클라이언트
+- **Ionicons** - 아이콘 라이브러리
 
 ## 설치 및 실행
 
-### 1. 의존성 설치
+### 필수 요구사항
+- Node.js 18.0.0 이상
+- npm 또는 yarn
+- Expo CLI
+- iOS Simulator (iOS 개발용)
+- Android Studio (Android 개발용)
 
+### 설치
 ```bash
+# 의존성 설치
 npm install
+
+# Expo CLI 설치 (전역)
+npm install -g @expo/cli
 ```
 
-### 2. 개발 서버 실행
-
+### 실행
 ```bash
-# Expo 개발 서버 시작
+# 개발 서버 시작
 npm start
 
-# 또는
-expo start
-```
-
-### 3. 모바일 앱에서 실행
-
-1. Expo Go 앱을 스마트폰에 설치
-2. QR 코드를 스캔하여 앱 실행
-
-### 4. 시뮬레이터에서 실행
-
-```bash
-# iOS 시뮬레이터
+# iOS 시뮬레이터에서 실행
 npm run ios
 
-# Android 에뮬레이터
+# Android 에뮬레이터에서 실행
 npm run android
+
+# 웹 브라우저에서 실행
+npm run web
 ```
 
 ## 프로젝트 구조
 
 ```
 mobile_app/
+├── App.tsx                 # 메인 앱 컴포넌트
 ├── src/
-│   ├── contexts/          # React Context
-│   │   ├── AuthContext.tsx
-│   │   └── NetworkContext.tsx
-│   ├── screens/           # 화면 컴포넌트
-│   │   ├── DashboardScreen.tsx
-│   │   ├── StaffScreen.tsx
-│   │   ├── InventoryScreen.tsx
-│   │   ├── OrdersScreen.tsx
-│   │   ├── SettingsScreen.tsx
-│   │   └── LoginScreen.tsx
-│   ├── services/          # API 서비스
-│   │   └── apiClient.ts
-│   └── navigation/        # 네비게이션
-├── assets/               # 이미지 및 아이콘
-├── App.tsx              # 메인 앱 컴포넌트
-├── package.json         # 의존성 관리
-├── tsconfig.json        # TypeScript 설정
-├── babel.config.js      # Babel 설정
-└── app.json            # Expo 설정
+│   └── screens/           # 화면 컴포넌트들
+│       ├── DashboardScreen.tsx
+│       ├── StoreManagementScreen.tsx
+│       ├── InventoryScreen.tsx
+│       ├── OrdersScreen.tsx
+│       ├── ScheduleScreen.tsx
+│       ├── NotificationsScreen.tsx
+│       └── ProfileScreen.tsx
+├── package.json
+└── README.md
 ```
 
-## 환경 설정
+## 주요 컴포넌트
 
-### 백엔드 API 연결
+### DashboardScreen
+- 통계 카드 (총 매장, 활성 주문, 재고 부족, 오늘 매출)
+- 빠른 액션 버튼 (새 주문, 재고 확인, 스케줄, 알림)
+- 최근 활동 내역
 
-`src/services/apiClient.ts` 파일에서 백엔드 API URL을 설정하세요:
+### StoreManagementScreen
+- 매장 목록 및 검색
+- 매장 상태 토글 (활성/비활성)
+- 매장별 통계 (매출, 직원 수)
+- 매장 관리 액션 (수정, 직원, 분석)
 
-```typescript
-const API_BASE_URL = 'http://your-backend-url.com';
-```
+### InventoryScreen
+- 재고 목록 및 검색
+- 카테고리별 필터링
+- 재고 상태 표시 (정상/부족/품절)
+- 재고 바 시각화
+- 입출고 관리
 
-### 환경 변수
+### OrdersScreen
+- 주문 목록 및 상태 관리
+- 주문별 상세 정보
+- 주문 처리 액션 (완료, 취소)
 
-`.env` 파일을 생성하여 환경 변수를 설정할 수 있습니다:
+### ScheduleScreen
+- 직원 스케줄 목록
+- 근무 상태 표시 (예정/근무중/완료/결근)
+- 스케줄 관리
 
-```env
-API_BASE_URL=http://localhost:5000
-EXPO_PUBLIC_API_URL=http://localhost:5000
-```
+### NotificationsScreen
+- 알림 목록 및 타입별 분류
+- 읽음/읽지 않음 상태 관리
+- 알림 전체 읽음 처리
+
+### ProfileScreen
+- 사용자 프로필 정보
+- 앱 설정 (알림, 다크 모드, 언어, 시간대)
+- 보안 설정 (비밀번호, 생체 인증, 2단계 인증)
+- 지원 및 앱 정보
+
+## API 연동
+
+현재는 모의 데이터를 사용하고 있으며, 실제 백엔드 API와의 연동을 위해 다음 작업이 필요합니다:
+
+1. API 클라이언트 설정
+2. 인증 시스템 구현
+3. 실시간 데이터 동기화
+4. 오프라인 지원
 
 ## 빌드 및 배포
 
-### Android APK 빌드
-
+### Expo EAS Build
 ```bash
-expo build:android
+# EAS CLI 설치
+npm install -g @expo/eas-cli
+
+# 로그인
+eas login
+
+# 빌드 설정
+eas build:configure
+
+# Android 빌드
+eas build --platform android
+
+# iOS 빌드
+eas build --platform ios
 ```
 
-### iOS IPA 빌드
-
+### 앱 스토어 배포
 ```bash
-expo build:ios
+# Android Play Store
+eas submit --platform android
+
+# iOS App Store
+eas submit --platform ios
 ```
 
-### 웹 빌드
+## 개발 가이드라인
 
-```bash
-expo build:web
-```
-
-## 개발 가이드
-
-### 새로운 화면 추가
-
-1. `src/screens/` 폴더에 새 화면 컴포넌트 생성
-2. `App.tsx`의 네비게이션에 추가
-3. 탭 아이콘 설정 (필요시)
-
-### API 통신
-
-`src/services/apiClient.ts`를 사용하여 백엔드와 통신:
-
-```typescript
-import { apiClient } from '../services/apiClient';
-
-// GET 요청
-const response = await apiClient.get('/api/endpoint');
-
-// POST 요청
-const response = await apiClient.post('/api/endpoint', data);
-```
+### 코드 스타일
+- TypeScript 사용
+- 함수형 컴포넌트 및 Hooks 사용
+- 일관된 네이밍 컨벤션
+- 적절한 주석 작성
 
 ### 상태 관리
+- React Hooks (useState, useEffect) 사용
+- 필요시 Context API 또는 Redux 도입 고려
 
-React Context를 사용하여 전역 상태 관리:
+### 성능 최적화
+- FlatList 사용으로 대용량 데이터 처리
+- 이미지 최적화
+- 불필요한 리렌더링 방지
 
-```typescript
-import { useAuth } from '../contexts/AuthContext';
-import { useNetwork } from '../contexts/NetworkContext';
-
-const { user, login, logout } = useAuth();
-const { isOnline } = useNetwork();
-```
-
-## 문제 해결
-
-### 일반적인 오류
-
-1. **모듈을 찾을 수 없음**: `npm install` 실행
-2. **Metro 번들러 오류**: `expo start --clear` 실행
-3. **타입 오류**: `tsconfig.json` 확인
-
-### 디버깅
-
-- React Native Debugger 사용
-- Expo DevTools 활용
-- 콘솔 로그 확인
+### 테스트
+- Jest 및 React Native Testing Library 사용
+- 컴포넌트 단위 테스트
+- 통합 테스트
 
 ## 라이선스
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 
+이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+
+## 지원
+
+문제가 발생하거나 질문이 있으시면 이슈를 생성해 주세요. 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYBERPUNK DASHBOARD - 백엔드 관리자</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
@@ -636,7 +636,9 @@
 
     <script>
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         // 미션 차트 초기화
         const ctx = document.getElementById('mission-chart').getContext('2d');
@@ -723,6 +725,12 @@
                     if (data.success && data.stats) {
                         const stats = data.stats;
                         const roleStats = stats.role_stats || {};
+                        const industryStats = stats.industry_stats || {};
+                        
+                        // 디버깅을 위한 로그 추가
+                        console.log('받은 대시보드 데이터:', data);
+                        console.log('역할별 통계:', roleStats);
+                        console.log('전체 통계:', stats);
                         
                         // 사용자 현황 업데이트
                         document.getElementById('admin-count').textContent = roleStats.admin || 0;
@@ -731,8 +739,28 @@
                         document.getElementById('employee-count').textContent = roleStats.employee || 0;
                         document.getElementById('total-users').textContent = stats.total_users || 0;
                         
+                        // 업종 현황 업데이트 (새로 추가)
+                        const totalIndustriesElement = document.getElementById('total-industries');
+                        const activeIndustriesElement = document.getElementById('active-industries');
+                        if (totalIndustriesElement) {
+                            totalIndustriesElement.textContent = industryStats.total_industries || stats.total_industries || 0;
+                        }
+                        if (activeIndustriesElement) {
+                            activeIndustriesElement.textContent = industryStats.active_industries || 0;
+                        }
+                        
+                        // 브랜드 현황 업데이트
+                        const totalBrandsElement = document.getElementById('total-brands');
+                        if (totalBrandsElement) {
+                            totalBrandsElement.textContent = stats.total_brands || 0;
+                        }
+                        
+                        console.log('대시보드 통계 업데이트 완료:', stats);
+                        
                         // 관리자 상태 업데이트
                         updateManagerStatus();
+                    } else {
+                        console.error('대시보드 데이터 형식 오류:', data);
                     }
                 })
                 .catch(error => {
@@ -760,7 +788,7 @@
                             statusDiv.className = 'flex items-center justify-between';
                             statusDiv.innerHTML = `
                                 <span class="cyber-text-dim">${manager.username} (${manager.role})</span>
-                                <span class="cyber-status ${manager.status === 'active' ? 'online' : 'offline'}"></span>
+                                <span class="cyber-status ${manager.status === 'approved' ? 'online' : 'offline'}"></span>
                             `;
                             managerStatus.appendChild(statusDiv);
                         });

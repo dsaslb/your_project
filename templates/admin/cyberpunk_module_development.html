@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYBERPUNK MODULE DEVELOPMENT - 백엔드 관리자</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
@@ -543,7 +543,9 @@
 
     <script>
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         // 전역 변수
         let selectedComponent = null;
@@ -745,7 +747,9 @@
                         <p>Select a component to edit properties</p>
                     </div>
                 `;
-                feather.replace();
+                if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
                 return;
             }
 
@@ -954,7 +958,9 @@
                             </div>
                         </div>
                     `;
-                    feather.replace();
+                    if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
                 }
             });
         });

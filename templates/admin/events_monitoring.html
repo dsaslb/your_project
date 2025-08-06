@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>실시간 이벤트/알림</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
@@ -199,7 +199,9 @@
 
     <script>
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         let currentEventsPage = 1;
 
@@ -281,7 +283,9 @@
             });
             
             // Feather 아이콘 다시 초기화
+            if (typeof feather !== 'undefined') {
             feather.replace();
+        }
         }
 
         // 알림 로드

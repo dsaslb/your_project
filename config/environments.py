@@ -94,6 +94,9 @@ class DevelopmentConfig(EnvironmentConfig):
         "http://127.0.0.1:3001",
         "http://localhost:8080",
         "http://127.0.0.1:8080",
+        "http://192.168.45.44:3000",
+        "http://192.168.45.44:3001",
+        "http://192.168.45.44:8080",
     ]
     
     # 개발용 Rate Limiting (더 관대한 설정)

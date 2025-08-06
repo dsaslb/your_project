@@ -1,407 +1,321 @@
 """
-에러 처리 및 로깅 시스템
-- 구조화된 에러 처리
-- 상세한 로깅
-- 사용자 친화적 에러 메시지
-- 에러 추적 및 분석
+통합 에러 처리 시스템
+애플리케이션 전체의 에러 처리 및 로깅
 """
 
 import logging
 import traceback
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional, Union
-from functools import wraps
-from flask import request, jsonify, current_app, g
+from typing import Dict, Any, Optional, Callable
+from flask import Flask, request, jsonify, current_app
 from werkzeug.exceptions import HTTPException
+from sqlalchemy.exc import SQLAlchemyError
+from extensions import db
+
+logger = logging.getLogger(__name__)
 
 
 class ErrorHandler:
-    """에러 처리 클래스"""
+    """통합 에러 처리기"""
     
-    def __init__(self, app=None):
+    def __init__(self, app: Flask = None):
         self.app = app
-        self.error_logger = logging.getLogger('error_handler')
-        self.performance_logger = logging.getLogger('performance')
+        self.error_log = []
+        self.custom_handlers = {}
         
-        if app is not None:
+        if app:
             self.init_app(app)
     
-    def init_app(self, app):
-        """Flask 앱 초기화"""
+    def init_app(self, app: Flask):
+        """Flask 앱에 에러 핸들러 등록"""
         self.app = app
         
-        # 에러 핸들러 등록
+        # HTTP 에러 핸들러
         app.register_error_handler(400, self.handle_bad_request)
         app.register_error_handler(401, self.handle_unauthorized)
         app.register_error_handler(403, self.handle_forbidden)
         app.register_error_handler(404, self.handle_not_found)
-        app.register_error_handler(500, self.handle_internal_error)
+        app.register_error_handler(405, self.handle_method_not_allowed)
+        app.register_error_handler(422, self.handle_unprocessable_entity)
+        app.register_error_handler(429, self.handle_too_many_requests)
+        app.register_error_handler(500, self.handle_internal_server_error)
+        
+        # 데이터베이스 에러 핸들러
+        app.register_error_handler(SQLAlchemyError, self.handle_database_error)
+        
+        # 일반 예외 핸들러
         app.register_error_handler(Exception, self.handle_generic_error)
         
-        # 요청 전후 처리
-        app.before_request(self.before_request)
-        app.after_request(self.after_request)
-        app.teardown_request(self.teardown_request)
-    
-    def before_request(self):
-        """요청 전 처리"""
-        g.start_time = datetime.now()
-        g.request_id = self._generate_request_id()
-        
-        # 요청 로깅
-        self.performance_logger.info(
-            f"Request started: {g.request_id} - {request.method} {request.path}",
-            extra={
-                'request_id': g.request_id,
-                'method': request.method,
-                'path': request.path,
-                'ip': request.remote_addr,
-                'user_agent': request.headers.get('User-Agent', '')
-            }
-        )
-    
-    def after_request(self, response):
-        """요청 후 처리"""
-        if hasattr(g, 'start_time'):
-            duration = (datetime.now() - g.start_time).total_seconds()
-            
-            # 응답 로깅
-            self.performance_logger.info(
-                f"Request completed: {g.request_id} - {response.status_code} ({duration:.3f}s)",
-                extra={
-                    'request_id': g.request_id,
-                    'status_code': response.status_code,
-                    'duration': duration
-                }
-            )
-        
-        return response
-    
-    def teardown_request(self, exception=None):
-        """요청 종료 처리"""
-        if exception:
-            self.log_error(exception, "Request teardown error")
-    
-    def _generate_request_id(self) -> str:
-        """요청 ID 생성"""
-        import uuid
-        return str(uuid.uuid4())[:8]
-    
-    def log_error(self, error: Exception, context: str = "", extra_data: Dict = None):
-        """에러 로깅"""
-        error_data = {
-            'timestamp': datetime.now().isoformat(),
-            'error_type': type(error).__name__,
-            'error_message': str(error),
-            'context': context,
-            'traceback': traceback.format_exc(),
-            'request_id': getattr(g, 'request_id', 'unknown'),
-            'method': getattr(request, 'method', 'unknown'),
-            'path': getattr(request, 'path', 'unknown'),
-            'ip': getattr(request, 'remote_addr', 'unknown'),
-            'user_agent': getattr(request, 'headers', {}).get('User-Agent', 'unknown'),
-            'extra_data': extra_data or {}
-        }
-        
-        # 에러 로깅
-        self.error_logger.error(
-            f"Error in {context}: {error}",
-            extra=error_data
-        )
-        
-        # 성능 모니터링에 에러 기록
-        try:
-            from utils.performance_monitor import performance_monitor
-            performance_monitor.record_error(
-                error_type=type(error).__name__,
-                error_message=str(error),
-                endpoint=getattr(request, 'path', 'unknown')
-            )
-        except Exception as e:
-            self.error_logger.error(f"Failed to record error in performance monitor: {e}")
+        logger.info("에러 핸들러 초기화 완료")
     
     def handle_bad_request(self, error):
-        """400 에러 처리"""
-        self.log_error(error, "Bad Request")
+        """400 Bad Request 처리"""
         return self._create_error_response(
-            "잘못된 요청입니다.",
-            "요청 형식이나 데이터가 올바르지 않습니다.",
-            400,
-            error
+            error_code="BAD_REQUEST",
+            message="잘못된 요청입니다.",
+            details=str(error),
+            status_code=400
         )
     
     def handle_unauthorized(self, error):
-        """401 에러 처리"""
-        self.log_error(error, "Unauthorized")
+        """401 Unauthorized 처리"""
         return self._create_error_response(
-            "인증이 필요합니다.",
-            "로그인이 필요하거나 인증 정보가 유효하지 않습니다.",
-            401,
-            error
+            error_code="UNAUTHORIZED",
+            message="인증이 필요합니다.",
+            details="로그인이 필요하거나 인증 토큰이 유효하지 않습니다.",
+            status_code=401
         )
     
     def handle_forbidden(self, error):
-        """403 에러 처리"""
-        self.log_error(error, "Forbidden")
+        """403 Forbidden 처리"""
         return self._create_error_response(
-            "접근이 거부되었습니다.",
-            "이 리소스에 접근할 권한이 없습니다.",
-            403,
-            error
+            error_code="FORBIDDEN",
+            message="접근 권한이 없습니다.",
+            details="해당 리소스에 접근할 권한이 없습니다.",
+            status_code=403
         )
     
     def handle_not_found(self, error):
-        """404 에러 처리"""
-        self.log_error(error, "Not Found")
+        """404 Not Found 처리"""
         return self._create_error_response(
-            "페이지를 찾을 수 없습니다.",
-            "요청하신 페이지나 리소스가 존재하지 않습니다.",
-            404,
-            error
+            error_code="NOT_FOUND",
+            message="요청한 리소스를 찾을 수 없습니다.",
+            details=f"경로: {request.path}",
+            status_code=404
         )
     
-    def handle_internal_error(self, error):
-        """500 에러 처리"""
-        self.log_error(error, "Internal Server Error")
+    def handle_method_not_allowed(self, error):
+        """405 Method Not Allowed 처리"""
         return self._create_error_response(
-            "서버 오류가 발생했습니다.",
-            "일시적인 서버 오류입니다. 잠시 후 다시 시도해주세요.",
-            500,
-            error
+            error_code="METHOD_NOT_ALLOWED",
+            message="허용되지 않는 HTTP 메서드입니다.",
+            details=f"허용된 메서드: {error.valid_methods}",
+            status_code=405
+        )
+    
+    def handle_unprocessable_entity(self, error):
+        """422 Unprocessable Entity 처리"""
+        return self._create_error_response(
+            error_code="UNPROCESSABLE_ENTITY",
+            message="요청 데이터를 처리할 수 없습니다.",
+            details=str(error),
+            status_code=422
+        )
+    
+    def handle_too_many_requests(self, error):
+        """429 Too Many Requests 처리"""
+        return self._create_error_response(
+            error_code="TOO_MANY_REQUESTS",
+            message="요청이 너무 많습니다.",
+            details="잠시 후 다시 시도해주세요.",
+            status_code=429
+        )
+    
+    def handle_database_error(self, error):
+        """데이터베이스 에러 처리"""
+        # 데이터베이스 롤백
+        try:
+            db.session.rollback()
+        except:
+            pass
+        
+        error_message = "데이터베이스 오류가 발생했습니다."
+        error_details = str(error)
+        
+        # 개발 환경에서는 상세 에러 정보 제공
+        if current_app.config.get('DEBUG', False):
+            error_details = traceback.format_exc()
+        
+        return self._create_error_response(
+            error_code="DATABASE_ERROR",
+            message=error_message,
+            details=error_details,
+            status_code=500
+        )
+    
+    def handle_internal_server_error(self, error):
+        """500 Internal Server Error 처리"""
+        return self._create_error_response(
+            error_code="INTERNAL_SERVER_ERROR",
+            message="서버 내부 오류가 발생했습니다.",
+            details="관리자에게 문의해주세요.",
+            status_code=500
         )
     
     def handle_generic_error(self, error):
-        """일반 에러 처리"""
-        if isinstance(error, HTTPException):
-            return error
+        """일반 예외 처리"""
+        # 에러 로깅
+        self._log_error(error)
         
-        self.log_error(error, "Generic Error")
+        # 개발 환경에서는 상세 에러 정보 제공
+        if current_app.config.get('DEBUG', False):
+            error_details = traceback.format_exc()
+        else:
+            error_details = "알 수 없는 오류가 발생했습니다."
+        
         return self._create_error_response(
-            "오류가 발생했습니다.",
-            "예상치 못한 오류가 발생했습니다. 관리자에게 문의해주세요.",
-            500,
-            error
+            error_code="GENERIC_ERROR",
+            message="오류가 발생했습니다.",
+            details=error_details,
+            status_code=500
         )
     
-    def _create_error_response(self, title: str, message: str, status_code: int, error: Exception = None) -> tuple:
+    def _create_error_response(self, error_code: str, message: str, 
+                             details: str, status_code: int) -> tuple:
         """에러 응답 생성"""
         error_data = {
             'error': {
-                'title': title,
+                'code': error_code,
                 'message': message,
-                'status_code': status_code,
-                'timestamp': datetime.now().isoformat(),
-                'request_id': getattr(g, 'request_id', 'unknown')
+                'details': details,
+                'timestamp': datetime.utcnow().isoformat(),
+                'path': request.path,
+                'method': request.method
             }
         }
         
-        # 개발 환경에서는 추가 정보 제공
-        if current_app.config.get('DEBUG', False) and error:
-            error_data['error']['debug'] = {
-                'error_type': type(error).__name__,
-                'error_message': str(error),
-                'traceback': traceback.format_exc()
-            }
+        # 에러 로그에 추가
+        self.error_log.append({
+            'timestamp': datetime.utcnow(),
+            'error_code': error_code,
+            'message': message,
+            'details': details,
+            'status_code': status_code,
+            'path': request.path,
+            'method': request.method,
+            'user_agent': request.headers.get('User-Agent', ''),
+            'ip_address': request.remote_addr
+        })
         
-        # API 요청인지 확인
-        if request.path.startswith('/api/'):
-            return jsonify(error_data), status_code
-        else:
-            # HTML 페이지 요청인 경우 템플릿 렌더링
-            from flask import render_template
-            return render_template('errors/error.html', error_data=error_data), status_code
+        # 로그 파일에 기록
+        logger.error(f"Error {status_code}: {error_code} - {message} - {details}")
+        
+        return jsonify(error_data), status_code
+    
+    def _log_error(self, error: Exception):
+        """에러 로깅"""
+        error_info = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'error_type': type(error).__name__,
+            'error_message': str(error),
+            'traceback': traceback.format_exc(),
+            'request_path': request.path,
+            'request_method': request.method,
+            'request_headers': dict(request.headers),
+            'request_data': self._get_request_data()
+        }
+        
+        logger.error(f"Unhandled error: {json.dumps(error_info, indent=2)}")
+    
+    def _get_request_data(self) -> Dict[str, Any]:
+        """요청 데이터 수집"""
+        data = {
+            'args': dict(request.args),
+            'form': dict(request.form),
+            'json': request.get_json(silent=True),
+            'files': list(request.files.keys()) if request.files else []
+        }
+        
+        # 민감한 정보 제거
+        sensitive_fields = ['password', 'token', 'secret', 'key']
+        for field in sensitive_fields:
+            if field in data['form']:
+                data['form'][field] = '***REDACTED***'
+            if field in data['json']:
+                data['json'][field] = '***REDACTED***'
+        
+        return data
+    
+    def register_custom_handler(self, error_type: type, handler: Callable):
+        """커스텀 에러 핸들러 등록"""
+        self.custom_handlers[error_type] = handler
+    
+    def get_error_log(self, limit: int = 100) -> list:
+        """에러 로그 조회"""
+        return self.error_log[-limit:] if limit else self.error_log
+    
+    def clear_error_log(self):
+        """에러 로그 정리"""
+        self.error_log.clear()
+    
+    def get_error_statistics(self) -> Dict[str, Any]:
+        """에러 통계 생성"""
+        if not self.error_log:
+            return {}
+        
+        stats = {
+            'total_errors': len(self.error_log),
+            'error_codes': {},
+            'status_codes': {},
+            'paths': {},
+            'recent_errors': []
+        }
+        
+        # 최근 24시간 에러만 필터링
+        from datetime import timedelta
+        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        recent_errors = [e for e in self.error_log if e['timestamp'] > cutoff_time]
+        
+        for error in recent_errors:
+            # 에러 코드별 통계
+            error_code = error['error_code']
+            stats['error_codes'][error_code] = stats['error_codes'].get(error_code, 0) + 1
+            
+            # 상태 코드별 통계
+            status_code = error['status_code']
+            stats['status_codes'][status_code] = stats['status_codes'].get(status_code, 0) + 1
+            
+            # 경로별 통계
+            path = error['path']
+            stats['paths'][path] = stats['paths'].get(path, 0) + 1
+        
+        # 최근 에러 목록
+        stats['recent_errors'] = recent_errors[-10:]  # 최근 10개
+        
+        return stats
 
 
 # 전역 에러 핸들러 인스턴스
 error_handler = ErrorHandler()
 
 
-# 데코레이터들
-def handle_errors(func):
-    """에러 처리 데코레이터"""
-    @wraps(func)
+def handle_api_error(func: Callable) -> Callable:
+    """API 에러 처리 데코레이터"""
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            error_handler.log_error(e, f"Function error: {func.__name__}")
-            raise
+            logger.error(f"API 에러 발생: {func.__name__} - {str(e)}")
+            return error_handler.handle_generic_error(e)
     return wrapper
 
 
-def validate_input(required_fields: list = None, optional_fields: list = None):
-    """입력 검증 데코레이터"""
-    def decorator(func):
-        @wraps(func)
+def validate_request_data(required_fields: list = None, optional_fields: list = None):
+    """요청 데이터 검증 데코레이터"""
+    def decorator(func: Callable) -> Callable:
         def wrapper(*args, **kwargs):
             try:
-                # JSON 데이터 검증
-                if request.is_json:
-                    data = request.get_json()
-                    
-                    # 필수 필드 검증
-                    if required_fields:
-                        missing_fields = [field for field in required_fields if field not in data]
-                        if missing_fields:
-                            raise ValueError(f"필수 필드가 누락되었습니다: {', '.join(missing_fields)}")
-                    
-                    # 허용된 필드만 추출
-                    allowed_fields = (required_fields or []) + (optional_fields or [])
-                    if allowed_fields:
-                        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-                        request._json = filtered_data
+                data = request.get_json() or request.form.to_dict()
+                
+                # 필수 필드 검증
+                if required_fields:
+                    missing_fields = [field for field in required_fields if field not in data]
+                    if missing_fields:
+                        return error_handler.handle_bad_request(
+                            Exception(f"필수 필드가 누락되었습니다: {', '.join(missing_fields)}")
+                        )
+                
+                # 선택적 필드 검증
+                if optional_fields:
+                    invalid_fields = [field for field in data if field not in required_fields + optional_fields]
+                    if invalid_fields:
+                        return error_handler.handle_bad_request(
+                            Exception(f"유효하지 않은 필드입니다: {', '.join(invalid_fields)}")
+                        )
                 
                 return func(*args, **kwargs)
-            except ValueError as e:
-                return jsonify({
-                    'error': {
-                        'title': '입력 검증 오류',
-                        'message': str(e),
-                        'status_code': 400
-                    }
-                }), 400
             except Exception as e:
-                error_handler.log_error(e, f"Input validation error in {func.__name__}")
-                raise
+                return error_handler.handle_generic_error(e)
         return wrapper
-    return decorator
-
-
-def log_operation(operation: str):
-    """작업 로깅 데코레이터"""
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            start_time = datetime.now()
-            
-            try:
-                result = func(*args, **kwargs)
-                
-                # 성공 로깅
-                duration = (datetime.now() - start_time).total_seconds()
-                logging.getLogger('operations').info(
-                    f"Operation completed: {operation}",
-                    extra={
-                        'operation': operation,
-                        'function': func.__name__,
-                        'duration': duration,
-                        'status': 'success',
-                        'request_id': getattr(g, 'request_id', 'unknown')
-                    }
-                )
-                
-                return result
-            except Exception as e:
-                # 실패 로깅
-                duration = (datetime.now() - start_time).total_seconds()
-                logging.getLogger('operations').error(
-                    f"Operation failed: {operation}",
-                    extra={
-                        'operation': operation,
-                        'function': func.__name__,
-                        'duration': duration,
-                        'status': 'failed',
-                        'error': str(e),
-                        'request_id': getattr(g, 'request_id', 'unknown')
-                    }
-                )
-                raise
-        return wrapper
-    return decorator
-
-
-# 유틸리티 함수들
-def create_error_response(title: str, message: str, status_code: int = 400, extra_data: Dict = None) -> tuple:
-    """에러 응답 생성 유틸리티"""
-    error_data = {
-        'error': {
-            'title': title,
-            'message': message,
-            'status_code': status_code,
-            'timestamp': datetime.now().isoformat(),
-            'request_id': getattr(g, 'request_id', 'unknown')
-        }
-    }
-    
-    if extra_data:
-        error_data['error']['extra'] = extra_data
-    
-    return jsonify(error_data), status_code
-
-
-def create_success_response(data: Any, message: str = "성공적으로 처리되었습니다.") -> tuple:
-    """성공 응답 생성 유틸리티"""
-    response_data = {
-        'success': True,
-        'message': message,
-        'data': data,
-        'timestamp': datetime.now().isoformat(),
-        'request_id': getattr(g, 'request_id', 'unknown')
-    }
-    
-    return jsonify(response_data), 200
-
-
-def safe_json_loads(data: str, default: Any = None) -> Any:
-    """안전한 JSON 파싱"""
-    try:
-        return json.loads(data)
-    except (json.JSONDecodeError, TypeError):
-        return default
-
-
-def validate_email(email: str) -> bool:
-    """이메일 유효성 검사"""
-    import re
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
-
-
-def validate_phone(phone: str) -> bool:
-    """전화번호 유효성 검사"""
-    import re
-    # 한국 전화번호 형식 (010-1234-5678, 02-123-4567 등)
-    pattern = r'^(\d{2,3})-?(\d{3,4})-?(\d{4})$'
-    return re.match(pattern, phone) is not None
-
-
-def sanitize_input(text: str) -> str:
-    """입력 데이터 정제"""
-    if not text:
-        return ""
-    
-    # HTML 태그 제거
-    import re
-    text = re.sub(r'<[^>]+>', '', text)
-    
-    # 특수 문자 이스케이프
-    text = text.replace('&', '&amp;')
-    text = text.replace('<', '&lt;')
-    text = text.replace('>', '&gt;')
-    text = text.replace('"', '&quot;')
-    text = text.replace("'", '&#x27;')
-    
-    return text.strip()
-
-
-def format_error_message(error: Exception) -> str:
-    """에러 메시지 포맷팅"""
-    error_type = type(error).__name__
-    error_message = str(error)
-    
-    # 일반적인 에러 메시지 매핑
-    error_messages = {
-        'ValidationError': '입력 데이터가 올바르지 않습니다.',
-        'IntegrityError': '데이터 무결성 오류가 발생했습니다.',
-        'ConnectionError': '데이터베이스 연결에 실패했습니다.',
-        'TimeoutError': '요청 시간이 초과되었습니다.',
-        'PermissionError': '권한이 없습니다.',
-        'FileNotFoundError': '파일을 찾을 수 없습니다.',
-        'ValueError': '잘못된 값이 입력되었습니다.',
-        'TypeError': '잘못된 데이터 타입입니다.',
-        'KeyError': '필수 키가 누락되었습니다.',
-        'IndexError': '인덱스 오류가 발생했습니다.'
-    }
-    
-    return error_messages.get(error_type, error_message) 
+    return decorator 

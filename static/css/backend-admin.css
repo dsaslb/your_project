@@ -28,6 +28,71 @@
   opacity: 1 !important;
 }
 
+/* 입력 필드 검증 상태 */
+.backend-input.valid {
+  border-color: #10b981 !important; /* border-green-500 */
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+.backend-input.invalid {
+  border-color: #ef4444 !important; /* border-red-500 */
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.backend-input.warning {
+  border-color: #f59e0b !important; /* border-yellow-500 */
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+}
+
+/* 검증 메시지 스타일 */
+.validation-message {
+  font-size: 0.875rem !important;
+  margin-top: 0.25rem !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 0.25rem !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.validation-message.success {
+  color: #10b981 !important;
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+}
+
+.validation-message.error {
+  color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+}
+
+.validation-message.warning {
+  color: #f59e0b !important;
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  border: 1px solid rgba(245, 158, 11, 0.2) !important;
+}
+
+/* 입력 필드 아이콘 */
+.input-icon {
+  position: absolute !important;
+  right: 0.75rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  pointer-events: none !important;
+  z-index: 20 !important;
+}
+
+.input-icon.success {
+  color: #10b981 !important;
+}
+
+.input-icon.error {
+  color: #ef4444 !important;
+}
+
+.input-icon.warning {
+  color: #f59e0b !important;
+}
+
 /* 텍스트 영역 */
 .backend-textarea {
   background-color: #111827 !important; /* bg-gray-900 */

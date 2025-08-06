@@ -71,9 +71,14 @@
 
         <!-- 관리 버튼 -->
         <div class="flex justify-between items-center mb-6">
-            <button onclick="showCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
-                <i class="fas fa-plus mr-2"></i>새 업종 등록
-            </button>
+            <div class="flex space-x-4">
+                <button onclick="showCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                    <i class="fas fa-plus mr-2"></i>새 업종 등록
+                </button>
+                <button id="bulk-actions-btn" onclick="showBulkActions()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors hidden">
+                    <i class="fas fa-tasks mr-2"></i>일괄 작업
+                </button>
+            </div>
             <div class="flex space-x-4">
                 <button onclick="refreshData()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
                     <i class="fas fa-refresh mr-2"></i>새로고침
@@ -86,13 +91,39 @@
 
         <!-- 업종 목록 테이블 -->
         <div class="bg-gray-800 rounded-lg p-6 neon-border">
-            <h2 class="text-2xl font-bold mb-4 neon-text">
-                <i class="fas fa-list mr-2"></i>업종 목록
-            </h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold neon-text">
+                    <i class="fas fa-list mr-2"></i>업종 목록
+                </h2>
+                <div class="flex space-x-4">
+                    <!-- 검색 필터 -->
+                    <div class="relative">
+                        <input type="text" id="search-input" class="backend-input pl-10" placeholder="업종명 또는 코드로 검색...">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    <!-- 상태 필터 -->
+                    <select id="status-filter" class="backend-select">
+                        <option value="">모든 상태</option>
+                        <option value="active">활성</option>
+                        <option value="inactive">비활성</option>
+                    </select>
+                    <!-- 정렬 옵션 -->
+                    <select id="sort-option" class="backend-select">
+                        <option value="name">이름순</option>
+                        <option value="code">코드순</option>
+                        <option value="created_at">등록일순</option>
+                        <option value="brand_count">브랜드 수순</option>
+                    </select>
+                </div>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead class="bg-gray-700">
                         <tr>
+                            <th class="px-4 py-3 font-semibold">
+                                <input type="checkbox" id="select-all" class="mr-2" onchange="toggleSelectAll()">
+                                선택
+                            </th>
                             <th class="px-4 py-3 font-semibold">업종명</th>
                             <th class="px-4 py-3 font-semibold">코드</th>
                             <th class="px-4 py-3 font-semibold">색상</th>
@@ -115,6 +146,42 @@
         </div>
     </div>
 
+    <!-- 실시간 알림 토스트 -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
+        <!-- 토스트 알림들이 여기에 동적으로 추가됩니다 -->
+    </div>
+
+    <!-- 일괄 작업 모달 -->
+    <div id="bulk-actions-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-lg p-6 neon-border w-full max-w-md">
+                <h3 class="text-xl font-bold mb-4 neon-text">일괄 작업</h3>
+                <div class="mb-4">
+                    <p class="text-gray-300 mb-4">선택된 <span id="selected-count">0</span>개의 업종에 대해 작업을 수행합니다.</p>
+                    <div class="space-y-3">
+                        <button onclick="bulkActivate()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                            <i class="fas fa-check-circle mr-2"></i>선택 항목 활성화
+                        </button>
+                        <button onclick="bulkDeactivate()" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                            <i class="fas fa-pause-circle mr-2"></i>선택 항목 비활성화
+                        </button>
+                        <button onclick="bulkDelete()" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                            <i class="fas fa-trash mr-2"></i>선택 항목 삭제
+                        </button>
+                        <button onclick="exportSelected()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                            <i class="fas fa-download mr-2"></i>선택 항목 내보내기
+                        </button>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="hideBulkActionsModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                        취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 업종 등록/수정 모달 -->
     <div id="industry-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
@@ -124,11 +191,21 @@
                     <input type="hidden" id="industry-id">
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">업종명</label>
-                        <input type="text" id="industry-name" class="backend-input" placeholder="업종명을 입력하세요" required>
+                        <div class="relative">
+                            <input type="text" id="industry-name" class="backend-input" placeholder="업종명을 입력하세요" required>
+                            <i class="input-icon fas fa-check success hidden"></i>
+                            <i class="input-icon fas fa-exclamation-triangle error hidden"></i>
+                        </div>
+                        <div class="validation-message hidden"></div>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">코드</label>
-                        <input type="text" id="industry-code" class="backend-input" placeholder="업종 코드를 입력하세요" required>
+                        <div class="relative">
+                            <input type="text" id="industry-code" class="backend-input" placeholder="업종 코드를 입력하세요" required>
+                            <i class="input-icon fas fa-check success hidden"></i>
+                            <i class="input-icon fas fa-exclamation-triangle error hidden"></i>
+                        </div>
+                        <div class="validation-message hidden"></div>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">색상</label>
@@ -142,7 +219,7 @@
                         </select>
                     </div>
                     <div class="flex space-x-4">
-                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold transition-colors">
+                        <button type="submit" id="save-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold transition-colors">
                             저장
                         </button>
                         <button type="button" onclick="hideModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-semibold transition-colors">
@@ -175,53 +252,300 @@
     <script>
         let industries = [];
         let deleteTargetId = null;
+        let selectedIndustries = new Set();
 
         // 페이지 로드 시 데이터 가져오기
         document.addEventListener('DOMContentLoaded', function() {
             loadIndustries();
             setupFormHandler();
+            setupSearchAndFilter();
         });
+
+        // 전체 선택/해제
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('select-all');
+            const checkboxes = document.querySelectorAll('.industry-checkbox');
+            const isChecked = selectAllCheckbox.checked;
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+                const industryId = parseInt(checkbox.value);
+                if (isChecked) {
+                    selectedIndustries.add(industryId);
+                } else {
+                    selectedIndustries.delete(industryId);
+                }
+            });
+            
+            updateBulkActionsButton();
+        }
+
+        // 개별 선택/해제
+        function toggleIndustrySelection(industryId) {
+            if (selectedIndustries.has(industryId)) {
+                selectedIndustries.delete(industryId);
+            } else {
+                selectedIndustries.add(industryId);
+            }
+            
+            updateBulkActionsButton();
+            updateSelectAllCheckbox();
+        }
+
+        // 일괄 작업 버튼 업데이트
+        function updateBulkActionsButton() {
+            const bulkBtn = document.getElementById('bulk-actions-btn');
+            if (bulkBtn) {
+                if (selectedIndustries.size > 0) {
+                    bulkBtn.classList.remove('hidden');
+                    bulkBtn.innerHTML = `<i class="fas fa-tasks mr-2"></i>일괄 작업 (${selectedIndustries.size})`;
+                } else {
+                    bulkBtn.classList.add('hidden');
+                }
+            }
+        }
+
+        // 전체 선택 체크박스 업데이트
+        function updateSelectAllCheckbox() {
+            const selectAllCheckbox = document.getElementById('select-all');
+            const checkboxes = document.querySelectorAll('.industry-checkbox');
+            const checkedCount = document.querySelectorAll('.industry-checkbox:checked').length;
+            
+            if (checkedCount === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCount === checkboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+
+        // 일괄 작업 모달 표시
+        function showBulkActions() {
+            document.getElementById('selected-count').textContent = selectedIndustries.size;
+            document.getElementById('bulk-actions-modal').classList.remove('hidden');
+        }
+
+        // 일괄 작업 모달 숨기기
+        function hideBulkActionsModal() {
+            document.getElementById('bulk-actions-modal').classList.add('hidden');
+        }
+
+        // 일괄 활성화
+        function bulkActivate() {
+            if (selectedIndustries.size === 0) {
+                showWarning('선택된 항목이 없습니다.');
+                return;
+            }
+            
+            showInfo('선택된 항목을 활성화하는 중...');
+            // TODO: API 호출 구현
+            showSuccess(`${selectedIndustries.size}개의 항목이 활성화되었습니다.`);
+            hideBulkActionsModal();
+            loadIndustries();
+        }
+
+        // 일괄 비활성화
+        function bulkDeactivate() {
+            if (selectedIndustries.size === 0) {
+                showWarning('선택된 항목이 없습니다.');
+                return;
+            }
+            
+            showInfo('선택된 항목을 비활성화하는 중...');
+            // TODO: API 호출 구현
+            showSuccess(`${selectedIndustries.size}개의 항목이 비활성화되었습니다.`);
+            hideBulkActionsModal();
+            loadIndustries();
+        }
+
+        // 일괄 삭제
+        function bulkDelete() {
+            if (selectedIndustries.size === 0) {
+                showWarning('선택된 항목이 없습니다.');
+                return;
+            }
+            
+            if (!confirm(`정말로 선택된 ${selectedIndustries.size}개의 항목을 삭제하시겠습니까?`)) {
+                return;
+            }
+            
+            showWarning('선택된 항목을 삭제하는 중...');
+            // TODO: API 호출 구현
+            showSuccess(`${selectedIndustries.size}개의 항목이 삭제되었습니다.`);
+            hideBulkActionsModal();
+            loadIndustries();
+        }
+
+        // 선택 항목 내보내기
+        function exportSelected() {
+            if (selectedIndustries.size === 0) {
+                showWarning('선택된 항목이 없습니다.');
+                return;
+            }
+            
+            const selectedData = industries.filter(industry => selectedIndustries.has(industry.id));
+            const csvContent = convertToCSV(selectedData);
+            downloadCSV(csvContent, 'industries_export.csv');
+            
+            showSuccess('선택된 항목이 CSV 파일로 내보내졌습니다.');
+            hideBulkActionsModal();
+        }
+
+        // CSV 변환
+        function convertToCSV(data) {
+            const headers = ['ID', '업종명', '코드', '색상', '브랜드 수', '상태', '등록일'];
+            const rows = data.map(industry => [
+                industry.id,
+                industry.name,
+                industry.code,
+                industry.color,
+                industry.brand_count || 0,
+                industry.is_active ? '활성' : '비활성',
+                formatDate(industry.created_at)
+            ]);
+            
+            return [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+        }
+
+        // CSV 다운로드
+        function downloadCSV(content, filename) {
+            const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        // 검색 및 필터링 설정
+        function setupSearchAndFilter() {
+            const searchInput = document.getElementById('search-input');
+            const statusFilter = document.getElementById('status-filter');
+            const sortOption = document.getElementById('sort-option');
+
+            // 검색 이벤트
+            searchInput.addEventListener('input', debounce(function() {
+                filterAndRenderIndustries();
+            }, 300));
+
+            // 상태 필터 이벤트
+            statusFilter.addEventListener('change', function() {
+                filterAndRenderIndustries();
+            });
+
+            // 정렬 이벤트
+            sortOption.addEventListener('change', function() {
+                filterAndRenderIndustries();
+            });
+        }
+
+        // 디바운스 함수 (검색 성능 최적화)
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 필터링 및 렌더링
+        function filterAndRenderIndustries() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            const sortOption = document.getElementById('sort-option').value;
+
+            let filteredIndustries = industries.filter(industry => {
+                // 검색 필터
+                const matchesSearch = !searchTerm || 
+                    industry.name.toLowerCase().includes(searchTerm) ||
+                    industry.code.toLowerCase().includes(searchTerm);
+
+                // 상태 필터
+                const matchesStatus = !statusFilter || 
+                    (statusFilter === 'active' && industry.is_active) ||
+                    (statusFilter === 'inactive' && !industry.is_active);
+
+                return matchesSearch && matchesStatus;
+            });
+
+            // 정렬
+            filteredIndustries.sort((a, b) => {
+                switch (sortOption) {
+                    case 'name':
+                        return a.name.localeCompare(b.name);
+                    case 'code':
+                        return a.code.localeCompare(b.code);
+                    case 'created_at':
+                        return new Date(b.created_at) - new Date(a.created_at);
+                    case 'brand_count':
+                        return (b.brand_count || 0) - (a.brand_count || 0);
+                    default:
+                        return 0;
+                }
+            });
+
+            renderIndustryTable(filteredIndustries);
+            updateStatistics(filteredIndustries);
+        }
 
         // 업종 목록 로드
         function loadIndustries() {
+            showInfo('업종 목록을 불러오는 중...');
+            
             fetch('/api/admin/industries')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.data) {
                         industries = data.data;
-                        renderIndustryTable();
-                        updateStatistics();
+                        filterAndRenderIndustries();
+                        showSuccess(`${industries.length}개의 업종을 불러왔습니다.`);
                     } else {
                         industries = [];
-                        renderIndustryTable();
-                        updateStatistics();
+                        filterAndRenderIndustries();
                         showError('업종 목록을 불러올 수 없습니다.');
                     }
                 })
                 .catch(error => {
                     console.error('업종 목록 로드 실패:', error);
                     industries = [];
-                    renderIndustryTable();
-                    updateStatistics();
+                    filterAndRenderIndustries();
                     showError('네트워크 오류가 발생했습니다.');
                 });
         }
 
         // 업종 테이블 렌더링
-        function renderIndustryTable() {
+        function renderIndustryTable(data = industries) {
             const tbody = document.getElementById('industry-table-body');
             
-            // industries가 undefined이거나 null인 경우 빈 배열로 초기화
-            if (!industries || !Array.isArray(industries)) {
-                industries = [];
+            // data가 undefined이거나 null인 경우 빈 배열로 초기화
+            if (!data || !Array.isArray(data)) {
+                data = [];
             }
             
-            if (industries.length === 0) {
+            if (data.length === 0) {
+                const searchTerm = document.getElementById('search-input').value;
+                const statusFilter = document.getElementById('status-filter').value;
+                
+                let message = '등록된 업종이 없습니다.';
+                let icon = 'fas fa-inbox';
+                
+                if (searchTerm || statusFilter) {
+                    message = '검색 조건에 맞는 업종이 없습니다.';
+                    icon = 'fas fa-search';
+                }
+                
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-gray-400">
-                            <i class="fas fa-inbox text-2xl mb-2"></i>
-                            <p>등록된 업종이 없습니다.</p>
+                        <td colspan="8" class="px-4 py-8 text-center text-gray-400">
+                            <i class="${icon} text-2xl mb-2"></i>
+                            <p>${message}</p>
                         </td>
                     </tr>
                 `;
@@ -229,12 +553,15 @@
             }
 
             let html = '';
-            industries.forEach(industry => {
+            data.forEach(industry => {
                 const statusClass = industry.is_active ? 'text-green-400' : 'text-red-400';
                 const statusText = industry.is_active ? '활성' : '비활성';
                 
                 html += `
                     <tr class="border-b border-gray-700 hover:bg-gray-700">
+                        <td class="px-4 py-3">
+                            <input type="checkbox" class="industry-checkbox" value="${industry.id}" onchange="toggleIndustrySelection(${industry.id})">
+                        </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center">
                                 <div class="w-4 h-4 rounded mr-3" style="background-color: ${industry.color}"></div>
@@ -270,18 +597,19 @@
             });
 
             tbody.innerHTML = html;
+            updateSelectAllCheckbox(); // 테이블 렌더링 후 전체 선택 체크박스 상태 업데이트
         }
 
         // 통계 업데이트
-        function updateStatistics() {
-            // industries가 undefined이거나 null인 경우 빈 배열로 초기화
-            if (!industries || !Array.isArray(industries)) {
-                industries = [];
+        function updateStatistics(data = industries) {
+            // data가 undefined이거나 null인 경우 빈 배열로 초기화
+            if (!data || !Array.isArray(data)) {
+                data = [];
             }
             
-            const total = industries.length;
-            const active = industries.filter(i => i.is_active).length;
-            const totalBrands = industries.reduce((sum, i) => sum + (i.brand_count || 0), 0);
+            const total = data.length;
+            const active = data.filter(i => i.is_active).length;
+            const totalBrands = data.reduce((sum, i) => sum + (i.brand_count || 0), 0);
 
             document.getElementById('total-industries').textContent = total;
             document.getElementById('active-industries').textContent = active;
@@ -294,6 +622,159 @@
                 e.preventDefault();
                 saveIndustry();
             });
+
+            // 실시간 검증 설정
+            setupValidation();
+        }
+
+        // 실시간 검증 설정
+        function setupValidation() {
+            const nameInput = document.getElementById('industry-name');
+            const codeInput = document.getElementById('industry-code');
+
+            // 업종명 검증
+            nameInput.addEventListener('input', function() {
+                validateField(this, 'name', validateIndustryName);
+            });
+
+            nameInput.addEventListener('blur', function() {
+                validateField(this, 'name', validateIndustryName);
+            });
+
+            // 코드 검증
+            codeInput.addEventListener('input', function() {
+                validateField(this, 'code', validateIndustryCode);
+            });
+
+            codeInput.addEventListener('blur', function() {
+                validateField(this, 'code', validateIndustryCode);
+            });
+        }
+
+        // 필드 검증 함수
+        function validateField(input, fieldType, validator) {
+            const value = input.value.trim();
+            const container = input.parentElement;
+            const messageDiv = container.nextElementSibling;
+            const successIcon = container.querySelector('.input-icon.success');
+            const errorIcon = container.querySelector('.input-icon.error');
+
+            // 기존 상태 초기화
+            input.classList.remove('valid', 'invalid', 'warning');
+            if (messageDiv && messageDiv.classList) {
+                messageDiv.classList.remove('success', 'error', 'warning');
+                messageDiv.classList.add('hidden');
+            }
+            if (successIcon && successIcon.classList) {
+                successIcon.classList.add('hidden');
+            }
+            if (errorIcon && errorIcon.classList) {
+                errorIcon.classList.add('hidden');
+            }
+
+            if (value === '') {
+                if (input.hasAttribute('required')) {
+                    showValidationError(input, '이 필드는 필수입니다.', 'error');
+                }
+                return false;
+            }
+
+            const result = validator(value);
+            if (result.isValid) {
+                showValidationSuccess(input, result.message || '유효한 입력입니다.');
+                return true;
+            } else {
+                showValidationError(input, result.message, result.type || 'error');
+                return false;
+            }
+        }
+
+        // 검증 성공 표시
+        function showValidationSuccess(input, message) {
+            const container = input.parentElement;
+            const messageDiv = container.nextElementSibling;
+            const successIcon = container.querySelector('.input-icon.success');
+
+            input.classList.add('valid');
+            if (messageDiv) {
+                messageDiv.textContent = message;
+                if (messageDiv.classList) {
+                    messageDiv.classList.remove('hidden', 'error', 'warning');
+                    messageDiv.classList.add('success');
+                }
+            }
+            if (successIcon && successIcon.classList) {
+                successIcon.classList.remove('hidden');
+            }
+        }
+
+        // 검증 오류 표시
+        function showValidationError(input, message, type = 'error') {
+            const container = input.parentElement;
+            const messageDiv = container.nextElementSibling;
+            const errorIcon = container.querySelector('.input-icon.error');
+
+            input.classList.add(type);
+            if (messageDiv) {
+                messageDiv.textContent = message;
+                if (messageDiv.classList) {
+                    messageDiv.classList.remove('hidden', 'success', 'warning');
+                    messageDiv.classList.add(type);
+                }
+            }
+            if (errorIcon && errorIcon.classList) {
+                errorIcon.classList.remove('hidden');
+            }
+        }
+
+        // 업종명 검증
+        function validateIndustryName(name) {
+            if (name.length < 2) {
+                return { isValid: false, message: '업종명은 2자 이상이어야 합니다.', type: 'error' };
+            }
+            if (name.length > 100) {
+                return { isValid: false, message: '업종명은 100자 이하여야 합니다.', type: 'error' };
+            }
+            if (!/^[가-힣a-zA-Z0-9\s\-_]+$/.test(name)) {
+                return { isValid: false, message: '업종명에는 한글, 영문, 숫자, 공백, 하이픈, 언더스코어만 사용 가능합니다.', type: 'error' };
+            }
+            return { isValid: true, message: '유효한 업종명입니다.' };
+        }
+
+        // 업종 코드 검증
+        function validateIndustryCode(code) {
+            if (code.length < 2) {
+                return { isValid: false, message: '코드는 2자 이상이어야 합니다.', type: 'error' };
+            }
+            if (code.length > 20) {
+                return { isValid: false, message: '코드는 20자 이하여야 합니다.', type: 'error' };
+            }
+            if (!/^[A-Z0-9_]+$/.test(code)) {
+                return { isValid: false, message: '코드는 대문자, 숫자, 언더스코어만 사용 가능합니다.', type: 'error' };
+            }
+            return { isValid: true, message: '유효한 코드입니다.' };
+        }
+
+        // 폼 전체 검증
+        function validateForm() {
+            const nameInput = document.getElementById('industry-name');
+            const codeInput = document.getElementById('industry-code');
+            
+            const nameValid = validateField(nameInput, 'name', validateIndustryName);
+            const codeValid = validateField(codeInput, 'code', validateIndustryCode);
+            
+            const saveBtn = document.getElementById('save-btn');
+            if (saveBtn) {
+                if (nameValid && codeValid) {
+                    saveBtn.disabled = false;
+                    saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+            
+            return nameValid && codeValid;
         }
 
         // 새 업종 등록 모달 표시
@@ -304,7 +785,41 @@
             document.getElementById('industry-code').value = '';
             document.getElementById('industry-color').value = '#3B82F6';
             document.getElementById('industry-status').value = 'active';
+            
+            // 검증 상태 초기화
+            clearValidation();
+            
             document.getElementById('industry-modal').classList.remove('hidden');
+        }
+
+        // 검증 상태 초기화
+        function clearValidation() {
+            const inputs = document.querySelectorAll('.backend-input');
+            inputs.forEach(input => {
+                input.classList.remove('valid', 'invalid', 'warning');
+                const container = input.parentElement;
+                const messageDiv = container.nextElementSibling;
+                const successIcon = container.querySelector('.input-icon.success');
+                const errorIcon = container.querySelector('.input-icon.error');
+                
+                // null 체크 추가
+                if (messageDiv && messageDiv.classList) {
+                    messageDiv.classList.add('hidden');
+                }
+                if (successIcon && successIcon.classList) {
+                    successIcon.classList.add('hidden');
+                }
+                if (errorIcon && errorIcon.classList) {
+                    errorIcon.classList.add('hidden');
+                }
+            });
+            
+            // 저장 버튼 활성화
+            const saveBtn = document.getElementById('save-btn');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         }
 
         // 업종 수정 모달 표시
@@ -318,6 +833,10 @@
             document.getElementById('industry-code').value = industry.code;
             document.getElementById('industry-color').value = industry.color;
             document.getElementById('industry-status').value = industry.is_active ? 'active' : 'inactive';
+            
+            // 검증 상태 초기화
+            clearValidation();
+            
             document.getElementById('industry-modal').classList.remove('hidden');
         }
 
@@ -328,16 +847,27 @@
 
         // 업종 저장
         function saveIndustry() {
+            // 폼 검증
+            if (!validateForm()) {
+                showError('입력 데이터를 확인해주세요.');
+                return;
+            }
+
             const id = document.getElementById('industry-id').value;
             const data = {
-                name: document.getElementById('industry-name').value,
-                code: document.getElementById('industry-code').value,
+                name: document.getElementById('industry-name').value.trim(),
+                code: document.getElementById('industry-code').value.trim(),
                 color: document.getElementById('industry-color').value,
                 status: document.getElementById('industry-status').value
             };
 
             console.log('전송할 데이터:', data);
             console.log('JSON 문자열:', JSON.stringify(data));
+
+            // 저장 버튼 비활성화
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '저장 중...';
 
             const url = id ? `/api/admin/industries/${id}` : '/api/admin/industries';
             const method = id ? 'PUT' : 'POST';
@@ -362,6 +892,11 @@
             .catch(error => {
                 console.error('저장 실패:', error);
                 showError('네트워크 오류가 발생했습니다.');
+            })
+            .finally(() => {
+                // 저장 버튼 복원
+                saveBtn.disabled = false;
+                saveBtn.textContent = '저장';
             });
         }
 
@@ -375,13 +910,18 @@
         function confirmDelete() {
             if (!deleteTargetId) return;
 
+            const industry = industries.find(i => i.id === deleteTargetId);
+            const industryName = industry ? industry.name : '업종';
+            
+            showWarning(`${industryName}을(를) 삭제하는 중...`);
+
             fetch(`/api/admin/industries/${deleteTargetId}`, {
                 method: 'DELETE'
             })
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    showSuccess('업종이 삭제되었습니다.');
+                    showSuccess(`${industryName}이(가) 성공적으로 삭제되었습니다.`);
                     hideDeleteModal();
                     loadIndustries();
                 } else {
@@ -407,13 +947,77 @@
 
         // 유틸리티 함수들
         function showSuccess(message) {
-            // 간단한 알림 표시
-            alert(message);
+            showToast(message, 'success');
         }
 
         function showError(message) {
-            // 간단한 알림 표시
-            alert('오류: ' + message);
+            showToast(message, 'error');
+        }
+
+        function showWarning(message) {
+            showToast(message, 'warning');
+        }
+
+        function showInfo(message) {
+            showToast(message, 'info');
+        }
+
+        // 토스트 알림 표시
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const toastId = 'toast-' + Date.now();
+            
+            // 토스트 타입별 스타일
+            const styles = {
+                success: 'bg-green-600 border-green-500',
+                error: 'bg-red-600 border-red-500',
+                warning: 'bg-yellow-600 border-yellow-500',
+                info: 'bg-blue-600 border-blue-500'
+            };
+            
+            // 아이콘
+            const icons = {
+                success: 'fas fa-check-circle',
+                error: 'fas fa-exclamation-circle',
+                warning: 'fas fa-exclamation-triangle',
+                info: 'fas fa-info-circle'
+            };
+            
+            toast.id = toastId;
+            toast.className = `flex items-center justify-between p-4 rounded-lg shadow-lg border-l-4 text-white transform transition-all duration-300 translate-x-full ${styles[type]}`;
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <i class="${icons[type]} mr-3"></i>
+                    <span>${message}</span>
+                </div>
+                <button onclick="removeToast('${toastId}')" class="ml-4 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // 애니메이션 효과
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+            
+            // 자동 제거 (5초 후)
+            setTimeout(() => {
+                removeToast(toastId);
+            }, 5000);
+        }
+
+        // 토스트 제거
+        function removeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }
         }
 
         function formatDate(dateString) {

@@ -1,520 +1,370 @@
-from flask import Blueprint, jsonify, request, current_app
-from flask_cors import CORS
-import time
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
+from flask import Blueprint, jsonify, request
+from monitoring.monitoring_manager import MonitoringManager, MonitoringConfig
+from .utils import APIResponse, api_error_handler, log_api_request, validate_json_input
+import os
 import logging
 
-# 모니터링 모듈 임포트
-from monitoring.real_time_monitor import monitor, SystemMetrics, UserActivity, PerformanceAlert
-from monitoring.advanced_analytics import analytics, TrendAnalysis, AnomalyDetection, UserBehaviorAnalysis, PerformancePrediction
-
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
+# 로거 설정
 logger = logging.getLogger(__name__)
 
-# Blueprint 생성
+# 모니터링 Blueprint 생성
 monitoring_bp = Blueprint('monitoring', __name__, url_prefix='/api/monitoring')
-CORS(monitoring_bp)
 
-@monitoring_bp.route('/status', methods=['GET'])
-def get_monitoring_status():
-    """모니터링 시스템 상태 조회"""
-    try:
-        status = {
-            'monitoring_active': monitor.running,
-            'current_time': time.time(),
-            'uptime': time.time() - monitor.start_time if hasattr(monitor, 'start_time') else 0,
-            'metrics_collected': len(monitor.get_recent_metrics(1)),  # 최근 1분
-            'alerts_count': len(monitor.get_recent_alerts(1)),  # 최근 1시간
-            'thresholds': monitor.thresholds
-        }
-        return jsonify({'success': True, 'data': status})
-    except Exception as e:
-        logger.error(f"모니터링 상태 조회 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# 모니터링 관리자 초기화
+config = MonitoringConfig(
+    data_dir="./monitoring/data",
+    collection_interval=60,
+    retention_days=30,
+    alert_enabled=True,
+    email_enabled=False,
+    webhook_enabled=False
+)
 
-@monitoring_bp.route('/start', methods=['POST'])
-def start_monitoring():
-    """모니터링 시작"""
-    try:
-        if not monitor.running:
-            monitor.start_monitoring()
-            return jsonify({'success': True, 'message': '모니터링이 시작되었습니다'})
-        else:
-            return jsonify({'success': False, 'message': '모니터링이 이미 실행 중입니다'})
-    except Exception as e:
-        logger.error(f"모니터링 시작 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+monitoring_manager = MonitoringManager(config)
 
-@monitoring_bp.route('/stop', methods=['POST'])
-def stop_monitoring():
-    """모니터링 중지"""
-    try:
-        if monitor.running:
-            monitor.stop_monitoring()
-            return jsonify({'success': True, 'message': '모니터링이 중지되었습니다'})
-        else:
-            return jsonify({'success': False, 'message': '모니터링이 실행 중이 아닙니다'})
-    except Exception as e:
-        logger.error(f"모니터링 중지 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+@monitoring_bp.route('/health', methods=['GET'])
+@api_error_handler
+@log_api_request
+def health_check():
+    """모니터링 시스템 상태 확인"""
+    return APIResponse.success(
+        data={
+            'is_running': monitoring_manager.is_running,
+            'message': '모니터링 시스템이 정상적으로 작동 중입니다'
+        },
+        message='모니터링 시스템 상태 확인 완료'
+    )
 
-@monitoring_bp.route('/metrics', methods=['GET'])
-def get_metrics():
-    """시스템 메트릭 조회"""
+@monitoring_bp.route('/stats/system', methods=['GET'])
+@api_error_handler
+@log_api_request
+def get_system_stats():
+    """시스템 통계 조회"""
+    stats = monitoring_manager.get_system_stats()
+    return APIResponse.success(data=stats, message='시스템 통계 조회 완료')
+
+@monitoring_bp.route('/stats/application', methods=['GET'])
+def get_application_stats():
+    """애플리케이션 통계 조회"""
     try:
-        minutes = request.args.get('minutes', 60, type=int)
-        metrics = monitor.get_recent_metrics(minutes)
-        
-        # 데이터 직렬화
-        metrics_data = []
-        for metric in metrics:
-            metrics_data.append({
-                'timestamp': metric.timestamp,
-                'datetime': datetime.fromtimestamp(metric.timestamp).isoformat(),
-                'cpu_percent': metric.cpu_percent,
-                'memory_percent': metric.memory_percent,
-                'disk_usage_percent': metric.disk_usage_percent,
-                'network_sent': metric.network_sent,
-                'network_recv': metric.network_recv,
-                'active_connections': metric.active_connections,
-                'active_users': metric.active_users,
-                'request_count': metric.request_count,
-                'error_count': metric.error_count,
-                'response_time_avg': metric.response_time_avg
-            })
-        
+        stats = monitoring_manager.get_application_stats()
         return jsonify({
-            'success': True, 
-            'data': metrics_data,
-            'count': len(metrics_data)
-        })
+            'status': 'success',
+            'data': stats
+        }), 200
     except Exception as e:
-        logger.error(f"메트릭 조회 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'status': 'error',
+            'message': f'애플리케이션 통계 조회 오류: {str(e)}'
+        }), 500
 
-@monitoring_bp.route('/metrics/current', methods=['GET'])
-def get_current_metrics():
-    """현재 시스템 메트릭 조회"""
+@monitoring_bp.route('/metrics/history', methods=['GET'])
+def get_metric_history():
+    """메트릭 히스토리 조회"""
     try:
-        import psutil
+        metric_name = request.args.get('metric', 'cpu_percent')
+        hours = int(request.args.get('hours', 24))
         
-        # 현재 시스템 상태
-        cpu_percent = psutil.cpu_percent(interval=1)
-        memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
-        network_stats = psutil.net_io_counters()
-        connections = len(psutil.net_connections())
-        
-        current_metrics = {
-            'timestamp': time.time(),
-            'datetime': datetime.now().isoformat(),
-            'cpu_percent': cpu_percent,
-            'memory_percent': memory.percent,
-            'memory_available': memory.available,
-            'memory_total': memory.total,
-            'disk_usage_percent': disk.percent,
-            'disk_free': disk.free,
-            'disk_total': disk.total,
-            'network_sent': network_stats.bytes_sent,
-            'network_recv': network_stats.bytes_recv,
-            'active_connections': connections,
-            'active_users': len(monitor.stats['active_users']),
-            'active_sessions': len(monitor.stats['active_sessions']),
-            'request_count': monitor.stats['request_count'],
-            'error_count': monitor.stats['error_count'],
-            'response_time_avg': sum(monitor.stats['response_times']) / len(monitor.stats['response_times']) if monitor.stats['response_times'] else 0
-        }
-        
-        return jsonify({'success': True, 'data': current_metrics})
+        history = monitoring_manager.get_metric_history(metric_name, hours)
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'metric_name': metric_name,
+                'hours': hours,
+                'history': history
+            }
+        }), 200
     except Exception as e:
-        logger.error(f"현재 메트릭 조회 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'status': 'error',
+            'message': f'메트릭 히스토리 조회 오류: {str(e)}'
+        }), 500
 
 @monitoring_bp.route('/alerts', methods=['GET'])
 def get_alerts():
-    """성능 알림 조회"""
+    """알림 목록 조회"""
     try:
-        hours = request.args.get('hours', 24, type=int)
-        resolved = request.args.get('resolved', 'false').lower() == 'true'
+        status = request.args.get('status')
+        limit = int(request.args.get('limit', 100))
         
-        alerts = monitor.get_recent_alerts(hours)
+        alerts = monitoring_manager.get_alerts(status, limit)
         
-        # 해결 상태 필터링
-        if not resolved:
-            alerts = [alert for alert in alerts if not alert.resolved]
-        
-        # 데이터 직렬화
-        alerts_data = []
+        # Alert 객체를 딕셔너리로 변환
+        alert_list = []
         for alert in alerts:
-            alerts_data.append({
+            alert_dict = {
                 'alert_id': alert.alert_id,
-                'alert_type': alert.alert_type,
+                'rule_id': alert.rule_id,
+                'metric_type': alert.metric_type,
+                'metric_name': alert.metric_name,
+                'current_value': alert.current_value,
+                'threshold': alert.threshold,
                 'severity': alert.severity,
                 'message': alert.message,
-                'timestamp': alert.timestamp,
-                'datetime': datetime.fromtimestamp(alert.timestamp).isoformat(),
-                'metrics': alert.metrics,
-                'resolved': alert.resolved,
-                'resolved_at': alert.resolved_at,
-                'resolved_datetime': datetime.fromtimestamp(alert.resolved_at).isoformat() if alert.resolved_at else None
-            })
-        
-        return jsonify({
-            'success': True,
-            'data': alerts_data,
-            'count': len(alerts_data)
-        })
-    except Exception as e:
-        logger.error(f"알림 조회 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/alerts/<alert_id>/resolve', methods=['POST'])
-def resolve_alert(alert_id):
-    """알림 해결"""
-    try:
-        monitor.resolve_alert(alert_id)
-        return jsonify({'success': True, 'message': '알림이 해결되었습니다'})
-    except Exception as e:
-        logger.error(f"알림 해결 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/thresholds', methods=['GET', 'PUT'])
-def manage_thresholds():
-    """임계값 관리"""
-    try:
-        if request.method == 'GET':
-            return jsonify({
-                'success': True,
-                'data': monitor.thresholds
-            })
-        else:  # PUT
-            new_thresholds = request.get_json()
-            if not new_thresholds:
-                return jsonify({'success': False, 'error': '임계값 데이터가 필요합니다'}), 400
-            
-            monitor.update_thresholds(new_thresholds)
-            return jsonify({'success': True, 'message': '임계값이 업데이트되었습니다'})
-    except Exception as e:
-        logger.error(f"임계값 관리 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/activity', methods=['GET', 'POST'])
-def manage_user_activity():
-    """사용자 활동 관리"""
-    try:
-        if request.method == 'GET':
-            hours = request.args.get('hours', 24, type=int)
-            user_id = request.args.get('user_id')
-            
-            # 사용자 활동 요약 조회
-            summary = monitor.get_user_activity_summary(hours)
-            
-            if user_id:
-                # 특정 사용자 활동을 조회하는 로직 필요
-                pass
-            
-            return jsonify({
-                'success': True,
-                'data': summary
-            })
-        else:  # POST
-            # 사용자 활동 기록
-            data = request.get_json()
-            if not data:
-                return jsonify({'success': False, 'error': '활동 데이터가 필요합니다'}), 400
-            
-            activity = UserActivity(
-                user_id=data.get('user_id'),
-                session_id=data.get('session_id'),
-                action=data.get('action'),
-                page=data.get('page'),
-                timestamp=data.get('timestamp', time.time()),
-                duration=data.get('duration', 0.0),
-                ip_address=data.get('ip_address'),
-                user_agent=data.get('user_agent'),
-                success=data.get('success', True),
-                error_message=data.get('error_message')
-            )
-            
-            monitor.record_user_activity(activity)
-            return jsonify({'success': True, 'message': '사용자 활동이 기록되었습니다'})
-    except Exception as e:
-        logger.error(f"사용자 활동 관리 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/analytics/trends', methods=['GET'])
-def get_trend_analysis():
-    """트렌드 분석 결과 조회"""
-    try:
-        hours = request.args.get('hours', 168, type=int)  # 기본값: 7일
-        
-        # 데이터 로드
-        df = analytics.load_metrics_data(hours)
-        if df.empty:
-            return jsonify({'success': False, 'error': '분석할 데이터가 없습니다'}), 404
-        
-        # 트렌드 분석
-        trends = analytics.analyze_trends(df)
-        
-        # 데이터 직렬화
-        trends_data = []
-        for trend in trends:
-            trends_data.append({
-                'metric': trend.metric,
-                'trend': trend.trend,
-                'slope': trend.slope,
-                'confidence': trend.confidence,
-                'prediction_next_hour': trend.prediction_next_hour,
-                'prediction_next_day': trend.prediction_next_day
-            })
-        
-        return jsonify({
-            'success': True,
-            'data': trends_data,
-            'analysis_period_hours': hours
-        })
-    except Exception as e:
-        logger.error(f"트렌드 분석 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/analytics/anomalies', methods=['GET'])
-def get_anomaly_detection():
-    """이상 탐지 결과 조회"""
-    try:
-        hours = request.args.get('hours', 168, type=int)
-        severity = request.args.get('severity')  # 'low', 'medium', 'high'
-        
-        # 데이터 로드
-        df = analytics.load_metrics_data(hours)
-        if df.empty:
-            return jsonify({'success': False, 'error': '분석할 데이터가 없습니다'}), 404
-        
-        # 이상 탐지
-        anomalies = analytics.detect_anomalies(df)
-        
-        # 심각도 필터링
-        if severity:
-            anomalies = [a for a in anomalies if a.severity == severity]
-        
-        # 데이터 직렬화
-        anomalies_data = []
-        for anomaly in anomalies:
-            anomalies_data.append({
-                'metric': anomaly.metric,
-                'timestamp': anomaly.timestamp,
-                'datetime': datetime.fromtimestamp(anomaly.timestamp).isoformat(),
-                'value': anomaly.value,
-                'threshold': anomaly.threshold,
-                'severity': anomaly.severity,
-                'description': anomaly.description
-            })
-        
-        return jsonify({
-            'success': True,
-            'data': anomalies_data,
-            'count': len(anomalies_data)
-        })
-    except Exception as e:
-        logger.error(f"이상 탐지 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/analytics/user-behavior', methods=['GET'])
-def get_user_behavior_analysis():
-    """사용자 행동 분석 결과 조회"""
-    try:
-        hours = request.args.get('hours', 168, type=int)
-        user_id = request.args.get('user_id')
-        
-        # 데이터 로드
-        df = analytics.load_user_activity_data(hours)
-        if df.empty:
-            return jsonify({'success': False, 'error': '분석할 데이터가 없습니다'}), 404
-        
-        # 사용자 행동 분석
-        behaviors = analytics.analyze_user_behavior(df)
-        
-        # 특정 사용자 필터링
-        if user_id:
-            behaviors = [b for b in behaviors if b.user_id == user_id]
-        
-        # 데이터 직렬화
-        behaviors_data = []
-        for behavior in behaviors:
-            behaviors_data.append({
-                'user_id': behavior.user_id,
-                'session_count': behavior.session_count,
-                'avg_session_duration': behavior.avg_session_duration,
-                'favorite_pages': behavior.favorite_pages,
-                'peak_activity_hours': behavior.peak_activity_hours,
-                'error_rate': behavior.error_rate,
-                'engagement_score': behavior.engagement_score
-            })
-        
-        return jsonify({
-            'success': True,
-            'data': behaviors_data,
-            'count': len(behaviors_data)
-        })
-    except Exception as e:
-        logger.error(f"사용자 행동 분석 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/analytics/predictions', methods=['GET'])
-def get_performance_predictions():
-    """성능 예측 결과 조회"""
-    try:
-        hours = request.args.get('hours', 168, type=int)
-        metric = request.args.get('metric', 'cpu_percent')
-        hours_ahead = request.args.get('hours_ahead', 24, type=int)
-        
-        # 데이터 로드
-        df = analytics.load_metrics_data(hours)
-        if df.empty:
-            return jsonify({'success': False, 'error': '분석할 데이터가 없습니다'}), 404
-        
-        # 성능 예측
-        prediction = analytics.predict_performance(df, metric, hours_ahead)
-        
-        if not prediction:
-            return jsonify({'success': False, 'error': '예측을 수행할 수 없습니다'}), 400
-        
-        # 데이터 직렬화
-        prediction_data = {
-            'metric': prediction.metric,
-            'prediction_time': prediction.prediction_time,
-            'prediction_datetime': datetime.fromtimestamp(prediction.prediction_time).isoformat(),
-            'predicted_value': prediction.predicted_value,
-            'confidence_interval': prediction.confidence_interval,
-            'factors': prediction.factors
-        }
-        
-        return jsonify({
-            'success': True,
-            'data': prediction_data
-        })
-    except Exception as e:
-        logger.error(f"성능 예측 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/reports/performance', methods=['GET'])
-def get_performance_report():
-    """성능 보고서 생성"""
-    try:
-        hours = request.args.get('hours', 24, type=int)
-        
-        # 성능 보고서 생성
-        report = analytics.generate_performance_report(hours)
-        
-        if 'error' in report:
-            return jsonify({'success': False, 'error': report['error']}), 404
-        
-        return jsonify({
-            'success': True,
-            'data': report
-        })
-    except Exception as e:
-        logger.error(f"성능 보고서 생성 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/reports/visualizations', methods=['POST'])
-def create_visualizations():
-    """시각화 생성"""
-    try:
-        data = request.get_json() or {}
-        hours = data.get('hours', 24)
-        save_path = data.get('save_path', 'static/reports/')
-        
-        # 시각화 생성
-        result = analytics.create_visualizations(hours, save_path)
-        
-        if 'error' in result:
-            return jsonify({'success': False, 'error': result['error']}), 404
-        
-        return jsonify({
-            'success': True,
-            'data': result
-        })
-    except Exception as e:
-        logger.error(f"시각화 생성 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/reports/recommendations', methods=['GET'])
-def get_recommendations():
-    """성능 최적화 권장사항 조회"""
-    try:
-        hours = request.args.get('hours', 24, type=int)
-        
-        # 성능 보고서 생성
-        report = analytics.generate_performance_report(hours)
-        
-        if 'error' in report:
-            return jsonify({'success': False, 'error': report['error']}), 404
-        
-        # 권장사항 생성
-        recommendations = analytics.get_recommendations(report)
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'recommendations': recommendations,
-                'count': len(recommendations)
+                'timestamp': alert.timestamp.isoformat(),
+                'status': alert.status,
+                'acknowledged_by': alert.acknowledged_by,
+                'resolved_at': alert.resolved_at.isoformat() if alert.resolved_at else None
             }
-        })
-    except Exception as e:
-        logger.error(f"권장사항 생성 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@monitoring_bp.route('/dashboard/summary', methods=['GET'])
-def get_dashboard_summary():
-    """대시보드 요약 정보 조회"""
-    try:
-        # 현재 메트릭
-        current_metrics = monitor.get_recent_metrics(1)
-        current_metric = current_metrics[-1] if current_metrics else None
-        
-        # 최근 알림
-        recent_alerts = monitor.get_recent_alerts(1)
-        unresolved_alerts = [a for a in recent_alerts if not a.resolved]
-        
-        # 사용자 활동 요약
-        activity_summary = monitor.get_user_activity_summary(1)
-        
-        # 트렌드 분석 (최근 24시간)
-        df = analytics.load_metrics_data(24)
-        trends = analytics.analyze_trends(df) if not df.empty else []
-        
-        summary = {
-            'current_metrics': {
-                'cpu_percent': current_metric.cpu_percent if current_metric else 0,
-                'memory_percent': current_metric.memory_percent if current_metric else 0,
-                'active_users': current_metric.active_users if current_metric else 0,
-                'response_time_avg': current_metric.response_time_avg if current_metric else 0
-            },
-            'alerts': {
-                'total_recent': len(recent_alerts),
-                'unresolved': len(unresolved_alerts),
-                'critical': len([a for a in unresolved_alerts if a.severity == 'critical'])
-            },
-            'user_activity': activity_summary,
-            'trends': [{'metric': t.metric, 'trend': t.trend} for t in trends[:5]]
-        }
+            alert_list.append(alert_dict)
         
         return jsonify({
-            'success': True,
-            'data': summary
-        })
+            'status': 'success',
+            'data': alert_list
+        }), 200
     except Exception as e:
-        logger.error(f"대시보드 요약 조회 실패: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'status': 'error',
+            'message': f'알림 조회 오류: {str(e)}'
+        }), 500
 
-# 에러 핸들러
-@monitoring_bp.errorhandler(404)
-def not_found(error):
-    return jsonify({'success': False, 'error': '리소스를 찾을 수 없습니다'}), 404
+@monitoring_bp.route('/alerts/<alert_id>/acknowledge', methods=['POST'])
+def acknowledge_alert(alert_id):
+    """알림 승인"""
+    try:
+        data = request.get_json()
+        user = data.get('user', 'admin')
+        
+        monitoring_manager.acknowledge_alert(alert_id, user)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'알림 {alert_id}가 승인되었습니다'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'알림 승인 오류: {str(e)}'
+        }), 500
 
-@monitoring_bp.errorhandler(500)
-def internal_error(error):
-    return jsonify({'success': False, 'error': '내부 서버 오류가 발생했습니다'}), 500 
+@monitoring_bp.route('/rules', methods=['GET'])
+def get_alert_rules():
+    """알림 규칙 목록 조회"""
+    try:
+        rules = []
+        for rule in monitoring_manager.alert_rules.values():
+            rule_dict = {
+                'rule_id': rule.rule_id,
+                'name': rule.name,
+                'metric_type': rule.metric_type,
+                'metric_name': rule.metric_name,
+                'operator': rule.operator,
+                'threshold': rule.threshold,
+                'duration': rule.duration,
+                'severity': rule.severity,
+                'enabled': rule.enabled,
+                'created_at': rule.created_at.isoformat() if rule.created_at else None
+            }
+            rules.append(rule_dict)
+        
+        return jsonify({
+            'status': 'success',
+            'data': rules
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'알림 규칙 조회 오류: {str(e)}'
+        }), 500
+
+@monitoring_bp.route('/rules', methods=['POST'])
+def create_alert_rule():
+    """알림 규칙 생성"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['name', 'metric_type', 'metric_name', 'operator', 'threshold', 'duration', 'severity']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'필수 필드가 누락되었습니다: {field}'
+                }), 400
+        
+        rule_id = monitoring_manager.create_alert_rule(
+            name=data['name'],
+            metric_type=data['metric_type'],
+            metric_name=data['metric_name'],
+            operator=data['operator'],
+            threshold=float(data['threshold']),
+            duration=int(data['duration']),
+            severity=data['severity']
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': '알림 규칙이 생성되었습니다',
+            'data': {'rule_id': rule_id}
+        }), 201
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'알림 규칙 생성 오류: {str(e)}'
+        }), 500
+
+@monitoring_bp.route('/rules/<rule_id>', methods=['PUT'])
+def update_alert_rule(rule_id):
+    """알림 규칙 수정"""
+    try:
+        data = request.get_json()
+        
+        if rule_id not in monitoring_manager.alert_rules:
+            return jsonify({
+                'status': 'error',
+                'message': '알림 규칙을 찾을 수 없습니다'
+            }), 404
+        
+        rule = monitoring_manager.alert_rules[rule_id]
+        
+        # 업데이트 가능한 필드들
+        if 'name' in data:
+            rule.name = data['name']
+        if 'threshold' in data:
+            rule.threshold = float(data['threshold'])
+        if 'duration' in data:
+            rule.duration = int(data['duration'])
+        if 'severity' in data:
+            rule.severity = data['severity']
+        if 'enabled' in data:
+            rule.enabled = bool(data['enabled'])
+        
+        # 데이터베이스에 저장
+        monitoring_manager._save_alert_rule(rule)
+        
+        return jsonify({
+            'status': 'success',
+            'message': '알림 규칙이 수정되었습니다'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'알림 규칙 수정 오류: {str(e)}'
+        }), 500
+
+@monitoring_bp.route('/rules/<rule_id>', methods=['DELETE'])
+def delete_alert_rule(rule_id):
+    """알림 규칙 삭제"""
+    try:
+        if rule_id not in monitoring_manager.alert_rules:
+            return jsonify({
+                'status': 'error',
+                'message': '알림 규칙을 찾을 수 없습니다'
+            }), 404
+        
+        # 데이터베이스에서 삭제
+        db_path = os.path.join(monitoring_manager.config.data_dir, 'monitoring.db')
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM alert_rules WHERE rule_id = ?', (rule_id,))
+        cursor.execute('DELETE FROM alerts WHERE rule_id = ?', (rule_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        # 메모리에서 삭제
+        del monitoring_manager.alert_rules[rule_id]
+        
+        return jsonify({
+            'status': 'success',
+            'message': '알림 규칙이 삭제되었습니다'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'알림 규칙 삭제 오류: {str(e)}'
+        }), 500
+
+@monitoring_bp.route('/control/start', methods=['POST'])
+def start_monitoring():
+    """모니터링 시작"""
+    try:
+        monitoring_manager.start_monitoring()
+        
+        return jsonify({
+            'status': 'success',
+            'message': '모니터링이 시작되었습니다'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'모니터링 시작 오류: {str(e)}'
+        }), 500
+
+@monitoring_bp.route('/control/stop', methods=['POST'])
+def stop_monitoring():
+    """모니터링 중지"""
+    try:
+        monitoring_manager.stop_monitoring()
+        
+        return jsonify({
+            'status': 'success',
+            'message': '모니터링이 중지되었습니다'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'모니터링 중지 오류: {str(e)}'
+        }), 500
+
+@monitoring_bp.route('/control/status', methods=['GET'])
+def get_monitoring_status():
+    """모니터링 상태 조회"""
+    try:
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'is_running': monitoring_manager.is_running,
+                'collection_interval': monitoring_manager.config.collection_interval,
+                'retention_days': monitoring_manager.config.retention_days,
+                'alert_enabled': monitoring_manager.config.alert_enabled,
+                'email_enabled': monitoring_manager.config.email_enabled,
+                'webhook_enabled': monitoring_manager.config.webhook_enabled
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'모니터링 상태 조회 오류: {str(e)}'
+        }), 500
+
+@monitoring_bp.route('/metrics/collect', methods=['POST'])
+def collect_metrics():
+    """수동 메트릭 수집"""
+    try:
+        data = request.get_json()
+        metric_type = data.get('type', 'all')  # system, application, all
+        
+        if metric_type in ['system', 'all']:
+            system_metrics = monitoring_manager.collect_system_metrics()
+        
+        if metric_type in ['application', 'all']:
+            endpoint = data.get('endpoint', '/api/health')
+            app_metrics = monitoring_manager.collect_application_metrics(endpoint)
+        
+        return jsonify({
+            'status': 'success',
+            'message': '메트릭 수집이 완료되었습니다'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'메트릭 수집 오류: {str(e)}'
+        }), 500
+
+@monitoring_bp.route('/cleanup', methods=['POST'])
+def cleanup_old_data():
+    """오래된 데이터 정리"""
+    try:
+        monitoring_manager._cleanup_old_data()
+        
+        return jsonify({
+            'status': 'success',
+            'message': '오래된 데이터 정리가 완료되었습니다'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'데이터 정리 오류: {str(e)}'
+        }), 500 

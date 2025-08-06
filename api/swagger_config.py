@@ -1,308 +1,571 @@
 """
 Swagger API 문서화 설정
-flask-smorest를 사용한 OpenAPI 3.0 스펙 생성
+RESTful API 자동 문서화 및 테스트 인터페이스
 """
 
-from flask_smorest import Api, Blueprint
-from marshmallow import Schema, fields, validate
+from flask import Blueprint, jsonify, request, current_app
+from flask_swagger_ui import get_swaggerui_blueprint
+import json
+import os
+from datetime import datetime
+from typing import Dict, Any, List
 
-# API 스키마 정의
-class UserSchema(Schema):
-    """사용자 스키마"""
-    id = fields.Int(dump_only=True)
-    username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
-    email = fields.Email(required=True)
-    name = fields.Str(validate=validate.Length(max=100))
-    role = fields.Str(validate=validate.OneOf(['admin', 'super_admin', 'brand_manager', 'store_manager', 'employee', 'teamlead']))
-    status = fields.Str(validate=validate.OneOf(['pending', 'approved', 'rejected', 'inactive']))
-    brand_id = fields.Int()
-    branch_id = fields.Int()
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
+# Swagger UI 설정
+SWAGGER_URL = '/api/docs'
+API_URL = '/static/swagger.json'
 
-class BrandSchema(Schema):
-    """브랜드 스키마"""
-    id = fields.Int(dump_only=True)
-    name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
-    industry_id = fields.Int(required=True)
-    description = fields.Str(validate=validate.Length(max=500))
-    website = fields.Url()
-    contact_email = fields.Email()
-    contact_phone = fields.Str(validate=validate.Length(max=20))
-    address = fields.Str(validate=validate.Length(max=200))
-    status = fields.Str(validate=validate.OneOf(['active', 'inactive', 'pending']))
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
-
-class StoreSchema(Schema):
-    """매장 스키마"""
-    id = fields.Int(dump_only=True)
-    name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
-    brand_id = fields.Int(required=True)
-    address = fields.Str(required=True, validate=validate.Length(max=200))
-    phone = fields.Str(validate=validate.Length(max=20))
-    manager_id = fields.Int()
-    status = fields.Str(validate=validate.OneOf(['active', 'inactive', 'pending']))
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
-
-class EmployeeSchema(Schema):
-    """직원 스키마"""
-    id = fields.Int(dump_only=True)
-    name = fields.Str(required=True, validate=validate.Length(max=100))
-    role = fields.Str(validate=validate.OneOf(['manager', 'staff', 'kitchen', 'cashier']))
-    status = fields.Str(validate=validate.OneOf(['active', 'break', 'off']))
-    start_time = fields.Str()
-    end_time = fields.Str()
-    avatar = fields.Str()
-
-class LoginSchema(Schema):
-    """로그인 스키마"""
-    username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
-    password = fields.Str(required=True, validate=validate.Length(min=6))
-
-class LoginResponseSchema(Schema):
-    """로그인 응답 스키마"""
-    success = fields.Bool()
-    message = fields.Str()
-    token = fields.Str()
-    refresh_token = fields.Str()
-    user = fields.Nested(UserSchema)
-
-class DashboardStatsSchema(Schema):
-    """대시보드 통계 스키마"""
-    total_users = fields.Int()
-    total_brands = fields.Int()
-    total_stores = fields.Int()
-    total_orders = fields.Int()
-    total_schedules = fields.Int()
-    today_orders = fields.Int()
-    today_schedules = fields.Int()
-    weekly_orders = fields.Int()
-    monthly_orders = fields.Int()
-    total_revenue = fields.Int()
-    low_stock_items = fields.Int()
-
-class BrandStatsSchema(Schema):
-    """브랜드 통계 스키마"""
-    total_brands = fields.Int()
-    active_brands = fields.Int()
-    total_stores = fields.Int()
-    total_employees = fields.Int()
-    total_revenue = fields.Int()
-    growth_rate = fields.Float()
-
-class StoreStatsSchema(Schema):
-    """매장 통계 스키마"""
-    total_employees = fields.Int()
-    active_employees = fields.Int()
-    today_revenue = fields.Int()
-    monthly_revenue = fields.Int()
-    growth_rate = fields.Float()
-    average_order_value = fields.Int()
-    customer_satisfaction = fields.Float()
-    pending_orders = fields.Int()
-    low_stock_items = fields.Int()
-
-class SystemStatusSchema(Schema):
-    """시스템 상태 스키마"""
-    status = fields.Str(validate=validate.OneOf(['online', 'offline', 'maintenance']))
-    uptime = fields.Str()
-    memory_usage = fields.Float()
-    cpu_usage = fields.Float()
-    disk_usage = fields.Float()
-    active_connections = fields.Int()
-    last_updated = fields.DateTime()
-
-class SystemLogSchema(Schema):
-    """시스템 로그 스키마"""
-    id = fields.Int(dump_only=True)
-    level = fields.Str(validate=validate.OneOf(['INFO', 'WARNING', 'ERROR', 'CRITICAL']))
-    message = fields.Str()
-    detail = fields.Str()
-    timestamp = fields.DateTime()
-    user_id = fields.Int()
-    ip_address = fields.Str()
-
-class AlertSchema(Schema):
-    """알림 스키마"""
-    id = fields.Int(dump_only=True)
-    type = fields.Str(validate=validate.OneOf(['info', 'warning', 'error', 'critical']))
-    title = fields.Str(required=True, validate=validate.Length(max=200))
-    message = fields.Str(required=True, validate=validate.Length(max=1000))
-    severity = fields.Str(validate=validate.OneOf(['low', 'medium', 'high', 'critical']))
-    is_read = fields.Bool()
-    created_at = fields.DateTime(dump_only=True)
-
-class FeedbackSchema(Schema):
-    """피드백 스키마"""
-    id = fields.Int(dump_only=True)
-    title = fields.Str(required=True, validate=validate.Length(min=1, max=200))
-    content = fields.Str(required=True, validate=validate.Length(min=1, max=2000))
-    category = fields.Str(validate=validate.OneOf(['bug', 'feature', 'improvement', 'other']))
-    priority = fields.Str(validate=validate.OneOf(['low', 'medium', 'high', 'urgent']))
-    status = fields.Str(validate=validate.OneOf(['open', 'in_progress', 'resolved', 'closed']))
-    user_id = fields.Int()
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
-
-class PluginSchema(Schema):
-    """플러그인 스키마"""
-    id = fields.Int(dump_only=True)
-    name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
-    version = fields.Str(required=True)
-    description = fields.Str(validate=validate.Length(max=500))
-    author = fields.Str(validate=validate.Length(max=100))
-    status = fields.Str(validate=validate.OneOf(['active', 'inactive', 'error']))
-    is_enabled = fields.Bool()
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
-
-class ModuleSchema(Schema):
-    """모듈 스키마"""
-    id = fields.Int(dump_only=True)
-    name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
-    version = fields.Str(required=True)
-    description = fields.Str(validate=validate.Length(max=500))
-    category = fields.Str(validate=validate.Length(max=50))
-    is_installed = fields.Bool()
-    is_enabled = fields.Bool()
-    download_count = fields.Int()
-    rating = fields.Float(validate=validate.Range(min=0, max=5))
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
-
-class IndustrySchema(Schema):
-    """업종 스키마"""
-    id = fields.Int(dump_only=True)
-    name = fields.Str(required=True, validate=validate.Length(max=100))
-    type = fields.Str(validate=validate.Length(max=50))
-    brands_count = fields.Int()
-    stores_count = fields.Int()
-    employees_count = fields.Int()
-    revenue = fields.Int()
-    status = fields.Str(validate=validate.OneOf(['active', 'inactive']))
-    last_updated = fields.DateTime()
-
-# API 응답 스키마
-class SuccessResponseSchema(Schema):
-    """성공 응답 스키마"""
-    success = fields.Bool(required=True)
-    message = fields.Str()
-    data = fields.Raw()
-
-class ErrorResponseSchema(Schema):
-    """에러 응답 스키마"""
-    success = fields.Bool(required=True)
-    error = fields.Str(required=True)
-    code = fields.Str()
-    details = fields.Raw()
-
-# 페이지네이션 스키마
-class PaginationSchema(Schema):
-    """페이지네이션 스키마"""
-    page = fields.Int(validate=validate.Range(min=1))
-    per_page = fields.Int(validate=validate.Range(min=1, max=100))
-    total = fields.Int()
-    pages = fields.Int()
-    has_next = fields.Bool()
-    has_prev = fields.Bool()
-
-# Swagger 설정
 def create_swagger_config(app):
-    """Swagger API 설정을 생성합니다."""
+    """Swagger 설정 생성"""
+    
+    # Swagger UI 블루프린트 생성
+    swaggerui_blueprint = get_swaggerui_blueprint(
+        SWAGGER_URL,
+        API_URL,
+        config={
+            'app_name': "멀티테넌시 관리 시스템 API",
+            'deepLinking': True,
+            'displayOperationId': True,
+            'defaultModelsExpandDepth': 2,
+            'defaultModelExpandDepth': 2,
+            'docExpansion': 'list',
+            'filter': True,
+            'showExtensions': True,
+            'showCommonExtensions': True,
+            'syntaxHighlight.theme': 'monokai'
+        }
+    )
+    
+    # Swagger JSON 생성
+    swagger_spec = generate_swagger_spec()
+    
+    # 정적 파일로 Swagger JSON 저장
+    static_dir = os.path.join(app.root_path, 'static')
+    os.makedirs(static_dir, exist_ok=True)
+    
+    swagger_file = os.path.join(static_dir, 'swagger.json')
+    with open(swagger_file, 'w', encoding='utf-8') as f:
+        json.dump(swagger_spec, f, ensure_ascii=False, indent=2)
+    
+    # 블루프린트 등록
+    app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+    
+    return swaggerui_blueprint
 
-    # 이미 등록된 경우 중복 등록 방지
-    if 'api-docs' in app.blueprints:
-        return None
-    # 기존 api-docs 관련 엔드포인트 제거 (혹시 남아있을 경우)
-    for rule in list(app.url_map.iter_rules()):
-        if rule.endpoint.startswith('api-docs.'):
-            app.url_map._rules.remove(rule)
-            app.view_functions.pop(rule.endpoint, None)
-
-    app.config["API_TITLE"] = "Your Program API"
-    app.config["API_VERSION"] = "v1"
-    app.config["OPENAPI_VERSION"] = "3.0.2"
-    app.config["OPENAPI_URL_PREFIX"] = "/"
-    app.config["OPENAPI_SWAGGER_UI_PATH"] = "/swagger-ui"
-    app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
-    app.config["OPENAPI_REDOC_PATH"] = "/redoc"
-    app.config["OPENAPI_REDOC_URL"] = "https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"
-
-    api = Api(app, spec_kwargs={"title": "Your Program API", "version": "v1"})
-
-    # 스키마 등록
-    api.spec.components.schema("User", schema=UserSchema)
-    api.spec.components.schema("Brand", schema=BrandSchema)
-    api.spec.components.schema("Store", schema=StoreSchema)
-    api.spec.components.schema("Employee", schema=EmployeeSchema)
-    api.spec.components.schema("Login", schema=LoginSchema)
-    api.spec.components.schema("LoginResponse", schema=LoginResponseSchema)
-    api.spec.components.schema("DashboardStats", schema=DashboardStatsSchema)
-    api.spec.components.schema("BrandStats", schema=BrandStatsSchema)
-    api.spec.components.schema("StoreStats", schema=StoreStatsSchema)
-    api.spec.components.schema("SystemStatus", schema=SystemStatusSchema)
-    api.spec.components.schema("SystemLog", schema=SystemLogSchema)
-    api.spec.components.schema("Alert", schema=AlertSchema)
-    api.spec.components.schema("Feedback", schema=FeedbackSchema)
-    api.spec.components.schema("Plugin", schema=PluginSchema)
-    api.spec.components.schema("Module", schema=ModuleSchema)
-    api.spec.components.schema("Industry", schema=IndustrySchema)
-    api.spec.components.schema("SuccessResponse", schema=SuccessResponseSchema)
-    api.spec.components.schema("ErrorResponse", schema=ErrorResponseSchema)
-    api.spec.components.schema("Pagination", schema=PaginationSchema)
-
-    return api
-
-# 태그 정의
-TAGS = {
-    "auth": {
-        "name": "인증",
-        "description": "사용자 인증 및 권한 관리"
-    },
-    "admin": {
-        "name": "관리자",
-        "description": "시스템 관리자 기능"
-    },
-    "brands": {
-        "name": "브랜드",
-        "description": "브랜드 관리"
-    },
-    "stores": {
-        "name": "매장",
-        "description": "매장 관리"
-    },
-    "employees": {
-        "name": "직원",
-        "description": "직원 관리"
-    },
-    "users": {
-        "name": "사용자",
-        "description": "사용자 관리"
-    },
-    "plugins": {
-        "name": "플러그인",
-        "description": "플러그인 관리"
-    },
-    "modules": {
-        "name": "모듈",
-        "description": "모듈 마켓플레이스"
-    },
-    "feedback": {
-        "name": "피드백",
-        "description": "피드백 시스템"
-    },
-    "system": {
-        "name": "시스템",
-        "description": "시스템 모니터링 및 상태"
-    },
-    "dashboard": {
-        "name": "대시보드",
-        "description": "대시보드 및 통계"
-    },
-    "industries": {
-        "name": "업종",
-        "description": "업종 관리"
-    }
-} 
+def generate_swagger_spec() -> Dict[str, Any]:
+    """Swagger 스펙 생성"""
+    return {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "멀티테넌시 관리 시스템 API",
+            "description": "업종-브랜드-매장-직원 계층 구조를 지원하는 멀티테넌시 관리 시스템 API",
+            "version": "1.0.0",
+            "contact": {
+                "name": "API Support",
+                "email": "support@example.com"
+            },
+            "license": {
+                "name": "MIT",
+                "url": "https://opensource.org/licenses/MIT"
+            }
+        },
+        "servers": [
+            {
+                "url": "http://localhost:5000",
+                "description": "개발 서버"
+            },
+            {
+                "url": "https://api.example.com",
+                "description": "프로덕션 서버"
+            }
+        ],
+        "security": [
+            {
+                "bearerAuth": []
+            },
+            {
+                "apiKeyAuth": []
+            }
+        ],
+        "paths": {
+            "/api/auth/login": {
+                "post": {
+                    "tags": ["인증"],
+                    "summary": "사용자 로그인",
+                    "description": "사용자 인증 및 JWT 토큰 발급",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LoginRequest"
+                                },
+                                "example": {
+                                    "username": "admin",
+                                    "password": "password123"
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "로그인 성공",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/LoginResponse"
+                                    }
+                                }
+                            }
+                        },
+                        "401": {
+                            "description": "인증 실패",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/api/staff/list": {
+                "get": {
+                    "tags": ["직원 관리"],
+                    "summary": "직원 목록 조회",
+                    "description": "페이지네이션을 지원하는 직원 목록 조회",
+                    "parameters": [
+                        {
+                            "name": "page",
+                            "in": "query",
+                            "description": "페이지 번호",
+                            "required": False,
+                            "schema": {
+                                "type": "integer",
+                                "default": 1,
+                                "minimum": 1
+                            }
+                        },
+                        {
+                            "name": "per_page",
+                            "in": "query",
+                            "description": "페이지당 항목 수",
+                            "required": False,
+                            "schema": {
+                                "type": "integer",
+                                "default": 20,
+                                "minimum": 1,
+                                "maximum": 100
+                            }
+                        },
+                        {
+                            "name": "search",
+                            "in": "query",
+                            "description": "검색어",
+                            "required": False,
+                            "schema": {
+                                "type": "string"
+                            }
+                        },
+                        {
+                            "name": "role",
+                            "in": "query",
+                            "description": "역할 필터",
+                            "required": False,
+                            "schema": {
+                                "type": "string",
+                                "enum": ["admin", "brand_admin", "store_admin", "employee"]
+                            }
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "직원 목록 조회 성공",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/StaffListResponse"
+                                    }
+                                }
+                            }
+                        },
+                        "403": {
+                            "description": "권한 없음",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/api/staff/create": {
+                "post": {
+                    "tags": ["직원 관리"],
+                    "summary": "직원 생성",
+                    "description": "새로운 직원 계정 생성",
+                    "security": [
+                        {
+                            "bearerAuth": []
+                        }
+                    ],
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StaffCreateRequest"
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "201": {
+                            "description": "직원 생성 성공",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/StaffResponse"
+                                    }
+                                }
+                            }
+                        },
+                        "400": {
+                            "description": "잘못된 요청",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/api/admin/dashboard-stats": {
+                "get": {
+                    "tags": ["관리자"],
+                    "summary": "대시보드 통계",
+                    "description": "관리자 대시보드용 통계 데이터",
+                    "security": [
+                        {
+                            "bearerAuth": []
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "통계 데이터 조회 성공",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/DashboardStatsResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/api/health": {
+                "get": {
+                    "tags": ["시스템"],
+                    "summary": "시스템 상태 확인",
+                    "description": "애플리케이션 및 데이터베이스 상태 확인",
+                    "responses": {
+                        "200": {
+                            "description": "시스템 정상",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/HealthResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "components": {
+            "securitySchemes": {
+                "bearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "JWT",
+                    "description": "JWT 토큰을 사용한 인증"
+                },
+                "apiKeyAuth": {
+                    "type": "apiKey",
+                    "in": "header",
+                    "name": "X-API-Key",
+                    "description": "API 키를 사용한 인증"
+                }
+            },
+            "schemas": {
+                "LoginRequest": {
+                    "type": "object",
+                    "required": ["username", "password"],
+                    "properties": {
+                        "username": {
+                            "type": "string",
+                            "description": "사용자명",
+                            "example": "admin"
+                        },
+                        "password": {
+                            "type": "string",
+                            "description": "비밀번호",
+                            "example": "password123"
+                        }
+                    }
+                },
+                "LoginResponse": {
+                    "type": "object",
+                    "properties": {
+                        "success": {
+                            "type": "boolean",
+                            "example": True
+                        },
+                        "message": {
+                            "type": "string",
+                            "example": "로그인 성공"
+                        },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "token": {
+                                    "type": "string",
+                                    "description": "JWT 토큰"
+                                },
+                                "user": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    }
+                },
+                "User": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer",
+                            "description": "사용자 ID"
+                        },
+                        "username": {
+                            "type": "string",
+                            "description": "사용자명"
+                        },
+                        "email": {
+                            "type": "string",
+                            "description": "이메일"
+                        },
+                        "role": {
+                            "type": "string",
+                            "enum": ["admin", "brand_admin", "store_admin", "employee"],
+                            "description": "사용자 역할"
+                        },
+                        "status": {
+                            "type": "string",
+                            "enum": ["active", "inactive", "pending"],
+                            "description": "계정 상태"
+                        }
+                    }
+                },
+                "StaffCreateRequest": {
+                    "type": "object",
+                    "required": ["username", "email", "password", "name"],
+                    "properties": {
+                        "username": {
+                            "type": "string",
+                            "description": "사용자명"
+                        },
+                        "email": {
+                            "type": "string",
+                            "format": "email",
+                            "description": "이메일"
+                        },
+                        "password": {
+                            "type": "string",
+                            "minLength": 8,
+                            "description": "비밀번호"
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "실명"
+                        },
+                        "role": {
+                            "type": "string",
+                            "enum": ["admin", "brand_admin", "store_admin", "employee"],
+                            "default": "employee"
+                        },
+                        "branch_id": {
+                            "type": "integer",
+                            "description": "소속 매장 ID"
+                        }
+                    }
+                },
+                "StaffResponse": {
+                    "type": "object",
+                    "properties": {
+                        "success": {
+                            "type": "boolean"
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    }
+                },
+                "StaffListResponse": {
+                    "type": "object",
+                    "properties": {
+                        "success": {
+                            "type": "boolean"
+                        },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "staff": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/User"
+                                    }
+                                },
+                                "pagination": {
+                                    "$ref": "#/components/schemas/Pagination"
+                                }
+                            }
+                        }
+                    }
+                },
+                "Pagination": {
+                    "type": "object",
+                    "properties": {
+                        "page": {
+                            "type": "integer",
+                            "description": "현재 페이지"
+                        },
+                        "per_page": {
+                            "type": "integer",
+                            "description": "페이지당 항목 수"
+                        },
+                        "total": {
+                            "type": "integer",
+                            "description": "전체 항목 수"
+                        },
+                        "pages": {
+                            "type": "integer",
+                            "description": "전체 페이지 수"
+                        }
+                    }
+                },
+                "DashboardStatsResponse": {
+                    "type": "object",
+                    "properties": {
+                        "success": {
+                            "type": "boolean"
+                        },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "total_users": {
+                                    "type": "integer",
+                                    "description": "전체 사용자 수"
+                                },
+                                "total_brands": {
+                                    "type": "integer",
+                                    "description": "전체 브랜드 수"
+                                },
+                                "total_stores": {
+                                    "type": "integer",
+                                    "description": "전체 매장 수"
+                                },
+                                "active_sessions": {
+                                    "type": "integer",
+                                    "description": "활성 세션 수"
+                                }
+                            }
+                        }
+                    }
+                },
+                "HealthResponse": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string",
+                            "enum": ["healthy", "unhealthy"],
+                            "description": "시스템 상태"
+                        },
+                        "timestamp": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "확인 시간"
+                        },
+                        "services": {
+                            "type": "object",
+                            "properties": {
+                                "database": {
+                                    "type": "string",
+                                    "enum": ["healthy", "unhealthy"]
+                                },
+                                "redis": {
+                                    "type": "string",
+                                    "enum": ["healthy", "unhealthy"]
+                                }
+                            }
+                        }
+                    }
+                },
+                "ErrorResponse": {
+                    "type": "object",
+                    "properties": {
+                        "error": {
+                            "type": "object",
+                            "properties": {
+                                "code": {
+                                    "type": "string",
+                                    "description": "에러 코드"
+                                },
+                                "message": {
+                                    "type": "string",
+                                    "description": "에러 메시지"
+                                },
+                                "details": {
+                                    "type": "string",
+                                    "description": "상세 정보"
+                                },
+                                "timestamp": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "tags": [
+            {
+                "name": "인증",
+                "description": "사용자 인증 관련 API"
+            },
+            {
+                "name": "직원 관리",
+                "description": "직원 계정 관리 API"
+            },
+            {
+                "name": "관리자",
+                "description": "관리자 전용 API"
+            },
+            {
+                "name": "시스템",
+                "description": "시스템 상태 및 모니터링 API"
+            }
+        ]
+    } 

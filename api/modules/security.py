@@ -269,7 +269,7 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] if headers is not None else None = 'DENY'
     response.headers['X-XSS-Protection'] if headers is not None else None = '1; mode=block'
     response.headers['Strict-Transport-Security'] if headers is not None else None = 'max-age=31536000; includeSubDomains'
-    response.headers['Content-Security-Policy'] if headers is not None else None = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    response.headers['Content-Security-Policy'] if headers is not None else None = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws: wss:;"
     return response
 
 # 보안 헤더 자동 추가 미들웨어

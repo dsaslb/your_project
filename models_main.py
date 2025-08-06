@@ -120,6 +120,7 @@ class Branch(db.Model):
     name = db.Column(db.String(128))
     address = db.Column(db.String(200))
     phone = db.Column(db.String(20))
+    manager_name = db.Column(db.String(100))  # 매장 관리자명 추가
 
     # 주소 상세 정보 (카카오 주소 검색 API 연동)
     zipcode = db.Column(db.String(10))  # 우편번호
@@ -287,6 +288,14 @@ class User(db.Model, UserMixin):
             },
             # 보고서 권한
             "reports": {"view": False, "export": False, "admin_only": False},
+            # 플러그인 관리 권한
+            "plugin_management": {
+                "view": False,
+                "install": False,
+                "uninstall": False,
+                "configure": False,
+                "monitor": False,
+            },
         },
     )
 
@@ -3663,132 +3672,7 @@ class PurchaseSettings(db.Model):
     def __repr__(self):
         return f'<PurchaseSettings {self.store_id}>'
 
-# 스케줄관리 플러그인 모델
-class WorkSchedule(db.Model):
-    """근무 스케줄 모델"""
-    __tablename__ = 'work_schedules'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    schedule_date = db.Column(db.DateTime, nullable=False)
-    shift_type = db.Column(db.String(20), nullable=False)  # morning, afternoon, night, full_day, part_time
-    start_time = db.Column(db.String(5), nullable=False)  # HH:MM 형식
-    end_time = db.Column(db.String(5), nullable=False)  # HH:MM 형식
-    break_start = db.Column(db.String(5), nullable=True)  # 휴식 시작
-    break_end = db.Column(db.String(5), nullable=True)  # 휴식 종료
-    total_hours = db.Column(db.Float, default=0.0)  # 총 근무시간
-    status = db.Column(db.String(20), default='draft')  # draft, published, confirmed, cancelled
-    notes = db.Column(db.Text, nullable=True)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # 관계 설정
-    store = db.relationship('Branch', backref='work_schedules')
-    user = db.relationship('User', foreign_keys=[user_id], backref='work_schedules')
-    created_user = db.relationship('User', foreign_keys=[created_by], backref='created_schedules')
-    
-    def __repr__(self):
-        return f'<WorkSchedule {self.user_id} {self.schedule_date.date()}>'
-    
-    def calculate_hours(self):
-        """근무시간 계산"""
-        start = datetime.strptime(self.start_time, '%H:%M')
-        end = datetime.strptime(self.end_time, '%H:%M')
-        
-        # 날짜가 다른 경우 (야간 근무 등)
-        if end < start:
-            end = end.replace(day=end.day + 1)
-        
-        work_duration = end - start
-        self.total_hours = work_duration.total_seconds() / 3600
-        
-        # 휴식시간 차감
-        if self.break_start and self.break_end:
-            break_start = datetime.strptime(self.break_start, '%H:%M')
-            break_end = datetime.strptime(self.break_end, '%H:%M')
-            
-            if break_end < break_start:
-                break_end = break_end.replace(day=break_end.day + 1)
-            
-            break_duration = break_end - break_start
-            break_hours = break_duration.total_seconds() / 3600
-            self.total_hours -= break_hours
-        
-        return self.total_hours
-
-class ScheduleTemplate(db.Model):
-    """스케줄 템플릿 모델"""
-    __tablename__ = 'schedule_templates'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    shift_type = db.Column(db.String(20), nullable=False)
-    start_time = db.Column(db.String(5), nullable=False)
-    end_time = db.Column(db.String(5), nullable=False)
-    break_start = db.Column(db.String(5), nullable=True)
-    break_end = db.Column(db.String(5), nullable=True)
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # 관계 설정
-    store = db.relationship('Branch', backref='schedule_templates')
-    
-    def __repr__(self):
-        return f'<ScheduleTemplate {self.name}>'
-
-class ScheduleRequest(db.Model):
-    """스케줄 변경 요청 모델"""
-    __tablename__ = 'schedule_requests'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    schedule_id = db.Column(db.Integer, db.ForeignKey('work_schedules.id'), nullable=False)
-    request_type = db.Column(db.String(20), nullable=False)  # change, swap, cancel
-    requested_date = db.Column(db.DateTime, nullable=False)
-    requested_start_time = db.Column(db.String(5), nullable=True)
-    requested_end_time = db.Column(db.String(5), nullable=True)
-    reason = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
-    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    approved_at = db.Column(db.DateTime, nullable=True)
-    rejection_reason = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # 관계 설정
-    user = db.relationship('User', foreign_keys=[user_id], backref='schedule_requests')
-    schedule = db.relationship('WorkSchedule', backref='schedule_requests')
-    approved_user = db.relationship('User', foreign_keys=[approved_by], backref='approved_schedule_requests')
-    
-    def __repr__(self):
-        return f'<ScheduleRequest {self.user_id} {self.request_type}>'
-
-class ScheduleSettings(db.Model):
-    """스케줄 관리 설정 모델"""
-    __tablename__ = 'schedule_settings'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    store_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
-    default_shift_hours = db.Column(db.Float, default=8.0)
-    break_time_minutes = db.Column(db.Integer, default=60)
-    overtime_threshold = db.Column(db.Float, default=8.0)
-    auto_schedule_enabled = db.Column(db.Boolean, default=False)
-    max_consecutive_days = db.Column(db.Integer, default=7)  # 최대 연속 근무일
-    min_rest_hours = db.Column(db.Float, default=11.0)  # 최소 휴식시간
-    schedule_publish_days = db.Column(db.Integer, default=7)  # 스케줄 발표일 (일전)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # 관계 설정
-    store = db.relationship('Branch', backref='schedule_settings')
-    
-    def __repr__(self):
-        return f'<ScheduleSettings {self.store_id}>'
+# 스케줄관리 플러그인 모델들은 plugins/schedule_management/models.py에서 관리됩니다.
 
 
 # 플러그인 관리 시스템 모델들
@@ -3818,7 +3702,7 @@ class PluginActivation(db.Model):
     )
     
     def __repr__(self):
-        return f'<PluginActivation {self.plugin_id} - {self.target_type}:{self.target_id}>'
+        return f'<PluginActivation {self.plugin_id}:{self.target_type}:{self.target_id}>'
 
 
 class PluginPermission(db.Model):

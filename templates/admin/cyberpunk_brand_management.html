@@ -240,12 +240,10 @@
             select.innerHTML = '<option value="">업종을 선택하세요</option>';
             
             industries.forEach(industry => {
-                if (industry.is_active) {
-                    const option = document.createElement('option');
-                    option.value = industry.id;
-                    option.textContent = industry.name;
-                    select.appendChild(option);
-                }
+                const option = document.createElement('option');
+                option.value = industry.id;
+                option.textContent = industry.name;
+                select.appendChild(option);
             });
         }
 

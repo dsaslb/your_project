@@ -19,9 +19,23 @@ class DatabaseOptimizer:
     
     def __init__(self, database_url: str):
         self.database_url = database_url
-        self.engine = create_engine(database_url)
+        self.engine = create_engine(
+            database_url,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+            pool_recycle=3600,
+            pool_pre_ping=True,
+            echo=False
+        )
         self.Session = sessionmaker(bind=self.engine)
         self.inspector = inspect(self.engine)
+        self.connection_stats = {
+            'total_connections': 0,
+            'active_connections': 0,
+            'pool_size': 10,
+            'max_overflow': 20
+        }
         
     def analyze_table_performance(self, table_name: str) -> Dict:
         """테이블 성능 분석"""
@@ -353,6 +367,9 @@ class DatabaseOptimizer:
         try:
             session = self.Session()
             
+            # 연결 풀 통계
+            pool_stats = self._get_connection_pool_stats()
+            
             # 데이터베이스 크기
             db_size_query = text("""
                 SELECT 
@@ -388,6 +405,7 @@ class DatabaseOptimizer:
             session.close()
             
             return {
+                'connection_pool': pool_stats,
                 'database_size': db_size['database_size'],
                 'stats_size': db_size['stats_size'],
                 'active_connections': connections['active_connections'],
@@ -398,6 +416,59 @@ class DatabaseOptimizer:
         except SQLAlchemyError as e:
             logger.error(f"데이터베이스 통계 수집 실패: {e}")
             return {}
+    
+    def _get_connection_pool_stats(self) -> Dict:
+        """연결 풀 통계 조회"""
+        try:
+            pool = self.engine.pool
+            return {
+                'pool_size': pool.size(),
+                'checked_in': pool.checkedin(),
+                'checked_out': pool.checkedout(),
+                'overflow': pool.overflow(),
+                'invalid': pool.invalid(),
+                'utilization_percent': (pool.checkedout() / pool.size()) * 100 if pool.size() > 0 else 0
+            }
+        except Exception as e:
+            logger.error(f"연결 풀 통계 조회 실패: {e}")
+            return {}
+    
+    def monitor_connection_health(self) -> Dict:
+        """연결 풀 상태 모니터링"""
+        try:
+            pool_stats = self._get_connection_pool_stats()
+            
+            # 연결 풀 상태 평가
+            health_status = "healthy"
+            warnings = []
+            
+            utilization = pool_stats.get('utilization_percent', 0)
+            if utilization > 80:
+                health_status = "warning"
+                warnings.append(f"연결 풀 사용률이 높습니다: {utilization:.1f}%")
+            
+            if pool_stats.get('overflow', 0) > 0:
+                health_status = "warning"
+                warnings.append(f"연결 풀 오버플로우 발생: {pool_stats['overflow']}")
+            
+            if pool_stats.get('invalid', 0) > 0:
+                health_status = "critical"
+                warnings.append(f"무효한 연결이 있습니다: {pool_stats['invalid']}")
+            
+            return {
+                'status': health_status,
+                'stats': pool_stats,
+                'warnings': warnings,
+                'timestamp': time.time()
+            }
+            
+        except Exception as e:
+            logger.error(f"연결 풀 상태 모니터링 실패: {e}")
+            return {
+                'status': 'error',
+                'error': str(e),
+                'timestamp': time.time()
+            }
     
     def generate_optimization_report(self) -> Dict:
         """최적화 리포트 생성"""

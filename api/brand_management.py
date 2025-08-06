@@ -163,7 +163,8 @@ def get_industries():
             })
 
         return jsonify({
-            'industries': industry_list
+            'success': True,
+            'data': industry_list
         })
 
     except Exception as e:

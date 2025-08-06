@@ -1,14 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
-import useErrorHandler from '@/hooks/useErrorHandler';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 export default function GlobalErrorHandler() {
-  const { handleError } = useErrorHandler({
-    showToast: true,
-    logToConsole: true,
-    redirectOnAuthError: true,
-  });
+  const { handleError } = useErrorHandler();
 
   useEffect(() => {
     // 전역 에러 이벤트 리스너
