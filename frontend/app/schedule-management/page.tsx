@@ -17,56 +17,96 @@ import { Textarea } from '../../src/components/ui/textarea';
 import { 
   Calendar, 
   Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Clock,
-  Users,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  BarChart3,
-  TrendingUp,
-  Filter,
-  Download,
-  Upload,
-  Settings,
-  User,
-  Building,
-  MapPin
+  Filter, 
+  Download, 
+  Upload, 
+  Settings, 
+  User, 
+  Building, 
+  MapPin,
+  Brain,
+  TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiClient, Employee as EmployeeType } from '../../src/lib/api-client';
-import useLoadingState from '../../src/hooks/useLoadingState';
-import useErrorHandler from '../../src/hooks/useErrorHandler';
+import { apiClient } from '../../src/lib/api-client';
 
-interface Schedule {
-  id: number;
-  employee_id: number;
-  employee_name: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  role: string;
-  status: 'scheduled' | 'working' | 'completed' | 'absent' | 'late';
-  notes?: string;
-  store_id: number;
-  store_name?: string;
-  created_at: string;
-  updated_at: string;
-  type?: 'work' | 'cleaning' | 'task' | 'break';
-  color?: string;
+// 로컬 스토리지 관리 클래스
+class LocalStorageManager {
+  private static instance: LocalStorageManager;
+  
+  static getInstance(): LocalStorageManager {
+    if (!LocalStorageManager.instance) {
+      LocalStorageManager.instance = new LocalStorageManager();
+    }
+    return LocalStorageManager.instance;
+  }
+
+  // 스케줄 데이터 관리
+  getSchedules(storeId: number): any[] {
+    const key = `schedules_${storeId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveSchedules(storeId: number, schedules: any[]): void {
+    const key = `schedules_${storeId}`;
+    localStorage.setItem(key, JSON.stringify(schedules));
+  }
+
+  // 출퇴근 기록 관리
+  getAttendanceRecords(storeId: number): any[] {
+    const key = `attendance_${storeId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveAttendanceRecords(storeId: number, records: any[]): void {
+    const key = `attendance_${storeId}`;
+    localStorage.setItem(key, JSON.stringify(records));
+  }
+
+  // 매출 데이터 관리
+  getSalesData(storeId: number): any[] {
+    const key = `sales_${storeId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveSalesData(storeId: number, sales: any[]): void {
+    const key = `sales_${storeId}`;
+    localStorage.setItem(key, JSON.stringify(sales));
+  }
 }
 
-interface ScheduleFormData {
-  employee_id: number;
-  date: string;
-  start_time: string;
-  end_time: string;
-  role: string;
-  notes: string;
-  store_id: number;
-  type: 'work' | 'cleaning' | 'task' | 'break';
+// AI 분석 클래스
+class AIAnalyzer {
+  static analyzeScheduleEfficiency(schedules: any[], attendance: any[], sales: any[]): any {
+    const analysis = {
+      issues: [],
+      improvements: [],
+      efficiency_score: 0,
+      recommendations: []
+    };
+
+    // 간단한 AI 분석 로직
+    const totalStaff = schedules.length;
+    const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
+    const avgSalesPerStaff = totalSales / totalStaff;
+
+    if (avgSalesPerStaff < 100000) {
+      analysis.issues.push('직원당 매출이 낮음');
+      analysis.improvements.push('직원 교육 및 동기 부여 강화');
+    }
+
+    if (totalStaff > 10) {
+      analysis.issues.push('인원 과다');
+      analysis.improvements.push('인원 최적화 필요');
+    }
+
+    analysis.efficiency_score = Math.min(100, Math.max(0, avgSalesPerStaff / 1000));
+    
+    return analysis;
+  }
 }
 
 interface Employee {
@@ -74,360 +114,125 @@ interface Employee {
   name: string;
   email: string;
   phone: string;
+  role: string;
+  department: string;
   position: string;
   store_id: number;
+}
+
+interface Store {
+  id: number;
+  name: string;
+  code: string;
+  address: string;
+  phone: string;
   status: string;
-  created_at: string;
-  updated_at: string;
+  brand_name: string;
+  brand_id: number;
+}
+
+interface Schedule {
+  id: string;
+  employee_id: number;
+  employee_name: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  type: 'work' | 'cleaning' | 'task' | 'break';
+  role: string;
+  notes: string;
+  color: string;
+  store_id: number;
+  store_name: string;
+}
+
+interface ScheduleFormData {
+  employee_id: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  type: 'work' | 'cleaning' | 'task' | 'break';
+  role: string;
+  notes: string;
 }
 
 export default function ScheduleManagement() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [stores, setStores] = useState<any[]>([]);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
-  const [selectedStore, setSelectedStore] = useState<string>('all');
+  const [stores, setStores] = useState<Store[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<number | 'all'>('all');
+  const [selectedStore, setSelectedStore] = useState<number | 'all'>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
-  const [calendarView, setCalendarView] = useState<'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek'>('dayGridMonth');
-  
+  const [calendarView, setCalendarView] = useState<string>('dayGridMonth');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [formData, setFormData] = useState<ScheduleFormData>({
     employee_id: 0,
     date: '',
     start_time: '',
     end_time: '',
-    role: '',
-    notes: '',
-    store_id: 0,
     type: 'work',
+    role: '',
+    notes: ''
   });
 
-  const { isLoading, setLoading, withLoading } = useLoadingState();
-  const { handleError } = useErrorHandler();
+  const storageManager = LocalStorageManager.getInstance();
+  
+  // 현재 매장 ID (실제로는 사용자 정보에서 가져와야 함)
+  const currentStoreId = 1;
 
-  // 직원 목록 조회
+  // 직원 마스터 데이터 조회
   const fetchEmployees = async () => {
     try {
-      // 실제 API 호출
-      const response = await apiClient.get('/api/employees') as any;
+      const response = await apiClient.get('/api/employees/master') as any;
       if (response.data.success) {
         setEmployees(response.data.employees);
       } else {
-        // 임시 샘플 데이터
-        const sampleEmployees: Employee[] = [
-          { id: 1, name: '김철수', email: 'kim@example.com', phone: '010-1234-5678', position: '매니저', store_id: 1, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
-          { id: 2, name: '이영희', email: 'lee@example.com', phone: '010-2345-6789', position: '바리스타', store_id: 1, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
-          { id: 3, name: '박민수', email: 'park@example.com', phone: '010-3456-7890', position: '캐셔', store_id: 2, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
-          { id: 4, name: '최지영', email: 'choi@example.com', phone: '010-4567-8901', position: '청소담당', store_id: 1, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
-          { id: 5, name: '정현우', email: 'jung@example.com', phone: '010-5678-9012', position: '재고관리', store_id: 2, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' }
-        ];
-        setEmployees(sampleEmployees);
+        // 샘플 데이터로 대체
+        setEmployees([
+          { id: 1, name: '김직원', email: 'kim@store.com', phone: '010-1234-5678', role: 'employee', department: '서빙', position: '직원', store_id: 1 },
+          { id: 2, name: '이매니저', email: 'lee@store.com', phone: '010-2345-6789', role: 'manager', department: '관리', position: '매니저', store_id: 1 }
+        ]);
       }
     } catch (error) {
-      // 임시 샘플 데이터
-      const sampleEmployees: Employee[] = [
-        { id: 1, name: '김철수', email: 'kim@example.com', phone: '010-1234-5678', position: '매니저', store_id: 1, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
-        { id: 2, name: '이영희', email: 'lee@example.com', phone: '010-2345-6789', position: '바리스타', store_id: 1, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
-        { id: 3, name: '박민수', email: 'park@example.com', phone: '010-3456-7890', position: '캐셔', store_id: 2, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
-        { id: 4, name: '최지영', email: 'choi@example.com', phone: '010-4567-8901', position: '청소담당', store_id: 1, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
-        { id: 5, name: '정현우', email: 'jung@example.com', phone: '010-5678-9012', position: '재고관리', store_id: 2, status: 'active', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' }
-      ];
-      setEmployees(sampleEmployees);
+      console.error('직원 데이터 조회 실패:', error);
+      // 샘플 데이터로 대체
+      setEmployees([
+        { id: 1, name: '김직원', email: 'kim@store.com', phone: '010-1234-5678', role: 'employee', department: '서빙', position: '직원', store_id: 1 },
+        { id: 2, name: '이매니저', email: 'lee@store.com', phone: '010-2345-6789', role: 'manager', department: '관리', position: '매니저', store_id: 1 }
+      ]);
     }
   };
 
-  // 매장 목록 조회
+  // 매장 마스터 데이터 조회
   const fetchStores = async () => {
     try {
-      const response = await apiClient.get('/api/stores') as any;
+      const response = await apiClient.get('/api/stores/master') as any;
       if (response.data.success) {
         setStores(response.data.stores);
       } else {
-        // 임시 샘플 데이터
-        const sampleStores = [
-          { id: 1, name: '스타벅스 강남점', address: '서울시 강남구' },
-          { id: 2, name: '스타벅스 홍대점', address: '서울시 마포구' }
-        ];
-        setStores(sampleStores);
+        // 샘플 데이터로 대체
+        setStores([
+          { id: 1, name: '강남점', code: 'GN001', address: '서울시 강남구', phone: '02-1234-5678', status: 'active', brand_name: '스타벅스', brand_id: 1 }
+        ]);
       }
     } catch (error) {
-      // 임시 샘플 데이터
-      const sampleStores = [
-        { id: 1, name: '스타벅스 강남점', address: '서울시 강남구' },
-        { id: 2, name: '스타벅스 홍대점', address: '서울시 마포구' }
-      ];
-      setStores(sampleStores);
+      console.error('매장 데이터 조회 실패:', error);
+      // 샘플 데이터로 대체
+      setStores([
+        { id: 1, name: '강남점', code: 'GN001', address: '서울시 강남구', phone: '02-1234-5678', status: 'active', brand_name: '스타벅스', brand_id: 1 }
+      ]);
     }
   };
 
-  // 스케줄 목록 조회
-  const fetchSchedules = async () => {
-    try {
-      const response = await apiClient.get('/api/schedules') as any;
-      if (response.data.success) {
-        setSchedules(response.data.schedules);
-      } else {
-        // 임시 샘플 데이터
-        const sampleSchedules: Schedule[] = [
-          {
-            id: 1,
-            employee_id: 1,
-            employee_name: '김철수',
-            date: '2024-01-15',
-            start_time: '09:00',
-            end_time: '18:00',
-            role: '매니저',
-            status: 'completed',
-            notes: '오픈 담당',
-            store_id: 1,
-            store_name: '스타벅스 강남점',
-            created_at: '2024-01-10T00:00:00Z',
-            updated_at: '2024-01-15T18:00:00Z',
-            type: 'work',
-            color: '#3b82f6'
-          },
-          {
-            id: 2,
-            employee_id: 2,
-            employee_name: '이영희',
-            date: '2024-01-15',
-            start_time: '10:00',
-            end_time: '19:00',
-            role: '바리스타',
-            status: 'working',
-            notes: '중간 근무',
-            store_id: 1,
-            store_name: '스타벅스 강남점',
-            created_at: '2024-01-10T00:00:00Z',
-            updated_at: '2024-01-15T10:00:00Z',
-            type: 'work',
-            color: '#10b981'
-          },
-          {
-            id: 3,
-            employee_id: 4,
-            employee_name: '최지영',
-            date: '2024-01-15',
-            start_time: '20:00',
-            end_time: '22:00',
-            role: '청소담당',
-            status: 'scheduled',
-            notes: '매장 청소',
-            store_id: 1,
-            store_name: '스타벅스 강남점',
-            created_at: '2024-01-10T00:00:00Z',
-            updated_at: '2024-01-10T00:00:00Z',
-            type: 'cleaning',
-            color: '#f59e0b'
-          },
-          {
-            id: 4,
-            employee_id: 5,
-            employee_name: '정현우',
-            date: '2024-01-16',
-            start_time: '08:00',
-            end_time: '10:00',
-            role: '재고관리',
-            status: 'scheduled',
-            notes: '재고 점검',
-            store_id: 2,
-            store_name: '스타벅스 홍대점',
-            created_at: '2024-01-10T00:00:00Z',
-            updated_at: '2024-01-10T00:00:00Z',
-            type: 'task',
-            color: '#8b5cf6'
-          }
-        ];
-        setSchedules(sampleSchedules);
-      }
-    } catch (error) {
-      // 임시 샘플 데이터
-      const sampleSchedules: Schedule[] = [
-        {
-          id: 1,
-          employee_id: 1,
-          employee_name: '김철수',
-          date: '2024-01-15',
-          start_time: '09:00',
-          end_time: '18:00',
-          role: '매니저',
-          status: 'completed',
-          notes: '오픈 담당',
-          store_id: 1,
-            store_name: '스타벅스 강남점',
-            created_at: '2024-01-10T00:00:00Z',
-            updated_at: '2024-01-15T18:00:00Z',
-            type: 'work',
-            color: '#3b82f6'
-          },
-          {
-            id: 2,
-            employee_id: 2,
-            employee_name: '이영희',
-            date: '2024-01-15',
-            start_time: '10:00',
-            end_time: '19:00',
-            role: '바리스타',
-            status: 'working',
-            notes: '중간 근무',
-            store_id: 1,
-            store_name: '스타벅스 강남점',
-            created_at: '2024-01-10T00:00:00Z',
-            updated_at: '2024-01-15T10:00:00Z',
-            type: 'work',
-            color: '#10b981'
-          },
-          {
-            id: 3,
-            employee_id: 4,
-            employee_name: '최지영',
-            date: '2024-01-15',
-            start_time: '20:00',
-            end_time: '22:00',
-            role: '청소담당',
-            status: 'scheduled',
-            notes: '매장 청소',
-            store_id: 1,
-            store_name: '스타벅스 강남점',
-            created_at: '2024-01-10T00:00:00Z',
-            updated_at: '2024-01-10T00:00:00Z',
-            type: 'cleaning',
-            color: '#f59e0b'
-          },
-          {
-            id: 4,
-            employee_id: 5,
-            employee_name: '정현우',
-            date: '2024-01-16',
-            start_time: '08:00',
-            end_time: '10:00',
-            role: '재고관리',
-            status: 'scheduled',
-            notes: '재고 점검',
-            store_id: 2,
-            store_name: '스타벅스 홍대점',
-            created_at: '2024-01-10T00:00:00Z',
-            updated_at: '2024-01-10T00:00:00Z',
-            type: 'task',
-            color: '#8b5cf6'
-          }
-        ];
-        setSchedules(sampleSchedules);
-      }
-    };
-
-  const resetForm = () => {
-    setFormData({
-      employee_id: 0,
-      date: '',
-      start_time: '',
-      end_time: '',
-      role: '',
-      notes: '',
-      store_id: 0,
-      type: 'work',
-    });
-    setEditingSchedule(null);
+  // 로컬 스토리지에서 스케줄 데이터 로드
+  const loadSchedules = () => {
+    const localSchedules = storageManager.getSchedules(currentStoreId);
+    setSchedules(localSchedules);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.employee_id || !formData.date || !formData.start_time || !formData.end_time) {
-      toast.error('필수 항목을 입력해주세요.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      // 실제 API 호출 대신 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (editingSchedule) {
-        // 수정
-        setSchedules(prev => prev.map(schedule => 
-          schedule.id === editingSchedule.id 
-            ? { 
-                ...schedule, 
-                ...formData, 
-                updated_at: new Date().toISOString(),
-                color: getTypeColor(formData.type)
-              }
-            : schedule
-        ));
-        toast.success('스케줄이 수정되었습니다.');
-      } else {
-        // 생성
-        const employee = employees.find(emp => emp.id === formData.employee_id);
-        const store = stores.find(store => store.id === formData.store_id);
-        const newSchedule: Schedule = {
-          id: Date.now(),
-          employee_id: formData.employee_id,
-          employee_name: employee?.name || '',
-          date: formData.date,
-          start_time: formData.start_time,
-          end_time: formData.end_time,
-          role: formData.role,
-          status: 'scheduled',
-          notes: formData.notes,
-          store_id: formData.store_id,
-          store_name: store?.name || '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          type: formData.type,
-          color: getTypeColor(formData.type)
-        };
-        
-        setSchedules(prev => [...prev, newSchedule]);
-        toast.success('스케줄이 생성되었습니다.');
-      }
-      
-      setIsCreateDialogOpen(false);
-      resetForm();
-      
-    } catch (error) {
-      handleError(error as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (schedule: Schedule) => {
-    if (!confirm(`${schedule.employee_name}의 스케줄을 삭제하시겠습니까?`)) return;
-    
-    try {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSchedules(prev => prev.filter(s => s.id !== schedule.id));
-      toast.success('스케줄이 삭제되었습니다.');
-      
-    } catch (error) {
-      handleError(error as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEdit = (schedule: Schedule) => {
-    setEditingSchedule(schedule);
-    setFormData({
-      employee_id: schedule.employee_id,
-      date: schedule.date,
-      start_time: schedule.start_time,
-      end_time: schedule.end_time,
-      role: schedule.role,
-      notes: schedule.notes || '',
-      store_id: schedule.store_id,
-      type: schedule.type || 'work',
-    });
-    setIsCreateDialogOpen(true);
-  };
-
-  const getTypeColor = (type: string) => {
+  // 스케줄 타입별 색상 반환
+  const getTypeColor = (type: string): string => {
     switch (type) {
       case 'work': return '#3b82f6';
       case 'cleaning': return '#f59e0b';
@@ -437,7 +242,8 @@ export default function ScheduleManagement() {
     }
   };
 
-  const getTypeText = (type: string) => {
+  // 스케줄 타입별 텍스트 반환
+  const getTypeText = (type: string): string => {
     switch (type) {
       case 'work': return '근무';
       case 'cleaning': return '청소';
@@ -447,636 +253,427 @@ export default function ScheduleManagement() {
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'scheduled': return '예정';
-      case 'working': return '근무중';
-      case 'completed': return '완료';
-      case 'absent': return '결근';
-      case 'late': return '지각';
-      default: return '알 수 없음';
-    }
+  // 근무 시간 계산
+  const calculateWorkHours = (startTime: string, endTime: string): number => {
+    const start = new Date(`2000-01-01T${startTime}:00`);
+    const end = new Date(`2000-01-01T${endTime}:00`);
+    return (end.getTime() - start.getTime()) / (1000 * 60 * 60);
   };
 
   // FullCalendar 이벤트 데이터 변환
   const calendarEvents = schedules
     .filter(schedule => {
-      const matchesEmployee = selectedEmployee === 'all' || schedule.employee_id.toString() === selectedEmployee;
-      const matchesStore = selectedStore === 'all' || schedule.store_id.toString() === selectedStore;
-      const matchesType = selectedType === 'all' || schedule.type === selectedType;
-      return matchesEmployee && matchesStore && matchesType;
+      if (selectedEmployee !== 'all' && schedule.employee_id !== selectedEmployee) return false;
+      if (selectedStore !== 'all' && schedule.store_id !== selectedStore) return false;
+      if (selectedType !== 'all' && schedule.type !== selectedType) return false;
+      return true;
     })
     .map(schedule => ({
-      id: schedule.id.toString(),
-      title: `${schedule.employee_name} - ${getTypeText(schedule.type || 'work')}`,
+      id: schedule.id,
+      title: `${schedule.employee_name} - ${getTypeText(schedule.type)}`,
       start: `${schedule.date}T${schedule.start_time}:00`,
       end: `${schedule.date}T${schedule.end_time}:00`,
-      backgroundColor: schedule.color || getTypeColor(schedule.type || 'work'),
-      borderColor: schedule.color || getTypeColor(schedule.type || 'work'),
+      backgroundColor: schedule.color || getTypeColor(schedule.type),
+      borderColor: schedule.color || getTypeColor(schedule.type),
       extendedProps: {
         employee_name: schedule.employee_name,
         role: schedule.role,
-        status: schedule.status,
         notes: schedule.notes,
         type: schedule.type,
         store_name: schedule.store_name
       }
     }));
 
-  const handleDateSelect = (selectInfo: any) => {
-    setFormData(prev => ({
-      ...prev,
+  // 날짜 선택 핸들러
+  const handleDateSelect = useCallback((selectInfo: any) => {
+    setFormData({
+      employee_id: 0,
       date: selectInfo.startStr.split('T')[0],
-      start_time: selectInfo.startStr.split('T')[1].substring(0, 5),
-      end_time: selectInfo.endStr.split('T')[1].substring(0, 5)
-    }));
-    setIsCreateDialogOpen(true);
+      start_time: selectInfo.startStr.split('T')[1]?.substring(0, 5) || '09:00',
+      end_time: selectInfo.endStr.split('T')[1]?.substring(0, 5) || '18:00',
+      type: 'work',
+      role: '',
+      notes: ''
+    });
+    setEditingSchedule(null);
+    setIsDialogOpen(true);
+  }, []);
+
+  // 이벤트 클릭 핸들러
+  const handleEventClick = useCallback((clickInfo: any) => {
+    const schedule = schedules.find(s => s.id === clickInfo.event.id);
+    if (schedule) {
+      setEditingSchedule(schedule);
+      setFormData({
+        employee_id: schedule.employee_id,
+        date: schedule.date,
+        start_time: schedule.start_time,
+        end_time: schedule.end_time,
+        type: schedule.type,
+        role: schedule.role,
+        notes: schedule.notes
+      });
+      setIsDialogOpen(true);
+    }
+  }, [schedules]);
+
+  // 폼 제출 핸들러
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.employee_id || !formData.date || !formData.start_time || !formData.end_time) {
+      toast.error('필수 필드를 모두 입력해주세요.');
+      return;
+    }
+
+    const employee = employees.find(emp => emp.id === formData.employee_id);
+    const store = stores.find(s => s.id === currentStoreId);
+
+    if (editingSchedule) {
+      // 스케줄 수정
+      const updatedSchedules = schedules.map(schedule => 
+        schedule.id === editingSchedule.id 
+          ? {
+              ...schedule,
+              employee_id: formData.employee_id,
+              employee_name: employee?.name || '',
+              date: formData.date,
+              start_time: formData.start_time,
+              end_time: formData.end_time,
+              type: formData.type,
+              role: formData.role,
+              notes: formData.notes,
+              color: getTypeColor(formData.type)
+            }
+          : schedule
+      );
+      setSchedules(updatedSchedules);
+      storageManager.saveSchedules(currentStoreId, updatedSchedules);
+      toast.success('스케줄이 수정되었습니다.');
+    } else {
+      // 새 스케줄 추가
+      const newSchedule: Schedule = {
+        id: Date.now().toString(),
+        employee_id: formData.employee_id,
+        employee_name: employee?.name || '',
+        date: formData.date,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        type: formData.type,
+        role: formData.role,
+        notes: formData.notes,
+        color: getTypeColor(formData.type),
+        store_id: currentStoreId,
+        store_name: store?.name || ''
+      };
+
+      const updatedSchedules = [...schedules, newSchedule];
+      setSchedules(updatedSchedules);
+      storageManager.saveSchedules(currentStoreId, updatedSchedules);
+      toast.success('스케줄이 추가되었습니다.');
+    }
+
+    setIsDialogOpen(false);
+    setEditingSchedule(null);
+    setFormData({
+      employee_id: 0,
+      date: '',
+      start_time: '',
+      end_time: '',
+      type: 'work',
+      role: '',
+      notes: ''
+    });
   };
 
-  const handleEventClick = (clickInfo: any) => {
-    const schedule = schedules.find(s => s.id.toString() === clickInfo.event.id);
-    if (schedule) {
-      handleEdit(schedule);
-    }
+  // 스케줄 삭제
+  const handleDelete = () => {
+    if (!editingSchedule) return;
+
+    const updatedSchedules = schedules.filter(schedule => schedule.id !== editingSchedule.id);
+    setSchedules(updatedSchedules);
+    storageManager.saveSchedules(currentStoreId, updatedSchedules);
+    
+    setIsDialogOpen(false);
+    setEditingSchedule(null);
+    setFormData({
+      employee_id: 0,
+      date: '',
+      start_time: '',
+      end_time: '',
+      type: 'work',
+      role: '',
+      notes: ''
+    });
+    toast.success('스케줄이 삭제되었습니다.');
+  };
+
+  // AI 분석 실행
+  const runAIAnalysis = () => {
+    const attendanceRecords = storageManager.getAttendanceRecords(currentStoreId);
+    const salesData = storageManager.getSalesData(currentStoreId);
+    
+    const analysis = AIAnalyzer.analyzeScheduleEfficiency(schedules, attendanceRecords, salesData);
+    
+    toast.success(`AI 분석 완료: 효율도 ${Math.round(analysis.efficiency_score)}%`);
+    console.log('AI 분석 결과:', analysis);
   };
 
   useEffect(() => {
-    fetchSchedules();
     fetchEmployees();
     fetchStores();
+    loadSchedules();
   }, []);
 
-  const filteredSchedules = schedules.filter(schedule => {
-    const matchesEmployee = selectedEmployee === 'all' || schedule.employee_id.toString() === selectedEmployee;
-    const matchesStore = selectedStore === 'all' || schedule.store_id.toString() === selectedStore;
-    const matchesType = selectedType === 'all' || schedule.type === selectedType;
-    return matchesEmployee && matchesStore && matchesType;
-  });
-
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999,
-      backgroundColor: '#f3f4f6',
-      fontFamily: 'Arial, sans-serif',
-      overflow: 'auto'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '2rem auto',
-        padding: '0 2rem'
-      }}>
-        {/* 헤더 */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem'
-        }}>
-          <div>
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '0.5rem'
-            }}>
-              스케줄 관리
-            </h1>
-            <p style={{
-              fontSize: '1.125rem',
-              color: '#6b7280'
-            }}>
-              캘린더 형식 직원 스케줄 관리
-            </p>
-          </div>
-          
-          <div style={{
-            display: 'flex',
-            gap: '1rem'
-          }}>
-            <button
-              onClick={() => setIsCreateDialogOpen(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1rem',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}
-            >
-              <Plus style={{ width: '16px', height: '16px' }} />
-              스케줄 추가
-            </button>
-          </div>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">스케줄 관리</h1>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            스케줄 추가
+          </Button>
+          <Button onClick={runAIAnalysis} variant="outline">
+            <Brain className="w-4 h-4 mr-2" />
+            AI 분석
+          </Button>
         </div>
-
-        {/* 통계 카드 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>총 스케줄</h3>
-              <Calendar style={{ width: '20px', height: '20px' }} />
-            </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {schedules.length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              오늘: {schedules.filter(schedule => schedule.date === new Date().toISOString().split('T')[0]).length}건
-            </p>
-          </div>
-
-          <div style={{
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>근무중</h3>
-              <Clock style={{ width: '20px', height: '20px' }} />
-            </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {schedules.filter(schedule => schedule.status === 'working').length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              현재 근무자
-            </p>
-          </div>
-
-          <div style={{
-            backgroundColor: '#f59e0b',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>청소/업무</h3>
-              <Users style={{ width: '20px', height: '20px' }} />
-            </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {schedules.filter(schedule => schedule.type === 'cleaning' || schedule.type === 'task').length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              청소 및 업무 스케줄
-            </p>
-          </div>
-
-          <div style={{
-            backgroundColor: '#8b5cf6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>총 직원</h3>
-              <User style={{ width: '20px', height: '20px' }} />
-            </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {employees.length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              활성 직원 수
-            </p>
-          </div>
-        </div>
-
-        {/* 필터 및 뷰 컨트롤 */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '1rem',
-            alignItems: 'end'
-          }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                직원
-              </label>
-              <select
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 직원</option>
-                {employees.map(employee => (
-                  <option key={employee.id} value={employee.id.toString()}>
-                    {employee.name} ({employee.position})
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                매장
-              </label>
-              <select
-                value={selectedStore}
-                onChange={(e) => setSelectedStore(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 매장</option>
-                {stores.map(store => (
-                  <option key={store.id} value={store.id.toString()}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                유형
-              </label>
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 유형</option>
-                <option value="work">근무</option>
-                <option value="cleaning">청소</option>
-                <option value="task">업무</option>
-                <option value="break">휴식</option>
-              </select>
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                뷰
-              </label>
-              <select
-                value={calendarView}
-                onChange={(e) => setCalendarView(e.target.value as any)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="dayGridMonth">월간</option>
-                <option value="timeGridWeek">주간</option>
-                <option value="timeGridDay">일간</option>
-                <option value="listWeek">목록</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* 캘린더 */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          padding: '1.5rem',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.5rem'
-          }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              margin: '0'
-            }}>
-              스케줄 캘린더
-            </h2>
-            
-            <div style={{
-              display: 'flex',
-              gap: '0.5rem'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.75rem'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  backgroundColor: '#3b82f6',
-                  borderRadius: '2px'
-                }}></div>
-                <span>근무</span>
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.75rem'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  backgroundColor: '#f59e0b',
-                  borderRadius: '2px'
-                }}></div>
-                <span>청소</span>
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.75rem'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  backgroundColor: '#8b5cf6',
-                  borderRadius: '2px'
-                }}></div>
-                <span>업무</span>
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.75rem'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  backgroundColor: '#10b981',
-                  borderRadius: '2px'
-                }}></div>
-                <span>휴식</span>
-              </div>
-            </div>
-          </div>
-          
-          <div style={{ height: '600px' }}>
-            <FullCalendar
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-              headerToolbar={{
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-              }}
-              initialView={calendarView}
-              editable={true}
-              selectable={true}
-              selectMirror={true}
-              dayMaxEvents={true}
-              weekends={true}
-              events={calendarEvents}
-              select={handleDateSelect}
-              eventClick={handleEventClick}
-              locale="ko"
-              height="100%"
-              eventDisplay="block"
-              eventTimeFormat={{
-                hour: '2-digit',
-                minute: '2-digit',
-                meridiem: false,
-                hour12: false
-              }}
-            />
-          </div>
-        </div>
-
-        {/* 스케줄 생성/수정 다이얼로그 */}
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent style={{
-            maxWidth: '500px',
-            width: '90vw'
-          }}>
-            <DialogHeader>
-              <DialogTitle>
-                {editingSchedule ? '스케줄 수정' : '새 스케줄 생성'}
-              </DialogTitle>
-            </DialogHeader>
-            
-            <form onSubmit={handleSubmit} style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem'
-            }}>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '1rem'
-              }}>
-                <div>
-                  <Label htmlFor="employee">직원</Label>
-                  <select
-                    id="employee"
-                    value={formData.employee_id}
-                    onChange={(e) => {
-                      const employee = employees.find(emp => emp.id.toString() === e.target.value);
-                      setFormData(prev => ({
-                        ...prev,
-                        employee_id: parseInt(e.target.value),
-                        role: employee?.position || '',
-                        store_id: employee?.store_id || 0
-                      }));
-                    }}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <option value="">직원 선택</option>
-                    {employees.map(employee => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.name} ({employee.position})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="type">유형</Label>
-                  <select
-                    id="type"
-                    value={formData.type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <option value="work">근무</option>
-                    <option value="cleaning">청소</option>
-                    <option value="task">업무</option>
-                    <option value="break">휴식</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="date">날짜</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '1rem'
-              }}>
-                <div>
-                  <Label htmlFor="start_time">시작 시간</Label>
-                  <Input
-                    id="start_time"
-                    type="time"
-                    value={formData.start_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="end_time">종료 시간</Label>
-                  <Input
-                    id="end_time"
-                    type="time"
-                    value={formData.end_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="role">직책</Label>
-                <Input
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                  placeholder="직책 입력"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="notes">메모</Label>
-                <textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="스케줄 메모"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem',
-                    minHeight: '80px',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-              
-              <div style={{
-                display: 'flex',
-                gap: '1rem',
-                justifyContent: 'flex-end'
-              }}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreateDialogOpen(false);
-                    resetForm();
-                  }}
-                >
-                  취소
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? '처리중...' : (editingSchedule ? '수정' : '생성')}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">총 직원</CardTitle>
+            <User className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{employees.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">총 스케줄</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{schedules.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">청소/업무</CardTitle>
+            <Building className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {schedules.filter(s => s.type === 'cleaning' || s.type === 'task').length}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">총 근무시간</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {Math.round(schedules.reduce((total, s) => total + calculateWorkHours(s.start_time, s.end_time), 0))}h
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 필터 섹션 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            필터
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label>직원</Label>
+              <Select value={selectedEmployee.toString()} onValueChange={(value) => setSelectedEmployee(value === 'all' ? 'all' : parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 직원</SelectItem>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id.toString()}>{emp.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>매장</Label>
+              <Select value={selectedStore.toString()} onValueChange={(value) => setSelectedStore(value === 'all' ? 'all' : parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 매장</SelectItem>
+                  {stores.map((store) => (
+                    <SelectItem key={store.id} value={store.id.toString()}>{store.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>유형</Label>
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="work">근무</SelectItem>
+                  <SelectItem value="cleaning">청소</SelectItem>
+                  <SelectItem value="task">업무</SelectItem>
+                  <SelectItem value="break">휴식</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>뷰</Label>
+              <Select value={calendarView} onValueChange={setCalendarView}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dayGridMonth">월</SelectItem>
+                  <SelectItem value="timeGridWeek">주</SelectItem>
+                  <SelectItem value="timeGridDay">일</SelectItem>
+                  <SelectItem value="listWeek">목록</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 캘린더 */}
+      <Card>
+        <CardContent className="p-6">
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+            }}
+            initialView={calendarView}
+            editable={true}
+            selectable={true}
+            selectMirror={true}
+            dayMaxEvents={true}
+            weekends={true}
+            events={calendarEvents}
+            select={handleDateSelect}
+            eventClick={handleEventClick}
+            locale="ko"
+            height="100%"
+            eventDisplay="block"
+            eventTimeFormat={{
+              hour: '2-digit',
+              minute: '2-digit',
+              meridiem: false,
+              hour12: false
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* 스케줄 추가/수정 다이얼로그 */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSchedule ? '스케줄 수정' : '스케줄 추가'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label>직원</Label>
+              <Select value={formData.employee_id.toString()} onValueChange={(value) => setFormData({...formData, employee_id: parseInt(value)})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="직원 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id.toString()}>{emp.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>유형</Label>
+              <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value as any})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="work">근무</SelectItem>
+                  <SelectItem value="cleaning">청소</SelectItem>
+                  <SelectItem value="task">업무</SelectItem>
+                  <SelectItem value="break">휴식</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>날짜</Label>
+              <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>시작 시간</Label>
+                <Input type="time" value={formData.start_time} onChange={(e) => setFormData({...formData, start_time: e.target.value})} />
+              </div>
+              <div>
+                <Label>종료 시간</Label>
+                <Input type="time" value={formData.end_time} onChange={(e) => setFormData({...formData, end_time: e.target.value})} />
+              </div>
+            </div>
+            
+            <div>
+              <Label>역할</Label>
+              <Input value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} />
+            </div>
+            
+            <div>
+              <Label>메모</Label>
+              <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1">
+                {editingSchedule ? '수정' : '추가'}
+              </Button>
+              {editingSchedule && (
+                <Button type="button" variant="destructive" onClick={handleDelete}>
+                  삭제
+                </Button>
+              )}
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                취소
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

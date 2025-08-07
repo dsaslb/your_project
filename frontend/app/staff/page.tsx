@@ -106,80 +106,77 @@ export default function StaffManagement() {
     newThisMonth: 0
   });
 
-  const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
-  const [performance, setPerformance] = useState<PerformanceData[]>([]);
-  const [training, setTraining] = useState<TrainingData[]>([]);
-  const [payroll, setPayroll] = useState<PayrollData[]>([]);
-
-  const { isLoading, setLoading, withLoading } = useLoadingState();
+  const { isLoading, setLoading } = useLoadingState();
   const { handleError } = useErrorHandler();
 
-  // 직원 데이터 로드
   const fetchData = async () => {
     try {
       setLoading(true);
+      // 실제 API 호출 대신 시뮬레이션
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 실제 API 호출 대신 샘플 데이터 사용
+      // 샘플 데이터
       const sampleEmployees: EmployeeType[] = [
         {
           id: 1,
           name: '김철수',
           email: 'kim@example.com',
           phone: '010-1234-5678',
-          position: '매니저',
-          store_id: 1,
+          position: '바리스타',
+          department: '커피팀',
           status: 'active',
-          created_at: '2024-01-15T00:00:00Z',
-          updated_at: '2024-01-15T00:00:00Z'
+          hire_date: '2023-01-15',
+          salary: 2500000
         },
         {
           id: 2,
           name: '이영희',
           email: 'lee@example.com',
           phone: '010-2345-6789',
-          position: '바리스타',
-          store_id: 1,
+          position: '매니저',
+          department: '관리팀',
           status: 'active',
-          created_at: '2024-01-20T00:00:00Z',
-          updated_at: '2024-01-20T00:00:00Z'
+          hire_date: '2022-06-20',
+          salary: 3500000
         },
         {
           id: 3,
           name: '박민수',
           email: 'park@example.com',
           phone: '010-3456-7890',
-          position: '캐셔',
-          store_id: 2,
-          status: 'active',
-          created_at: '2024-02-01T00:00:00Z',
-          updated_at: '2024-02-01T00:00:00Z'
+          position: '바리스타',
+          department: '커피팀',
+          status: 'inactive',
+          hire_date: '2023-03-10',
+          salary: 2400000
         }
       ];
       
       setEmployees(sampleEmployees);
       
       // 통계 계산
-      const employeeStats: EmployeeStats = {
-        total: sampleEmployees.length,
-        active: sampleEmployees.filter(emp => emp.status === 'active').length,
-        onDuty: Math.floor(sampleEmployees.length * 0.7),
-        offDuty: Math.floor(sampleEmployees.length * 0.3),
-        newThisMonth: 1
-      };
+      const total = sampleEmployees.length;
+      const active = sampleEmployees.filter(emp => emp.status === 'active').length;
+      const onDuty = Math.floor(active * 0.7); // 70% 근무중으로 가정
+      const offDuty = active - onDuty;
+      const newThisMonth = Math.floor(total * 0.2); // 20% 신규로 가정
       
-      setStats(employeeStats);
+      setStats({
+        total,
+        active,
+        onDuty,
+        offDuty,
+        newThisMonth
+      });
       
     } catch (error) {
       handleError(error as Error);
-      setIsOffline(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (employee: EmployeeType) => {
-    if (!confirm(`${employee.name} 직원을 삭제하시겠습니까?`)) return;
-    
     try {
       setLoading(true);
       // 실제 API 호출 대신 시뮬레이션
@@ -235,474 +232,200 @@ export default function StaffManagement() {
   });
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999,
-      backgroundColor: '#f3f4f6',
-      fontFamily: 'Arial, sans-serif',
-      overflow: 'auto'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '2rem auto',
-        padding: '0 2rem'
-      }}>
-        {/* 헤더 */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem'
-        }}>
-          <div>
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '0.5rem'
-            }}>
-              직원 대시보드
-            </h1>
-            <p style={{
-              fontSize: '1.125rem',
-              color: '#6b7280'
-            }}>
-              직원 관리 및 모니터링
-            </p>
+    <div className="min-h-screen p-6">
+      {/* 헤더 */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <Users className="w-6 h-6" />
+          직원 대시보드
+        </h1>
+        <p className="text-gray-300 mt-2">직원 관리 및 모니터링</p>
+      </div>
+
+      {/* 액션 버튼 */}
+      <div className="flex gap-4 mb-8 items-center">
+        {isOffline && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm">
+            <Wifi className="w-4 h-4" />
+            오프라인 모드
           </div>
-          
-          <div style={{
-            display: 'flex',
-            gap: '1rem',
-            alignItems: 'center'
-          }}>
-            {isOffline && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#fef3c7',
-                color: '#92400e',
-                borderRadius: '6px',
-                fontSize: '0.875rem'
-              }}>
-                <Wifi style={{ width: '16px', height: '16px' }} />
-                오프라인 모드
+        )}
+        
+        <Button
+          onClick={fetchData}
+          disabled={isLoading}
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          새로고침
+        </Button>
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">총 직원</p>
+                <p className="text-2xl font-bold text-white">{stats.total}</p>
+                <p className="text-gray-400 text-sm">{stats.active}명 활성</p>
               </div>
-            )}
-            
-            <button
-              onClick={fetchData}
-              disabled={isLoading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1rem',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                opacity: isLoading ? 0.6 : 1
-              }}
-            >
-              <RefreshCw style={{ width: '16px', height: '16px' }} />
-              새로고침
-            </button>
-          </div>
-        </div>
-
-        {/* 통계 카드 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>총 직원</h3>
-              <Users style={{ width: '20px', height: '20px' }} />
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {stats.total}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              {stats.active}명 활성
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>근무중</h3>
-              <Clock style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">근무중</p>
+                <p className="text-2xl font-bold text-white">{stats.onDuty}</p>
+                <p className="text-gray-400 text-sm">{stats.offDuty}명 휴무</p>
+              </div>
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <Clock className="w-6 h-6 text-green-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {stats.onDuty}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              {stats.offDuty}명 휴무
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#8b5cf6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>신규</h3>
-              <User style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">신규</p>
+                <p className="text-2xl font-bold text-white">{stats.newThisMonth}</p>
+                <p className="text-gray-400 text-sm">이번 달 신규</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <User className="w-6 h-6 text-purple-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {stats.newThisMonth}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              이번 달 신규
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#f59e0b',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>평균 성과</h3>
-              <BarChart3 style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">평균 성과</p>
+                <p className="text-2xl font-bold text-white">87%</p>
+                <p className="text-gray-400 text-sm">이번 달 기준</p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-yellow-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              85%
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              목표 대비 달성률
-            </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* 검색 및 필터 */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            alignItems: 'end'
-          }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                검색
-              </label>
-              <input
-                type="text"
+      {/* 직원 목록 */}
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-white">직원 목록</CardTitle>
+            <div className="flex gap-4">
+              <Input
+                placeholder="직원 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="이름 또는 이메일로 검색"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem'
-                }}
+                className="w-64 bg-white/10 border-white/20 text-white placeholder-gray-400"
               />
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                직책
-              </label>
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
+                className="px-3 py-2 bg-white/10 border border-white/20 text-white rounded-md"
               >
-                <option value="all">전체</option>
-                <option value="매니저">매니저</option>
+                <option value="all">모든 직책</option>
                 <option value="바리스타">바리스타</option>
+                <option value="매니저">매니저</option>
                 <option value="캐셔">캐셔</option>
               </select>
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                상태
-              </label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
+                className="px-3 py-2 bg-white/10 border border-white/20 text-white rounded-md"
               >
-                <option value="all">전체</option>
+                <option value="all">모든 상태</option>
                 <option value="active">활성</option>
                 <option value="inactive">비활성</option>
               </select>
             </div>
           </div>
-        </div>
-
-        {/* 직원 목록 */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            padding: '1.5rem',
-            borderBottom: '1px solid #e5e7eb'
-          }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              margin: '0'
-            }}>
-              직원 목록 ({filteredEmployees.length}명)
-            </h2>
-          </div>
-          
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
-              <thead style={{
-                backgroundColor: '#f9fafb',
-                borderBottom: '1px solid #e5e7eb'
-              }}>
-                <tr>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    직원명
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    이메일
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    전화번호
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    직책
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    상태
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    작업
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEmployees.map((employee) => (
-                  <tr key={employee.id} style={{
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {employee.name}
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {employee.email}
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {employee.phone}
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {employee.position}
-                    </td>
-                    <td style={{
-                      padding: '1rem'
-                    }}>
-                      <span style={{
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        backgroundColor: employee.status === 'active' ? '#dcfce7' : '#fee2e2',
-                        color: employee.status === 'active' ? '#166534' : '#991b1b'
-                      }}>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {filteredEmployees.map((employee) => (
+              <div
+                key={employee.id}
+                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 hover:bg-white/10 transition-all duration-300"
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <User className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{employee.name}</h3>
+                      <p className="text-gray-400">{employee.email}</p>
+                      <p className="text-gray-400">{employee.phone}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-white font-medium">{employee.position}</p>
+                      <p className="text-gray-400 text-sm">{employee.department}</p>
+                      <Badge 
+                        className={
+                          employee.status === 'active' 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-red-500/20 text-red-400'
+                        }
+                      >
                         {employee.status === 'active' ? '활성' : '비활성'}
-                      </span>
-                    </td>
-                    <td style={{
-                      padding: '1rem'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        gap: '0.5rem'
-                      }}>
-                        <button
-                          onClick={() => handleEdit(employee)}
-                          style={{
-                            padding: '0.5rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '4px',
-                            backgroundColor: 'white',
-                            color: '#374151',
-                            cursor: 'pointer'
-                          }}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(employee)}
+                        className="border-white/20 text-white hover:bg-white/10"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      {employee.status === 'inactive' ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleActivate(employee)}
+                          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
                         >
-                          <Edit style={{ width: '16px', height: '16px' }} />
-                        </button>
-                        {employee.status === 'inactive' ? (
-                          <button
-                            onClick={() => handleActivate(employee)}
-                            style={{
-                              padding: '0.5rem',
-                              border: '1px solid #10b981',
-                              borderRadius: '4px',
-                              backgroundColor: '#10b981',
-                              color: 'white',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <CheckCircle style={{ width: '16px', height: '16px' }} />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleDelete(employee)}
-                            style={{
-                              padding: '0.5rem',
-                              border: '1px solid #ef4444',
-                              borderRadius: '4px',
-                              backgroundColor: '#ef4444',
-                              color: 'white',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <Trash2 style={{ width: '16px', height: '16px' }} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          <CheckCircle className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => handleDelete(employee)}
+                          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          
-          {filteredEmployees.length === 0 && (
-            <div style={{
-              padding: '3rem',
-              textAlign: 'center',
-              color: '#6b7280'
-            }}>
-              <Users style={{ width: '48px', height: '48px', margin: '0 auto 1rem', opacity: '0.5' }} />
-              <p>검색 결과가 없습니다.</p>
-            </div>
-          )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

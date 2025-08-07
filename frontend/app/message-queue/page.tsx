@@ -15,6 +15,8 @@ import { ApiClient } from '@/lib/api-client';
 import { useLoadingState } from '@/hooks/useLoadingState';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
+const apiClient = new ApiClient();
+
 interface Queue {
   queue_id: string;
   name: string;

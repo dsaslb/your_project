@@ -350,7 +350,7 @@ const EnhancedMarketplace: React.FC = () => {
                 <SelectValue placeholder="카테고리 선택" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">전체 카테고리</SelectItem>
+                <SelectItem value="all">전체 카테고리</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}

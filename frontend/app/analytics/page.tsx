@@ -16,9 +16,7 @@ import {
   Users,
   AlertTriangle,
 } from 'lucide-react';
-import { useLoadingState } from '@/hooks/useLoadingState';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { apiClient } from '@/lib/api-client';
+import { toast } from 'sonner';
 
 interface AnalyticsSummary {
   total_analyses: number;
@@ -48,371 +46,379 @@ interface SalesPrediction {
   avg_daily_sales: number;
 }
 
-const AnalyticsPage: React.FC = () => {
-  const { isLoading, startLoading, stopLoading } = useLoadingState();
-  const { handleError } = useErrorHandler();
+// 샘플 데이터
+const sampleAnalyticsSummary: AnalyticsSummary = {
+  total_analyses: 156,
+  total_models: 12,
+  total_insights: 89,
+  realtime_metrics: 45,
+  analysis_types: {
+    trend: 45,
+    prediction: 32,
+    correlation: 28,
+    clustering: 23,
+    anomaly: 18
+  },
+  insight_categories: {
+    sales: 52,
+    customer: 31,
+    anomaly: 6
+  },
+  model_accuracy: {
+    'sales_prediction': 87.5,
+    'customer_segmentation': 92.3,
+    'anomaly_detection': 94.1,
+    'trend_analysis': 89.7
+  }
+};
 
-  // 상태 관리
+const sampleSalesPrediction: SalesPrediction = {
+  predictions: [1250000, 1320000, 1280000, 1350000, 1400000, 1380000, 1450000, 1420000, 1480000, 1500000],
+  dates: ['2024-01-16', '2024-01-17', '2024-01-18', '2024-01-19', '2024-01-20', '2024-01-21', '2024-01-22', '2024-01-23', '2024-01-24', '2024-01-25'],
+  model_accuracy: 87.5,
+  total_predicted_sales: 13850000,
+  avg_daily_sales: 1385000
+};
+
+const AnalyticsPage: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(false);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [salesPrediction, setSalesPrediction] = useState<SalesPrediction | null>(null);
 
   // 데이터 로드 함수들
   const loadSummary = useCallback(async () => {
     try {
-      // 임시로 샘플 데이터 사용
-      const sampleSummary = {
-        totalRevenue: 15000000,
-        totalOrders: 1250,
-        totalCustomers: 850,
-        growthRate: 12.5,
-        topProducts: [
-          { name: '아메리카노', sales: 450, revenue: 2250000 },
-          { name: '카페라떼', sales: 380, revenue: 1900000 },
-          { name: '카푸치노', sales: 320, revenue: 1600000 }
-        ],
-        recentTrends: [
-          { date: '2024-01-10', revenue: 1200000, orders: 95 },
-          { date: '2024-01-11', revenue: 1350000, orders: 108 },
-          { date: '2024-01-12', revenue: 1420000, orders: 115 }
-        ]
-      };
-      setSummary(sampleSummary);
+      setSummary(sampleAnalyticsSummary);
     } catch (error) {
-      handleError(error as Error);
+      toast.error('분석 요약을 불러오는데 실패했습니다');
     }
-  }, [handleError]);
+  }, []);
 
   const loadSalesPrediction = useCallback(async () => {
     try {
-      const response = await apiClient.post('/api/analytics/predictions/sales', { days_ahead: 30 });
-      setSalesPrediction(response.data);
+      setSalesPrediction(sampleSalesPrediction);
     } catch (error) {
-      handleError(error as Error);
+      toast.error('매출 예측을 불러오는데 실패했습니다');
     }
-  }, [handleError]);
+  }, []);
 
   // 초기 데이터 로드
   useEffect(() => {
     const loadAllData = async () => {
-      startLoading();
+      setIsLoading(true);
       try {
         await Promise.all([
           loadSummary(),
           loadSalesPrediction()
         ]);
       } catch (error) {
-        handleError(error as Error);
+        toast.error('데이터 로드에 실패했습니다');
       } finally {
-        stopLoading();
+        setIsLoading(false);
       }
     };
-    
     loadAllData();
-  }, [loadSummary, loadSalesPrediction, startLoading, stopLoading, handleError]);
+  }, [loadSummary, loadSalesPrediction]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p>로딩 중...</p>
-      </div>
-    );
-  }
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    try {
+      await Promise.all([
+        loadSummary(),
+        loadSalesPrediction()
+      ]);
+      toast.success('데이터가 새로고침되었습니다');
+    } catch (error) {
+      toast.error('새로고침에 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ko-KR', {
+      style: 'currency',
+      currency: 'KRW'
+    }).format(amount);
+  };
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('ko-KR').format(num);
+  };
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 flex items-center">
-        <BarChart3 className="w-8 h-8 mr-3" />
-        데이터 분석 시스템
-      </h1>
+    <div className="min-h-screen p-6">
+      {/* 헤더 */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <Brain className="w-8 h-8 text-purple-400" />
+          데이터 분석
+        </h1>
+        <p className="text-gray-300 mt-2">AI 기반 데이터 분석 및 인사이트를 제공합니다</p>
+      </div>
 
-      <div className="flex justify-between items-center mb-6">
-        <p className="text-gray-600">고급 데이터 분석 및 비즈니스 인텔리전스를 제공합니다.</p>
-        <Button>
-          <RefreshCw className="w-4 h-4 mr-2" />
+      {/* 액션 버튼 */}
+      <div className="flex gap-3 mb-6">
+        <Button 
+          onClick={handleRefresh}
+          disabled={isLoading}
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           새로고침
         </Button>
       </div>
 
       {/* 분석 요약 */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">총 분석</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">총 분석</CardTitle>
+              <BarChart3 className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.total_analyses}</div>
-              <p className="text-xs text-muted-foreground">
-                {summary.analysis_types.trend + summary.analysis_types.prediction + summary.analysis_types.correlation + summary.analysis_types.clustering + summary.analysis_types.anomaly}개 유형
-              </p>
+              <div className="text-2xl font-bold text-white">{formatNumber(summary.total_analyses)}</div>
+              <p className="text-xs text-gray-300">완료된 분석 수</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">예측 모델</CardTitle>
-              <Brain className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">AI 모델</CardTitle>
+              <Brain className="h-4 w-4 text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.total_models}</div>
-              <p className="text-xs text-muted-foreground">
-                평균 정확도 {Object.values(summary.model_accuracy).length > 0 ? 
-                  (Object.values(summary.model_accuracy).reduce((a, b) => a + b, 0) / Object.values(summary.model_accuracy).length * 100).toFixed(1) : 0}%
-              </p>
+              <div className="text-2xl font-bold text-white">{formatNumber(summary.total_models)}</div>
+              <p className="text-xs text-gray-300">활성 AI 모델</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">인사이트</CardTitle>
-              <Lightbulb className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">인사이트</CardTitle>
+              <Lightbulb className="h-4 w-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.total_insights}</div>
-              <p className="text-xs text-muted-foreground">
-                {summary.insight_categories.sales + summary.insight_categories.customer + summary.insight_categories.anomaly}개 카테고리
-              </p>
+              <div className="text-2xl font-bold text-white">{formatNumber(summary.total_insights)}</div>
+              <p className="text-xs text-gray-300">발견된 인사이트</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">실시간 메트릭</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">실시간 메트릭</CardTitle>
+              <Activity className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.realtime_metrics}</div>
-              <p className="text-xs text-muted-foreground">
-                실시간 모니터링 중
-              </p>
+              <div className="text-2xl font-bold text-white">{formatNumber(summary.realtime_metrics)}</div>
+              <p className="text-xs text-gray-300">모니터링 중</p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* 매출 예측 카드 */}
-      {salesPrediction && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <DollarSign className="w-5 h-5 mr-2" />
-              매출 예측 (30일)
-            </CardTitle>
-            <CardDescription>
-              향후 30일간의 매출 예측 및 분석
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {salesPrediction.total_predicted_sales.toLocaleString()}원
-                </div>
-                <p className="text-sm text-gray-600">총 예측 매출</p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {salesPrediction.avg_daily_sales.toLocaleString()}원
-                </div>
-                <p className="text-sm text-gray-600">일평균 매출</p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {(salesPrediction.model_accuracy * 100).toFixed(1)}%
-                </div>
-                <p className="text-sm text-gray-600">모델 정확도</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* 메인 탭 */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview">개요</TabsTrigger>
-          <TabsTrigger value="trends">트렌드</TabsTrigger>
-          <TabsTrigger value="predictions">예측</TabsTrigger>
-          <TabsTrigger value="insights">인사이트</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="bg-white/10 border border-white/20">
+          <TabsTrigger value="overview" className="text-white data-[state=active]:bg-white/20">개요</TabsTrigger>
+          <TabsTrigger value="predictions" className="text-white data-[state=active]:bg-white/20">예측</TabsTrigger>
+          <TabsTrigger value="insights" className="text-white data-[state=active]:bg-white/20">인사이트</TabsTrigger>
         </TabsList>
 
         {/* 개요 탭 */}
-        <TabsContent value="overview" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>분석 시스템 개요</CardTitle>
-              <CardDescription>
-                데이터 분석 시스템의 주요 기능과 성능 지표
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-semibold mb-3">분석 유형별 통계</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>트렌드 분석</span>
-                      <Badge variant="outline">{summary?.analysis_types.trend || 0}</Badge>
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 분석 유형 */}
+            <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+              <CardHeader>
+                <CardTitle className="text-white">분석 유형별 통계</CardTitle>
+                <CardDescription className="text-gray-300">다양한 분석 유형의 사용 현황</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-blue-400" />
+                      <span className="text-white">트렌드 분석</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>예측 분석</span>
-                      <Badge variant="outline">{summary?.analysis_types.prediction || 0}</Badge>
+                    <Badge className="bg-blue-500/20 text-blue-400">
+                      {summary?.analysis_types.trend}회
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="w-4 h-4 text-purple-400" />
+                      <span className="text-white">예측 분석</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>상관관계 분석</span>
-                      <Badge variant="outline">{summary?.analysis_types.correlation || 0}</Badge>
+                    <Badge className="bg-purple-500/20 text-purple-400">
+                      {summary?.analysis_types.prediction}회
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-green-400" />
+                      <span className="text-white">상관관계 분석</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>클러스터링</span>
-                      <Badge variant="outline">{summary?.analysis_types.clustering || 0}</Badge>
+                    <Badge className="bg-green-500/20 text-green-400">
+                      {summary?.analysis_types.correlation}회
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-orange-400" />
+                      <span className="text-white">클러스터링</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>이상 탐지</span>
-                      <Badge variant="outline">{summary?.analysis_types.anomaly || 0}</Badge>
+                    <Badge className="bg-orange-500/20 text-orange-400">
+                      {summary?.analysis_types.clustering}회
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-400" />
+                      <span className="text-white">이상 탐지</span>
                     </div>
+                    <Badge className="bg-red-500/20 text-red-400">
+                      {summary?.analysis_types.anomaly}회
+                    </Badge>
                   </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold mb-3">인사이트 카테고리</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>매출 관련</span>
-                      <Badge variant="outline">{summary?.insight_categories.sales || 0}</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>고객 관련</span>
-                      <Badge variant="outline">{summary?.insight_categories.customer || 0}</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>이상 탐지</span>
-                      <Badge variant="outline">{summary?.insight_categories.anomaly || 0}</Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
 
-        {/* 트렌드 탭 */}
-        <TabsContent value="trends" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <TrendingUp className="w-5 h-5 mr-2" />
-                트렌드 분석
-              </CardTitle>
-              <CardDescription>
-                시계열 데이터의 트렌드와 패턴 분석
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                트렌드 분석 기능을 통해 매출, 고객 행동, 시스템 성능 등의 시계열 데이터에서 
-                패턴과 트렌드를 발견할 수 있습니다.
-              </p>
-              <div className="mt-4">
-                <Button>
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  트렌드 분석 시작
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            {/* 모델 정확도 */}
+            <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+              <CardHeader>
+                <CardTitle className="text-white">AI 모델 정확도</CardTitle>
+                <CardDescription className="text-gray-300">각 AI 모델의 성능 지표</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {summary && Object.entries(summary.model_accuracy).map(([model, accuracy]) => (
+                    <div key={model} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Brain className="w-4 h-4 text-purple-400" />
+                        <span className="text-white capitalize">
+                          {model.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <Badge className="bg-purple-500/20 text-purple-400">
+                        {accuracy.toFixed(1)}%
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* 예측 탭 */}
-        <TabsContent value="predictions" className="space-y-6">
-          <Card>
+        <TabsContent value="predictions" className="space-y-4">
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Brain className="w-5 h-5 mr-2" />
-                예측 모델
-              </CardTitle>
-              <CardDescription>
-                머신러닝을 활용한 비즈니스 예측
-              </CardDescription>
+              <CardTitle className="text-white">매출 예측</CardTitle>
+              <CardDescription className="text-gray-300">AI 기반 매출 예측 결과</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-semibold mb-3">매출 예측</h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    과거 매출 데이터를 기반으로 향후 매출을 예측합니다.
-                  </p>
-                  <Button variant="outline" size="sm">
-                    매출 예측 실행
-                  </Button>
+              {salesPrediction ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-4 h-4 text-green-400" />
+                        <span className="text-white font-medium">예측 정확도</span>
+                      </div>
+                      <div className="text-2xl font-bold text-white">{salesPrediction.model_accuracy.toFixed(1)}%</div>
+                    </div>
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="w-4 h-4 text-blue-400" />
+                        <span className="text-white font-medium">총 예측 매출</span>
+                      </div>
+                      <div className="text-2xl font-bold text-white">{formatCurrency(salesPrediction.total_predicted_sales)}</div>
+                    </div>
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Activity className="w-4 h-4 text-purple-400" />
+                        <span className="text-white font-medium">일평균 매출</span>
+                      </div>
+                      <div className="text-2xl font-bold text-white">{formatCurrency(salesPrediction.avg_daily_sales)}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-4">10일간 매출 예측</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      {salesPrediction.predictions.slice(0, 10).map((prediction, index) => (
+                        <div key={index} className="text-center">
+                          <div className="text-sm text-gray-300 mb-1">
+                            {new Date(salesPrediction.dates[index]).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                          </div>
+                          <div className="text-lg font-bold text-white">
+                            {formatCurrency(prediction)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold mb-3">고객 행동 예측</h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    고객의 구매 패턴과 행동을 분석하여 예측합니다.
-                  </p>
-                  <Button variant="outline" size="sm">
-                    고객 분석 실행
-                  </Button>
+              ) : (
+                <div className="text-center py-8 text-gray-300">
+                  예측 데이터를 불러오는 중...
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* 인사이트 탭 */}
-        <TabsContent value="insights" className="space-y-6">
-          <Card>
+        <TabsContent value="insights" className="space-y-4">
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Lightbulb className="w-5 h-5 mr-2" />
-                비즈니스 인사이트
-              </CardTitle>
-              <CardDescription>
-                데이터에서 발견된 중요한 인사이트와 권장사항
-              </CardDescription>
+              <CardTitle className="text-white">주요 인사이트</CardTitle>
+              <CardDescription className="text-gray-300">AI가 발견한 중요한 인사이트</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="p-4 border rounded-lg">
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-4 h-4 text-green-600" />
-                    <h4 className="font-semibold">매출 상승 트렌드</h4>
-                    <Badge className="bg-green-100 text-green-800">높음</Badge>
+                    <TrendingUp className="w-4 h-4 text-green-400" />
+                    <span className="text-white font-medium">매출 트렌드</span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    최근 30일간 매출이 지속적으로 상승하고 있습니다.
+                  <p className="text-gray-300">
+                    주말 매출이 평일 대비 평균 25% 높게 나타나며, 특히 오후 2-4시 시간대에 매출이 집중됩니다.
                   </p>
-                  <div className="text-xs text-gray-500">
-                    신뢰도: 85% • 생성일: 2024-01-15
-                  </div>
                 </div>
-
-                <div className="p-4 border rounded-lg">
+                
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Users className="w-4 h-4 text-blue-600" />
-                    <h4 className="font-semibold">고가치 고객 세그먼트</h4>
-                    <Badge className="bg-blue-100 text-blue-800">중간</Badge>
+                    <Users className="w-4 h-4 text-blue-400" />
+                    <span className="text-white font-medium">고객 행동</span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    평균 주문 금액이 높은 고객 세그먼트가 확인되었습니다.
+                  <p className="text-gray-300">
+                    신규 고객의 60%가 첫 구매 후 30일 내에 재방문하며, 이는 고객 유지 전략의 효과를 보여줍니다.
                   </p>
-                  <div className="text-xs text-gray-500">
-                    신뢰도: 78% • 생성일: 2024-01-14
-                  </div>
                 </div>
-
-                <div className="p-4 border rounded-lg">
+                
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-red-600" />
-                    <h4 className="font-semibold">이상 패턴 감지</h4>
-                    <Badge className="bg-red-100 text-red-800">높음</Badge>
+                    <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                    <span className="text-white font-medium">이상 패턴</span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    정상 범위를 벗어나는 매출 패턴이 감지되었습니다.
+                  <p className="text-gray-300">
+                    지난 주 화요일 오전 매출이 평소 대비 40% 감소한 이상 패턴이 감지되었습니다.
                   </p>
-                  <div className="text-xs text-gray-500">
-                    신뢰도: 92% • 생성일: 2024-01-13
+                </div>
+                
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Brain className="w-4 h-4 text-purple-400" />
+                    <span className="text-white font-medium">예측 인사이트</span>
                   </div>
+                  <p className="text-gray-300">
+                    다음 달 매출은 현재 트렌드를 기반으로 8-12% 증가할 것으로 예측되며, 특히 온라인 주문이 증가할 것으로 보입니다.
+                  </p>
                 </div>
               </div>
             </CardContent>

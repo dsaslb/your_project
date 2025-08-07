@@ -331,7 +331,7 @@ export default function ScheduleManagementPage() {
               <SelectContent>
                 <SelectItem value="all">전체 직원</SelectItem>
                 {employees.length === 0 ? (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="loading" disabled>
                     직원 데이터를 불러오는 중...
                   </SelectItem>
                 ) : (
@@ -419,7 +419,7 @@ export default function ScheduleManagementPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {employees.length === 0 ? (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="loading" disabled>
                             직원 데이터를 불러오는 중...
                           </SelectItem>
                         ) : (

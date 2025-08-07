@@ -117,9 +117,9 @@ const PluginManagement: React.FC = () => {
   const [pluginMetrics, setPluginMetrics] = useState<PluginMetrics | null>(null);
   const [installationHistory, setInstallationHistory] = useState<InstallationHistory[]>([]);
   const [filters, setFilters] = useState({
-    category: '',
-    enabled: '',
-    status: '',
+    category: 'all',
+    enabled: 'all',
+    status: 'all',
     search: ''
   });
   const [pagination, setPagination] = useState({
@@ -136,7 +136,11 @@ const PluginManagement: React.FC = () => {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         per_page: pagination.per_page.toString(),
-        ...filters
+        ...Object.fromEntries(
+          Object.entries(filters).filter(([key, value]) => 
+            value && value !== 'all' && value !== ''
+          )
+        )
       });
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -338,7 +342,7 @@ const PluginManagement: React.FC = () => {
                 <SelectValue placeholder="카테고리" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">전체</SelectItem>
+                <SelectItem value="all">전체</SelectItem>
                 <SelectItem value="management">관리</SelectItem>
                 <SelectItem value="analytics">분석</SelectItem>
                 <SelectItem value="integration">통합</SelectItem>
@@ -350,7 +354,7 @@ const PluginManagement: React.FC = () => {
                 <SelectValue placeholder="상태" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">전체</SelectItem>
+                <SelectItem value="all">전체</SelectItem>
                 <SelectItem value="true">활성화</SelectItem>
                 <SelectItem value="false">비활성화</SelectItem>
               </SelectContent>

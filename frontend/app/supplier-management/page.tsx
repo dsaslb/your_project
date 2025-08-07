@@ -32,7 +32,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Star,
-  Building2
+  Building2,
+  RefreshCw
 } from 'lucide-react';
 
 interface Supplier {
@@ -110,11 +111,10 @@ export default function SupplierManagement() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedRating, setSelectedRating] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
-  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null);
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [viewingContracts, setViewingContracts] = useState<Supplier | null>(null);
+  const [viewingHistory, setViewingHistory] = useState<Supplier | null>(null);
   
   const [formData, setFormData] = useState<SupplierFormData>({
     name: '',
@@ -132,51 +132,188 @@ export default function SupplierManagement() {
     notes: '',
   });
 
-  const { isLoading, setLoading, withLoading } = useLoadingState();
+  const { isLoading, setLoading } = useLoadingState();
   const { handleError } = useErrorHandler();
 
   // 공급업체 목록 조회
   const fetchSuppliers = async () => {
     try {
-      const response = await apiClient.get('/api/suppliers');
-      if (response.success && response.data) {
-        setSuppliers(response.data);
-      }
+      setLoading(true);
+      // 임시로 샘플 데이터 사용
+      const sampleSuppliers: Supplier[] = [
+        {
+          id: 1,
+          name: '커피원두공급업체',
+          company_name: '커피원두주식회사',
+          contact_person: '김철수',
+          email: 'kim@coffee.com',
+          phone: '02-1234-5678',
+          address: '서울시 강남구',
+          business_number: '123-45-67890',
+          category: '음료',
+          rating: 4.8,
+          status: 'active',
+          contract_start_date: '2024-01-01',
+          contract_end_date: '2024-12-31',
+          payment_terms: '30일 후 지급',
+          delivery_terms: '주문 후 3일 이내',
+          notes: '고품질 아라비카 원두 전문',
+          total_orders: 45,
+          total_amount: 12500000,
+          average_delivery_time: 2.5,
+          quality_rating: 4.9,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z'
+        },
+        {
+          id: 2,
+          name: '우유공급업체',
+          company_name: '신선우유유한회사',
+          contact_person: '이영희',
+          email: 'lee@milk.com',
+          phone: '02-2345-6789',
+          address: '서울시 마포구',
+          business_number: '234-56-78901',
+          category: '음료',
+          rating: 4.5,
+          status: 'active',
+          contract_start_date: '2024-01-01',
+          contract_end_date: '2024-12-31',
+          payment_terms: '15일 후 지급',
+          delivery_terms: '매일 아침 배송',
+          notes: '유기농 우유 전문',
+          total_orders: 120,
+          total_amount: 8500000,
+          average_delivery_time: 1.0,
+          quality_rating: 4.7,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z'
+        },
+        {
+          id: 3,
+          name: '시럽공급업체',
+          company_name: '시럽스페셜리스트',
+          contact_person: '박민수',
+          email: 'park@syrup.com',
+          phone: '02-3456-7890',
+          address: '서울시 서초구',
+          business_number: '345-67-89012',
+          category: '음료',
+          rating: 4.2,
+          status: 'active',
+          contract_start_date: '2024-01-01',
+          contract_end_date: '2024-12-31',
+          payment_terms: '30일 후 지급',
+          delivery_terms: '주문 후 5일 이내',
+          notes: '다양한 시럽 제품',
+          total_orders: 28,
+          total_amount: 3200000,
+          average_delivery_time: 4.0,
+          quality_rating: 4.3,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z'
+        },
+        {
+          id: 4,
+          name: '포장재공급업체',
+          company_name: '에코패키징',
+          contact_person: '최지영',
+          email: 'choi@packaging.com',
+          phone: '02-4567-8901',
+          address: '서울시 송파구',
+          business_number: '456-78-90123',
+          category: '포장재',
+          rating: 4.0,
+          status: 'inactive',
+          contract_start_date: '2023-01-01',
+          contract_end_date: '2023-12-31',
+          payment_terms: '45일 후 지급',
+          delivery_terms: '주문 후 7일 이내',
+          notes: '친환경 포장재',
+          total_orders: 15,
+          total_amount: 1800000,
+          average_delivery_time: 6.0,
+          quality_rating: 4.1,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-12-31T00:00:00Z'
+        }
+      ];
+      
+      setSuppliers(sampleSuppliers);
     } catch (error) {
       handleError(error as Error);
+    } finally {
+      setLoading(false);
     }
   };
 
   // 계약 목록 조회
   const fetchContracts = async () => {
     try {
-      const response = await apiClient.get('/api/contracts');
-      if (response.success && response.data) {
-        setContracts(response.data);
-      }
+      const sampleContracts: Contract[] = [
+        {
+          id: 1,
+          supplier_id: 1,
+          supplier_name: '커피원두공급업체',
+          contract_number: 'CON-2024-001',
+          start_date: '2024-01-01',
+          end_date: '2024-12-31',
+          total_value: 12500000,
+          status: 'active',
+          terms: '월 100kg 원두 공급',
+          created_at: '2024-01-01T00:00:00Z'
+        },
+        {
+          id: 2,
+          supplier_id: 2,
+          supplier_name: '우유공급업체',
+          contract_number: 'CON-2024-002',
+          start_date: '2024-01-01',
+          end_date: '2024-12-31',
+          total_value: 8500000,
+          status: 'active',
+          terms: '일일 우유 공급',
+          created_at: '2024-01-01T00:00:00Z'
+        }
+      ];
+      setContracts(sampleContracts);
     } catch (error) {
       handleError(error as Error);
     }
   };
 
-  // 발주 이력 조회
+  // 주문 이력 조회
   const fetchOrderHistory = async () => {
     try {
-      const response = await apiClient.get('/api/order-history');
-      if (response.success && response.data) {
-        setOrderHistory(response.data);
-      }
+      const sampleOrderHistory: OrderHistory[] = [
+        {
+          id: 1,
+          order_number: 'ORD-2024-001',
+          supplier_id: 1,
+          supplier_name: '커피원두공급업체',
+          order_date: '2024-01-15',
+          delivery_date: '2024-01-17',
+          total_amount: 500000,
+          status: 'delivered',
+          items_count: 2
+        },
+        {
+          id: 2,
+          order_number: 'ORD-2024-002',
+          supplier_id: 2,
+          supplier_name: '우유공급업체',
+          order_date: '2024-01-14',
+          delivery_date: '2024-01-15',
+          total_amount: 200000,
+          status: 'delivered',
+          items_count: 1
+        }
+      ];
+      setOrderHistory(sampleOrderHistory);
     } catch (error) {
       handleError(error as Error);
     }
   };
-
-  // 초기 데이터 로드
-  useEffect(() => {
-    fetchSuppliers();
-    fetchContracts();
-    fetchOrderHistory();
-  }, []);
 
   // 폼 초기화
   const resetForm = () => {
@@ -195,14 +332,15 @@ export default function SupplierManagement() {
       delivery_terms: '',
       notes: '',
     });
+    setEditingSupplier(null);
   };
 
-  // 공급업체 생성/수정 제출
+  // 공급업체 추가/수정
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.company_name || !formData.email || !formData.phone) {
-      toast.error('필수 정보를 입력해주세요.');
+    if (!formData.name || !formData.company_name || !formData.contact_person) {
+      toast.error('필수 항목을 입력해주세요.');
       return;
     }
 
@@ -210,25 +348,39 @@ export default function SupplierManagement() {
       setLoading(true);
       
       if (editingSupplier) {
-        // 공급업체 정보 수정
-        const response = await apiClient.put(`/api/suppliers/${editingSupplier.id}`, formData);
-        if (response.success) {
-          toast.success('공급업체 정보가 성공적으로 수정되었습니다.');
-          setIsCreateDialogOpen(false);
-          setEditingSupplier(null);
-          resetForm();
-          fetchSuppliers();
-        }
+        // 수정
+        const updatedSupplier = {
+          ...editingSupplier,
+          ...formData,
+          updated_at: new Date().toISOString()
+        };
+        
+        setSuppliers(prev => prev.map(supplier => 
+          supplier.id === editingSupplier.id ? updatedSupplier : supplier
+        ));
+        
+        toast.success('공급업체 정보가 수정되었습니다.');
       } else {
-        // 새 공급업체 생성
-        const response = await apiClient.post('/api/suppliers', formData);
-        if (response.success) {
-          toast.success('공급업체가 성공적으로 등록되었습니다.');
-          setIsCreateDialogOpen(false);
-          resetForm();
-          fetchSuppliers();
-        }
+        // 추가
+        const newSupplier: Supplier = {
+          id: Date.now(),
+          ...formData,
+          rating: 4.0,
+          status: 'active',
+          total_orders: 0,
+          total_amount: 0,
+          average_delivery_time: 0,
+          quality_rating: 4.0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        setSuppliers(prev => [...prev, newSupplier]);
+        toast.success('공급업체가 추가되었습니다.');
       }
+      
+      setIsCreateDialogOpen(false);
+      resetForm();
     } catch (error) {
       handleError(error as Error);
     } finally {
@@ -238,17 +390,10 @@ export default function SupplierManagement() {
 
   // 공급업체 삭제
   const handleDelete = async (supplier: Supplier) => {
-    if (!confirm(`정말로 ${supplier.name} 공급업체를 삭제하시겠습니까?`)) {
-      return;
-    }
-
     try {
       setLoading(true);
-      const response = await apiClient.delete(`/api/suppliers/${supplier.id}`);
-      if (response.success) {
-        toast.success('공급업체가 성공적으로 삭제되었습니다.');
-        fetchSuppliers();
-      }
+      setSuppliers(prev => prev.filter(s => s.id !== supplier.id));
+      toast.success('공급업체가 삭제되었습니다.');
     } catch (error) {
       handleError(error as Error);
     } finally {
@@ -256,7 +401,7 @@ export default function SupplierManagement() {
     }
   };
 
-  // 공급업체 수정 모드 시작
+  // 편집 모드 시작
   const handleEdit = (supplier: Supplier) => {
     setEditingSupplier(supplier);
     setFormData({
@@ -277,21 +422,19 @@ export default function SupplierManagement() {
     setIsCreateDialogOpen(true);
   };
 
-  // 공급업체 상세 보기
+  // 상세 보기
   const handleView = (supplier: Supplier) => {
     setViewingSupplier(supplier);
   };
 
   // 계약 보기
   const handleViewContracts = (supplier: Supplier) => {
-    setSelectedSupplier(supplier);
-    setIsContractDialogOpen(true);
+    setViewingContracts(supplier);
   };
 
-  // 발주 이력 보기
+  // 이력 보기
   const handleViewHistory = (supplier: Supplier) => {
-    setSelectedSupplier(supplier);
-    setIsHistoryDialogOpen(true);
+    setViewingHistory(supplier);
   };
 
   // 새 공급업체 생성 모드 시작
@@ -304,10 +447,10 @@ export default function SupplierManagement() {
   // 상태별 색상
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-500/20 text-green-400 border border-green-500/30';
-      case 'inactive': return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
-      case 'suspended': return 'bg-red-500/20 text-red-400 border border-red-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+      case 'active': return 'bg-green-500/20 text-green-400';
+      case 'inactive': return 'bg-gray-500/20 text-gray-400';
+      case 'suspended': return 'bg-red-500/20 text-red-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
@@ -343,68 +486,99 @@ export default function SupplierManagement() {
   const highRatingSuppliers = suppliers.filter(s => s.rating >= 4.5).length;
   const totalContractValue = contracts.reduce((sum, c) => sum + c.total_value, 0);
 
+  useEffect(() => {
+    fetchSuppliers();
+    fetchContracts();
+    fetchOrderHistory();
+  }, []);
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen p-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Truck className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">공급업체 관리</h1>
-            <p className="text-gray-600">공급업체 정보를 관리하고 계약을 추적하세요</p>
-          </div>
-        </div>
-        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="h-4 w-4 mr-2" />
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <Truck className="w-6 h-6" />
+          공급업체 관리
+        </h1>
+        <p className="text-gray-300 mt-2">공급업체 정보를 관리하고 계약을 추적하세요</p>
+      </div>
+
+      {/* 액션 버튼 */}
+      <div className="flex gap-4 mb-8">
+        <Button
+          onClick={handleCreate}
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+        >
+          <Plus className="w-4 h-4 mr-2" />
           새 공급업체 등록
+        </Button>
+        <Button
+          onClick={fetchSuppliers}
+          disabled={isLoading}
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          새로고침
         </Button>
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <Truck className="h-8 w-8 text-blue-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">총 공급업체</p>
-                <p className="text-2xl font-bold text-gray-900">{totalSuppliers.toLocaleString()}</p>
+                <p className="text-gray-300 text-sm">총 공급업체</p>
+                <p className="text-2xl font-bold text-white">{totalSuppliers.toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">전체 등록 업체</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <Truck className="w-6 h-6 text-blue-400" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">활성 공급업체</p>
-                <p className="text-2xl font-bold text-gray-900">{activeSuppliers.toLocaleString()}</p>
+                <p className="text-gray-300 text-sm">활성 공급업체</p>
+                <p className="text-2xl font-bold text-white">{activeSuppliers.toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">정상 계약 업체</p>
+              </div>
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-400" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <Star className="h-8 w-8 text-yellow-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">고평가 공급업체</p>
-                <p className="text-2xl font-bold text-gray-900">{highRatingSuppliers.toLocaleString()}</p>
+                <p className="text-gray-300 text-sm">고평가 공급업체</p>
+                <p className="text-2xl font-bold text-white">{highRatingSuppliers.toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">4.5점 이상</p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                <Star className="w-6 h-6 text-yellow-400" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <DollarSign className="h-8 w-8 text-green-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">총 계약 금액</p>
-                <p className="text-2xl font-bold text-gray-900">₩{totalContractValue.toLocaleString()}</p>
+                <p className="text-gray-300 text-sm">총 계약 금액</p>
+                <p className="text-2xl font-bold text-white">₩{totalContractValue.toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">연간 계약 총액</p>
+              </div>
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-green-400" />
               </div>
             </div>
           </CardContent>
@@ -412,7 +586,7 @@ export default function SupplierManagement() {
       </div>
 
       {/* 필터 및 검색 */}
-      <Card>
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
@@ -421,15 +595,15 @@ export default function SupplierManagement() {
                 placeholder="공급업체명, 회사명, 담당자 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400"
               />
             </div>
             
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white/10 border-white/20 text-white">
                 <SelectValue placeholder="카테고리" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/10 border-white/20">
                 <SelectItem value="all">전체 카테고리</SelectItem>
                 <SelectItem value="식재료">식재료</SelectItem>
                 <SelectItem value="음료">음료</SelectItem>
@@ -440,10 +614,10 @@ export default function SupplierManagement() {
             </Select>
             
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white/10 border-white/20 text-white">
                 <SelectValue placeholder="상태" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/10 border-white/20">
                 <SelectItem value="all">전체 상태</SelectItem>
                 <SelectItem value="active">활성</SelectItem>
                 <SelectItem value="inactive">비활성</SelectItem>
@@ -452,10 +626,10 @@ export default function SupplierManagement() {
             </Select>
             
             <Select value={selectedRating} onValueChange={setSelectedRating}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white/10 border-white/20 text-white">
                 <SelectValue placeholder="평점" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/10 border-white/20">
                 <SelectItem value="all">전체 평점</SelectItem>
                 <SelectItem value="high">높음 (4.5+)</SelectItem>
                 <SelectItem value="medium">보통 (3.5-4.4)</SelectItem>
@@ -463,13 +637,17 @@ export default function SupplierManagement() {
               </SelectContent>
             </Select>
             
-            <Button variant="outline" onClick={() => {
-              setSearchTerm('');
-              setSelectedCategory('all');
-              setSelectedStatus('all');
-              setSelectedRating('all');
-            }}>
-              <Filter className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('all');
+                setSelectedStatus('all');
+                setSelectedRating('all');
+              }}
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <Filter className="w-4 h-4 mr-2" />
               필터 초기화
             </Button>
           </div>
@@ -477,191 +655,205 @@ export default function SupplierManagement() {
       </Card>
 
       {/* 공급업체 목록 */}
-      <Card>
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
         <CardHeader>
-          <CardTitle>공급업체 목록</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">공급업체 목록</CardTitle>
+          <CardDescription className="text-gray-300">
             총 {filteredSuppliers.length}개의 공급업체가 있습니다
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {filteredSuppliers.map((supplier) => (
-              <div key={supplier.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
+              <div
+                key={supplier.id}
+                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 hover:bg-white/10 transition-all duration-300"
+              >
+                <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{supplier.name}</h3>
-                      <Badge className={getStatusColor(supplier.status)}>
-                        {supplier.status === 'active' && '활성'}
-                        {supplier.status === 'inactive' && '비활성'}
-                        {supplier.status === 'suspended' && '정지'}
-                      </Badge>
-                      <div className={`flex items-center ${getRatingColor(supplier.rating)}`}>
-                        <Star className="h-4 w-4 fill-current" />
-                        <span className="ml-1 text-sm font-medium">{supplier.rating.toFixed(1)}</span>
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">{supplier.name}</h3>
+                        <p className="text-gray-400">{supplier.company_name}</p>
+                        <p className="text-gray-400 text-sm">{supplier.contact_person} • {supplier.category}</p>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                      <div className="flex items-center space-x-2">
-                        <Building2 className="h-4 w-4" />
-                        <span>{supplier.company_name}</span>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                      <div>
+                        <p className="text-gray-300 text-sm">총 주문</p>
+                        <p className="text-white font-medium">{supplier.total_orders}건</p>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Mail className="h-4 w-4" />
-                        <span>{supplier.email}</span>
+                      <div>
+                        <p className="text-gray-300 text-sm">총 매출</p>
+                        <p className="text-white font-medium">₩{supplier.total_amount.toLocaleString()}</p>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Phone className="h-4 w-4" />
-                        <span>{supplier.phone}</span>
+                      <div>
+                        <p className="text-gray-300 text-sm">평균 배송</p>
+                        <p className="text-white font-medium">{supplier.average_delivery_time}일</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-300 text-sm">계약 기간</p>
+                        <p className="text-white font-medium">
+                          {new Date(supplier.contract_start_date).toLocaleDateString()} ~ {new Date(supplier.contract_end_date).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
                     
-                    <div className="mt-2 text-sm text-gray-500">
-                      <span>카테고리: {supplier.category}</span>
-                      <span className="mx-2">•</span>
-                      <span>총 주문: {supplier.total_orders}회</span>
-                      <span className="mx-2">•</span>
-                      <span>총 금액: ₩{supplier.total_amount.toLocaleString()}</span>
-                      <span className="mx-2">•</span>
-                      <span>평균 배송: {supplier.average_delivery_time}일</span>
-                    </div>
+                    {supplier.notes && (
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-gray-300 text-sm mb-1">메모</p>
+                        <p className="text-white text-sm">{supplier.notes}</p>
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleView(supplier)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewContracts(supplier)}
-                    >
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewHistory(supplier)}
-                    >
-                      <Package className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(supplier)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(supplier)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div className="flex flex-col gap-2 ml-4">
+                    <Badge className={getStatusColor(supplier.status)}>
+                      {supplier.status === 'active' && '활성'}
+                      {supplier.status === 'inactive' && '비활성'}
+                      {supplier.status === 'suspended' && '정지'}
+                    </Badge>
+                    
+                    <div className={`flex items-center ${getRatingColor(supplier.rating)}`}>
+                      <Star className="w-4 h-4 fill-current" />
+                      <span className="ml-1">{supplier.rating}</span>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleView(supplier)}
+                        className="border-white/20 text-white hover:bg-white/10"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(supplier)}
+                        className="border-white/20 text-white hover:bg-white/10"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleDelete(supplier)}
+                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewContracts(supplier)}
+                        className="border-white/20 text-white hover:bg-white/10"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewHistory(supplier)}
+                        className="border-white/20 text-white hover:bg-white/10"
+                      >
+                        <Package className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
-            
-            {filteredSuppliers.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <Truck className="h-12 w-12 mx-auto mb-2" />
-                <p>공급업체가 없습니다.</p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* 공급업체 생성/수정 다이얼로그 */}
+      {/* 공급업체 추가/수정 다이얼로그 */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="bg-white/10 backdrop-blur-sm border border-white/20 max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-white">
               {editingSupplier ? '공급업체 정보 수정' : '새 공급업체 등록'}
             </DialogTitle>
-            <DialogDescription>
-              {editingSupplier ? '공급업체 정보를 수정하세요.' : '새로운 공급업체를 등록하세요.'}
-            </DialogDescription>
           </DialogHeader>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">공급업체명 *</Label>
+                <Label className="text-gray-300">공급업체명 *</Label>
                 <Input
-                  id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="공급업체명을 입력하세요"
                 />
               </div>
               
               <div>
-                <Label htmlFor="company_name">회사명 *</Label>
+                <Label className="text-gray-300">회사명 *</Label>
                 <Input
-                  id="company_name"
                   value={formData.company_name}
-                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                  required
+                  onChange={(e) => setFormData({...formData, company_name: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="회사명을 입력하세요"
                 />
               </div>
               
               <div>
-                <Label htmlFor="contact_person">담당자 *</Label>
+                <Label className="text-gray-300">담당자 *</Label>
                 <Input
-                  id="contact_person"
                   value={formData.contact_person}
-                  onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                  required
+                  onChange={(e) => setFormData({...formData, contact_person: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="담당자명을 입력하세요"
                 />
               </div>
               
               <div>
-                <Label htmlFor="email">이메일 *</Label>
+                <Label className="text-gray-300">이메일</Label>
                 <Input
-                  id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="이메일을 입력하세요"
                 />
               </div>
               
               <div>
-                <Label htmlFor="phone">전화번호 *</Label>
+                <Label className="text-gray-300">전화번호</Label>
                 <Input
-                  id="phone"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  required
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="전화번호를 입력하세요"
                 />
               </div>
               
               <div>
-                <Label htmlFor="business_number">사업자등록번호</Label>
+                <Label className="text-gray-300">사업자번호</Label>
                 <Input
-                  id="business_number"
                   value={formData.business_number}
-                  onChange={(e) => setFormData({ ...formData, business_number: e.target.value })}
+                  onChange={(e) => setFormData({...formData, business_number: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="사업자번호를 입력하세요"
                 />
               </div>
               
               <div>
-                <Label htmlFor="category">카테고리</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="카테고리 선택" />
+                <Label className="text-gray-300">카테고리</Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                    <SelectValue placeholder="카테고리를 선택하세요" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white/10 border-white/20">
                     <SelectItem value="식재료">식재료</SelectItem>
                     <SelectItem value="음료">음료</SelectItem>
                     <SelectItem value="포장재">포장재</SelectItem>
@@ -672,333 +864,179 @@ export default function SupplierManagement() {
               </div>
               
               <div>
-                <Label htmlFor="contract_start_date">계약 시작일</Label>
+                <Label className="text-gray-300">계약 시작일</Label>
                 <Input
-                  id="contract_start_date"
                   type="date"
                   value={formData.contract_start_date}
-                  onChange={(e) => setFormData({ ...formData, contract_start_date: e.target.value })}
+                  onChange={(e) => setFormData({...formData, contract_start_date: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
                 />
               </div>
               
               <div>
-                <Label htmlFor="contract_end_date">계약 종료일</Label>
+                <Label className="text-gray-300">계약 종료일</Label>
                 <Input
-                  id="contract_end_date"
                   type="date"
                   value={formData.contract_end_date}
-                  onChange={(e) => setFormData({ ...formData, contract_end_date: e.target.value })}
+                  onChange={(e) => setFormData({...formData, contract_end_date: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
                 />
               </div>
               
               <div>
-                <Label htmlFor="payment_terms">결제 조건</Label>
+                <Label className="text-gray-300">결제 조건</Label>
                 <Input
-                  id="payment_terms"
                   value={formData.payment_terms}
-                  onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                  placeholder="예: 30일 후 결제"
+                  onChange={(e) => setFormData({...formData, payment_terms: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="결제 조건을 입력하세요"
                 />
               </div>
               
               <div>
-                <Label htmlFor="delivery_terms">배송 조건</Label>
+                <Label className="text-gray-300">배송 조건</Label>
                 <Input
-                  id="delivery_terms"
                   value={formData.delivery_terms}
-                  onChange={(e) => setFormData({ ...formData, delivery_terms: e.target.value })}
-                  placeholder="예: 3-5일 배송"
+                  onChange={(e) => setFormData({...formData, delivery_terms: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="배송 조건을 입력하세요"
                 />
               </div>
             </div>
             
             <div>
-              <Label htmlFor="address">주소</Label>
+              <Label className="text-gray-300">주소</Label>
               <Input
-                id="address"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                className="mt-1 bg-white/10 border-white/20 text-white"
+                placeholder="주소를 입력하세요"
               />
             </div>
             
             <div>
-              <Label htmlFor="notes">메모</Label>
+              <Label className="text-gray-300">메모</Label>
               <Textarea
-                id="notes"
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                className="mt-1 bg-white/10 border-white/20 text-white"
+                placeholder="공급업체에 대한 메모를 입력하세요"
                 rows={3}
               />
             </div>
             
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
+                {editingSupplier ? '수정' : '등록'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-white/20 text-white hover:bg-white/10">
                 취소
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? '처리 중...' : (editingSupplier ? '수정' : '등록')}
-              </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
       {/* 공급업체 상세 보기 다이얼로그 */}
       <Dialog open={!!viewingSupplier} onOpenChange={() => setViewingSupplier(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="bg-white/10 backdrop-blur-sm border border-white/20 max-w-2xl">
           <DialogHeader>
-            <DialogTitle>공급업체 상세 정보</DialogTitle>
-            <DialogDescription>
-              {viewingSupplier?.name} 공급업체의 상세 정보입니다.
-            </DialogDescription>
+            <DialogTitle className="text-white">공급업체 상세 정보</DialogTitle>
           </DialogHeader>
           
           {viewingSupplier && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">공급업체명</Label>
-                  <p className="text-lg font-semibold">{viewingSupplier.name}</p>
+                  <Label className="text-gray-300 text-sm">공급업체명</Label>
+                  <p className="text-white font-medium">{viewingSupplier.name}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">회사명</Label>
-                  <p className="text-lg">{viewingSupplier.company_name}</p>
+                  <Label className="text-gray-300 text-sm">회사명</Label>
+                  <p className="text-white font-medium">{viewingSupplier.company_name}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">담당자</Label>
-                  <p className="text-lg">{viewingSupplier.contact_person}</p>
+                  <Label className="text-gray-300 text-sm">담당자</Label>
+                  <p className="text-white font-medium">{viewingSupplier.contact_person}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">이메일</Label>
-                  <p className="text-lg">{viewingSupplier.email}</p>
+                  <Label className="text-gray-300 text-sm">이메일</Label>
+                  <p className="text-white font-medium">{viewingSupplier.email}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">전화번호</Label>
-                  <p className="text-lg">{viewingSupplier.phone}</p>
+                  <Label className="text-gray-300 text-sm">전화번호</Label>
+                  <p className="text-white font-medium">{viewingSupplier.phone}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">사업자등록번호</Label>
-                  <p className="text-lg">{viewingSupplier.business_number || '미입력'}</p>
+                  <Label className="text-gray-300 text-sm">사업자번호</Label>
+                  <p className="text-white font-medium">{viewingSupplier.business_number}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">카테고리</Label>
-                  <Badge variant="secondary">{viewingSupplier.category}</Badge>
+                  <Label className="text-gray-300 text-sm">카테고리</Label>
+                  <p className="text-white font-medium">{viewingSupplier.category}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">상태</Label>
+                  <Label className="text-gray-300 text-sm">상태</Label>
                   <Badge className={getStatusColor(viewingSupplier.status)}>
                     {viewingSupplier.status === 'active' && '활성'}
                     {viewingSupplier.status === 'inactive' && '비활성'}
                     {viewingSupplier.status === 'suspended' && '정지'}
                   </Badge>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">평점</Label>
+                  <Label className="text-gray-300 text-sm">평점</Label>
                   <div className={`flex items-center ${getRatingColor(viewingSupplier.rating)}`}>
-                    <Star className="h-5 w-5 fill-current" />
-                    <span className="ml-1 text-lg font-semibold">{viewingSupplier.rating.toFixed(1)}</span>
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="ml-1">{viewingSupplier.rating}</span>
                   </div>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">품질 평점</Label>
-                  <div className={`flex items-center ${getRatingColor(viewingSupplier.quality_rating)}`}>
-                    <Star className="h-5 w-5 fill-current" />
-                    <span className="ml-1 text-lg font-semibold">{viewingSupplier.quality_rating.toFixed(1)}</span>
-                  </div>
+                  <Label className="text-gray-300 text-sm">총 주문</Label>
+                  <p className="text-white font-medium">{viewingSupplier.total_orders}건</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">총 주문 수</Label>
-                  <p className="text-lg font-semibold text-blue-600">{viewingSupplier.total_orders}회</p>
+                  <Label className="text-gray-300 text-sm">총 매출</Label>
+                  <p className="text-white font-medium">₩{viewingSupplier.total_amount.toLocaleString()}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">총 거래 금액</Label>
-                  <p className="text-lg font-semibold text-green-600">₩{viewingSupplier.total_amount.toLocaleString()}</p>
+                  <Label className="text-gray-300 text-sm">평균 배송 시간</Label>
+                  <p className="text-white font-medium">{viewingSupplier.average_delivery_time}일</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">평균 배송 시간</Label>
-                  <p className="text-lg">{viewingSupplier.average_delivery_time}일</p>
+                  <Label className="text-gray-300 text-sm">품질 평점</Label>
+                  <p className="text-white font-medium">{viewingSupplier.quality_rating}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">계약 시작일</Label>
-                  <p className="text-lg">{new Date(viewingSupplier.contract_start_date).toLocaleDateString('ko-KR')}</p>
+                  <Label className="text-gray-300 text-sm">계약 시작일</Label>
+                  <p className="text-white font-medium">{new Date(viewingSupplier.contract_start_date).toLocaleDateString()}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">계약 종료일</Label>
-                  <p className="text-lg">{new Date(viewingSupplier.contract_end_date).toLocaleDateString('ko-KR')}</p>
+                  <Label className="text-gray-300 text-sm">계약 종료일</Label>
+                  <p className="text-white font-medium">{new Date(viewingSupplier.contract_end_date).toLocaleDateString()}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">결제 조건</Label>
-                  <p className="text-lg">{viewingSupplier.payment_terms}</p>
+                  <Label className="text-gray-300 text-sm">결제 조건</Label>
+                  <p className="text-white font-medium">{viewingSupplier.payment_terms}</p>
                 </div>
-                
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">배송 조건</Label>
-                  <p className="text-lg">{viewingSupplier.delivery_terms}</p>
+                  <Label className="text-gray-300 text-sm">배송 조건</Label>
+                  <p className="text-white font-medium">{viewingSupplier.delivery_terms}</p>
                 </div>
               </div>
               
               <div>
-                <Label className="text-sm font-medium text-gray-600">주소</Label>
-                <p className="text-lg">{viewingSupplier.address}</p>
+                <Label className="text-gray-300 text-sm">주소</Label>
+                <p className="text-white">{viewingSupplier.address}</p>
               </div>
               
               {viewingSupplier.notes && (
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">메모</Label>
-                  <p className="text-lg bg-gray-50 p-3 rounded-lg">{viewingSupplier.notes}</p>
+                  <Label className="text-gray-300 text-sm">메모</Label>
+                  <p className="text-white">{viewingSupplier.notes}</p>
                 </div>
               )}
             </div>
           )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewingSupplier(null)}>
-              닫기
-            </Button>
-            {viewingSupplier && (
-              <Button onClick={() => {
-                setViewingSupplier(null);
-                handleEdit(viewingSupplier);
-              }}>
-                수정하기
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 계약 목록 다이얼로그 */}
-      <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>계약 목록</DialogTitle>
-            <DialogDescription>
-              {selectedSupplier?.name} 공급업체의 계약 정보입니다.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {contracts.filter(contract => contract.supplier_id === selectedSupplier?.id).map((contract) => (
-              <div key={contract.id} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold">{contract.contract_number}</h3>
-                  <Badge className={getStatusColor(contract.status)}>
-                    {contract.status === 'active' && '활성'}
-                    {contract.status === 'expired' && '만료'}
-                    {contract.status === 'terminated' && '해지'}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">계약 기간:</span>
-                    <p>{new Date(contract.start_date).toLocaleDateString('ko-KR')} ~ {new Date(contract.end_date).toLocaleDateString('ko-KR')}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">계약 금액:</span>
-                    <p className="text-green-600 font-semibold">₩{contract.total_value.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">계약일:</span>
-                    <p>{new Date(contract.created_at).toLocaleDateString('ko-KR')}</p>
-                  </div>
-                </div>
-                {contract.terms && (
-                  <div className="mt-2">
-                    <span className="font-medium text-sm">계약 조건:</span>
-                    <p className="text-sm text-gray-600 mt-1">{contract.terms}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {contracts.filter(contract => contract.supplier_id === selectedSupplier?.id).length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-2" />
-                <p>계약 정보가 없습니다.</p>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsContractDialogOpen(false)}>
-              닫기
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 발주 이력 다이얼로그 */}
-      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>발주 이력</DialogTitle>
-            <DialogDescription>
-              {selectedSupplier?.name} 공급업체의 발주 이력입니다.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {orderHistory.filter(order => order.supplier_id === selectedSupplier?.id).map((order) => (
-              <div key={order.id} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold">{order.order_number}</h3>
-                  <Badge className={getStatusColor(order.status)}>
-                    {order.status === 'pending' && '대기'}
-                    {order.status === 'confirmed' && '확정'}
-                    {order.status === 'shipped' && '배송중'}
-                    {order.status === 'delivered' && '배송완료'}
-                    {order.status === 'cancelled' && '취소'}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">주문일:</span>
-                    <p>{new Date(order.order_date).toLocaleDateString('ko-KR')}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">배송일:</span>
-                    <p>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('ko-KR') : '미배송'}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">주문 금액:</span>
-                    <p className="text-green-600 font-semibold">₩{order.total_amount.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">주문 항목:</span>
-                    <p>{order.items_count}개</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {orderHistory.filter(order => order.supplier_id === selectedSupplier?.id).length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <Package className="h-12 w-12 mx-auto mb-2" />
-                <p>발주 이력이 없습니다.</p>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsHistoryDialogOpen(false)}>
-              닫기
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

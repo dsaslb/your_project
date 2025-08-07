@@ -8,6 +8,7 @@ import { Badge } from '../../src/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../src/components/ui/dialog';
 import { Label } from '../../src/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../src/components/ui/select';
+import { Textarea } from '../../src/components/ui/textarea';
 import { 
   ShoppingCart, 
   Plus, 
@@ -21,7 +22,8 @@ import {
   Users,
   TrendingUp,
   BarChart3,
-  Package
+  Package,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient, Store as StoreType } from '../../src/lib/api-client';
@@ -101,7 +103,7 @@ export default function OrderManagement() {
     items: [{ product_name: '', quantity: 1, unit_price: 0, notes: '' }]
   });
 
-  const { isLoading, setLoading, withLoading } = useLoadingState();
+  const { isLoading, setLoading } = useLoadingState();
   const { handleError } = useErrorHandler();
 
   // 주문 목록 조회
@@ -118,7 +120,7 @@ export default function OrderManagement() {
           total_amount: 15000,
           status: 'completed',
           store_id: 1,
-          store_name: '스타벅스 강남점',
+          store_name: '강남점',
           items: [
             {
               id: 1,
@@ -126,8 +128,7 @@ export default function OrderManagement() {
               product_name: '아메리카노',
               quantity: 2,
               unit_price: 4500,
-              total_price: 9000,
-              notes: 'ICE'
+              total_price: 9000
             },
             {
               id: 2,
@@ -135,11 +136,10 @@ export default function OrderManagement() {
               product_name: '카페라떼',
               quantity: 1,
               unit_price: 6000,
-              total_price: 6000,
-              notes: 'HOT'
+              total_price: 6000
             }
           ],
-          notes: '테이크아웃',
+          notes: '따뜻하게 해주세요',
           payment_method: 'card',
           created_at: '2024-01-15T10:30:00Z',
           updated_at: '2024-01-15T11:00:00Z'
@@ -153,31 +153,29 @@ export default function OrderManagement() {
           total_amount: 8000,
           status: 'preparing',
           store_id: 1,
-          store_name: '스타벅스 강남점',
+          store_name: '강남점',
           items: [
             {
               id: 3,
               order_id: 2,
               product_name: '카푸치노',
               quantity: 1,
-              unit_price: 5000,
-              total_price: 5000,
-              notes: 'ICE'
+              unit_price: 5500,
+              total_price: 5500
             },
             {
               id: 4,
               order_id: 2,
               product_name: '티라떼',
               quantity: 1,
-              unit_price: 3000,
-              total_price: 3000,
-              notes: 'HOT'
+              unit_price: 2500,
+              total_price: 2500
             }
           ],
           notes: '',
           payment_method: 'cash',
           created_at: '2024-01-15T11:15:00Z',
-          updated_at: '2024-01-15T11:15:00Z'
+          updated_at: '2024-01-15T11:20:00Z'
         },
         {
           id: 3,
@@ -188,7 +186,7 @@ export default function OrderManagement() {
           total_amount: 12000,
           status: 'pending',
           store_id: 2,
-          store_name: '스타벅스 홍대점',
+          store_name: '홍대점',
           items: [
             {
               id: 5,
@@ -196,11 +194,10 @@ export default function OrderManagement() {
               product_name: '모카',
               quantity: 2,
               unit_price: 6000,
-              total_price: 12000,
-              notes: 'ICE'
+              total_price: 12000
             }
           ],
-          notes: '매장 내 식사',
+          notes: '샷 추가해주세요',
           payment_method: 'mobile',
           created_at: '2024-01-15T11:30:00Z',
           updated_at: '2024-01-15T11:30:00Z'
@@ -216,15 +213,13 @@ export default function OrderManagement() {
   // 상품 목록 조회
   const fetchProducts = async () => {
     try {
-      // 임시로 샘플 데이터 사용
       const sampleProducts: Product[] = [
         { id: 1, name: '아메리카노', description: '에스프레소 + 물', price: 4500, category: '커피', store_id: 1, is_available: true },
         { id: 2, name: '카페라떼', description: '에스프레소 + 우유', price: 6000, category: '커피', store_id: 1, is_available: true },
-        { id: 3, name: '카푸치노', description: '에스프레소 + 우유 + 우유거품', price: 5000, category: '커피', store_id: 1, is_available: true },
+        { id: 3, name: '카푸치노', description: '에스프레소 + 우유 + 우유거품', price: 5500, category: '커피', store_id: 1, is_available: true },
         { id: 4, name: '모카', description: '에스프레소 + 우유 + 초콜릿', price: 6000, category: '커피', store_id: 2, is_available: true },
-        { id: 5, name: '티라떼', description: '홍차 + 우유', price: 3000, category: '차', store_id: 1, is_available: true }
+        { id: 5, name: '티라떼', description: '홍차 + 우유', price: 2500, category: '차', store_id: 1, is_available: true }
       ];
-      
       setProducts(sampleProducts);
     } catch (error) {
       handleError(error as Error);
@@ -234,19 +229,41 @@ export default function OrderManagement() {
   // 매장 목록 조회
   const fetchStores = async () => {
     try {
-      // 임시로 샘플 데이터 사용
       const sampleStores: StoreType[] = [
-        { id: 1, name: '스타벅스 강남점', address: '서울시 강남구' },
-        { id: 2, name: '스타벅스 홍대점', address: '서울시 마포구' },
-        { id: 3, name: '스타벅스 명동점', address: '서울시 중구' }
+        { 
+          id: 1, 
+          name: '강남점', 
+          address: '서울 강남구', 
+          phone: '02-1234-5678', 
+          status: 'active',
+          brand_id: 1,
+          employee_count: 15,
+          total_revenue: 50000000,
+          last_activity: '2024-01-15T00:00:00Z',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z'
+        },
+        { 
+          id: 2, 
+          name: '홍대점', 
+          address: '서울 마포구', 
+          phone: '02-2345-6789', 
+          status: 'active',
+          brand_id: 1,
+          employee_count: 12,
+          total_revenue: 40000000,
+          last_activity: '2024-01-14T00:00:00Z',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-14T00:00:00Z'
+        }
       ];
-      
       setStores(sampleStores);
     } catch (error) {
       handleError(error as Error);
     }
   };
 
+  // 폼 초기화
   const resetForm = () => {
     setFormData({
       customer_name: '',
@@ -260,10 +277,11 @@ export default function OrderManagement() {
     setEditingOrder(null);
   };
 
+  // 주문 추가/수정
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.customer_name.trim() || formData.store_id === 0) {
+    if (!formData.customer_name || formData.store_id === 0) {
       toast.error('필수 항목을 입력해주세요.');
       return;
     }
@@ -271,35 +289,68 @@ export default function OrderManagement() {
     try {
       setLoading(true);
       
-      // 실제 API 호출 대신 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (editingOrder) {
         // 수정
+        const updatedOrder = {
+          ...editingOrder,
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone,
+          customer_email: formData.customer_email,
+          store_id: formData.store_id,
+          store_name: stores.find(s => s.id === formData.store_id)?.name,
+          payment_method: formData.payment_method,
+          notes: formData.notes,
+          items: formData.items.map((item, index) => ({
+            id: index + 1,
+            order_id: editingOrder.id,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.quantity * item.unit_price,
+            notes: item.notes
+          })),
+          total_amount: formData.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0),
+          updated_at: new Date().toISOString()
+        };
+        
         setOrders(prev => prev.map(order => 
-          order.id === editingOrder.id 
-            ? { ...order, ...formData, updated_at: new Date().toISOString() }
-            : order
+          order.id === editingOrder.id ? updatedOrder : order
         ));
+        
         toast.success('주문이 수정되었습니다.');
       } else {
-        // 생성
+        // 추가
         const newOrder: Order = {
           id: Date.now(),
-          order_number: `ORD-2024-${String(Date.now()).slice(-3)}`,
-          ...formData,
+          order_number: `ORD-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`,
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone,
+          customer_email: formData.customer_email,
+          store_id: formData.store_id,
           store_name: stores.find(s => s.id === formData.store_id)?.name,
+          payment_method: formData.payment_method,
+          notes: formData.notes,
+          items: formData.items.map((item, index) => ({
+            id: index + 1,
+            order_id: Date.now(),
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.quantity * item.unit_price,
+            notes: item.notes
+          })),
+          total_amount: formData.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0),
+          status: 'pending',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
         
         setOrders(prev => [...prev, newOrder]);
-        toast.success('주문이 생성되었습니다.');
+        toast.success('주문이 추가되었습니다.');
       }
       
       setIsCreateDialogOpen(false);
       resetForm();
-      
     } catch (error) {
       handleError(error as Error);
     } finally {
@@ -307,17 +358,12 @@ export default function OrderManagement() {
     }
   };
 
+  // 주문 삭제
   const handleDelete = async (order: Order) => {
-    if (!confirm(`${order.order_number} 주문을 삭제하시겠습니까?`)) return;
-    
     try {
       setLoading(true);
-      // 실제 API 호출 대신 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       setOrders(prev => prev.filter(o => o.id !== order.id));
       toast.success('주문이 삭제되었습니다.');
-      
     } catch (error) {
       handleError(error as Error);
     } finally {
@@ -325,20 +371,22 @@ export default function OrderManagement() {
     }
   };
 
+  // 주문 상태 변경
   const handleStatusChange = async (order: Order, newStatus: Order['status']) => {
     try {
       setLoading(true);
-      // 실제 API 호출 대신 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const updatedOrder = {
+        ...order,
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
       
       setOrders(prev => prev.map(o => 
-        o.id === order.id 
-          ? { ...o, status: newStatus, updated_at: new Date().toISOString() }
-          : o
+        o.id === order.id ? updatedOrder : o
       ));
       
-      toast.success('주문 상태가 변경되었습니다.');
-      
+      toast.success(`주문 상태가 ${getStatusText(newStatus)}로 변경되었습니다.`);
     } catch (error) {
       handleError(error as Error);
     } finally {
@@ -346,6 +394,7 @@ export default function OrderManagement() {
     }
   };
 
+  // 편집 모드 시작
   const handleEdit = (order: Order) => {
     setEditingOrder(order);
     setFormData({
@@ -365,6 +414,7 @@ export default function OrderManagement() {
     setIsCreateDialogOpen(true);
   };
 
+  // 주문 항목 추가
   const addOrderItem = () => {
     setFormData(prev => ({
       ...prev,
@@ -372,6 +422,7 @@ export default function OrderManagement() {
     }));
   };
 
+  // 주문 항목 제거
   const removeOrderItem = (index: number) => {
     setFormData(prev => ({
       ...prev,
@@ -379,6 +430,7 @@ export default function OrderManagement() {
     }));
   };
 
+  // 주문 항목 업데이트
   const updateOrderItem = (index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -388,15 +440,16 @@ export default function OrderManagement() {
     }));
   };
 
+  // 상태별 색상
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return '#f59e0b';
-      case 'confirmed': return '#3b82f6';
-      case 'preparing': return '#8b5cf6';
-      case 'ready': return '#10b981';
-      case 'completed': return '#059669';
-      case 'cancelled': return '#ef4444';
-      default: return '#6b7280';
+      case 'pending': return 'bg-yellow-500/20 text-yellow-400';
+      case 'confirmed': return 'bg-blue-500/20 text-blue-400';
+      case 'preparing': return 'bg-orange-500/20 text-orange-400';
+      case 'ready': return 'bg-green-500/20 text-green-400';
+      case 'completed': return 'bg-green-600/20 text-green-500';
+      case 'cancelled': return 'bg-red-500/20 text-red-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
@@ -439,492 +492,443 @@ export default function OrderManagement() {
   });
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999,
-      backgroundColor: '#f3f4f6',
-      fontFamily: 'Arial, sans-serif',
-      overflow: 'auto'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '2rem auto',
-        padding: '0 2rem'
-      }}>
-        {/* 헤더 */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem'
-        }}>
-          <div>
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '0.5rem'
-            }}>
-              주문 관리
-            </h1>
-            <p style={{
-              fontSize: '1.125rem',
-              color: '#6b7280'
-            }}>
-              주문 현황 및 고객 관리
-            </p>
-          </div>
-          
-          <button
-            onClick={() => setIsCreateDialogOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1rem',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            <Plus style={{ width: '16px', height: '16px' }} />
-            주문 추가
-          </button>
-        </div>
+    <div className="min-h-screen p-6">
+      {/* 헤더 */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <ShoppingCart className="w-6 h-6" />
+          주문 관리
+        </h1>
+        <p className="text-gray-300 mt-2">주문 현황 및 고객 관리</p>
+      </div>
 
-        {/* 통계 카드 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>총 주문</h3>
-              <ShoppingCart style={{ width: '20px', height: '20px' }} />
+      {/* 액션 버튼 */}
+      <div className="flex gap-4 mb-8">
+        <Button
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          주문 추가
+        </Button>
+        <Button
+          onClick={fetchOrders}
+          disabled={isLoading}
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          새로고침
+        </Button>
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">총 주문</p>
+                <p className="text-2xl font-bold text-white">{orders.length}</p>
+                <p className="text-gray-400 text-sm">오늘: {orders.filter(order => new Date(order.created_at).toDateString() === new Date().toDateString()).length}건</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <ShoppingCart className="w-6 h-6 text-blue-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {orders.length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              오늘: {orders.filter(order => new Date(order.created_at).toDateString() === new Date().toDateString()).length}건
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>완료</h3>
-              <CheckCircle style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">완료</p>
+                <p className="text-2xl font-bold text-white">{orders.filter(order => order.status === 'completed').length}</p>
+                <p className="text-gray-400 text-sm">성공률: {Math.round((orders.filter(order => order.status === 'completed').length / orders.length) * 100)}%</p>
+              </div>
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {orders.filter(order => order.status === 'completed').length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              성공률: {Math.round((orders.filter(order => order.status === 'completed').length / orders.length) * 100)}%
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#f59e0b',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>진행중</h3>
-              <Clock style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">진행중</p>
+                <p className="text-2xl font-bold text-white">{orders.filter(order => ['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)).length}</p>
+                <p className="text-gray-400 text-sm">처리 대기중</p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                <Clock className="w-6 h-6 text-yellow-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {orders.filter(order => ['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)).length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              처리 대기중
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#8b5cf6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>총 매출</h3>
-              <DollarSign style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">총 매출</p>
+                <p className="text-2xl font-bold text-white">₩{orders.reduce((sum, order) => sum + order.total_amount, 0).toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">평균: ₩{Math.round(orders.reduce((sum, order) => sum + order.total_amount, 0) / orders.length).toLocaleString()}</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-purple-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              ₩{orders.reduce((sum, order) => sum + order.total_amount, 0).toLocaleString()}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              평균: ₩{Math.round(orders.reduce((sum, order) => sum + order.total_amount, 0) / orders.length).toLocaleString()}
-            </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* 검색 및 필터 */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            alignItems: 'end'
-          }}>
+      {/* 검색 및 필터 */}
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                검색
-              </label>
-              <input
-                type="text"
+              <Label className="text-gray-300 text-sm">검색</Label>
+              <Input
+                placeholder="주문번호 또는 고객명으로 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="주문번호 또는 고객명으로 검색"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem'
-                }}
+                className="mt-1 bg-white/10 border-white/20 text-white placeholder-gray-400"
               />
             </div>
             
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                매장
-              </label>
-              <select
-                value={selectedStore}
-                onChange={(e) => setSelectedStore(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 매장</option>
-                {stores.map(store => (
-                  <option key={store.id} value={store.id}>{store.name}</option>
-                ))}
-              </select>
+              <Label className="text-gray-300 text-sm">매장</Label>
+              <Select value={selectedStore.toString()} onValueChange={(value) => setSelectedStore(value === 'all' ? 'all' : parseInt(value))}>
+                <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder="매장 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/10 border-white/20">
+                  <SelectItem value="all">모든 매장</SelectItem>
+                  {stores.map(store => (
+                    <SelectItem key={store.id} value={store.id.toString()}>{store.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                상태
-              </label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 상태</option>
-                <option value="pending">대기중</option>
-                <option value="confirmed">확인됨</option>
-                <option value="preparing">준비중</option>
-                <option value="ready">준비완료</option>
-                <option value="completed">완료</option>
-                <option value="cancelled">취소됨</option>
-              </select>
+              <Label className="text-gray-300 text-sm">상태</Label>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder="상태 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/10 border-white/20">
+                  <SelectItem value="all">모든 상태</SelectItem>
+                  <SelectItem value="pending">대기중</SelectItem>
+                  <SelectItem value="confirmed">확인됨</SelectItem>
+                  <SelectItem value="preparing">준비중</SelectItem>
+                  <SelectItem value="ready">준비완료</SelectItem>
+                  <SelectItem value="completed">완료</SelectItem>
+                  <SelectItem value="cancelled">취소됨</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                결제 방법
-              </label>
-              <select
-                value={selectedPaymentMethod}
-                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 결제</option>
-                <option value="cash">현금</option>
-                <option value="card">카드</option>
-                <option value="mobile">모바일</option>
-                <option value="online">온라인</option>
-              </select>
+              <Label className="text-gray-300 text-sm">결제 방법</Label>
+              <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
+                <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder="결제 방법 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/10 border-white/20">
+                  <SelectItem value="all">모든 방법</SelectItem>
+                  <SelectItem value="cash">현금</SelectItem>
+                  <SelectItem value="card">카드</SelectItem>
+                  <SelectItem value="mobile">모바일</SelectItem>
+                  <SelectItem value="online">온라인</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* 주문 목록 */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            padding: '1.5rem',
-            borderBottom: '1px solid #e5e7eb'
-          }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              margin: '0'
-            }}>
-              주문 목록 ({filteredOrders.length}건)
-            </h2>
-          </div>
-          
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
-              <thead style={{
-                backgroundColor: '#f9fafb',
-                borderBottom: '1px solid #e5e7eb'
-              }}>
-                <tr>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    주문번호
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    고객명
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    금액
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    상태
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    매장
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    결제
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    작업
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => (
-                  <tr key={order.id} style={{
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      <p style={{ fontWeight: '500', margin: '0 0 0.25rem 0' }}>
-                        {order.order_number}
-                      </p>
-                      <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0' }}>
-                        {new Date(order.created_at).toLocaleString('ko-KR')}
-                      </p>
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      <p style={{ fontWeight: '500', margin: '0 0 0.25rem 0' }}>
-                        {order.customer_name}
-                      </p>
-                      {order.customer_phone && (
-                        <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0' }}>
-                          {order.customer_phone}
-                        </p>
-                      )}
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      <p style={{ fontWeight: '500', margin: '0' }}>
-                        ₩{order.total_amount.toLocaleString()}
-                      </p>
-                    </td>
-                    <td style={{
-                      padding: '1rem'
-                    }}>
-                      <span style={{
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        backgroundColor: getStatusColor(order.status) + '20',
-                        color: getStatusColor(order.status)
-                      }}>
-                        {getStatusText(order.status)}
-                      </span>
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {order.store_name}
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {getPaymentMethodText(order.payment_method)}
-                    </td>
-                    <td style={{
-                      padding: '1rem'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        gap: '0.5rem'
-                      }}>
-                        <button
-                          onClick={() => handleEdit(order)}
-                          style={{
-                            padding: '0.5rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '4px',
-                            backgroundColor: 'white',
-                            color: '#374151',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Edit style={{ width: '16px', height: '16px' }} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(order)}
-                          style={{
-                            padding: '0.5rem',
-                            border: '1px solid #ef4444',
-                            borderRadius: '4px',
-                            backgroundColor: '#ef4444',
-                            color: 'white',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Trash2 style={{ width: '16px', height: '16px' }} />
-                        </button>
+      {/* 주문 목록 */}
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+        <CardHeader>
+          <CardTitle className="text-white">주문 목록 ({filteredOrders.length}건)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {filteredOrders.map((order) => (
+              <div
+                key={order.id}
+                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 hover:bg-white/10 transition-all duration-300"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <ShoppingCart className="w-6 h-6 text-white" />
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">{order.order_number}</h3>
+                        <p className="text-gray-400">{order.customer_name}</p>
+                        <p className="text-gray-400 text-sm">{order.store_name} • {getPaymentMethodText(order.payment_method)}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                      <div>
+                        <p className="text-gray-300 text-sm">총 금액</p>
+                        <p className="text-white font-medium">₩{order.total_amount.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-300 text-sm">주문 시간</p>
+                        <p className="text-white font-medium">{new Date(order.created_at).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-300 text-sm">상품 수</p>
+                        <p className="text-white font-medium">{order.items.length}개</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-300 text-sm">고객 연락처</p>
+                        <p className="text-white font-medium">{order.customer_phone || '없음'}</p>
+                      </div>
+                    </div>
+                    
+                    {order.items.length > 0 && (
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-gray-300 text-sm mb-2">주문 상품</p>
+                        <div className="space-y-1">
+                          {order.items.map((item, index) => (
+                            <div key={index} className="flex justify-between text-sm">
+                              <span className="text-gray-300">{item.product_name} x {item.quantity}</span>
+                              <span className="text-white">₩{item.total_price.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 ml-4">
+                    <Badge className={getStatusColor(order.status)}>
+                      {getStatusText(order.status)}
+                    </Badge>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(order)}
+                        className="border-white/20 text-white hover:bg-white/10"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleDelete(order)}
+                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      {order.status !== 'completed' && order.status !== 'cancelled' && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleStatusChange(order, 'completed')}
+                          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {order.status !== 'cancelled' && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleStatusChange(order, 'cancelled')}
+                          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 주문 추가/수정 다이얼로그 */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="bg-white/10 backdrop-blur-sm border border-white/20 max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editingOrder ? '주문 수정' : '주문 추가'}
+            </DialogTitle>
+          </DialogHeader>
           
-          {filteredOrders.length === 0 && (
-            <div style={{
-              padding: '3rem',
-              textAlign: 'center',
-              color: '#6b7280'
-            }}>
-              <ShoppingCart style={{ width: '48px', height: '48px', margin: '0 auto 1rem', opacity: '0.5' }} />
-              <p>검색 결과가 없습니다.</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-gray-300">고객명 *</Label>
+                <Input
+                  value={formData.customer_name}
+                  onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="고객명을 입력하세요"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">매장 *</Label>
+                <Select value={formData.store_id.toString()} onValueChange={(value) => setFormData({...formData, store_id: parseInt(value)})}>
+                  <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                    <SelectValue placeholder="매장을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/10 border-white/20">
+                    {stores.map(store => (
+                      <SelectItem key={store.id} value={store.id.toString()}>{store.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">연락처</Label>
+                <Input
+                  value={formData.customer_phone}
+                  onChange={(e) => setFormData({...formData, customer_phone: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="연락처를 입력하세요"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">이메일</Label>
+                <Input
+                  value={formData.customer_email}
+                  onChange={(e) => setFormData({...formData, customer_email: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="이메일을 입력하세요"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">결제 방법</Label>
+                <Select value={formData.payment_method} onValueChange={(value: any) => setFormData({...formData, payment_method: value})}>
+                  <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                    <SelectValue placeholder="결제 방법을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/10 border-white/20">
+                    <SelectItem value="cash">현금</SelectItem>
+                    <SelectItem value="card">카드</SelectItem>
+                    <SelectItem value="mobile">모바일</SelectItem>
+                    <SelectItem value="online">온라인</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+            
+            <div>
+              <Label className="text-gray-300">메모</Label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                className="mt-1 bg-white/10 border-white/20 text-white"
+                placeholder="주문에 대한 메모를 입력하세요"
+                rows={2}
+              />
+            </div>
+            
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <Label className="text-gray-300">주문 상품</Label>
+                <Button
+                  type="button"
+                  onClick={addOrderItem}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  상품 추가
+                </Button>
+              </div>
+              
+              <div className="space-y-3">
+                {formData.items.map((item, index) => (
+                  <div key={index} className="bg-white/5 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div>
+                        <Label className="text-gray-300 text-sm">상품명</Label>
+                        <Input
+                          value={item.product_name}
+                          onChange={(e) => updateOrderItem(index, 'product_name', e.target.value)}
+                          className="mt-1 bg-white/10 border-white/20 text-white"
+                          placeholder="상품명을 입력하세요"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label className="text-gray-300 text-sm">수량</Label>
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => updateOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                          className="mt-1 bg-white/10 border-white/20 text-white"
+                          placeholder="1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label className="text-gray-300 text-sm">단가</Label>
+                        <Input
+                          type="number"
+                          value={item.unit_price}
+                          onChange={(e) => updateOrderItem(index, 'unit_price', parseInt(e.target.value) || 0)}
+                          className="mt-1 bg-white/10 border-white/20 text-white"
+                          placeholder="0"
+                        />
+                      </div>
+                      
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <Label className="text-gray-300 text-sm">메모</Label>
+                          <Input
+                            value={item.notes}
+                            onChange={(e) => updateOrderItem(index, 'notes', e.target.value)}
+                            className="mt-1 bg-white/10 border-white/20 text-white"
+                            placeholder="상품 메모"
+                          />
+                        </div>
+                        
+                        {formData.items.length > 1 && (
+                          <Button
+                            type="button"
+                            onClick={() => removeOrderItem(index)}
+                            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
+                {editingOrder ? '수정' : '추가'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-white/20 text-white hover:bg-white/10">
+                취소
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

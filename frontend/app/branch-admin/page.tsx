@@ -1,6 +1,33 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../../src/components/ui/card';
+import { Button } from '../../src/components/ui/button';
+import { Input } from '../../src/components/ui/input';
+import { Badge } from '../../src/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../src/components/ui/dialog';
+import { Label } from '../../src/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../src/components/ui/select';
+import { 
+  Store, 
+  Users, 
+  TrendingUp, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Eye,
+  Building2,
+  MapPin,
+  Phone,
+  Mail,
+  Calendar,
+  DollarSign,
+  Star,
+  AlertTriangle,
+  CheckCircle,
+  Clock
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Store {
   id: number;
@@ -101,35 +128,25 @@ export default function BranchAdminPage() {
     if (!formData.employeeName.trim()) {
       newErrors.employeeName = '직원 이름을 입력해주세요';
     }
-
     if (!formData.employeeEmail.trim()) {
-      newErrors.employeeEmail = '직원 이메일을 입력해주세요';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.employeeEmail)) {
+      newErrors.employeeEmail = '이메일을 입력해주세요';
+    } else if (!/\S+@\S+\.\S+/.test(formData.employeeEmail)) {
       newErrors.employeeEmail = '올바른 이메일 형식을 입력해주세요';
     }
-
     if (!formData.employeePhone.trim()) {
-      newErrors.employeePhone = '직원 전화번호를 입력해주세요';
-    } else if (!/^[0-9-]+$/.test(formData.employeePhone)) {
-      newErrors.employeePhone = '올바른 전화번호 형식을 입력해주세요';
+      newErrors.employeePhone = '전화번호를 입력해주세요';
     }
-
     if (!formData.position.trim()) {
       newErrors.position = '직책을 입력해주세요';
     }
-
     if (!formData.department.trim()) {
       newErrors.department = '부서를 입력해주세요';
     }
-
-    if (!formData.hireDate.trim()) {
-      newErrors.hireDate = '입사일을 입력해주세요';
+    if (!formData.hireDate) {
+      newErrors.hireDate = '입사일을 선택해주세요';
     }
-
     if (!formData.salary.trim()) {
       newErrors.salary = '급여를 입력해주세요';
-    } else if (!/^[0-9,]+$/.test(formData.salary.replace(/,/g, ''))) {
-      newErrors.salary = '올바른 급여 형식을 입력해주세요';
     }
 
     setErrors(newErrors);
@@ -138,28 +155,28 @@ export default function BranchAdminPage() {
 
   const generateTempPassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
+    let password = '';
     for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    return result;
+    return password;
   };
 
   const handleCreateEmployeeAndAccount = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error('입력 정보를 확인해주세요');
+      return;
+    }
 
-    setLoading(true);
-    
     try {
-      // 실제 API 호출 대신 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       const tempPassword = generateTempPassword();
       
-      // 성공 메시지 표시
-      alert(`직원 및 직원 계정 생성 완료!\n\n직원: ${formData.employeeName}\n직책: ${formData.position}\n부서: ${formData.department}\n임시 비밀번호: ${tempPassword}\n\n직원은 이메일로 임시 비밀번호를 받게 됩니다.`);
+      // 실제로는 API 호출
+      console.log('직원 생성 데이터:', formData);
+      console.log('임시 비밀번호:', tempPassword);
       
-      // 폼 초기화
+      toast.success('직원 계정이 성공적으로 생성되었습니다');
+      setShowCreateForm(false);
       setFormData({
         employeeName: '',
         employeeEmail: '',
@@ -169,21 +186,17 @@ export default function BranchAdminPage() {
         hireDate: '',
         salary: ''
       });
-      setShowCreateForm(false);
-      
     } catch (error) {
-      alert('직원 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
-    } finally {
-      setLoading(false);
+      toast.error('직원 계정 생성에 실패했습니다');
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'operating': return '#10b981';
-      case 'maintenance': return '#f59e0b';
-      case 'closed': return '#ef4444';
-      default: return '#6b7280';
+      case 'operating': return 'bg-green-500/20 text-green-400';
+      case 'maintenance': return 'bg-yellow-500/20 text-yellow-400';
+      case 'closed': return 'bg-red-500/20 text-red-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
@@ -197,515 +210,284 @@ export default function BranchAdminPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW'
-    }).format(amount);
+    return new Intl.NumberFormat('ko-KR').format(amount);
   };
 
   if (loading) {
     return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        backgroundColor: '#f3f4f6',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'Arial, sans-serif'
-      }}>
-        <div style={{ fontSize: '1.5rem', color: '#6b7280' }}>로딩 중...</div>
+      <div className="min-h-screen p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-white">로딩 중...</div>
+        </div>
       </div>
     );
   }
 
-  const operatingStores = stores.filter(store => store.status === 'operating');
-  const totalSales = operatingStores.reduce((sum, store) => sum + store.dailySales, 0);
-  const totalEmployees = stores.reduce((sum, store) => sum + store.employeeCount, 0);
-  const averageRating = stores.reduce((sum, store) => sum + store.rating, 0) / stores.length;
-
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999,
-      backgroundColor: '#f3f4f6',
-      fontFamily: 'Arial, sans-serif',
-      overflow: 'auto'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '2rem auto',
-        padding: '0 2rem'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem'
-        }}>
-          <div>
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '0.5rem'
-            }}>
-              매장 관리자 대시보드
-            </h1>
-            <p style={{
-              fontSize: '1.125rem',
-              color: '#6b7280'
-            }}>
-              전체 매장 현황 및 관리
-            </p>
+    <div className="min-h-screen p-6">
+      {/* 헤더 */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <Store className="w-6 h-6" />
+          매장 관리자 대시보드
+        </h1>
+        <p className="text-gray-300 mt-2">매장 현황 및 직원 관리</p>
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">총 매장</p>
+                <p className="text-2xl font-bold text-white">{stores.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <Store className="w-6 h-6 text-blue-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">운영중</p>
+                <p className="text-2xl font-bold text-white">
+                  {stores.filter(s => s.status === 'operating').length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">총 직원</p>
+                <p className="text-2xl font-bold text-white">
+                  {stores.reduce((sum, store) => sum + store.employeeCount, 0)}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-purple-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">일일 매출</p>
+                <p className="text-2xl font-bold text-white">
+                  ₩{formatCurrency(stores.reduce((sum, store) => sum + store.dailySales, 0))}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-yellow-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 매장 목록 */}
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-white">매장 목록</CardTitle>
+            <Button
+              onClick={() => setShowCreateForm(true)}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              직원 추가
+            </Button>
           </div>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            style={{
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-          >
-            <span>+</span>
-            직원 + 직원 계정 생성
-          </button>
-        </div>
-
-        {/* 통계 카드 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>전체 매장</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>{stores.length}개</p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0.25rem 0 0 0' }}>
-              {operatingStores.length}개 운영중
-            </p>
-          </div>
-
-          <div style={{
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>전체 직원</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>{totalEmployees}명</p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0.25rem 0 0 0' }}>근무 중인 직원</p>
-          </div>
-
-          <div style={{
-            backgroundColor: '#8b5cf6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>오늘 매출</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>
-              {formatCurrency(totalSales)}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0.25rem 0 0 0' }}>전체 매장 매출</p>
-          </div>
-
-          <div style={{
-            backgroundColor: '#f59e0b',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>평균 평점</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>
-              {averageRating.toFixed(1)}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0.25rem 0 0 0' }}>고객 만족도</p>
-          </div>
-        </div>
-
-        {/* 매장 목록 */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '2rem',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-        }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            color: '#1f2937',
-            marginBottom: '1.5rem'
-          }}>
-            매장 목록
-          </h2>
-
-          <div style={{
-            display: 'grid',
-            gap: '1rem'
-          }}>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {stores.map((store) => (
-              <div key={store.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '1.5rem',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <div style={{ flex: '1' }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    marginBottom: '0.5rem'
-                  }}>
-                    <h3 style={{
-                      fontSize: '1.125rem',
-                      fontWeight: 'bold',
-                      color: '#1f2937',
-                      margin: '0 0.5rem 0 0'
-                    }}>
-                      {store.name}
-                    </h3>
-                    <span style={{
-                      backgroundColor: getStatusColor(store.status),
-                      color: 'white',
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: '500'
-                    }}>
-                      {getStatusText(store.status)}
-                    </span>
-                  </div>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280',
-                    margin: '0 0 0.5rem 0'
-                  }}>
-                    {store.location}
-                  </p>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280',
-                    margin: '0'
-                  }}>
-                    매니저: {store.manager} | 직원: {store.employeeCount}명
-                  </p>
+              <div
+                key={store.id}
+                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 hover:bg-white/10 transition-all duration-300"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-lg font-semibold text-white">{store.name}</h3>
+                  <Badge className={getStatusColor(store.status)}>
+                    {getStatusText(store.status)}
+                  </Badge>
                 </div>
-
-                <div style={{
-                  textAlign: 'right',
-                  marginLeft: '1rem'
-                }}>
-                  <div style={{
-                    fontSize: '1.25rem',
-                    fontWeight: 'bold',
-                    color: '#1f2937',
-                    marginBottom: '0.25rem'
-                  }}>
-                    {store.status === 'operating' ? formatCurrency(store.dailySales) : '-'}
+                
+                <div className="space-y-3">
+                  <div className="flex items-center text-gray-300">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{store.location}</span>
                   </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280'
-                  }}>
-                    평점: {store.rating}
+                  
+                  <div className="flex items-center text-gray-300">
+                    <Users className="w-4 h-4 mr-2" />
+                    <span className="text-sm">매니저: {store.manager}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-gray-300">
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    <span className="text-sm">일일 매출: ₩{formatCurrency(store.dailySales)}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-gray-300">
+                    <Users className="w-4 h-4 mr-2" />
+                    <span className="text-sm">직원 수: {store.employeeCount}명</span>
+                  </div>
+                  
+                  <div className="flex items-center text-gray-300">
+                    <Star className="w-4 h-4 mr-2" />
+                    <span className="text-sm">평점: {store.rating}</span>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* 직원 + 직원 계정 생성 모달 */}
-      {showCreateForm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '1.5rem'
-            }}>
-              <h2 style={{
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                color: '#1f2937',
-                margin: '0'
-              }}>
-                직원 + 직원 계정 생성
-              </h2>
-              <button
-                onClick={() => setShowCreateForm(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6b7280'
-                }}
-              >
-                ×
-              </button>
+      {/* 직원 추가 다이얼로그 */}
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <DialogHeader>
+            <DialogTitle className="text-white">새 직원 추가</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="employeeName" className="text-gray-300">직원 이름</Label>
+              <Input
+                id="employeeName"
+                value={formData.employeeName}
+                onChange={(e) => handleInputChange('employeeName', e.target.value)}
+                className="bg-white/10 border-white/20 text-white"
+                placeholder="직원 이름을 입력하세요"
+              />
+              {errors.employeeName && (
+                <p className="text-red-400 text-sm mt-1">{errors.employeeName}</p>
+              )}
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151', marginBottom: '1rem' }}>
-                직원 정보
-              </h3>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                  직원 이름 *
-                </label>
-                <input
-                  type="text"
-                  value={formData.employeeName}
-                  onChange={(e) => handleInputChange('employeeName', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: errors.employeeName ? '1px solid #ef4444' : '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem'
-                  }}
-                  placeholder="예: 김영희"
-                />
-                {errors.employeeName && (
-                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                    {errors.employeeName}
-                  </p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="employeeEmail" className="text-gray-300">이메일</Label>
+              <Input
+                id="employeeEmail"
+                type="email"
+                value={formData.employeeEmail}
+                onChange={(e) => handleInputChange('employeeEmail', e.target.value)}
+                className="bg-white/10 border-white/20 text-white"
+                placeholder="이메일을 입력하세요"
+              />
+              {errors.employeeEmail && (
+                <p className="text-red-400 text-sm mt-1">{errors.employeeEmail}</p>
+              )}
+            </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                  직원 이메일 *
-                </label>
-                <input
-                  type="email"
-                  value={formData.employeeEmail}
-                  onChange={(e) => handleInputChange('employeeEmail', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: errors.employeeEmail ? '1px solid #ef4444' : '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem'
-                  }}
-                  placeholder="예: employee@store.com"
-                />
-                {errors.employeeEmail && (
-                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                    {errors.employeeEmail}
-                  </p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="employeePhone" className="text-gray-300">전화번호</Label>
+              <Input
+                id="employeePhone"
+                value={formData.employeePhone}
+                onChange={(e) => handleInputChange('employeePhone', e.target.value)}
+                className="bg-white/10 border-white/20 text-white"
+                placeholder="전화번호를 입력하세요"
+              />
+              {errors.employeePhone && (
+                <p className="text-red-400 text-sm mt-1">{errors.employeePhone}</p>
+              )}
+            </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                  직원 전화번호 *
-                </label>
-                <input
-                  type="text"
-                  value={formData.employeePhone}
-                  onChange={(e) => handleInputChange('employeePhone', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: errors.employeePhone ? '1px solid #ef4444' : '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem'
-                  }}
-                  placeholder="예: 010-1234-5678"
-                />
-                {errors.employeePhone && (
-                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                    {errors.employeePhone}
-                  </p>
-                )}
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                  직책 *
-                </label>
-                <input
-                  type="text"
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="position" className="text-gray-300">직책</Label>
+                <Input
+                  id="position"
                   value={formData.position}
                   onChange={(e) => handleInputChange('position', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: errors.position ? '1px solid #ef4444' : '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem'
-                  }}
-                  placeholder="예: 바리스타"
+                  className="bg-white/10 border-white/20 text-white"
+                  placeholder="직책을 입력하세요"
                 />
                 {errors.position && (
-                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                    {errors.position}
-                  </p>
+                  <p className="text-red-400 text-sm mt-1">{errors.position}</p>
                 )}
               </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                  부서 *
-                </label>
-                <input
-                  type="text"
+              <div>
+                <Label htmlFor="department" className="text-gray-300">부서</Label>
+                <Input
+                  id="department"
                   value={formData.department}
                   onChange={(e) => handleInputChange('department', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: errors.department ? '1px solid #ef4444' : '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem'
-                  }}
-                  placeholder="예: 커피팀"
+                  className="bg-white/10 border-white/20 text-white"
+                  placeholder="부서를 입력하세요"
                 />
                 {errors.department && (
-                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                    {errors.department}
-                  </p>
+                  <p className="text-red-400 text-sm mt-1">{errors.department}</p>
                 )}
               </div>
+            </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                  입사일 *
-                </label>
-                <input
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="hireDate" className="text-gray-300">입사일</Label>
+                <Input
+                  id="hireDate"
                   type="date"
                   value={formData.hireDate}
                   onChange={(e) => handleInputChange('hireDate', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: errors.hireDate ? '1px solid #ef4444' : '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem'
-                  }}
+                  className="bg-white/10 border-white/20 text-white"
                 />
                 {errors.hireDate && (
-                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                    {errors.hireDate}
-                  </p>
+                  <p className="text-red-400 text-sm mt-1">{errors.hireDate}</p>
                 )}
               </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                  급여 *
-                </label>
-                <input
-                  type="text"
+              <div>
+                <Label htmlFor="salary" className="text-gray-300">급여</Label>
+                <Input
+                  id="salary"
                   value={formData.salary}
                   onChange={(e) => handleInputChange('salary', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: errors.salary ? '1px solid #ef4444' : '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem'
-                  }}
-                  placeholder="예: 2,500,000"
+                  className="bg-white/10 border-white/20 text-white"
+                  placeholder="급여를 입력하세요"
                 />
                 {errors.salary && (
-                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                    {errors.salary}
-                  </p>
+                  <p className="text-red-400 text-sm mt-1">{errors.salary}</p>
                 )}
               </div>
             </div>
-
-            <div style={{
-              display: 'flex',
-              gap: '1rem',
-              justifyContent: 'flex-end'
-            }}>
-              <button
-                onClick={() => setShowCreateForm(false)}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  backgroundColor: 'white',
-                  color: '#374151',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-                disabled={loading}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleCreateEmployeeAndAccount}
-                disabled={loading}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  border: 'none',
-                  borderRadius: '6px',
-                  backgroundColor: loading ? '#9ca3af' : '#10b981',
-                  color: 'white',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  cursor: loading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {loading ? '생성 중...' : '직원 + 직원 계정 생성'}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+
+          <div className="flex justify-end gap-2 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateForm(false)}
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleCreateEmployeeAndAccount}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+            >
+              직원 추가
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

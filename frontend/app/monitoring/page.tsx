@@ -33,9 +33,7 @@ import {
   Users,
   BarChart3
 } from 'lucide-react';
-import { useLoadingState } from '@/hooks/useLoadingState';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { apiClient } from '@/lib/api-client';
+import { toast } from 'sonner';
 
 interface SystemStats {
   current_cpu: number;
@@ -97,221 +95,306 @@ interface MetricHistory {
   }>;
 }
 
+// 샘플 데이터
+const sampleSystemStats: SystemStats = {
+  current_cpu: 45.2,
+  current_memory: 78.5,
+  current_disk: 62.3,
+  avg_cpu_1h: 42.1,
+  avg_memory_1h: 76.8,
+  avg_disk_1h: 61.9,
+  uptime_hours: 168.5,
+  load_average: [1.2, 1.1, 0.9],
+  active_alerts: 3
+};
+
+const sampleApplicationStats: ApplicationStats = {
+  current_response_time: 245,
+  current_status_code: 200,
+  avg_response_time_1h: 234,
+  total_requests_1h: 15420,
+  total_errors_1h: 23,
+  error_rate_1h: 0.15,
+  active_sessions: 1250,
+  database_connections: 45
+};
+
+const sampleAlerts: Alert[] = [
+  {
+    alert_id: '1',
+    rule_id: 'cpu_high',
+    metric_type: 'system',
+    metric_name: 'cpu_usage',
+    current_value: 85.2,
+    threshold: 80.0,
+    severity: 'warning',
+    message: 'CPU 사용률이 임계값을 초과했습니다',
+    timestamp: '2024-01-15T10:30:00Z',
+    status: 'active'
+  },
+  {
+    alert_id: '2',
+    rule_id: 'memory_high',
+    metric_type: 'system',
+    metric_name: 'memory_usage',
+    current_value: 92.1,
+    threshold: 90.0,
+    severity: 'critical',
+    message: '메모리 사용률이 임계값을 초과했습니다',
+    timestamp: '2024-01-15T10:25:00Z',
+    status: 'active'
+  },
+  {
+    alert_id: '3',
+    rule_id: 'disk_high',
+    metric_type: 'system',
+    metric_name: 'disk_usage',
+    current_value: 88.7,
+    threshold: 85.0,
+    severity: 'warning',
+    message: '디스크 사용률이 임계값을 초과했습니다',
+    timestamp: '2024-01-15T10:20:00Z',
+    status: 'acknowledged',
+    acknowledged_by: 'admin'
+  }
+];
+
+const sampleAlertRules: AlertRule[] = [
+  {
+    rule_id: 'cpu_high',
+    name: 'CPU 사용률 높음',
+    metric_type: 'system',
+    metric_name: 'cpu_usage',
+    operator: '>',
+    threshold: 80.0,
+    duration: 5,
+    severity: 'warning',
+    enabled: true,
+    created_at: '2024-01-01T00:00:00Z'
+  },
+  {
+    rule_id: 'memory_high',
+    name: '메모리 사용률 높음',
+    metric_type: 'system',
+    metric_name: 'memory_usage',
+    operator: '>',
+    threshold: 90.0,
+    duration: 3,
+    severity: 'critical',
+    enabled: true,
+    created_at: '2024-01-01T00:00:00Z'
+  },
+  {
+    rule_id: 'disk_high',
+    name: '디스크 사용률 높음',
+    metric_type: 'system',
+    metric_name: 'disk_usage',
+    operator: '>',
+    threshold: 85.0,
+    duration: 10,
+    severity: 'warning',
+    enabled: false,
+    created_at: '2024-01-01T00:00:00Z'
+  }
+];
+
 export default function MonitoringPage() {
-  const { isLoading, error, withLoading } = useLoadingState();
-  const { showError, showSuccess } = useErrorHandler();
-  
   const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
   const [applicationStats, setApplicationStats] = useState<ApplicationStats | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
-  const [metricHistory, setMetricHistory] = useState<MetricHistory | null>(null);
-  const [monitoringStatus, setMonitoringStatus] = useState<{
-    is_running: boolean;
-    collection_interval: number;
-    retention_days: number;
-    alert_enabled: boolean;
-  } | null>(null);
-  
-  const [selectedMetric, setSelectedMetric] = useState('cpu_percent');
+  const [isMonitoringActive, setIsMonitoringActive] = useState(true);
   const [showCreateRuleDialog, setShowCreateRuleDialog] = useState(false);
-  const [showAlertDetails, setShowAlertDetails] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-  
+  const [isLoading, setIsLoading] = useState(false);
   const [newRule, setNewRule] = useState({
     name: '',
     metric_type: 'system',
-    metric_name: 'cpu_percent',
+    metric_name: '',
     operator: '>',
-    threshold: 80,
-    duration: 300,
-    severity: 'high'
+    threshold: 0,
+    duration: 5,
+    severity: 'warning'
   });
 
-  // 데이터 로딩 함수들
+  // 데이터 로드 함수들
   const loadSystemStats = useCallback(async () => {
     try {
-      const response = await ApiClient.get('/api/monitoring/stats/system');
-      if (response.status === 'success') {
-        setSystemStats(response.data);
-      }
+      setSystemStats(sampleSystemStats);
     } catch (error) {
-      console.error('시스템 통계 로딩 오류:', error);
+      toast.error('시스템 통계를 불러오는데 실패했습니다');
     }
   }, []);
 
   const loadApplicationStats = useCallback(async () => {
     try {
-      const response = await ApiClient.get('/api/monitoring/stats/application');
-      if (response.status === 'success') {
-        setApplicationStats(response.data);
-      }
+      setApplicationStats(sampleApplicationStats);
     } catch (error) {
-      console.error('애플리케이션 통계 로딩 오류:', error);
+      toast.error('애플리케이션 통계를 불러오는데 실패했습니다');
     }
   }, []);
 
   const loadAlerts = useCallback(async () => {
     try {
-      const response = await ApiClient.get('/api/monitoring/alerts?limit=50');
-      if (response.status === 'success') {
-        setAlerts(response.data);
-      }
+      setAlerts(sampleAlerts);
     } catch (error) {
-      console.error('알림 로딩 오류:', error);
+      toast.error('알림을 불러오는데 실패했습니다');
     }
   }, []);
 
   const loadAlertRules = useCallback(async () => {
     try {
-      const response = await ApiClient.get('/api/monitoring/rules');
-      if (response.status === 'success') {
-        setAlertRules(response.data);
-      }
+      setAlertRules(sampleAlertRules);
     } catch (error) {
-      console.error('알림 규칙 로딩 오류:', error);
+      toast.error('알림 규칙을 불러오는데 실패했습니다');
     }
   }, []);
 
-  const loadMetricHistory = useCallback(async (metric: string, hours: number = 24) => {
-    try {
-      const response = await ApiClient.get(`/api/monitoring/metrics/history?metric=${metric}&hours=${hours}`);
-      if (response.status === 'success') {
-        setMetricHistory(response.data);
-      }
-    } catch (error) {
-      console.error('메트릭 히스토리 로딩 오류:', error);
-    }
-  }, []);
-
-  const loadMonitoringStatus = useCallback(async () => {
-    try {
-      const response = await ApiClient.get('/api/monitoring/control/status');
-      if (response.status === 'success') {
-        setMonitoringStatus(response.data);
-      }
-    } catch (error) {
-      console.error('모니터링 상태 로딩 오류:', error);
-    }
-  }, []);
-
-  // 이벤트 핸들러들
+  // 모니터링 제어
   const handleStartMonitoring = async () => {
-    await withLoading(async () => {
-      const response = await ApiClient.post('/api/monitoring/control/start');
-      if (response.status === 'success') {
-        showSuccess('모니터링이 시작되었습니다');
-        await loadMonitoringStatus();
-      }
-    });
+    setIsLoading(true);
+    try {
+      setIsMonitoringActive(true);
+      toast.success('모니터링이 시작되었습니다');
+    } catch (error) {
+      toast.error('모니터링 시작에 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleStopMonitoring = async () => {
-    await withLoading(async () => {
-      const response = await ApiClient.post('/api/monitoring/control/stop');
-      if (response.status === 'success') {
-        showSuccess('모니터링이 중지되었습니다');
-        await loadMonitoringStatus();
-      }
-    });
+    setIsLoading(true);
+    try {
+      setIsMonitoringActive(false);
+      toast.success('모니터링이 중지되었습니다');
+    } catch (error) {
+      toast.error('모니터링 중지에 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCollectMetrics = async () => {
-    await withLoading(async () => {
-      const response = await ApiClient.post('/api/monitoring/metrics/collect', {
-        type: 'all'
-      });
-      if (response.status === 'success') {
-        showSuccess('메트릭 수집이 완료되었습니다');
-        await loadSystemStats();
-        await loadApplicationStats();
-      }
-    });
+    setIsLoading(true);
+    try {
+      await loadSystemStats();
+      await loadApplicationStats();
+      toast.success('메트릭이 수집되었습니다');
+    } catch (error) {
+      toast.error('메트릭 수집에 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // 알림 관리
   const handleAcknowledgeAlert = async (alertId: string) => {
-    await withLoading(async () => {
-      const response = await ApiClient.post(`/api/monitoring/alerts/${alertId}/acknowledge`, {
-        user: 'admin'
-      });
-      if (response.status === 'success') {
-        showSuccess('알림이 승인되었습니다');
-        await loadAlerts();
-      }
-    });
+    setIsLoading(true);
+    try {
+      setAlerts(prev => prev.map(alert => 
+        alert.alert_id === alertId 
+          ? { ...alert, status: 'acknowledged', acknowledged_by: 'admin' }
+          : alert
+      ));
+      toast.success('알림이 확인되었습니다');
+    } catch (error) {
+      toast.error('알림 확인에 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCreateAlertRule = async () => {
-    await withLoading(async () => {
-      const response = await ApiClient.post('/api/monitoring/rules', newRule);
-      if (response.status === 'success') {
-        showSuccess('알림 규칙이 생성되었습니다');
-        setShowCreateRuleDialog(false);
-        setNewRule({
-          name: '',
-          metric_type: 'system',
-          metric_name: 'cpu_percent',
-          operator: '>',
-          threshold: 80,
-          duration: 300,
-          severity: 'high'
-        });
-        await loadAlertRules();
-      }
-    });
+    if (!newRule.name || !newRule.metric_name) {
+      toast.error('필수 필드를 입력해주세요');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const rule: AlertRule = {
+        rule_id: `rule_${Date.now()}`,
+        name: newRule.name,
+        metric_type: newRule.metric_type,
+        metric_name: newRule.metric_name,
+        operator: newRule.operator,
+        threshold: newRule.threshold,
+        duration: newRule.duration,
+        severity: newRule.severity,
+        enabled: true,
+        created_at: new Date().toISOString()
+      };
+      
+      setAlertRules(prev => [...prev, rule]);
+      setShowCreateRuleDialog(false);
+      setNewRule({
+        name: '',
+        metric_type: 'system',
+        metric_name: '',
+        operator: '>',
+        threshold: 0,
+        duration: 5,
+        severity: 'warning'
+      });
+      toast.success('알림 규칙이 생성되었습니다');
+    } catch (error) {
+      toast.error('알림 규칙 생성에 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleToggleRule = async (ruleId: string, enabled: boolean) => {
-    await withLoading(async () => {
-      const response = await ApiClient.put(`/api/monitoring/rules/${ruleId}`, {
-        enabled
-      });
-      if (response.status === 'success') {
-        showSuccess('알림 규칙이 수정되었습니다');
-        await loadAlertRules();
-      }
-    });
+    setIsLoading(true);
+    try {
+      setAlertRules(prev => prev.map(rule => 
+        rule.rule_id === ruleId ? { ...rule, enabled } : rule
+      ));
+      toast.success(`알림 규칙이 ${enabled ? '활성화' : '비활성화'}되었습니다`);
+    } catch (error) {
+      toast.error('알림 규칙 상태 변경에 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDeleteRule = async (ruleId: string) => {
-    if (!confirm('이 알림 규칙을 삭제하시겠습니까?')) return;
-    
-    await withLoading(async () => {
-      const response = await ApiClient.delete(`/api/monitoring/rules/${ruleId}`);
-      if (response.status === 'success') {
-        showSuccess('알림 규칙이 삭제되었습니다');
-        await loadAlertRules();
-      }
-    });
+    setIsLoading(true);
+    try {
+      setAlertRules(prev => prev.filter(rule => rule.rule_id !== ruleId));
+      toast.success('알림 규칙이 삭제되었습니다');
+    } catch (error) {
+      toast.error('알림 규칙 삭제에 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 유틸리티 함수들
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-blue-500';
-      default: return 'bg-gray-500';
+      case 'critical': return 'bg-red-500/20 text-red-400';
+      case 'warning': return 'bg-yellow-500/20 text-yellow-400';
+      case 'info': return 'bg-blue-500/20 text-blue-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical': return <XCircle className="w-4 h-4" />;
-      case 'high': return <AlertTriangle className="w-4 h-4" />;
-      case 'medium': return <AlertTriangle className="w-4 h-4" />;
-      case 'low': return <Bell className="w-4 h-4" />;
-      default: return <Bell className="w-4 h-4" />;
+      case 'warning': return <AlertTriangle className="w-4 h-4" />;
+      case 'info': return <Bell className="w-4 h-4" />;
+      default: return <Minus className="w-4 h-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-red-100 text-red-800';
-      case 'acknowledged': return 'bg-yellow-100 text-yellow-800';
-      case 'resolved': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'active': return 'bg-red-500/20 text-red-400';
+      case 'acknowledged': return 'bg-yellow-500/20 text-yellow-400';
+      case 'resolved': return 'bg-green-500/20 text-green-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
@@ -322,161 +405,118 @@ export default function MonitoringPage() {
   };
 
   const formatBytes = (bytes: number) => {
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   };
 
-  // 초기 데이터 로딩
+  // 초기 데이터 로드
   useEffect(() => {
     const loadAllData = async () => {
-      await Promise.all([
-        loadSystemStats(),
-        loadApplicationStats(),
-        loadAlerts(),
-        loadAlertRules(),
-        loadMonitoringStatus(),
-        loadMetricHistory(selectedMetric)
-      ]);
+      await loadSystemStats();
+      await loadApplicationStats();
+      await loadAlerts();
+      await loadAlertRules();
     };
-
     loadAllData();
-
-    // 30초마다 데이터 새로고침
-    const interval = setInterval(loadAllData, 30000);
-    return () => clearInterval(interval);
-  }, [loadSystemStats, loadApplicationStats, loadAlerts, loadAlertRules, loadMonitoringStatus, loadMetricHistory, selectedMetric]);
+  }, [loadSystemStats, loadApplicationStats, loadAlerts, loadAlertRules]);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen p-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">시스템 모니터링</h1>
-          <p className="text-gray-600">실시간 시스템 성능 및 상태 모니터링</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCollectMetrics}
-            disabled={isLoading}
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            메트릭 수집
-          </Button>
-          {monitoringStatus?.is_running ? (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleStopMonitoring}
-              disabled={isLoading}
-            >
-              <Square className="w-4 h-4 mr-2" />
-              모니터링 중지
-            </Button>
-          ) : (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleStartMonitoring}
-              disabled={isLoading}
-            >
-              <Play className="w-4 h-4 mr-2" />
-              모니터링 시작
-            </Button>
-          )}
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <Activity className="w-8 h-8 text-green-400" />
+          시스템 모니터링
+        </h1>
+        <p className="text-gray-300 mt-2">시스템 및 애플리케이션 상태를 실시간으로 모니터링합니다</p>
       </div>
 
-      {/* 모니터링 상태 */}
-      {monitoringStatus && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              모니터링 상태
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${monitoringStatus.is_running ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-sm">
-                  {monitoringStatus.is_running ? '실행 중' : '중지됨'}
-                </span>
-              </div>
-              <div className="text-sm">
-                수집 간격: {monitoringStatus.collection_interval}초
-              </div>
-              <div className="text-sm">
-                보존 기간: {monitoringStatus.retention_days}일
-              </div>
-              <div className="text-sm">
-                알림: {monitoringStatus.alert_enabled ? '활성화' : '비활성화'}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* 액션 버튼 */}
+      <div className="flex gap-3 mb-6">
+        {isMonitoringActive ? (
+          <Button 
+            onClick={handleStopMonitoring}
+            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+          >
+            <Square className="w-4 h-4 mr-2" />
+            모니터링 중지
+          </Button>
+        ) : (
+          <Button 
+            onClick={handleStartMonitoring}
+            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+          >
+            <Play className="w-4 h-4 mr-2" />
+            모니터링 시작
+          </Button>
+        )}
+        <Button 
+          onClick={handleCollectMetrics}
+          variant="outline"
+          className="border-white/20 text-white hover:bg-white/10"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          메트릭 수집
+        </Button>
+        <Button 
+          onClick={() => setShowCreateRuleDialog(true)}
+          variant="outline"
+          className="border-white/20 text-white hover:bg-white/10"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          알림 규칙 생성
+        </Button>
+      </div>
 
       {/* 시스템 통계 */}
       {systemStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">CPU 사용률</CardTitle>
-              <Cpu className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">CPU 사용률</CardTitle>
+              <Cpu className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{systemStats.current_cpu.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-white">{systemStats.current_cpu.toFixed(1)}%</div>
               <Progress value={systemStats.current_cpu} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-2">
-                1시간 평균: {systemStats.avg_cpu_1h.toFixed(1)}%
-              </p>
+              <p className="text-xs text-gray-300 mt-1">1시간 평균: {systemStats.avg_cpu_1h.toFixed(1)}%</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">메모리 사용률</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">메모리 사용률</CardTitle>
+              <HardDrive className="h-4 w-4 text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{systemStats.current_memory.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-white">{systemStats.current_memory.toFixed(1)}%</div>
               <Progress value={systemStats.current_memory} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-2">
-                1시간 평균: {systemStats.avg_memory_1h.toFixed(1)}%
-              </p>
+              <p className="text-xs text-gray-300 mt-1">1시간 평균: {systemStats.avg_memory_1h.toFixed(1)}%</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">디스크 사용률</CardTitle>
-              <HardDrive className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">디스크 사용률</CardTitle>
+              <Database className="h-4 w-4 text-orange-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{systemStats.current_disk.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-white">{systemStats.current_disk.toFixed(1)}%</div>
               <Progress value={systemStats.current_disk} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-2">
-                1시간 평균: {systemStats.avg_disk_1h.toFixed(1)}%
-              </p>
+              <p className="text-xs text-gray-300 mt-1">1시간 평균: {systemStats.avg_disk_1h.toFixed(1)}%</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">시스템 업타임</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">가동 시간</CardTitle>
+              <Clock className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatUptime(systemStats.uptime_hours)}</div>
-              <p className="text-xs text-muted-foreground mt-2">
-                로드 평균: {systemStats.load_average[0].toFixed(2)}
-              </p>
+              <div className="text-2xl font-bold text-white">{formatUptime(systemStats.uptime_hours)}</div>
+              <p className="text-xs text-gray-300">부하: {systemStats.load_average.join(', ')}</p>
             </CardContent>
           </Card>
         </div>
@@ -484,56 +524,48 @@ export default function MonitoringPage() {
 
       {/* 애플리케이션 통계 */}
       {applicationStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">응답 시간</CardTitle>
-              <Zap className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">응답 시간</CardTitle>
+              <Network className="h-4 w-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{applicationStats.current_response_time.toFixed(0)}ms</div>
-              <p className="text-xs text-muted-foreground mt-2">
-                1시간 평균: {applicationStats.avg_response_time_1h.toFixed(0)}ms
-              </p>
+              <div className="text-2xl font-bold text-white">{applicationStats.current_response_time}ms</div>
+              <p className="text-xs text-gray-300">1시간 평균: {applicationStats.avg_response_time_1h}ms</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">요청 수</CardTitle>
-              <Network className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">요청 수</CardTitle>
+              <BarChart3 className="h-4 w-4 text-indigo-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{applicationStats.total_requests_1h}</div>
-              <p className="text-xs text-muted-foreground mt-2">
-                에러율: {applicationStats.error_rate_1h.toFixed(2)}%
-              </p>
+              <div className="text-2xl font-bold text-white">{applicationStats.total_requests_1h.toLocaleString()}</div>
+              <p className="text-xs text-gray-300">1시간 동안</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">활성 세션</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">오류율</CardTitle>
+              <XCircle className="h-4 w-4 text-red-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{applicationStats.active_sessions}</div>
-              <p className="text-xs text-muted-foreground mt-2">
-                DB 연결: {applicationStats.database_connections}
-              </p>
+              <div className="text-2xl font-bold text-white">{applicationStats.error_rate_1h.toFixed(2)}%</div>
+              <p className="text-xs text-gray-300">오류: {applicationStats.total_errors_1h}개</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">활성 알림</CardTitle>
-              <Bell className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-white">활성 세션</CardTitle>
+              <Users className="h-4 w-4 text-pink-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{systemStats?.active_alerts || 0}</div>
-              <p className="text-xs text-muted-foreground mt-2">
-                실시간 모니터링
-              </p>
+              <div className="text-2xl font-bold text-white">{applicationStats.active_sessions.toLocaleString()}</div>
+              <p className="text-xs text-gray-300">DB 연결: {applicationStats.database_connections}개</p>
             </CardContent>
           </Card>
         </div>
@@ -541,72 +573,63 @@ export default function MonitoringPage() {
 
       {/* 메인 탭 */}
       <Tabs defaultValue="alerts" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="alerts">알림 관리</TabsTrigger>
-          <TabsTrigger value="rules">알림 규칙</TabsTrigger>
-          <TabsTrigger value="metrics">메트릭 히스토리</TabsTrigger>
+        <TabsList className="bg-white/10 border border-white/20">
+          <TabsTrigger value="alerts" className="text-white data-[state=active]:bg-white/20">알림</TabsTrigger>
+          <TabsTrigger value="rules" className="text-white data-[state=active]:bg-white/20">알림 규칙</TabsTrigger>
         </TabsList>
 
-        {/* 알림 관리 탭 */}
+        {/* 알림 탭 */}
         <TabsContent value="alerts" className="space-y-4">
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader>
-              <CardTitle>시스템 알림</CardTitle>
-              <CardDescription>
-                실시간 시스템 알림 및 경고 관리
-              </CardDescription>
+              <CardTitle className="text-white">활성 알림</CardTitle>
+              <CardDescription className="text-gray-300">시스템에서 발생한 알림을 확인합니다</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {alerts.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
-                    <p>현재 활성 알림이 없습니다</p>
-                  </div>
-                ) : (
-                  alerts.map((alert) => (
-                    <div
-                      key={alert.alert_id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${getSeverityColor(alert.severity)}`}>
-                          {getSeverityIcon(alert.severity)}
+                {alerts.map((alert) => (
+                  <div key={alert.alert_id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 hover:bg-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-medium text-white">{alert.message}</h3>
+                          <Badge className={getSeverityColor(alert.severity)}>
+                            {getSeverityIcon(alert.severity)}
+                            <span className="ml-1">{alert.severity}</span>
+                          </Badge>
+                          <Badge className={getStatusColor(alert.status)}>
+                            {alert.status === 'active' ? '활성' : 
+                             alert.status === 'acknowledged' ? '확인됨' : '해결됨'}
+                          </Badge>
                         </div>
-                        <div>
-                          <div className="font-medium">{alert.message}</div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(alert.timestamp).toLocaleString()}
-                          </div>
+                        <div className="text-sm text-gray-300 space-y-1">
+                          <div>메트릭: {alert.metric_name} ({alert.current_value} / {alert.threshold})</div>
+                          <div>발생 시간: {new Date(alert.timestamp).toLocaleString('ko-KR')}</div>
+                          {alert.acknowledged_by && (
+                            <div>확인자: {alert.acknowledged_by}</div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge className={getStatusColor(alert.status)}>
-                          {alert.status === 'active' ? '활성' : 
-                           alert.status === 'acknowledged' ? '승인됨' : '해결됨'}
-                        </Badge>
                         {alert.status === 'active' && (
                           <Button
-                            variant="outline"
                             size="sm"
+                            variant="outline"
                             onClick={() => handleAcknowledgeAlert(alert.alert_id)}
+                            className="border-white/20 text-white hover:bg-white/10"
                           >
-                            승인
+                            확인
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedAlert(alert);
-                            setShowAlertDetails(true);
-                          }}
-                        >
-                          상세
-                        </Button>
                       </div>
                     </div>
-                  ))
+                  </div>
+                ))}
+                
+                {alerts.length === 0 && (
+                  <div className="text-center py-8 text-gray-300">
+                    활성 알림이 없습니다.
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -615,90 +638,53 @@ export default function MonitoringPage() {
 
         {/* 알림 규칙 탭 */}
         <TabsContent value="rules" className="space-y-4">
-          <Card>
+          <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>알림 규칙</CardTitle>
-                  <CardDescription>
-                    시스템 알림 규칙 관리
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setShowCreateRuleDialog(true)}>
-                  규칙 생성
-                </Button>
-              </div>
+              <CardTitle className="text-white">알림 규칙</CardTitle>
+              <CardDescription className="text-gray-300">시스템 모니터링 규칙을 관리합니다</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {alertRules.map((rule) => (
-                  <div
-                    key={rule.rule_id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={rule.enabled}
-                        onCheckedChange={(enabled) => handleToggleRule(rule.rule_id, enabled)}
-                      />
-                      <div>
-                        <div className="font-medium">{rule.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {rule.metric_type} - {rule.metric_name} {rule.operator} {rule.threshold}
+                  <div key={rule.rule_id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 hover:bg-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-medium text-white">{rule.name}</h3>
+                          <Badge className={getSeverityColor(rule.severity)}>
+                            {rule.severity}
+                          </Badge>
+                          <Badge className={rule.enabled ? "bg-green-500/20 text-green-400" : "bg-gray-500/20 text-gray-400"}>
+                            {rule.enabled ? '활성' : '비활성'}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-300 space-y-1">
+                          <div>조건: {rule.metric_name} {rule.operator} {rule.threshold}</div>
+                          <div>지속 시간: {rule.duration}분</div>
+                          <div>메트릭 타입: {rule.metric_type}</div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getSeverityColor(rule.severity)}>
-                        {rule.severity}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteRule(rule.rule_id)}
-                      >
-                        삭제
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={rule.enabled}
+                          onCheckedChange={(enabled) => handleToggleRule(rule.rule_id, enabled)}
+                        />
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteRule(rule.rule_id)}
+                          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* 메트릭 히스토리 탭 */}
-        <TabsContent value="metrics" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>메트릭 히스토리</CardTitle>
-              <CardDescription>
-                시스템 메트릭 변화 추이
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <select
-                    value={selectedMetric}
-                    onChange={(e) => setSelectedMetric(e.target.value)}
-                    className="border rounded px-3 py-2"
-                  >
-                    <option value="cpu_percent">CPU 사용률</option>
-                    <option value="memory_percent">메모리 사용률</option>
-                    <option value="disk_percent">디스크 사용률</option>
-                    <option value="response_time">응답 시간</option>
-                  </select>
-                </div>
                 
-                {metricHistory && (
-                  <div className="h-64 bg-gray-50 rounded-lg p-4">
-                    <div className="text-center text-gray-500">
-                      차트 영역 (실제 구현에서는 Recharts 등 사용)
-                    </div>
-                    <div className="text-sm text-gray-400 mt-2">
-                      {metricHistory.history.length}개 데이터 포인트
-                    </div>
+                {alertRules.length === 0 && (
+                  <div className="text-center py-8 text-gray-300">
+                    알림 규칙이 없습니다.
                   </div>
                 )}
               </div>
@@ -709,145 +695,70 @@ export default function MonitoringPage() {
 
       {/* 알림 규칙 생성 다이얼로그 */}
       <Dialog open={showCreateRuleDialog} onOpenChange={setShowCreateRuleDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md bg-white/10 backdrop-blur-sm border border-white/20">
           <DialogHeader>
-            <DialogTitle>알림 규칙 생성</DialogTitle>
-            <DialogDescription>
-              새로운 알림 규칙을 생성합니다
-            </DialogDescription>
+            <DialogTitle className="text-white">알림 규칙 생성</DialogTitle>
+            <DialogDescription className="text-gray-300">새로운 모니터링 규칙을 생성합니다</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">규칙 이름</label>
+              <label className="text-sm font-medium text-gray-300">규칙 이름</label>
               <Input
                 value={newRule.name}
-                onChange={(e) => setNewRule({...newRule, name: e.target.value})}
-                placeholder="예: CPU 사용률 높음"
+                onChange={(e) => setNewRule(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="규칙 이름을 입력하세요"
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
               />
             </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-300">메트릭 이름</label>
+              <Input
+                value={newRule.metric_name}
+                onChange={(e) => setNewRule(prev => ({ ...prev, metric_name: e.target.value }))}
+                placeholder="cpu_usage, memory_usage 등"
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+              />
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">메트릭 유형</label>
-                <select
-                  value={newRule.metric_type}
-                  onChange={(e) => setNewRule({...newRule, metric_type: e.target.value})}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="system">시스템</option>
-                  <option value="application">애플리케이션</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">메트릭</label>
-                <select
-                  value={newRule.metric_name}
-                  onChange={(e) => setNewRule({...newRule, metric_name: e.target.value})}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="cpu_percent">CPU 사용률</option>
-                  <option value="memory_percent">메모리 사용률</option>
-                  <option value="disk_percent">디스크 사용률</option>
-                  <option value="response_time">응답 시간</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm font-medium">연산자</label>
-                <select
-                  value={newRule.operator}
-                  onChange={(e) => setNewRule({...newRule, operator: e.target.value})}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value=">">&gt;</option>
-                  <option value=">=">&gt;=</option>
-                  <option value="<">&lt;</option>
-                  <option value="<=">&lt;=</option>
-                  <option value="==">=</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">임계값</label>
+                <label className="text-sm font-medium text-gray-300">임계값</label>
                 <Input
                   type="number"
                   value={newRule.threshold}
-                  onChange={(e) => setNewRule({...newRule, threshold: parseFloat(e.target.value)})}
+                  onChange={(e) => setNewRule(prev => ({ ...prev, threshold: parseFloat(e.target.value) }))}
+                  className="bg-white/10 border-white/20 text-white"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">심각도</label>
-                <select
-                  value={newRule.severity}
-                  onChange={(e) => setNewRule({...newRule, severity: e.target.value})}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="low">낮음</option>
-                  <option value="medium">보통</option>
-                  <option value="high">높음</option>
-                  <option value="critical">치명적</option>
-                </select>
+                <label className="text-sm font-medium text-gray-300">지속 시간 (분)</label>
+                <Input
+                  type="number"
+                  value={newRule.duration}
+                  onChange={(e) => setNewRule(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
+                  className="bg-white/10 border-white/20 text-white"
+                />
               </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowCreateRuleDialog(false)}>
-                취소
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleCreateAlertRule}
+                disabled={isLoading}
+                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+              >
+                {isLoading ? "생성 중..." : "규칙 생성"}
               </Button>
-              <Button onClick={handleCreateAlertRule}>
-                생성
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCreateRuleDialog(false)}
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                취소
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* 알림 상세 다이얼로그 */}
-      <Dialog open={showAlertDetails} onOpenChange={setShowAlertDetails}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>알림 상세 정보</DialogTitle>
-          </DialogHeader>
-          {selectedAlert && (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">메시지</label>
-                <p className="text-sm">{selectedAlert.message}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">현재 값</label>
-                  <p className="text-sm">{selectedAlert.current_value}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">임계값</label>
-                  <p className="text-sm">{selectedAlert.threshold}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">심각도</label>
-                  <Badge className={getSeverityColor(selectedAlert.severity)}>
-                    {selectedAlert.severity}
-                  </Badge>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">상태</label>
-                  <Badge className={getStatusColor(selectedAlert.status)}>
-                    {selectedAlert.status}
-                  </Badge>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">발생 시간</label>
-                <p className="text-sm">{new Date(selectedAlert.timestamp).toLocaleString()}</p>
-              </div>
-              {selectedAlert.resolved_at && (
-                <div>
-                  <label className="text-sm font-medium">해결 시간</label>
-                  <p className="text-sm">{new Date(selectedAlert.resolved_at).toLocaleString()}</p>
-                </div>
-              )}
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </div>

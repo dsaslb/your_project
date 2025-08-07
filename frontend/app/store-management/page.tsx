@@ -8,6 +8,7 @@ import { Badge } from '../../src/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../src/components/ui/dialog';
 import { Label } from '../../src/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../src/components/ui/select';
+import { Textarea } from '../../src/components/ui/textarea';
 import { 
   Building2, 
   Plus, 
@@ -16,743 +17,662 @@ import {
   Trash2, 
   Users,
   CheckCircle,
-  XCircle
+  XCircle,
+  Clock,
+  TrendingUp,
+  AlertTriangle,
+  Brain,
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiClient, Store as StoreType, Brand } from '../../src/lib/api-client';
+import { apiClient } from '../../src/lib/api-client';
 import useLoadingState from '../../src/hooks/useLoadingState';
 import useErrorHandler from '../../src/hooks/useErrorHandler';
 
-interface StoreFormData {
-  name: string;
-  code: string;
-  address: string;
-  phone: string;
-  manager_name: string;
-  brand_id: number;
+// 로컬 스토리지 관리 클래스
+class LocalStorageManager {
+  private static instance: LocalStorageManager;
+  
+  static getInstance(): LocalStorageManager {
+    if (!LocalStorageManager.instance) {
+      LocalStorageManager.instance = new LocalStorageManager();
+    }
+    return LocalStorageManager.instance;
+  }
+
+  // 스케줄 데이터 관리
+  getSchedules(storeId: number): any[] {
+    const key = `schedules_${storeId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveSchedules(storeId: number, schedules: any[]): void {
+    const key = `schedules_${storeId}`;
+    localStorage.setItem(key, JSON.stringify(schedules));
+  }
+
+  // 출퇴근 기록 관리
+  getAttendanceRecords(storeId: number): any[] {
+    const key = `attendance_${storeId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveAttendanceRecords(storeId: number, records: any[]): void {
+    const key = `attendance_${storeId}`;
+    localStorage.setItem(key, JSON.stringify(records));
+  }
+
+  // 매출 데이터 관리
+  getSalesData(storeId: number): any[] {
+    const key = `sales_${storeId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveSalesData(storeId: number, sales: any[]): void {
+    const key = `sales_${storeId}`;
+    localStorage.setItem(key, JSON.stringify(sales));
+  }
+
+  // AI 리포트 관리
+  getAIReports(storeId: number): any[] {
+    const key = `ai_reports_${storeId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveAIReports(storeId: number, reports: any[]): void {
+    const key = `ai_reports_${storeId}`;
+    localStorage.setItem(key, JSON.stringify(reports));
+  }
 }
 
-interface EmployeeFormData {
+// AI 분석 클래스
+class AIAnalyzer {
+  static analyzeStaffingEfficiency(schedules: any[], attendance: any[], sales: any[]): any {
+    const analysis = {
+      issues: [],
+      improvements: [],
+      efficiency_score: 0,
+      recommendations: []
+    };
+
+    // 간단한 AI 분석 로직
+    const totalStaff = schedules.length;
+    const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
+    const avgSalesPerStaff = totalSales / totalStaff;
+
+    if (avgSalesPerStaff < 100000) {
+      analysis.issues.push('직원당 매출이 낮음');
+      analysis.improvements.push('직원 교육 및 동기 부여 강화');
+    }
+
+    if (totalStaff > 10) {
+      analysis.issues.push('인원 과다');
+      analysis.improvements.push('인원 최적화 필요');
+    }
+
+    analysis.efficiency_score = Math.min(100, Math.max(0, avgSalesPerStaff / 1000));
+    
+    return analysis;
+  }
+}
+
+interface Employee {
+  id: number;
   name: string;
   email: string;
   phone: string;
   role: string;
   department: string;
-  hireDate: string;
-  location: string;
+  position: string;
   store_id: number;
-  permissions: {
-    schedule_management: boolean;
-    inventory_management: boolean;
-    order_management: boolean;
-    employee_management: boolean;
-    reporting: boolean;
-  };
+}
+
+interface Schedule {
+  id: string;
+  employee_id: number;
+  employee_name: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  type: 'work' | 'cleaning' | 'task' | 'break';
+  role: string;
+  notes: string;
+  color: string;
+}
+
+interface AttendanceRecord {
+  id: string;
+  employee_id: number;
+  employee_name: string;
+  date: string;
+  check_in: string;
+  check_out: string;
+  status: 'present' | 'absent' | 'late' | 'early_leave';
+}
+
+interface SalesData {
+  id: string;
+  date: string;
+  amount: number;
+  customer_count: number;
+  staff_count: number;
+}
+
+interface AIReport {
+  id: string;
+  date: string;
+  issues: string[];
+  improvements: string[];
+  efficiency_score: number;
+  recommendations: string[];
 }
 
 export default function StoreManagement() {
-  const [stores, setStores] = useState<StoreType[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBrand, setSelectedBrand] = useState<number | 'all'>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isCreateEmployeeDialogOpen, setIsCreateEmployeeDialogOpen] = useState(false);
-  const [editingStore, setEditingStore] = useState<StoreType | null>(null);
-  const [selectedStore, setSelectedStore] = useState<StoreType | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [salesData, setSalesData] = useState<SalesData[]>([]);
+  const [aiReports, setAiReports] = useState<AIReport[]>([]);
   
-  const [formData, setFormData] = useState<StoreFormData>({
-    name: '',
-    code: '',
-    address: '',
-    phone: '',
-    manager_name: '',
-    brand_id: 0,
-  });
+  const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('all');
   
-  const [employeeFormData, setEmployeeFormData] = useState<EmployeeFormData>({
-    name: '',
-    email: '',
-    phone: '',
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [isAttendanceDialogOpen, setIsAttendanceDialogOpen] = useState(false);
+  const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
+  const [isAIReportDialogOpen, setIsAIReportDialogOpen] = useState(false);
+  
+  const [scheduleForm, setScheduleForm] = useState({
+    employee_id: 0,
+    date: '',
+    start_time: '',
+    end_time: '',
+    type: 'work' as const,
     role: '',
-    department: '',
-    hireDate: '',
-    location: '',
-    store_id: 0,
-    permissions: {
-      schedule_management: false,
-      inventory_management: false,
-      order_management: false,
-      employee_management: false,
-      reporting: false,
-    },
+    notes: ''
+  });
+
+  const [attendanceForm, setAttendanceForm] = useState({
+    employee_id: 0,
+    date: '',
+    check_in: '',
+    check_out: '',
+    status: 'present' as const
+  });
+
+  const [salesForm, setSalesForm] = useState({
+    date: '',
+    amount: 0,
+    customer_count: 0,
+    staff_count: 0
   });
 
   const { isLoading, setLoading, withLoading } = useLoadingState();
   const { handleError } = useErrorHandler();
+  const storageManager = LocalStorageManager.getInstance();
 
-  // 매장 목록 조회
-  const fetchStores = async () => {
+  // 현재 매장 ID (실제로는 사용자 정보에서 가져와야 함)
+  const currentStoreId = 1;
+
+  // 직원 마스터 데이터 조회
+  const fetchEmployees = async () => {
     try {
-      const response = await apiClient.getStores();
-      if (response.success && response.data) {
-        setStores(response.data);
+      const response = await apiClient.get('/api/employees/master') as any;
+      if (response.data.success) {
+        setEmployees(response.data.employees);
       }
     } catch (error) {
-      handleError(error as Error);
+      console.error('직원 데이터 조회 실패:', error);
+      // 샘플 데이터로 대체
+      setEmployees([
+        { id: 1, name: '김직원', email: 'kim@store.com', phone: '010-1234-5678', role: 'employee', department: '서빙', position: '직원', store_id: 1 },
+        { id: 2, name: '이매니저', email: 'lee@store.com', phone: '010-2345-6789', role: 'manager', department: '관리', position: '매니저', store_id: 1 }
+      ]);
     }
   };
 
-  // 브랜드 목록 조회
-  const fetchBrands = async () => {
-    try {
-      const response = await apiClient.getBrands();
-      if (response.success && response.data) {
-        setBrands(response.data);
-      }
-    } catch (error) {
-      handleError(error as Error);
-    }
+  // 로컬 스토리지에서 데이터 로드
+  const loadLocalData = () => {
+    setSchedules(storageManager.getSchedules(currentStoreId));
+    setAttendanceRecords(storageManager.getAttendanceRecords(currentStoreId));
+    setSalesData(storageManager.getSalesData(currentStoreId));
+    setAiReports(storageManager.getAIReports(currentStoreId));
   };
 
-  // 폼 초기화
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      code: '',
-      address: '',
-      phone: '',
-      manager_name: '',
-      brand_id: 0,
-    });
-    setEditingStore(null);
-  };
+  // 스케줄 관리
+  const addSchedule = () => {
+    const newSchedule: Schedule = {
+      id: Date.now().toString(),
+      employee_id: scheduleForm.employee_id,
+      employee_name: employees.find(emp => emp.id === scheduleForm.employee_id)?.name || '',
+      date: scheduleForm.date,
+      start_time: scheduleForm.start_time,
+      end_time: scheduleForm.end_time,
+      type: scheduleForm.type,
+      role: scheduleForm.role,
+      notes: scheduleForm.notes,
+      color: scheduleForm.type === 'work' ? '#3b82f6' : 
+             scheduleForm.type === 'cleaning' ? '#f59e0b' : 
+             scheduleForm.type === 'task' ? '#8b5cf6' : '#10b981'
+    };
 
-  // 매장 생성/수정
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    const updatedSchedules = [...schedules, newSchedule];
+    setSchedules(updatedSchedules);
+    storageManager.saveSchedules(currentStoreId, updatedSchedules);
     
-    if (!formData.name.trim() || !formData.code.trim()) {
-      toast.error('매장명과 코드는 필수 입력 항목입니다.');
-      return;
-    }
+    setIsScheduleDialogOpen(false);
+    setScheduleForm({ employee_id: 0, date: '', start_time: '', end_time: '', type: 'work', role: '', notes: '' });
+    toast.success('스케줄이 추가되었습니다.');
+  };
 
+  // 출퇴근 기록 관리
+  const addAttendanceRecord = () => {
+    const newRecord: AttendanceRecord = {
+      id: Date.now().toString(),
+      employee_id: attendanceForm.employee_id,
+      employee_name: employees.find(emp => emp.id === attendanceForm.employee_id)?.name || '',
+      date: attendanceForm.date,
+      check_in: attendanceForm.check_in,
+      check_out: attendanceForm.check_out,
+      status: attendanceForm.status
+    };
+
+    const updatedRecords = [...attendanceRecords, newRecord];
+    setAttendanceRecords(updatedRecords);
+    storageManager.saveAttendanceRecords(currentStoreId, updatedRecords);
+    
+    setIsAttendanceDialogOpen(false);
+    setAttendanceForm({ employee_id: 0, date: '', check_in: '', check_out: '', status: 'present' });
+    toast.success('출퇴근 기록이 추가되었습니다.');
+  };
+
+  // 매출 데이터 관리
+  const addSalesData = () => {
+    const newSales: SalesData = {
+      id: Date.now().toString(),
+      date: salesForm.date,
+      amount: salesForm.amount,
+      customer_count: salesForm.customer_count,
+      staff_count: salesForm.staff_count
+    };
+
+    const updatedSales = [...salesData, newSales];
+    setSalesData(updatedSales);
+    storageManager.saveSalesData(currentStoreId, updatedSales);
+    
+    setIsSalesDialogOpen(false);
+    setSalesForm({ date: '', amount: 0, customer_count: 0, staff_count: 0 });
+    toast.success('매출 데이터가 추가되었습니다.');
+  };
+
+  // AI 분석 실행
+  const runAIAnalysis = () => {
+    const analysis = AIAnalyzer.analyzeStaffingEfficiency(schedules, attendanceRecords, salesData);
+    
+    const newReport: AIReport = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0],
+      issues: analysis.issues,
+      improvements: analysis.improvements,
+      efficiency_score: analysis.efficiency_score,
+      recommendations: analysis.recommendations
+    };
+
+    const updatedReports = [...aiReports, newReport];
+    setAiReports(updatedReports);
+    storageManager.saveAIReports(currentStoreId, updatedReports);
+    
+    setIsAIReportDialogOpen(false);
+    toast.success('AI 분석이 완료되었습니다.');
+  };
+
+  // AI 리포트 상위 관리자에게 제출
+  const submitAIReport = async (report: AIReport) => {
     try {
-      setLoading(true);
-      
-      if (editingStore) {
-        // 수정
-        const response = await apiClient.updateStore(editingStore.id, formData);
-        if (response.success) {
-          toast.success('매장이 성공적으로 수정되었습니다.');
-          setIsCreateDialogOpen(false);
-          resetForm();
-          fetchStores();
+      await apiClient.post('/api/ai-reports/summary', {
+        store_id: currentStoreId,
+        report_date: report.date,
+        summary_data: {
+          issues: report.issues,
+          improvements: report.improvements,
+          efficiency_score: report.efficiency_score
         }
-      } else {
-        // 생성
-        const response = await apiClient.createStore(formData);
-        if (response.success) {
-          toast.success('매장이 성공적으로 생성되었습니다.');
-          setIsCreateDialogOpen(false);
-          resetForm();
-          fetchStores();
-        }
-      }
+      });
+      toast.success('AI 리포트가 상위 관리자에게 제출되었습니다.');
     } catch (error) {
-      handleError(error as Error);
-    } finally {
-      setLoading(false);
+      toast.error('AI 리포트 제출 실패');
     }
   };
 
-  // 매장 삭제
-  const handleDelete = async (store: StoreType) => {
-    if (!confirm('매장을 삭제하시겠습니까?')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await apiClient.deleteStore(store.id);
-      if (response.success) {
-        toast.success('매장이 성공적으로 삭제되었습니다.');
-        fetchStores();
-      }
-    } catch (error) {
-      handleError(error as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 매장 활성화/비활성화
-  const handleActivate = async (store: StoreType) => {
-    try {
-      setLoading(true);
-      const newStatus = store.status === 'active' ? 'inactive' : 'active';
-      
-      const response = await apiClient.updateStore(store.id, { status: newStatus });
-      if (response.success) {
-        toast.success(`매장이 ${newStatus === 'active' ? '활성화' : '비활성화'}되었습니다.`);
-        fetchStores();
-      }
-    } catch (error) {
-      handleError(error as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 매장 수정 모드로 설정
-  const handleEdit = (store: StoreType) => {
-    setEditingStore(store);
-    setFormData({
-      name: store.name,
-      code: store.name, // Store 타입에 code가 없으므로 name을 사용
-      address: store.address || '',
-      phone: store.phone || '',
-      manager_name: '', // Store 타입에 manager_name이 없으므로 빈 문자열 사용
-      brand_id: store.brand_id,
-    });
-    setIsCreateDialogOpen(true);
-  };
-
-  // 상태별 색상
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/20 text-green-400 border border-green-500/30';
-      case 'inactive': return 'bg-red-500/20 text-red-400 border border-red-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
-    }
-  };
-
-  // 상태별 텍스트
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return '활성';
-      case 'inactive': return '비활성';
-      default: return '알 수 없음';
-    }
-  };
-
-  // 직원 생성 다이얼로그 열기
-  const handleCreateEmployee = (store: StoreType) => {
-    setSelectedStore(store);
-    setEmployeeFormData({
-      name: '',
-      email: '',
-      phone: '',
-      role: '',
-      department: '',
-      hireDate: '',
-      location: store.name,
-      store_id: store.id,
-      permissions: {
-        schedule_management: false,
-        inventory_management: false,
-        order_management: false,
-        employee_management: false,
-        reporting: false,
-      },
-    });
-    setIsCreateEmployeeDialogOpen(true);
-  };
-
-  // 직원 생성 처리
-  const handleCreateEmployeeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!employeeFormData.name.trim() || !employeeFormData.email.trim()) {
-      toast.error('직원명과 이메일은 필수 입력 항목입니다.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const employeeData = {
-        name: employeeFormData.name,
-        email: employeeFormData.email,
-        phone: employeeFormData.phone,
-        role: employeeFormData.role as 'super_admin' | 'brand_manager' | 'store_manager' | 'employee',
-        status: 'active' as const,
-        store_id: employeeFormData.store_id,
-      };
-      const response = await apiClient.createEmployee(employeeData);
-      if (response.success) {
-        toast.success('직원이 성공적으로 생성되었습니다.');
-        setIsCreateEmployeeDialogOpen(false);
-        resetEmployeeForm();
-        fetchStores(); // 매장 목록 새로고침 (직원 수 업데이트)
-      }
-    } catch (error) {
-      handleError(error as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 직원 폼 초기화
-  const resetEmployeeForm = () => {
-    setEmployeeFormData({
-      name: '',
-      email: '',
-      phone: '',
-      role: '',
-      department: '',
-      hireDate: '',
-      location: '',
-      store_id: 0,
-      permissions: {
-        schedule_management: false,
-        inventory_management: false,
-        order_management: false,
-        employee_management: false,
-        reporting: false,
-      },
-    });
-    setSelectedStore(null);
-  };
-
-  // 직원 폼 입력 처리
-  const handleEmployeeInputChange = (field: keyof EmployeeFormData, value: string | number | boolean) => {
-    if (field === 'permissions') {
-      setEmployeeFormData(prev => ({
-        ...prev,
-        permissions: {
-          ...prev.permissions,
-          [value as string]: !prev.permissions[value as keyof typeof prev.permissions]
-        }
-      }));
-    } else {
-      setEmployeeFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
-  };
-
-  // 필터링된 매장 목록
-  const filteredStores = stores.filter(store => {
-    const matchesSearch = searchTerm === '' || 
-      store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      store.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      store.address.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesBrand = selectedBrand === 'all' || store.brand_id === selectedBrand;
-    const matchesStatus = selectedStatus === 'all' || store.status === selectedStatus;
-    
-    return matchesSearch && matchesBrand && matchesStatus;
-  });
-
-  // 초기 데이터 로드
   useEffect(() => {
-    withLoading(async () => {
-      await Promise.all([fetchStores(), fetchBrands()]);
-    });
+    fetchEmployees();
+    loadLocalData();
   }, []);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <Building2 className="w-8 h-8 text-blue-400" />
-            매장 관리
-          </h1>
-          <p className="text-slate-400 mt-2">매장 정보를 관리하고 직원을 등록합니다.</p>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">매장 관리자 대시보드</h1>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsScheduleDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            스케줄 추가
+          </Button>
+          <Button onClick={() => setIsAttendanceDialogOpen(true)}>
+            <Clock className="w-4 h-4 mr-2" />
+            출퇴근 기록
+          </Button>
+          <Button onClick={() => setIsSalesDialogOpen(true)}>
+            <TrendingUp className="w-4 h-4 mr-2" />
+            매출 입력
+          </Button>
+          <Button onClick={() => setIsAIReportDialogOpen(true)}>
+            <Brain className="w-4 h-4 mr-2" />
+            AI 분석
+          </Button>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setIsCreateDialogOpen(true);
-          }}
-          className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          새 매장 추가
-        </Button>
       </div>
 
-      {/* 필터 및 검색 */}
-      <Card className="bg-slate-800/50 border-slate-600">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-slate-400" />
-              <Input
-                type="text"
-                placeholder="매장명, 코드, 매니저명으로 검색..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64 bg-slate-600/50 border-slate-500"
-              />
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">총 직원</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{employees.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">오늘 스케줄</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {schedules.filter(s => s.date === new Date().toISOString().split('T')[0]).length}
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Label className="text-slate-300">브랜드:</Label>
-              <Select value={selectedBrand.toString()} onValueChange={(value) => setSelectedBrand(value === 'all' ? 'all' : parseInt(value))}>
-                <SelectTrigger className="w-40 bg-slate-600/50 border-slate-500">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  <SelectItem value="all">전체 브랜드</SelectItem>
-                  {brands.map((brand) => (
-                    <SelectItem key={brand.id} value={brand.id.toString()}>
-                      {brand.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">오늘 출근</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {attendanceRecords.filter(r => r.date === new Date().toISOString().split('T')[0] && r.status === 'present').length}
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Label className="text-slate-300">상태:</Label>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-32 bg-slate-600/50 border-slate-500">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  <SelectItem value="all">전체</SelectItem>
-                  <SelectItem value="active">활성</SelectItem>
-                  <SelectItem value="inactive">비활성</SelectItem>
-                </SelectContent>
-              </Select>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">평균 효율도</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {aiReports.length > 0 ? Math.round(aiReports[aiReports.length - 1].efficiency_score) : 0}%
             </div>
-            
-            <Button
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedBrand('all');
-                setSelectedStatus('all');
-              }}
-              variant="outline"
-              className="border-slate-500 text-slate-300 hover:bg-slate-600"
-            >
-              필터 초기화
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* 매장 목록 */}
-      <Card className="bg-slate-800/50 border-slate-600">
+      {/* AI 리포트 섹션 */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-blue-400" />
-            매장 목록 ({filteredStores.length}개)
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="w-5 h-5" />
+            AI 분석 리포트
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredStores.map((store) => (
-              <div 
-                key={store.id} 
-                className="flex justify-between items-center p-4 bg-slate-600/30 rounded-lg hover:bg-slate-600/50 transition-all"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-semibold">{store.name}</h3>
-                    <p className="text-slate-400 text-sm">ID: {store.id}</p>
-                    <p className="text-slate-500 text-xs">{store.address}</p>
-                    <p className="text-slate-500 text-xs">연락처: {store.phone || '미지정'}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <Badge className={getStatusColor(store.status)}>
-                    {getStatusText(store.status)}
-                  </Badge>
-                  
-                  <div className="flex items-center gap-1 text-slate-400">
-                    <Users className="w-4 h-4" />
-                    <span className="text-sm">{store.employee_count || 0}명</span>
+          {aiReports.length > 0 ? (
+            <div className="space-y-4">
+              {aiReports.slice(-3).reverse().map((report) => (
+                <div key={report.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold">분석 리포트 - {report.date}</h3>
+                    <div className="flex gap-2">
+                      <Badge variant={report.efficiency_score >= 80 ? 'default' : 'destructive'}>
+                        효율도: {Math.round(report.efficiency_score)}%
+                      </Badge>
+                      <Button size="sm" onClick={() => submitAIReport(report)}>
+                        상위 제출
+                      </Button>
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleCreateEmployee(store)}
-                      className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
-                    >
-                      <Users className="w-4 h-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(store)}
-                      className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleActivate(store)}
-                      className={store.status === 'active' 
-                        ? "text-red-400 hover:text-red-300 hover:bg-red-500/20" 
-                        : "text-green-400 hover:text-green-300 hover:bg-green-500/20"
-                      }
-                    >
-                      {store.status === 'active' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(store)}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {report.issues.length > 0 && (
+                    <div className="mb-2">
+                      <h4 className="font-medium text-red-600 flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4" />
+                        문제점
+                      </h4>
+                      <ul className="list-disc list-inside text-sm">
+                        {report.issues.map((issue, index) => (
+                          <li key={index}>{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {report.improvements.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-green-600">개선사항</h4>
+                      <ul className="list-disc list-inside text-sm">
+                        {report.improvements.map((improvement, index) => (
+                          <li key={index}>{improvement}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
-            
-            {filteredStores.length === 0 && (
-              <div className="text-center py-8">
-                <Building2 className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                <p className="text-slate-400">등록된 매장이 없습니다.</p>
-                <p className="text-slate-500 text-sm">새로운 매장을 추가해보세요.</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">AI 분석 리포트가 없습니다. AI 분석을 실행해보세요.</p>
+          )}
         </CardContent>
       </Card>
 
-      {/* 매장 생성/수정 다이얼로그 */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="bg-slate-800/95 border-blue-500/50 text-white max-w-md mx-auto backdrop-blur-xl">
+      {/* 스케줄 관리 다이얼로그 */}
+      <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
-              {editingStore ? '매장 수정' : '새 매장 추가'}
-            </DialogTitle>
+            <DialogTitle>스케줄 추가</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-4">
             <div>
-              <Label className="text-gray-300 block mb-2">매장명 *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="bg-slate-700/50 border-blue-500/50 text-white placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                placeholder="매장명을 입력하세요"
-                required
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">매장 코드 *</Label>
-              <Input
-                value={formData.code}
-                onChange={(e) => setFormData({...formData, code: e.target.value})}
-                className="bg-slate-700/50 border-blue-500/50 text-white placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                placeholder="매장 코드를 입력하세요"
-                required
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">주소</Label>
-              <Input
-                value={formData.address}
-                onChange={(e) => setFormData({...formData, address: e.target.value})}
-                className="bg-slate-700/50 border-blue-500/50 text-white placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                placeholder="매장 주소를 입력하세요"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">전화번호</Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                className="bg-slate-700/50 border-blue-500/50 text-white placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                placeholder="전화번호를 입력하세요"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">매니저명</Label>
-              <Input
-                value={formData.manager_name}
-                onChange={(e) => setFormData({...formData, manager_name: e.target.value})}
-                className="bg-slate-700/50 border-blue-500/50 text-white placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                placeholder="매니저명을 입력하세요"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">브랜드 *</Label>
-              <Select 
-                value={formData.brand_id.toString()} 
-                onValueChange={(value) => setFormData({...formData, brand_id: parseInt(value)})}
-              >
-                <SelectTrigger className="bg-slate-700/50 border-blue-500/50 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20">
-                  <SelectValue placeholder="브랜드를 선택하세요" />
+              <Label>직원</Label>
+              <Select value={scheduleForm.employee_id.toString()} onValueChange={(value) => setScheduleForm({...scheduleForm, employee_id: parseInt(value)})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="직원 선택" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-blue-500/50">
-                  {brands.map((brand) => (
-                    <SelectItem key={brand.id} value={brand.id.toString()}>
-                      {brand.name}
-                    </SelectItem>
+                <SelectContent>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id.toString()}>{emp.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsCreateDialogOpen(false)}
-                className="border-gray-600/50 text-gray-300 hover:border-gray-500 hover:text-gray-200"
-              >
-                취소
-              </Button>
-              <Button
-                type="submit"
-                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-                disabled={isLoading}
-              >
-                {isLoading ? '처리 중...' : (editingStore ? '수정' : '추가')}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* 직원 생성 다이얼로그 */}
-      <Dialog open={isCreateEmployeeDialogOpen} onOpenChange={setIsCreateEmployeeDialogOpen}>
-        <DialogContent className="bg-slate-800/95 border-green-500/50 text-white max-w-md mx-auto backdrop-blur-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
-              새 직원 추가
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleCreateEmployeeSubmit} className="space-y-4">
             <div>
-              <Label className="text-gray-300 block mb-2">직원명 *</Label>
-              <Input
-                value={employeeFormData.name}
-                onChange={(e) => handleEmployeeInputChange('name', e.target.value)}
-                className="bg-slate-700/50 border-green-500/50 text-white placeholder:text-slate-400 focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
-                placeholder="직원명을 입력하세요"
-                required
-              />
+              <Label>날짜</Label>
+              <Input type="date" value={scheduleForm.date} onChange={(e) => setScheduleForm({...scheduleForm, date: e.target.value})} />
             </div>
             
-            <div>
-              <Label className="text-gray-300 block mb-2">이메일 *</Label>
-              <Input
-                type="email"
-                value={employeeFormData.email}
-                onChange={(e) => handleEmployeeInputChange('email', e.target.value)}
-                className="bg-slate-700/50 border-green-500/50 text-white placeholder:text-slate-400 focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
-                placeholder="이메일을 입력하세요"
-                required
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">전화번호</Label>
-              <Input
-                value={employeeFormData.phone}
-                onChange={(e) => handleEmployeeInputChange('phone', e.target.value)}
-                className="bg-slate-700/50 border-green-500/50 text-white placeholder:text-slate-400 focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
-                placeholder="전화번호를 입력하세요"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">직책</Label>
-              <Input
-                value={employeeFormData.role}
-                onChange={(e) => handleEmployeeInputChange('role', e.target.value)}
-                className="bg-slate-700/50 border-green-500/50 text-white placeholder:text-slate-400 focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
-                placeholder="직책을 입력하세요"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">부서</Label>
-              <Input
-                value={employeeFormData.department}
-                onChange={(e) => handleEmployeeInputChange('department', e.target.value)}
-                className="bg-slate-700/50 border-green-500/50 text-white placeholder:text-slate-400 focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
-                placeholder="부서를 입력하세요"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">입사일</Label>
-              <Input
-                type="date"
-                value={employeeFormData.hireDate}
-                onChange={(e) => handleEmployeeInputChange('hireDate', e.target.value)}
-                className="bg-slate-700/50 border-green-500/50 text-white focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">근무지</Label>
-              <Input
-                value={employeeFormData.location}
-                onChange={(e) => handleEmployeeInputChange('location', e.target.value)}
-                className="bg-slate-700/50 border-green-500/50 text-white placeholder:text-slate-400 focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
-                placeholder="근무지를 입력하세요"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-300 block mb-2">권한 설정</Label>
-              <div className="space-y-2">
-                {Object.entries(employeeFormData.permissions).map(([key, value]) => (
-                  <div key={key} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={key}
-                      checked={value}
-                      onChange={() => handleEmployeeInputChange('permissions', key)}
-                      className="rounded border-green-500/50 bg-slate-700/50 text-green-400 focus:ring-green-400/20"
-                    />
-                    <Label htmlFor={key} className="text-sm text-gray-300">
-                      {key === 'schedule_management' && '스케줄 관리'}
-                      {key === 'inventory_management' && '재고 관리'}
-                      {key === 'order_management' && '발주 관리'}
-                      {key === 'employee_management' && '직원 관리'}
-                      {key === 'reporting' && '보고서'}
-                    </Label>
-                  </div>
-                ))}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>시작 시간</Label>
+                <Input type="time" value={scheduleForm.start_time} onChange={(e) => setScheduleForm({...scheduleForm, start_time: e.target.value})} />
+              </div>
+              <div>
+                <Label>종료 시간</Label>
+                <Input type="time" value={scheduleForm.end_time} onChange={(e) => setScheduleForm({...scheduleForm, end_time: e.target.value})} />
               </div>
             </div>
             
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsCreateEmployeeDialogOpen(false)}
-                className="border-gray-600/50 text-gray-300 hover:border-gray-500 hover:text-gray-200"
-              >
-                취소
-              </Button>
-              <Button
-                type="submit"
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                disabled={isLoading}
-              >
-                {isLoading ? '처리 중...' : '추가'}
-              </Button>
+            <div>
+              <Label>유형</Label>
+              <Select value={scheduleForm.type} onValueChange={(value) => setScheduleForm({...scheduleForm, type: value as any})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="work">근무</SelectItem>
+                  <SelectItem value="cleaning">청소</SelectItem>
+                  <SelectItem value="task">업무</SelectItem>
+                  <SelectItem value="break">휴식</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </form>
+            
+            <div>
+              <Label>역할</Label>
+              <Input value={scheduleForm.role} onChange={(e) => setScheduleForm({...scheduleForm, role: e.target.value})} />
+            </div>
+            
+            <div>
+              <Label>메모</Label>
+              <Textarea value={scheduleForm.notes} onChange={(e) => setScheduleForm({...scheduleForm, notes: e.target.value})} />
+            </div>
+            
+            <Button onClick={addSchedule} className="w-full">스케줄 추가</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 출퇴근 기록 다이얼로그 */}
+      <Dialog open={isAttendanceDialogOpen} onOpenChange={setIsAttendanceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>출퇴근 기록</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>직원</Label>
+              <Select value={attendanceForm.employee_id.toString()} onValueChange={(value) => setAttendanceForm({...attendanceForm, employee_id: parseInt(value)})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="직원 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id.toString()}>{emp.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>날짜</Label>
+              <Input type="date" value={attendanceForm.date} onChange={(e) => setAttendanceForm({...attendanceForm, date: e.target.value})} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>출근 시간</Label>
+                <Input type="time" value={attendanceForm.check_in} onChange={(e) => setAttendanceForm({...attendanceForm, check_in: e.target.value})} />
+              </div>
+              <div>
+                <Label>퇴근 시간</Label>
+                <Input type="time" value={attendanceForm.check_out} onChange={(e) => setAttendanceForm({...attendanceForm, check_out: e.target.value})} />
+              </div>
+            </div>
+            
+            <div>
+              <Label>상태</Label>
+              <Select value={attendanceForm.status} onValueChange={(value) => setAttendanceForm({...attendanceForm, status: value as any})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="present">정상 출근</SelectItem>
+                  <SelectItem value="late">지각</SelectItem>
+                  <SelectItem value="absent">결근</SelectItem>
+                  <SelectItem value="early_leave">조퇴</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Button onClick={addAttendanceRecord} className="w-full">출퇴근 기록 추가</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 매출 데이터 다이얼로그 */}
+      <Dialog open={isSalesDialogOpen} onOpenChange={setIsSalesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>매출 데이터 입력</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>날짜</Label>
+              <Input type="date" value={salesForm.date} onChange={(e) => setSalesForm({...salesForm, date: e.target.value})} />
+            </div>
+            
+            <div>
+              <Label>매출액</Label>
+              <Input type="number" value={salesForm.amount} onChange={(e) => setSalesForm({...salesForm, amount: parseInt(e.target.value)})} />
+            </div>
+            
+            <div>
+              <Label>고객 수</Label>
+              <Input type="number" value={salesForm.customer_count} onChange={(e) => setSalesForm({...salesForm, customer_count: parseInt(e.target.value)})} />
+            </div>
+            
+            <div>
+              <Label>근무 인원</Label>
+              <Input type="number" value={salesForm.staff_count} onChange={(e) => setSalesForm({...salesForm, staff_count: parseInt(e.target.value)})} />
+            </div>
+            
+            <Button onClick={addSalesData} className="w-full">매출 데이터 추가</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI 분석 다이얼로그 */}
+      <Dialog open={isAIReportDialogOpen} onOpenChange={setIsAIReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>AI 분석 실행</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-muted-foreground">
+              현재 저장된 스케줄, 출퇴근 기록, 매출 데이터를 기반으로 AI 분석을 실행합니다.
+            </p>
+            
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{schedules.length}</div>
+                <div className="text-sm">스케줄</div>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{attendanceRecords.length}</div>
+                <div className="text-sm">출퇴근 기록</div>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{salesData.length}</div>
+                <div className="text-sm">매출 데이터</div>
+              </div>
+            </div>
+            
+            <Button onClick={runAIAnalysis} className="w-full">
+              <Brain className="w-4 h-4 mr-2" />
+              AI 분석 실행
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

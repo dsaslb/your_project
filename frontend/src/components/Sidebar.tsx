@@ -91,7 +91,7 @@ const menuItems = [
   },
   {
     title: '스케줄 관리',
-    href: '/schedule-management',
+    href: '/schedule',
     icon: <Calendar className="w-5 h-5" />,
     description: '스케줄 관리'
   },

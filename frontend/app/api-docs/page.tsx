@@ -13,9 +13,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Download, RefreshCw, Settings, ExternalLink, AlertTriangle, CheckCircle, FileJson, FileCode, FileType } from 'lucide-react';
-import { apiClient } from '@/lib/api-client';
+import { ApiClient } from '@/lib/api-client';
 import { useLoadingState } from '@/hooks/useLoadingState';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+
+const apiClient = new ApiClient();
 
 interface DocsFile {
   name: string;

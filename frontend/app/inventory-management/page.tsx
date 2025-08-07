@@ -8,6 +8,7 @@ import { Badge } from '../../src/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../src/components/ui/dialog';
 import { Label } from '../../src/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../src/components/ui/select';
+import { Textarea } from '../../src/components/ui/textarea';
 import { 
   Package, 
   Plus, 
@@ -20,7 +21,8 @@ import {
   TrendingUp,
   TrendingDown,
   ShoppingCart,
-  BarChart3
+  BarChart3,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient, Store as StoreType } from '../../src/lib/api-client';
@@ -82,7 +84,7 @@ export default function InventoryManagement() {
     cost_per_unit: 0,
   });
 
-  const { isLoading, setLoading, withLoading } = useLoadingState();
+  const { isLoading, setLoading } = useLoadingState();
   const { handleError } = useErrorHandler();
 
   // 재고 목록 조회
@@ -100,48 +102,49 @@ export default function InventoryManagement() {
           max_quantity: 100,
           status: 'in_stock',
           store_id: 1,
-          store_name: '스타벅스 강남점',
+          store_name: '강남점',
           category: '원두',
           supplier: '원두공급업체',
           cost_per_unit: 15000,
-          last_restocked: '2024-01-15T00:00:00Z',
+          last_restocked: '2024-01-15',
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-15T00:00:00Z'
         },
         {
           id: 2,
           name: '우유',
-          description: '신선우유',
+          description: '신선 우유',
           quantity: 5,
           unit: 'L',
           min_quantity: 10,
           max_quantity: 50,
           status: 'low_stock',
           store_id: 1,
-          store_name: '스타벅스 강남점',
+          store_name: '강남점',
           category: '유제품',
           supplier: '우유공급업체',
           cost_per_unit: 3000,
-          last_restocked: '2024-01-10T00:00:00Z',
+          last_restocked: '2024-01-10',
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-10T00:00:00Z'
         },
         {
           id: 3,
-          name: '종이컵',
-          description: '일회용 종이컵',
+          name: '시럽',
+          description: '바닐라 시럽',
           quantity: 0,
-          unit: '개',
-          min_quantity: 100,
-          max_quantity: 1000,
+          unit: 'L',
+          min_quantity: 5,
+          max_quantity: 20,
           status: 'out_of_stock',
           store_id: 2,
-          store_name: '스타벅스 홍대점',
-          category: '소모품',
-          supplier: '소모품공급업체',
-          cost_per_unit: 100,
+          store_name: '홍대점',
+          category: '시럽',
+          supplier: '시럽공급업체',
+          cost_per_unit: 8000,
+          last_restocked: '2024-01-05',
           created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z'
+          updated_at: '2024-01-05T00:00:00Z'
         }
       ];
       
@@ -154,13 +157,34 @@ export default function InventoryManagement() {
   // 매장 목록 조회
   const fetchStores = async () => {
     try {
-      // 임시로 샘플 데이터 사용
       const sampleStores: StoreType[] = [
-        { id: 1, name: '스타벅스 강남점', address: '서울시 강남구' },
-        { id: 2, name: '스타벅스 홍대점', address: '서울시 마포구' },
-        { id: 3, name: '스타벅스 명동점', address: '서울시 중구' }
+        { 
+          id: 1, 
+          name: '강남점', 
+          address: '서울 강남구', 
+          phone: '02-1234-5678', 
+          status: 'active',
+          brand_id: 1,
+          employee_count: 15,
+          total_revenue: 50000000,
+          last_activity: '2024-01-15T00:00:00Z',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z'
+        },
+        { 
+          id: 2, 
+          name: '홍대점', 
+          address: '서울 마포구', 
+          phone: '02-2345-6789', 
+          status: 'active',
+          brand_id: 1,
+          employee_count: 12,
+          total_revenue: 40000000,
+          last_activity: '2024-01-14T00:00:00Z',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-14T00:00:00Z'
+        }
       ];
-      
       setStores(sampleStores);
     } catch (error) {
       handleError(error as Error);
@@ -184,11 +208,11 @@ export default function InventoryManagement() {
     setEditingInventory(null);
   };
 
-  // 재고 생성/수정
+  // 재고 추가/수정
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim() || formData.store_id === 0) {
+    if (!formData.name || formData.store_id === 0) {
       toast.error('필수 항목을 입력해주세요.');
       return;
     }
@@ -196,19 +220,21 @@ export default function InventoryManagement() {
     try {
       setLoading(true);
       
-      // 실제 API 호출 대신 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (editingInventory) {
         // 수정
+        const updatedInventory = {
+          ...editingInventory,
+          ...formData,
+          updated_at: new Date().toISOString()
+        };
+        
         setInventories(prev => prev.map(item => 
-          item.id === editingInventory.id 
-            ? { ...item, ...formData, updated_at: new Date().toISOString() }
-            : item
+          item.id === editingInventory.id ? updatedInventory : item
         ));
+        
         toast.success('재고가 수정되었습니다.');
       } else {
-        // 생성
+        // 추가
         const newInventory: Inventory = {
           id: Date.now(),
           ...formData,
@@ -220,12 +246,11 @@ export default function InventoryManagement() {
         };
         
         setInventories(prev => [...prev, newInventory]);
-        toast.success('재고가 생성되었습니다.');
+        toast.success('재고가 추가되었습니다.');
       }
       
       setIsCreateDialogOpen(false);
       resetForm();
-      
     } catch (error) {
       handleError(error as Error);
     } finally {
@@ -235,16 +260,10 @@ export default function InventoryManagement() {
 
   // 재고 삭제
   const handleDelete = async (inventory: Inventory) => {
-    if (!confirm(`${inventory.name} 재고를 삭제하시겠습니까?`)) return;
-    
     try {
       setLoading(true);
-      // 실제 API 호출 대신 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       setInventories(prev => prev.filter(item => item.id !== inventory.id));
       toast.success('재고가 삭제되었습니다.');
-      
     } catch (error) {
       handleError(error as Error);
     } finally {
@@ -252,25 +271,27 @@ export default function InventoryManagement() {
     }
   };
 
-  // 재고 수량 조정
+  // 수량 조정
   const handleQuantityAdjustment = async (inventory: Inventory, adjustment: number) => {
     try {
       setLoading(true);
-      // 실제 API 호출 대신 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 500));
       
       const newQuantity = Math.max(0, inventory.quantity + adjustment);
       const newStatus = newQuantity > inventory.min_quantity ? 'in_stock' : 
                        newQuantity > 0 ? 'low_stock' : 'out_of_stock';
       
+      const updatedInventory: Inventory = {
+        ...inventory,
+        quantity: newQuantity,
+        status: newStatus as 'in_stock' | 'low_stock' | 'out_of_stock',
+        updated_at: new Date().toISOString()
+      };
+      
       setInventories(prev => prev.map(item => 
-        item.id === inventory.id 
-          ? { ...item, quantity: newQuantity, status: newStatus, updated_at: new Date().toISOString() }
-          : item
+        item.id === inventory.id ? updatedInventory : item
       ));
       
       toast.success(`수량이 ${adjustment > 0 ? '증가' : '감소'}되었습니다.`);
-      
     } catch (error) {
       handleError(error as Error);
     } finally {
@@ -278,7 +299,7 @@ export default function InventoryManagement() {
     }
   };
 
-  // 재고 수정 모드로 설정
+  // 편집 모드 시작
   const handleEdit = (inventory: Inventory) => {
     setEditingInventory(inventory);
     setFormData({
@@ -299,10 +320,10 @@ export default function InventoryManagement() {
   // 상태별 색상
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'in_stock': return '#10b981';
-      case 'low_stock': return '#f59e0b';
-      case 'out_of_stock': return '#ef4444';
-      default: return '#6b7280';
+      case 'in_stock': return 'bg-green-500/20 text-green-400';
+      case 'low_stock': return 'bg-yellow-500/20 text-yellow-400';
+      case 'out_of_stock': return 'bg-red-500/20 text-red-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
@@ -343,821 +364,384 @@ export default function InventoryManagement() {
   }, []);
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999,
-      backgroundColor: '#f3f4f6',
-      fontFamily: 'Arial, sans-serif',
-      overflow: 'auto'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '2rem auto',
-        padding: '0 2rem'
-      }}>
-        {/* 헤더 */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem'
-        }}>
-          <div>
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '0.5rem'
-            }}>
-              재고 관리
-            </h1>
-            <p style={{
-              fontSize: '1.125rem',
-              color: '#6b7280'
-            }}>
-              재고 현황 및 발주 관리
-            </p>
-          </div>
-          
-          <button
-            onClick={() => setIsCreateDialogOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1rem',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            <Plus style={{ width: '16px', height: '16px' }} />
-            재고 추가
-          </button>
-        </div>
+    <div className="min-h-screen p-6">
+      {/* 헤더 */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <Package className="w-6 h-6" />
+          재고 관리
+        </h1>
+        <p className="text-gray-300 mt-2">재고 현황 및 발주 관리</p>
+      </div>
 
-        {/* 통계 카드 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>총 재고</h3>
-              <Package style={{ width: '20px', height: '20px' }} />
+      {/* 액션 버튼 */}
+      <div className="flex gap-4 mb-8">
+        <Button
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          재고 추가
+        </Button>
+        <Button
+          onClick={fetchInventories}
+          disabled={isLoading}
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          새로고침
+        </Button>
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">총 재고</p>
+                <p className="text-2xl font-bold text-white">{totalItems}</p>
+                <p className="text-gray-400 text-sm">{inventories.filter(item => item.status === 'in_stock').length}개 재고 있음</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <Package className="w-6 h-6 text-blue-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {inventories.length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              {inventories.filter(item => item.status === 'in_stock').length}개 재고 있음
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>재고 있음</h3>
-              <CheckCircle style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">재고 있음</p>
+                <p className="text-2xl font-bold text-white">{inventories.filter(item => item.status === 'in_stock').length}</p>
+                <p className="text-gray-400 text-sm">정상 재고</p>
+              </div>
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {inventories.filter(item => item.status === 'in_stock').length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              정상 재고
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#f59e0b',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>재고 부족</h3>
-              <AlertTriangle style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">재고 부족</p>
+                <p className="text-2xl font-bold text-white">{lowStockItems}</p>
+                <p className="text-gray-400 text-sm">발주 필요</p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-yellow-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {inventories.filter(item => item.status === 'low_stock').length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              발주 필요
-            </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div style={{
-            backgroundColor: '#ef4444',
-            color: 'white',
-            padding: '1.5rem',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ fontSize: '0.875rem', margin: '0' }}>재고 없음</h3>
-              <XCircle style={{ width: '20px', height: '20px' }} />
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-300 text-sm">재고 없음</p>
+                <p className="text-2xl font-bold text-white">{outOfStockItems}</p>
+                <p className="text-gray-400 text-sm">긴급 발주</p>
+              </div>
+              <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                <XCircle className="w-6 h-6 text-red-400" />
+              </div>
             </div>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
-              {inventories.filter(item => item.status === 'out_of_stock').length}
-            </p>
-            <p style={{ fontSize: '0.875rem', opacity: '0.8', margin: '0' }}>
-              긴급 발주
-            </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* 필터 및 검색 */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            alignItems: 'end'
-          }}>
+      {/* 검색 및 필터 */}
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                검색
-              </label>
-              <input
-                type="text"
+              <Label className="text-gray-300 text-sm">검색</Label>
+              <Input
+                placeholder="재고명 또는 설명으로 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="재고명 또는 설명으로 검색"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem'
-                }}
+                className="mt-1 bg-white/10 border-white/20 text-white placeholder-gray-400"
               />
             </div>
             
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                매장
-              </label>
-              <select
-                value={selectedStore}
-                onChange={(e) => setSelectedStore(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 매장</option>
-                {stores.map(store => (
-                  <option key={store.id} value={store.id}>{store.name}</option>
-                ))}
-              </select>
+              <Label className="text-gray-300 text-sm">매장</Label>
+              <Select value={selectedStore.toString()} onValueChange={(value) => setSelectedStore(value === 'all' ? 'all' : parseInt(value))}>
+                <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder="매장 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/10 border-white/20">
+                  <SelectItem value="all">모든 매장</SelectItem>
+                  {stores.map(store => (
+                    <SelectItem key={store.id} value={store.id.toString()}>{store.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                상태
-              </label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 상태</option>
-                <option value="in_stock">재고 있음</option>
-                <option value="low_stock">재고 부족</option>
-                <option value="out_of_stock">재고 없음</option>
-              </select>
+              <Label className="text-gray-300 text-sm">상태</Label>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder="상태 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/10 border-white/20">
+                  <SelectItem value="all">모든 상태</SelectItem>
+                  <SelectItem value="in_stock">재고 있음</SelectItem>
+                  <SelectItem value="low_stock">재고 부족</SelectItem>
+                  <SelectItem value="out_of_stock">재고 없음</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                카테고리
-              </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="all">전체 카테고리</option>
-                <option value="원두">원두</option>
-                <option value="유제품">유제품</option>
-                <option value="소모품">소모품</option>
-              </select>
+              <Label className="text-gray-300 text-sm">카테고리</Label>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder="카테고리 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/10 border-white/20">
+                  <SelectItem value="all">모든 카테고리</SelectItem>
+                  {categories.map(category => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* 재고 목록 */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            padding: '1.5rem',
-            borderBottom: '1px solid #e5e7eb'
-          }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              margin: '0'
-            }}>
-              재고 목록 ({filteredInventories.length}개)
-            </h2>
-          </div>
-          
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
-              <thead style={{
-                backgroundColor: '#f9fafb',
-                borderBottom: '1px solid #e5e7eb'
-              }}>
-                <tr>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    재고명
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    수량
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    상태
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    매장
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    카테고리
-                  </th>
-                  <th style={{
-                    padding: '1rem',
-                    textAlign: 'left',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    작업
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInventories.map((inventory) => (
-                  <tr key={inventory.id} style={{
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
+      {/* 재고 목록 */}
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+        <CardHeader>
+          <CardTitle className="text-white">재고 목록 ({filteredInventories.length}개)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {filteredInventories.map((inventory) => (
+              <div
+                key={inventory.id}
+                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 hover:bg-white/10 transition-all duration-300"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <Package className="w-6 h-6 text-white" />
+                      </div>
                       <div>
-                        <p style={{ fontWeight: '500', margin: '0 0 0.25rem 0' }}>
-                          {inventory.name}
-                        </p>
-                        {inventory.description && (
-                          <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0' }}>
-                            {inventory.description}
-                          </p>
-                        )}
+                        <h3 className="text-lg font-semibold text-white">{inventory.name}</h3>
+                        <p className="text-gray-400">{inventory.description}</p>
+                        <p className="text-gray-400 text-sm">{inventory.store_name} • {inventory.category || '미분류'}</p>
                       </div>
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}>
-                        <span style={{ fontWeight: '500' }}>
-                          {inventory.quantity} {inventory.unit}
-                        </span>
-                        <div style={{
-                          display: 'flex',
-                          gap: '0.25rem'
-                        }}>
-                          <button
-                            onClick={() => handleQuantityAdjustment(inventory, -1)}
-                            style={{
-                              padding: '0.25rem',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '4px',
-                              backgroundColor: 'white',
-                              color: '#374151',
-                              cursor: 'pointer',
-                              fontSize: '0.75rem'
-                            }}
-                          >
-                            -
-                          </button>
-                          <button
-                            onClick={() => handleQuantityAdjustment(inventory, 1)}
-                            style={{
-                              padding: '0.25rem',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '4px',
-                              backgroundColor: 'white',
-                              color: '#374151',
-                              cursor: 'pointer',
-                              fontSize: '0.75rem'
-                            }}
-                          >
-                            +
-                          </button>
-                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-gray-300 text-sm">수량</p>
+                        <p className="text-white font-medium">{inventory.quantity} {inventory.unit}</p>
                       </div>
-                    </td>
-                    <td style={{
-                      padding: '1rem'
-                    }}>
-                      <span style={{
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        backgroundColor: getStatusColor(inventory.status) + '20',
-                        color: getStatusColor(inventory.status)
-                      }}>
-                        {getStatusText(inventory.status)}
-                      </span>
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {inventory.store_name}
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {inventory.category}
-                    </td>
-                    <td style={{
-                      padding: '1rem'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        gap: '0.5rem'
-                      }}>
-                        <button
-                          onClick={() => handleEdit(inventory)}
-                          style={{
-                            padding: '0.5rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '4px',
-                            backgroundColor: 'white',
-                            color: '#374151',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Edit style={{ width: '16px', height: '16px' }} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(inventory)}
-                          style={{
-                            padding: '0.5rem',
-                            border: '1px solid #ef4444',
-                            borderRadius: '4px',
-                            backgroundColor: '#ef4444',
-                            color: 'white',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Trash2 style={{ width: '16px', height: '16px' }} />
-                        </button>
+                      <div>
+                        <p className="text-gray-300 text-sm">최소 수량</p>
+                        <p className="text-white font-medium">{inventory.min_quantity} {inventory.unit}</p>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {filteredInventories.length === 0 && (
-            <div style={{
-              padding: '3rem',
-              textAlign: 'center',
-              color: '#6b7280'
-            }}>
-              <Package style={{ width: '48px', height: '48px', margin: '0 auto 1rem', opacity: '0.5' }} />
-              <p>검색 결과가 없습니다.</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 재고 생성/수정 모달 */}
-      {isCreateDialogOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '1.5rem'
-            }}>
-              <h2 style={{
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                color: '#1f2937',
-                margin: '0'
-              }}>
-                {editingInventory ? '재고 수정' : '재고 추가'}
-              </h2>
-              <button
-                onClick={() => {
-                  setIsCreateDialogOpen(false);
-                  resetForm();
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6b7280'
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem'
-              }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    재고명 *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                    placeholder="재고명을 입력하세요"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    매장 *
-                  </label>
-                  <select
-                    value={formData.store_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, store_id: Number(e.target.value) }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem',
-                      backgroundColor: 'white'
-                    }}
-                    required
-                  >
-                    <option value={0}>매장을 선택하세요</option>
-                    {stores.map(store => (
-                      <option key={store.id} value={store.id}>{store.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    수량
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, quantity: Number(e.target.value) }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    단위
-                  </label>
-                  <select
-                    value={formData.unit}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem',
-                      backgroundColor: 'white'
-                    }}
-                  >
-                    <option value="개">개</option>
-                    <option value="kg">kg</option>
-                    <option value="L">L</option>
-                    <option value="ml">ml</option>
-                    <option value="g">g</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    최소 수량
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.min_quantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, min_quantity: Number(e.target.value) }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    최대 수량
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.max_quantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, max_quantity: Number(e.target.value) }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    카테고리
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                    placeholder="예: 원두, 유제품, 소모품"
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    공급업체
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.supplier}
-                    onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                    placeholder="공급업체명"
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                    단가 (원)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.cost_per_unit}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cost_per_unit: Number(e.target.value) }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem'
-                    }}
-                    min="0"
-                    step="100"
-                  />
+                      <div>
+                        <p className="text-gray-300 text-sm">단가</p>
+                        <p className="text-white font-medium">₩{inventory.cost_per_unit.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-300 text-sm">총 가치</p>
+                        <p className="text-white font-medium">₩{(inventory.quantity * inventory.cost_per_unit).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 ml-4">
+                    <Badge className={getStatusColor(inventory.status)}>
+                      {getStatusText(inventory.status)}
+                    </Badge>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(inventory)}
+                        className="border-white/20 text-white hover:bg-white/10"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleDelete(inventory)}
+                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        onClick={() => handleQuantityAdjustment(inventory, 1)}
+                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                      >
+                        <TrendingUp className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleQuantityAdjustment(inventory, -1)}
+                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                      >
+                        <TrendingDown className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* 재고 추가/수정 다이얼로그 */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="bg-white/10 backdrop-blur-sm border border-white/20 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editingInventory ? '재고 수정' : '재고 추가'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                  설명
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem',
-                    minHeight: '100px',
-                    resize: 'vertical'
-                  }}
-                  placeholder="재고에 대한 설명을 입력하세요"
+                <Label className="text-gray-300">재고명 *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="재고명을 입력하세요"
                 />
               </div>
-
-              <div style={{
-                display: 'flex',
-                gap: '1rem',
-                justifyContent: 'flex-end',
-                marginTop: '1.5rem'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCreateDialogOpen(false);
-                    resetForm();
-                  }}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    backgroundColor: 'white',
-                    color: '#374151',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                  disabled={isLoading}
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    border: 'none',
-                    borderRadius: '6px',
-                    backgroundColor: isLoading ? '#9ca3af' : '#10b981',
-                    color: 'white',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    cursor: isLoading ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {isLoading ? '처리 중...' : (editingInventory ? '수정' : '추가')}
-                </button>
+              
+              <div>
+                <Label className="text-gray-300">매장 *</Label>
+                <Select value={formData.store_id.toString()} onValueChange={(value) => setFormData({...formData, store_id: parseInt(value)})}>
+                  <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
+                    <SelectValue placeholder="매장을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/10 border-white/20">
+                    {stores.map(store => (
+                      <SelectItem key={store.id} value={store.id.toString()}>{store.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+              
+              <div>
+                <Label className="text-gray-300">카테고리</Label>
+                <Input
+                  value={formData.category}
+                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="카테고리를 입력하세요"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">공급업체</Label>
+                <Input
+                  value={formData.supplier}
+                  onChange={(e) => setFormData({...formData, supplier: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="공급업체를 입력하세요"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">수량</Label>
+                <Input
+                  type="number"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 0})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="0"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">단위</Label>
+                <Input
+                  value={formData.unit}
+                  onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="개, kg, L 등"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">최소 수량</Label>
+                <Input
+                  type="number"
+                  value={formData.min_quantity}
+                  onChange={(e) => setFormData({...formData, min_quantity: parseInt(e.target.value) || 0})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="10"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">최대 수량</Label>
+                <Input
+                  type="number"
+                  value={formData.max_quantity}
+                  onChange={(e) => setFormData({...formData, max_quantity: parseInt(e.target.value) || 0})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="100"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">단가 (원)</Label>
+                <Input
+                  type="number"
+                  value={formData.cost_per_unit}
+                  onChange={(e) => setFormData({...formData, cost_per_unit: parseInt(e.target.value) || 0})}
+                  className="mt-1 bg-white/10 border-white/20 text-white"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label className="text-gray-300">설명</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="mt-1 bg-white/10 border-white/20 text-white"
+                placeholder="재고에 대한 설명을 입력하세요"
+                rows={3}
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
+                {editingInventory ? '수정' : '추가'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-white/20 text-white hover:bg-white/10">
+                취소
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

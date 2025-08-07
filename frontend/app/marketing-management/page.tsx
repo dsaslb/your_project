@@ -36,7 +36,8 @@ import {
   Mail,
   Smartphone,
   Globe,
-  Tag
+  Tag,
+  RefreshCw
 } from 'lucide-react';
 
 interface Campaign {
@@ -122,28 +123,126 @@ export default function MarketingManagement() {
     max_uses: 0,
   });
 
-  const { isLoading, setLoading, withLoading } = useLoadingState();
+  const { isLoading, setLoading } = useLoadingState();
   const { handleError } = useErrorHandler();
 
   // 캠페인 목록 조회
   const fetchCampaigns = async () => {
     try {
-      const response = await apiClient.get('/api/campaigns');
-      if (response.success && response.data) {
-        setCampaigns(response.data);
-      }
+      setLoading(true);
+      // 임시로 샘플 데이터 사용
+      const sampleCampaigns: Campaign[] = [
+        {
+          id: 1,
+          name: '신규 고객 웰컴 프로모션',
+          description: '신규 가입 고객 대상 20% 할인 프로모션',
+          type: 'promotion',
+          status: 'active',
+          start_date: '2024-01-01',
+          end_date: '2024-12-31',
+          budget: 5000000,
+          spent_amount: 3200000,
+          target_audience: '신규 고객',
+          target_stores: [1, 2, 3],
+          target_categories: ['음료', '음식'],
+          discount_type: 'percentage',
+          discount_value: 20,
+          minimum_purchase: 10000,
+          max_uses: 1000,
+          current_uses: 650,
+          conversion_rate: 15.5,
+          revenue_generated: 8500000,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z'
+        },
+        {
+          id: 2,
+          name: '여름 음료 할인 이벤트',
+          description: '여름 시즌 음료 30% 할인 이벤트',
+          type: 'discount',
+          status: 'active',
+          start_date: '2024-06-01',
+          end_date: '2024-08-31',
+          budget: 3000000,
+          spent_amount: 1800000,
+          target_audience: '전체 고객',
+          target_stores: [1, 2, 3],
+          target_categories: ['음료'],
+          discount_type: 'percentage',
+          discount_value: 30,
+          minimum_purchase: 5000,
+          max_uses: 500,
+          current_uses: 320,
+          conversion_rate: 22.3,
+          revenue_generated: 5200000,
+          created_at: '2024-05-15T00:00:00Z',
+          updated_at: '2024-06-01T00:00:00Z'
+        },
+        {
+          id: 3,
+          name: '로열티 멤버 특별 혜택',
+          description: '로열티 멤버 대상 무료 음료 제공',
+          type: 'loyalty',
+          status: 'active',
+          start_date: '2024-01-01',
+          end_date: '2024-12-31',
+          budget: 2000000,
+          spent_amount: 1200000,
+          target_audience: '로열티 멤버',
+          target_stores: [1, 2, 3],
+          target_categories: ['음료'],
+          discount_type: 'fixed',
+          discount_value: 5000,
+          minimum_purchase: 0,
+          max_uses: 200,
+          current_uses: 150,
+          conversion_rate: 8.7,
+          revenue_generated: 2800000,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z'
+        },
+        {
+          id: 4,
+          name: '이메일 뉴스레터 캠페인',
+          description: '월간 이메일 뉴스레터 발송',
+          type: 'email',
+          status: 'active',
+          start_date: '2024-01-01',
+          end_date: '2024-12-31',
+          budget: 500000,
+          spent_amount: 300000,
+          target_audience: '이메일 구독자',
+          target_stores: [1, 2, 3],
+          target_categories: ['전체'],
+          discount_type: 'percentage',
+          discount_value: 10,
+          minimum_purchase: 15000,
+          max_uses: 300,
+          current_uses: 180,
+          conversion_rate: 12.1,
+          revenue_generated: 1500000,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z'
+        }
+      ];
+      
+      setCampaigns(sampleCampaigns);
     } catch (error) {
       handleError(error as Error);
+    } finally {
+      setLoading(false);
     }
   };
 
   // 매장 목록 조회
   const fetchStores = async () => {
     try {
-      const response = await apiClient.get('/api/stores');
-      if (response.success && response.data) {
-        setStores(response.data);
-      }
+      const sampleStores: StoreType[] = [
+        { id: 1, name: '강남점', address: '서울 강남구' },
+        { id: 2, name: '홍대점', address: '서울 마포구' },
+        { id: 3, name: '명동점', address: '서울 중구' }
+      ];
+      setStores(sampleStores);
     } catch (error) {
       handleError(error as Error);
     }
@@ -152,10 +251,12 @@ export default function MarketingManagement() {
   // 고객 세그먼트 조회
   const fetchCustomerSegments = async () => {
     try {
-      const response = await apiClient.get('/api/customer-segments');
-      if (response.success && response.data) {
-        setCustomerSegments(response.data);
-      }
+      const sampleSegments: CustomerSegment[] = [
+        { id: 1, name: '신규 고객', description: '최근 30일 내 가입 고객', criteria: '가입일 30일 이내', customer_count: 150 },
+        { id: 2, name: '로열티 멤버', description: 'VIP 등급 고객', criteria: '포인트 10,000점 이상', customer_count: 80 },
+        { id: 3, name: '이메일 구독자', description: '뉴스레터 구독 고객', criteria: '이메일 수신 동의', customer_count: 300 }
+      ];
+      setCustomerSegments(sampleSegments);
     } catch (error) {
       handleError(error as Error);
     }
@@ -359,69 +460,92 @@ export default function MarketingManagement() {
   const totalRevenue = campaigns.reduce((sum, c) => sum + c.revenue_generated, 0);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen p-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Megaphone className="h-8 w-8 text-purple-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">마케팅 관리</h1>
-            <p className="text-gray-600">프로모션과 캠페인을 관리하여 매출을 증대하세요</p>
-          </div>
-        </div>
-        <Button onClick={handleCreate} className="bg-purple-600 hover:bg-purple-700">
-          <Plus className="h-4 w-4 mr-2" />
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <Megaphone className="w-6 h-6" />
+          마케팅 관리
+        </h1>
+        <p className="text-gray-300 mt-2">프로모션과 캠페인을 관리하여 매출을 증대하세요</p>
+      </div>
+
+      {/* 액션 버튼 */}
+      <div className="flex gap-4 mb-8">
+        <Button
+          onClick={handleCreate}
+          className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
+        >
+          <Plus className="w-4 h-4 mr-2" />
           새 캠페인 생성
+        </Button>
+        <Button
+          onClick={fetchCampaigns}
+          disabled={isLoading}
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          새로고침
         </Button>
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <Megaphone className="h-8 w-8 text-purple-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">총 캠페인</p>
-                <p className="text-2xl font-bold text-gray-900">{totalCampaigns.toLocaleString()}</p>
+                <p className="text-gray-300 text-sm">총 캠페인</p>
+                <p className="text-2xl font-bold text-white">{totalCampaigns.toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">전체 등록 캠페인</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <Megaphone className="w-6 h-6 text-purple-400" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <TrendingUp className="h-8 w-8 text-green-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">활성 캠페인</p>
-                <p className="text-2xl font-bold text-gray-900">{activeCampaigns.toLocaleString()}</p>
+                <p className="text-gray-300 text-sm">활성 캠페인</p>
+                <p className="text-2xl font-bold text-white">{activeCampaigns.toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">진행 중인 캠페인</p>
+              </div>
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-green-400" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <DollarSign className="h-8 w-8 text-blue-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">총 예산</p>
-                <p className="text-2xl font-bold text-gray-900">₩{totalBudget.toLocaleString()}</p>
-                <p className="text-sm text-gray-500">사용: ₩{totalSpent.toLocaleString()}</p>
+                <p className="text-gray-300 text-sm">총 예산</p>
+                <p className="text-2xl font-bold text-white">₩{totalBudget.toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">사용: ₩{totalSpent.toLocaleString()}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-blue-400" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <BarChart3 className="h-8 w-8 text-orange-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">생성된 매출</p>
-                <p className="text-2xl font-bold text-gray-900">₩{totalRevenue.toLocaleString()}</p>
-                <p className="text-sm text-gray-500">ROI: {totalBudget > 0 ? ((totalRevenue - totalSpent) / totalSpent * 100).toFixed(1) : 0}%</p>
+                <p className="text-gray-300 text-sm">생성된 매출</p>
+                <p className="text-2xl font-bold text-white">₩{totalRevenue.toLocaleString()}</p>
+                <p className="text-gray-400 text-sm">ROI: {totalBudget > 0 ? ((totalRevenue - totalSpent) / totalSpent * 100).toFixed(1) : 0}%</p>
+              </div>
+              <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-orange-400" />
               </div>
             </div>
           </CardContent>
@@ -429,7 +553,7 @@ export default function MarketingManagement() {
       </div>
 
       {/* 필터 및 검색 */}
-      <Card>
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
@@ -438,15 +562,15 @@ export default function MarketingManagement() {
                 placeholder="캠페인명, 설명 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400"
               />
             </div>
             
             <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white/10 border-white/20 text-white">
                 <SelectValue placeholder="캠페인 타입" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/10 border-white/20">
                 <SelectItem value="all">전체 타입</SelectItem>
                 <SelectItem value="promotion">프로모션</SelectItem>
                 <SelectItem value="discount">할인</SelectItem>
@@ -459,10 +583,10 @@ export default function MarketingManagement() {
             </Select>
             
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white/10 border-white/20 text-white">
                 <SelectValue placeholder="상태" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/10 border-white/20">
                 <SelectItem value="all">전체 상태</SelectItem>
                 <SelectItem value="draft">초안</SelectItem>
                 <SelectItem value="active">활성</SelectItem>
@@ -473,10 +597,10 @@ export default function MarketingManagement() {
             </Select>
             
             <Select value={selectedDateRange} onValueChange={setSelectedDateRange}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white/10 border-white/20 text-white">
                 <SelectValue placeholder="기간" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/10 border-white/20">
                 <SelectItem value="all">전체 기간</SelectItem>
                 <SelectItem value="active">진행 중</SelectItem>
                 <SelectItem value="upcoming">예정</SelectItem>
@@ -484,13 +608,17 @@ export default function MarketingManagement() {
               </SelectContent>
             </Select>
             
-            <Button variant="outline" onClick={() => {
-              setSearchTerm('');
-              setSelectedType('all');
-              setSelectedStatus('all');
-              setSelectedDateRange('all');
-            }}>
-              <Filter className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedType('all');
+                setSelectedStatus('all');
+                setSelectedDateRange('all');
+              }}
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <Filter className="w-4 h-4 mr-2" />
               필터 초기화
             </Button>
           </div>
@@ -498,10 +626,10 @@ export default function MarketingManagement() {
       </Card>
 
       {/* 캠페인 목록 */}
-      <Card>
+      <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
         <CardHeader>
-          <CardTitle>캠페인 목록</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">캠페인 목록</CardTitle>
+          <CardDescription className="text-gray-300">
             총 {filteredCampaigns.length}개의 캠페인이 있습니다
           </CardDescription>
         </CardHeader>

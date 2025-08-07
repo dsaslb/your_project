@@ -13,6 +13,9 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { useLoadingState } from '@/hooks/useLoadingState';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { apiClient } from '@/lib/api-client';
 import { 
   Activity, 
   Server, 
@@ -32,9 +35,7 @@ import {
   Users,
   Globe
 } from 'lucide-react';
-import { ApiClient } from '@/lib/api-client';
-import { useLoadingState } from '@/hooks/useLoadingState';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { toast } from 'sonner';
 
 // 인터페이스 정의
 interface Server {
@@ -93,11 +94,120 @@ interface LoadBalancerConfig {
   session_timeout: number;
 }
 
+// 샘플 데이터
+const sampleServers: Server[] = [
+  {
+    server_id: '1',
+    name: '웹서버-01',
+    host: '192.168.1.10',
+    port: 8080,
+    protocol: 'http',
+    weight: 1,
+    max_connections: 1000,
+    is_active: true,
+    status: 'healthy',
+    health_check_url: '/health',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-15T10:30:00Z'
+  },
+  {
+    server_id: '2',
+    name: '웹서버-02',
+    host: '192.168.1.11',
+    port: 8080,
+    protocol: 'http',
+    weight: 1,
+    max_connections: 1000,
+    is_active: true,
+    status: 'healthy',
+    health_check_url: '/health',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-15T10:30:00Z'
+  },
+  {
+    server_id: '3',
+    name: '웹서버-03',
+    host: '192.168.1.12',
+    port: 8080,
+    protocol: 'http',
+    weight: 1,
+    max_connections: 1000,
+    is_active: false,
+    status: 'unhealthy',
+    health_check_url: '/health',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-15T10:30:00Z'
+  }
+];
+
+const sampleServerGroups: ServerGroup[] = [
+  {
+    group_id: '1',
+    name: '웹서버 그룹',
+    algorithm: 'round_robin',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-15T10:30:00Z',
+    servers: sampleServers.slice(0, 2)
+  },
+  {
+    group_id: '2',
+    name: 'API 서버 그룹',
+    algorithm: 'least_connections',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-15T10:30:00Z',
+    servers: sampleServers.slice(1, 3)
+  }
+];
+
+const sampleStats: LoadBalancerStats = {
+  total_groups: 2,
+  active_groups: 2,
+  total_servers: 3,
+  healthy_servers: 2,
+  unhealthy_servers: 1,
+  total_connections: 1250,
+  total_metrics: 45,
+  active_sessions: 850,
+  requests_last_hour: 15420,
+  avg_response_time: 245,
+  success_rate: 98.5,
+  group_stats: [
+    {
+      group_id: '1',
+      name: '웹서버 그룹',
+      algorithm: 'round_robin',
+      healthy_servers: 2,
+      total_servers: 2,
+      health_rate: 100
+    },
+    {
+      group_id: '2',
+      name: 'API 서버 그룹',
+      algorithm: 'least_connections',
+      healthy_servers: 1,
+      total_servers: 2,
+      health_rate: 50
+    }
+  ]
+};
+
+const sampleConfig: LoadBalancerConfig = {
+  data_dir: '/var/lib/loadbalancer',
+  health_check_interval: 30,
+  health_check_timeout: 5,
+  max_failures: 3,
+  enable_sticky_sessions: true,
+  session_timeout: 3600
+};
+
 export default function LoadBalancerPage() {
   // 상태 관리
   const [serverGroups, setServerGroups] = useState<ServerGroup[]>([]);
   const [stats, setStats] = useState<LoadBalancerStats | null>(null);
   const [config, setConfig] = useState<LoadBalancerConfig | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // 다이얼로그 상태
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);

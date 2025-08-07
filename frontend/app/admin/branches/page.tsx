@@ -13,7 +13,7 @@ import { Building, Users, Phone, MapPin, Calendar, TrendingUp } from 'lucide-rea
 import { toast } from 'sonner';
 
 export default function BranchesPage() {
-  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newBranch, setNewBranch] = useState({
     name: '',
@@ -25,7 +25,7 @@ export default function BranchesPage() {
 
   // API 훅 사용
   const { brands } = useBrands(1, 100);
-  const { stores: branches, loading: isLoading, error, refetch } = useStores(1, 100, '', '', selectedBrandId ? parseInt(selectedBrandId) : undefined);
+  const { stores: branches, loading: isLoading, error, refetch } = useStores(1, 100, '', '', selectedBrandId && selectedBrandId !== 'all' ? parseInt(selectedBrandId) : undefined);
 
   const handleCreateBranch = async () => {
     if (!newBranch.name || !newBranch.address || !newBranch.brand_id) {
@@ -162,7 +162,7 @@ export default function BranchesPage() {
                   <SelectValue placeholder="전체 브랜드" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">전체 브랜드</SelectItem>
+                  <SelectItem value="all">전체 브랜드</SelectItem>
                   {brands.map((brand: any) => (
                     <SelectItem key={brand.id} value={brand.id.toString()}>
                       {brand.name}
