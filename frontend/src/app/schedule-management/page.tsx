@@ -102,8 +102,8 @@ export default function ScheduleManagementPage() {
         setSchedules(data.schedules || []);
       }
     } catch (error) {
-      console.error('스케줄 조회 오류:', error);
-      toast.error('스케줄 조회 중 오류가 발생했습니다.');
+      console.error('스케줄 로드 오류:', error);
+      toast.error('스케줄을 불러오는 중 오류가 발생했습니다.');
     }
   };
 
@@ -115,42 +115,19 @@ export default function ScheduleManagementPage() {
         setTemplates(data.templates || []);
       }
     } catch (error) {
-      console.error('템플릿 조회 오류:', error);
+      console.error('템플릿 로드 오류:', error);
     }
   };
 
   const fetchEmployees = async () => {
     try {
-      // 먼저 /api/admin/employees에서 직원 데이터를 가져옴
-      const response = await fetch('/api/admin/employees');
+      const response = await fetch('/api/employees');
       if (response.ok) {
         const data = await response.json();
-        if (data.data && Array.isArray(data.data)) {
-          setEmployees(data.data);
-        } else if (data.employees && Array.isArray(data.employees)) {
-          // 백업 형식 지원
-          setEmployees(data.employees);
-        } else {
-          console.warn('직원 데이터가 올바른 형식이 아닙니다:', data);
-          setEmployees([]);
-        }
-      } else {
-        console.warn('직원 API 호출 실패, 스케줄 API 사용');
-        // 백업으로 스케줄 API 사용
-        const backupResponse = await fetch('/api/schedule/employees');
-        if (backupResponse.ok) {
-          const backupData = await backupResponse.json();
-          setEmployees(backupData.employees || []);
-        } else {
-          setEmployees([]);
-        }
+        setEmployees(data.employees || []);
       }
     } catch (error) {
-      console.error('직원 조회 오류:', error);
-      // 오류 발생 시 빈 배열로 설정
-      setEmployees([]);
-    } finally {
-      setLoading(false);
+      console.error('직원 로드 오류:', error);
     }
   };
 
@@ -159,10 +136,15 @@ export default function ScheduleManagementPage() {
       const response = await fetch('/api/schedule/stats');
       if (response.ok) {
         const data = await response.json();
-        setStats(data);
+        setStats(data.stats || {
+          todayWorking: 0,
+          totalHours: 0,
+          completedCheckins: 0,
+          weeklySchedules: 0
+        });
       }
     } catch (error) {
-      console.error('통계 조회 오류:', error);
+      console.error('통계 로드 오류:', error);
     }
   };
 
@@ -177,7 +159,7 @@ export default function ScheduleManagementPage() {
       });
 
       if (response.ok) {
-        toast.success('스케줄이 생성되었습니다.');
+        toast.success('스케줄이 성공적으로 생성되었습니다.');
         fetchSchedules();
         setNewSchedule({
           user_id: '',
@@ -190,8 +172,7 @@ export default function ScheduleManagementPage() {
           notes: ''
         });
       } else {
-        const error = await response.json();
-        toast.error(error.error || '스케줄 생성에 실패했습니다.');
+        toast.error('스케줄 생성에 실패했습니다.');
       }
     } catch (error) {
       console.error('스케줄 생성 오류:', error);
@@ -221,336 +202,282 @@ export default function ScheduleManagementPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'confirmed': return 'text-green-600';
-      case 'published': return 'text-blue-600';
-      case 'draft': return 'text-gray-600';
-      case 'cancelled': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'active': return 'text-green-600 bg-green-100';
+      case 'completed': return 'text-blue-600 bg-blue-100';
+      case 'cancelled': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'confirmed': return '확정됨';
-      case 'published': return '발표됨';
-      case 'draft': return '임시저장';
-      case 'cancelled': return '취소됨';
-      default: return status;
+      case 'active': return '활성';
+      case 'completed': return '완료';
+      case 'cancelled': return '취소';
+      default: return '대기';
     }
   };
 
   const getShiftTypeText = (shiftType: string) => {
     switch (shiftType) {
-      case 'morning': return '오전';
-      case 'afternoon': return '오후';
-      case 'night': return '야간';
-      case 'full_day': return '종일';
-      case 'part_time': return '파트타임';
-      default: return shiftType;
+      case 'full_day': return '전일 근무';
+      case 'half_day': return '반일 근무';
+      case 'night_shift': return '야간 근무';
+      default: return '기타';
     }
   };
 
-  // 직원 ID로 직원 정보를 찾는 헬퍼 함수
   const getEmployeeInfo = (userId: number) => {
     return employees.find(emp => emp.id === userId);
   };
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="text-lg mb-2">로딩 중...</div>
-            <div className="text-sm text-gray-500">직원 데이터를 가져오는 중입니다</div>
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">스케줄 관리</h1>
-            <p className="text-gray-600">직원 스케줄 및 근무 관리</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'outline'}
-              onClick={() => setViewMode('list')}
-              size="sm"
-            >
-              목록
-            </Button>
-            <Button
-              variant={viewMode === 'calendar' ? 'default' : 'outline'}
-              onClick={() => setViewMode('calendar')}
-              size="sm"
-            >
-              <CalendarDays className="w-4 h-4 mr-2" />
-              캘린더
-            </Button>
-          </div>
+    <div className="container mx-auto p-6 space-y-6">
+      {/* 헤더 */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">스케줄 관리</h1>
+          <p className="text-gray-600 mt-2">직원들의 근무 스케줄을 관리하세요</p>
         </div>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            onClick={() => setViewMode('list')}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            목록 보기
+          </Button>
+          <Button
+            variant={viewMode === 'calendar' ? 'default' : 'outline'}
+            onClick={() => setViewMode('calendar')}
+          >
+            <CalendarDays className="w-4 h-4 mr-2" />
+            캘린더 보기
+          </Button>
+        </div>
+      </div>
 
-        {/* 필터 및 검색 */}
-        <div className="flex gap-4 mb-6">
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="border border-gray-100">
+          <CardContent className="p-4">
+            <div className="flex items-center">
+              <Users className="w-8 h-8 text-blue-600" />
+              <div className="ml-3">
+                <p className="text-sm text-gray-600">오늘 근무자</p>
+                <p className="text-2xl font-bold">{stats.todayWorking}명</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-100">
+          <CardContent className="p-4">
+            <div className="flex items-center">
+              <Clock className="w-8 h-8 text-green-600" />
+              <div className="ml-3">
+                <p className="text-sm text-gray-600">총 근무 시간</p>
+                <p className="text-2xl font-bold">{stats.totalHours}시간</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-100">
+          <CardContent className="p-4">
+            <div className="flex items-center">
+              <CheckCircle className="w-8 h-8 text-purple-600" />
+              <div className="ml-3">
+                <p className="text-sm text-gray-600">체크인 완료</p>
+                <p className="text-2xl font-bold">{stats.completedCheckins}명</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-100">
+          <CardContent className="p-4">
+            <div className="flex items-center">
+              <Calendar className="w-8 h-8 text-orange-600" />
+              <div className="ml-3">
+                <p className="text-sm text-gray-600">주간 스케줄</p>
+                <p className="text-2xl font-bold">{stats.weeklySchedules}개</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 필터 및 새 스케줄 생성 */}
+      <div className="flex justify-between items-center">
+        <div className="flex gap-4">
           <div className="flex items-center gap-2">
-            <Label htmlFor="date">날짜:</Label>
-            <Input
-              id="date"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-40"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="status">상태:</Label>
+            <Label htmlFor="status-filter">상태:</Label>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">전체</SelectItem>
-                <SelectItem value="draft">임시저장</SelectItem>
-                <SelectItem value="published">발표됨</SelectItem>
-                <SelectItem value="confirmed">확정됨</SelectItem>
-                <SelectItem value="cancelled">취소됨</SelectItem>
+                <SelectItem value="active">활성</SelectItem>
+                <SelectItem value="completed">완료</SelectItem>
+                <SelectItem value="cancelled">취소</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="flex items-center gap-2">
-            <Label htmlFor="employee">직원:</Label>
+            <Label htmlFor="employee-filter">직원:</Label>
             <Select value={filterEmployee} onValueChange={setFilterEmployee}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">전체 직원</SelectItem>
-                {employees.length === 0 ? (
-                  <SelectItem value="loading" disabled>
-                    직원 데이터를 불러오는 중...
+                {employees.map((employee) => (
+                  <SelectItem key={employee.id} value={employee.id.toString()}>
+                    {employee.name || employee.username}
                   </SelectItem>
-                ) : (
-                  employees.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id.toString()}>
-                      {employee.name || employee.username}
-                    </SelectItem>
-                  ))
-                )}
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              새 스케줄
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>새 스케줄 생성</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="employee">직원</Label>
+                <Select value={newSchedule.user_id} onValueChange={(value) => setNewSchedule({...newSchedule, user_id: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="직원을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id.toString()}>
+                        {employee.name || employee.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="date">날짜</Label>
+                <Input
+                  type="date"
+                  value={newSchedule.schedule_date}
+                  onChange={(e) => setNewSchedule({...newSchedule, schedule_date: e.target.value})}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="shift-type">근무 유형</Label>
+                <Select value={newSchedule.shift_type} onValueChange={(value) => setNewSchedule({...newSchedule, shift_type: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full_day">전일 근무</SelectItem>
+                    <SelectItem value="half_day">반일 근무</SelectItem>
+                    <SelectItem value="night_shift">야간 근무</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="start-time">시작 시간</Label>
+                  <Input
+                    type="time"
+                    value={newSchedule.start_time}
+                    onChange={(e) => setNewSchedule({...newSchedule, start_time: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end-time">종료 시간</Label>
+                  <Input
+                    type="time"
+                    value={newSchedule.end_time}
+                    onChange={(e) => setNewSchedule({...newSchedule, end_time: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="notes">메모</Label>
+                <Input
+                  value={newSchedule.notes}
+                  onChange={(e) => setNewSchedule({...newSchedule, notes: e.target.value})}
+                  placeholder="스케줄에 대한 메모를 입력하세요"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline">취소</Button>
+              <Button onClick={createSchedule}>생성</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card className="border border-gray-100">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">오늘 근무</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.todayWorking}명</div>
-            <p className="text-xs text-muted-foreground">근무 중인 직원</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-100">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">총 근무 시간</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalHours}시간</div>
-            <p className="text-xs text-muted-foreground">오늘 총 근무</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-100">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">출근 완료</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completedCheckins}명</div>
-            <p className="text-xs text-muted-foreground">정시 출근</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-100">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">이번 주 스케줄</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.weeklySchedules}개</div>
-            <p className="text-xs text-muted-foreground">스케줄 항목</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 스케줄 뷰 */}
+      {/* 스케줄 목록 */}
       {viewMode === 'list' ? (
         <Card className="border border-gray-100">
-          <CardHeader className="flex justify-between items-center">
+          <CardHeader>
             <CardTitle>스케줄 목록</CardTitle>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  새 스케줄
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>새 스케줄 생성</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="employee">직원</Label>
-                    <Select value={newSchedule.user_id} onValueChange={(value) => setNewSchedule({...newSchedule, user_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="직원을 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {employees.length === 0 ? (
-                          <SelectItem value="loading" disabled>
-                            직원 데이터를 불러오는 중...
-                          </SelectItem>
-                        ) : (
-                          employees.map((employee) => (
-                            <SelectItem key={employee.id} value={employee.id.toString()}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">
-                                  {employee.name || employee.username}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {employee.position && `${employee.position}`}
-                                  {employee.department && ` • ${employee.department}`}
-                                  {employee.role && ` • ${employee.role}`}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="schedule_date">날짜</Label>
-                    <Input
-                      id="schedule_date"
-                      type="date"
-                      value={newSchedule.schedule_date}
-                      onChange={(e) => setNewSchedule({...newSchedule, schedule_date: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="shift_type">근무 유형</Label>
-                    <Select value={newSchedule.shift_type} onValueChange={(value) => setNewSchedule({...newSchedule, shift_type: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="morning">오전</SelectItem>
-                        <SelectItem value="afternoon">오후</SelectItem>
-                        <SelectItem value="night">야간</SelectItem>
-                        <SelectItem value="full_day">종일</SelectItem>
-                        <SelectItem value="part_time">파트타임</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="start_time">시작 시간</Label>
-                      <Input
-                        id="start_time"
-                        type="time"
-                        value={newSchedule.start_time}
-                        onChange={(e) => setNewSchedule({...newSchedule, start_time: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="end_time">종료 시간</Label>
-                      <Input
-                        id="end_time"
-                        type="time"
-                        value={newSchedule.end_time}
-                        onChange={(e) => setNewSchedule({...newSchedule, end_time: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="notes">메모</Label>
-                    <Input
-                      id="notes"
-                      value={newSchedule.notes}
-                      onChange={(e) => setNewSchedule({...newSchedule, notes: e.target.value})}
-                      placeholder="스케줄 메모"
-                    />
-                  </div>
-                  <Button onClick={createSchedule} className="w-full">
-                    스케줄 생성
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
           </CardHeader>
           <CardContent>
             {schedules.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                해당 날짜에 스케줄이 없습니다.
-              </div>
+              <p className="text-gray-500 text-center py-8">스케줄이 없습니다.</p>
             ) : (
               <div className="space-y-4">
-                {schedules.map((schedule) => {
-                  const employee = getEmployeeInfo(parseInt(schedule.user_id || '0'));
-                  return (
-                    <div key={schedule.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
+                {schedules.map((schedule) => (
+                  <div key={schedule.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4">
                       <div>
-                        <h4 className="font-semibold">{employee?.name || employee?.username || schedule.user_name}</h4>
-                        <p className="text-sm text-gray-600">{getShiftTypeText(schedule.shift_type)}</p>
-                        {employee && (
-                          <p className="text-xs text-gray-500">
-                            {employee.position && `${employee.position}`}
-                            {employee.department && ` • ${employee.department}`}
-                          </p>
-                        )}
+                        <p className="font-semibold">{schedule.user_name}</p>
+                        <p className="text-sm text-gray-600">{schedule.schedule_date}</p>
                       </div>
-                    <div>
-                      <p className="text-sm text-gray-600">근무 시간</p>
-                      <p className="font-semibold">{schedule.start_time} - {schedule.end_time}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">총 시간</p>
-                      <p className="font-semibold">{schedule.total_hours}시간</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">상태</p>
-                      <p className={`font-semibold ${getStatusColor(schedule.status)}`}>
-                        {getStatusText(schedule.status)}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">생성자</p>
-                      <p className="font-semibold">{schedule.created_by}</p>
-                    </div>
-                    <div className="flex justify-center gap-2">
-                      <Button size="sm" variant="outline">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => deleteSchedule(schedule.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div>
+                        <p className="text-sm text-gray-600">근무 시간</p>
+                        <p className="font-semibold">{schedule.start_time} - {schedule.end_time}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">총 시간</p>
+                        <p className="font-semibold">{schedule.total_hours}시간</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">상태</p>
+                        <p className={`font-semibold ${getStatusColor(schedule.status)}`}>
+                          {getStatusText(schedule.status)}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">생성자</p>
+                        <p className="font-semibold">{schedule.created_by}</p>
+                      </div>
+                      <div className="flex justify-center gap-2">
+                        <Button size="sm" variant="outline">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => deleteSchedule(schedule.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -621,4 +548,4 @@ export default function ScheduleManagementPage() {
       )}
     </div>
   );
-} 
+}

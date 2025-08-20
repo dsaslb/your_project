@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useLoadingState } from '@/hooks/useLoadingState';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { apiClient } from '@/lib/api-client';
+import { ApiClient, ApiResponse } from '@/lib/api-client';
 import { 
   Activity, 
   Server, 
@@ -207,7 +207,6 @@ export default function LoadBalancerPage() {
   const [serverGroups, setServerGroups] = useState<ServerGroup[]>([]);
   const [stats, setStats] = useState<LoadBalancerStats | null>(null);
   const [config, setConfig] = useState<LoadBalancerConfig | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   
   // 다이얼로그 상태
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
@@ -232,11 +231,13 @@ export default function LoadBalancerPage() {
   });
   
   // 로딩 및 에러 처리
-  const { loading, setLoading } = useLoadingState();
-  const { error, handleError, clearError } = useErrorHandler();
+  const { isLoading, setLoading } = useLoadingState();
+  const { handleError } = useErrorHandler();
   
   // API 클라이언트
-    // 데이터 로드
+  const apiClient = new ApiClient();
+  
+  // 데이터 로드
   useEffect(() => {
     loadLoadBalancerData();
   }, []);
@@ -244,20 +245,17 @@ export default function LoadBalancerPage() {
   const loadLoadBalancerData = async () => {
     try {
       setLoading(true);
-      clearError();
       
-      const [statsRes, groupsRes, configRes] = await Promise.all([
-        apiClient.get('/api/load-balancer/stats'),
-        apiClient.get('/api/load-balancer/groups'),
-        apiClient.get('/api/load-balancer/config')
-      ]);
+      const statsRes = await apiClient.get<LoadBalancerStats>('/api/load-balancer/stats');
+      const groupsRes = await apiClient.get<ServerGroup[]>('/api/load-balancer/groups');
+      const configRes = await apiClient.get<LoadBalancerConfig>('/api/load-balancer/config');
       
-      setStats(statsRes.data);
-      setServerGroups(groupsRes.data);
-      setConfig(configRes.data);
+      setStats(statsRes);
+      setServerGroups(groupsRes);
+      setConfig(configRes);
       
     } catch (err) {
-      handleError(err, '로드 밸런서 데이터 로드 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -267,7 +265,6 @@ export default function LoadBalancerPage() {
   const createServerGroup = async () => {
     try {
       setLoading(true);
-      clearError();
       
       await apiClient.post('/api/load-balancer/groups', newGroup);
       
@@ -281,7 +278,7 @@ export default function LoadBalancerPage() {
       await loadLoadBalancerData();
       
     } catch (err) {
-      handleError(err, '서버 그룹 생성 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -292,13 +289,12 @@ export default function LoadBalancerPage() {
     
     try {
       setLoading(true);
-      clearError();
       
       await apiClient.delete(`/api/load-balancer/groups/${groupId}`);
       await loadLoadBalancerData();
       
     } catch (err) {
-      handleError(err, '서버 그룹 삭제 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -307,7 +303,6 @@ export default function LoadBalancerPage() {
   const addServerToGroup = async () => {
     try {
       setLoading(true);
-      clearError();
       
       await apiClient.post(`/api/load-balancer/groups/${selectedGroupId}/servers`, newServer);
       
@@ -325,7 +320,7 @@ export default function LoadBalancerPage() {
       await loadLoadBalancerData();
       
     } catch (err) {
-      handleError(err, '서버 추가 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -336,13 +331,12 @@ export default function LoadBalancerPage() {
     
     try {
       setLoading(true);
-      clearError();
       
       await apiClient.delete(`/api/load-balancer/servers/${serverId}`);
       await loadLoadBalancerData();
       
     } catch (err) {
-      handleError(err, '서버 삭제 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -351,13 +345,12 @@ export default function LoadBalancerPage() {
   const performHealthCheck = async (serverId: string) => {
     try {
       setLoading(true);
-      clearError();
       
       await apiClient.post(`/api/load-balancer/servers/${serverId}/health`);
       await loadLoadBalancerData();
       
     } catch (err) {
-      handleError(err, '헬스 체크 수행 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -369,14 +362,13 @@ export default function LoadBalancerPage() {
     
     try {
       setLoading(true);
-      clearError();
       
       const updatedConfig = { ...config, ...updates };
       await apiClient.put('/api/load-balancer/config', updatedConfig);
       setConfig(updatedConfig);
       
     } catch (err) {
-      handleError(err, '설정 업데이트 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -386,13 +378,12 @@ export default function LoadBalancerPage() {
   const clearSessions = async () => {
     try {
       setLoading(true);
-      clearError();
       
       await apiClient.post('/api/load-balancer/sessions/clear');
       alert('세션 매핑이 정리되었습니다.');
       
     } catch (err) {
-      handleError(err, '세션 정리 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -401,13 +392,12 @@ export default function LoadBalancerPage() {
   const clearConnections = async () => {
     try {
       setLoading(true);
-      clearError();
       
       await apiClient.post('/api/load-balancer/connections/clear');
       alert('연결 수 카운터가 정리되었습니다.');
       
     } catch (err) {
-      handleError(err, '연결 수 정리 실패');
+      handleError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -442,18 +432,13 @@ export default function LoadBalancerPage() {
           <h1 className="text-3xl font-bold text-gray-900">로드 밸런서 관리</h1>
           <p className="text-gray-600 mt-2">서버 그룹, 로드 밸런싱, 헬스 체크를 관리합니다</p>
         </div>
-        <Button onClick={loadLoadBalancerData} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        <Button onClick={loadLoadBalancerData} disabled={isLoading}>
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           새로고침
         </Button>
       </div>
       
-      {error && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+
       
       {/* 통계 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -582,7 +567,7 @@ export default function LoadBalancerPage() {
                       <Button variant="outline" onClick={() => setIsCreateGroupOpen(false)}>
                         취소
                       </Button>
-                      <Button onClick={createServerGroup} disabled={loading}>
+                      <Button onClick={createServerGroup} disabled={isLoading}>
                         생성
                       </Button>
                     </DialogFooter>
@@ -706,7 +691,7 @@ export default function LoadBalancerPage() {
                               <Button variant="outline" onClick={() => setIsAddServerOpen(false)}>
                                 취소
                               </Button>
-                              <Button onClick={addServerToGroup} disabled={loading}>
+                              <Button onClick={addServerToGroup} disabled={isLoading}>
                                 추가
                               </Button>
                             </DialogFooter>
@@ -838,7 +823,7 @@ export default function LoadBalancerPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>세션 관리</Label>
-                  <Button variant="outline" onClick={clearSessions} disabled={loading}>
+                  <Button variant="outline" onClick={clearSessions} disabled={isLoading}>
                     <Globe className="w-4 h-4 mr-2" />
                     세션 매핑 정리
                   </Button>
@@ -846,7 +831,7 @@ export default function LoadBalancerPage() {
                 
                 <div className="space-y-2">
                   <Label>연결 관리</Label>
-                  <Button variant="outline" onClick={clearConnections} disabled={loading}>
+                  <Button variant="outline" onClick={clearConnections} disabled={isLoading}>
                     <Users className="w-4 h-4 mr-2" />
                     연결 수 카운터 정리
                   </Button>

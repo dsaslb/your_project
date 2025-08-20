@@ -375,3 +375,44 @@ def get_industry_ai_reports():
             'message': '업종 AI 리포트 요약 조회 실패',
             'error': str(e)
         }), 500
+
+@schedule_api.route('/api/ai-reports/industry-summary-test', methods=['GET'])
+def get_industry_ai_reports_test():
+    """업종별 AI 리포트 요약 조회 (테스트용 - 인증 없음)"""
+    try:
+        industry_id = request.args.get('industry_id', '1')
+        
+        # 샘플 데이터 반환
+        sample_reports = [
+            {
+                'brand_id': 1,
+                'brand_name': '스타벅스',
+                'total_stores': 15,
+                'avg_efficiency_score': 78,
+                'common_issues': ['주말 인원 부족', '평일 오후 인원 과다'],
+                'recommendations': ['주말 인원 배치 최적화', '평일 오후 인원 조정']
+            },
+            {
+                'brand_id': 2,
+                'brand_name': '투썸플레이스',
+                'total_stores': 8,
+                'avg_efficiency_score': 82,
+                'common_issues': ['저녁 시간대 인원 부족'],
+                'recommendations': ['저녁 시간대 인원 증가']
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'message': '업종 AI 리포트 요약 조회 성공 (테스트)',
+            'reports': sample_reports,
+            'industry_id': industry_id
+        })
+        
+    except Exception as e:
+        logger.error(f"업종 AI 리포트 요약 조회 실패: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': '업종 AI 리포트 요약 조회 실패',
+            'error': str(e)
+        }), 500

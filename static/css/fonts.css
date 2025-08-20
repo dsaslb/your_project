@@ -1,0 +1,19 @@
+/* 시스템 폰트 폴백 설정 */
+:root {
+    --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-orbitron: 'Orbitron', 'Courier New', monospace;
+    --font-rajdhani: 'Rajdhani', 'Arial', sans-serif;
+}
+
+/* 폰트 패밀리 설정 */
+body {
+    font-family: var(--font-inter);
+}
+
+.cyber-font {
+    font-family: var(--font-orbitron);
+}
+
+.font-rajdhani {
+    font-family: var(--font-rajdhani);
+}

@@ -63,7 +63,7 @@ export default function EmployeeManagement() {
   // 직원 목록 조회
   const fetchEmployees = async () => {
     // 임시로 샘플 데이터 사용
-    const sampleEmployees = [
+    const sampleEmployees: Employee[] = [
       {
         id: 1,
         name: '김철수',
@@ -72,9 +72,8 @@ export default function EmployeeManagement() {
         position: '매니저',
         store_id: 1,
         store_name: '강남점',
-        brand_id: 1,
         brand_name: '스타벅스',
-        status: 'active',
+        status: 'active' as const,
         hire_date: '2023-01-15',
         created_at: '2023-01-15T00:00:00Z',
         updated_at: '2024-01-15T10:30:00Z'
@@ -87,9 +86,8 @@ export default function EmployeeManagement() {
         position: '바리스타',
         store_id: 1,
         store_name: '강남점',
-        brand_id: 1,
         brand_name: '스타벅스',
-        status: 'active',
+        status: 'active' as const,
         hire_date: '2023-03-20',
         created_at: '2023-03-20T00:00:00Z',
         updated_at: '2024-01-15T09:15:00Z'
@@ -102,9 +100,8 @@ export default function EmployeeManagement() {
         position: '매니저',
         store_id: 2,
         store_name: '홍대점',
-        brand_id: 1,
         brand_name: '스타벅스',
-        status: 'active',
+        status: 'active' as const,
         hire_date: '2023-02-10',
         created_at: '2023-02-10T00:00:00Z',
         updated_at: '2024-01-15T08:45:00Z'
@@ -117,9 +114,33 @@ export default function EmployeeManagement() {
   const fetchStores = async () => {
     // 임시로 샘플 데이터 사용
     const sampleStores = [
-      { id: 1, name: '강남점', brand_id: 1, brand_name: '스타벅스' },
-      { id: 2, name: '홍대점', brand_id: 1, brand_name: '스타벅스' },
-      { id: 3, name: '신촌점', brand_id: 1, brand_name: '스타벅스' }
+      { 
+        id: 1, 
+        name: '강남점', 
+        code: 'GN001',
+        brand_id: 1, 
+        brand_name: '스타벅스',
+        employee_count: 15,
+        status: 'active' as const
+      },
+      { 
+        id: 2, 
+        name: '홍대점', 
+        code: 'HD001',
+        brand_id: 1, 
+        brand_name: '스타벅스',
+        employee_count: 12,
+        status: 'active' as const
+      },
+      { 
+        id: 3, 
+        name: '신촌점', 
+        code: 'SC001',
+        brand_id: 1, 
+        brand_name: '스타벅스',
+        employee_count: 10,
+        status: 'active' as const
+      }
     ];
     setStores(sampleStores);
   };
@@ -128,8 +149,24 @@ export default function EmployeeManagement() {
   const fetchBrands = async () => {
     // 임시로 샘플 데이터 사용
     const sampleBrands = [
-      { id: 1, name: '스타벅스', code: 'SB' },
-      { id: 2, name: '투썸플레이스', code: 'TS' }
+      { 
+        id: 1, 
+        name: '스타벅스', 
+        code: 'SB',
+        industry_id: 1,
+        store_count: 3,
+        employee_count: 37,
+        status: 'active' as const
+      },
+      { 
+        id: 2, 
+        name: '투썸플레이스', 
+        code: 'TS',
+        industry_id: 1,
+        store_count: 2,
+        employee_count: 20,
+        status: 'active' as const
+      }
     ];
     setBrands(sampleBrands);
   };

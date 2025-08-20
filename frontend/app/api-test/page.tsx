@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { ApiClient } from '@/lib/api-client';
 
+const apiClient = new ApiClient();
+
 export default function ApiTestPage() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);

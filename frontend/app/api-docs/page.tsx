@@ -69,7 +69,7 @@ export default function ApiDocsPage() {
     enable_postman: true,
     enable_insomnia: true
   });
-  const { isLoading, startLoading, stopLoading } = useLoadingState();
+  const { isLoading, setLoading } = useLoadingState();
   const { handleError } = useErrorHandler();
   const [error, setError] = useState<string | null>(null);
     useEffect(() => {
@@ -125,7 +125,7 @@ export default function ApiDocsPage() {
 
   const generateDocs = async () => {
     try {
-      startLoading();
+      setLoading(true);
       setError(null);
       await apiClient.post('/api/docs/generate');
       await loadFiles();
@@ -134,7 +134,7 @@ export default function ApiDocsPage() {
       handleError(err as Error);
       setError('문서 생성에 실패했습니다.');
     } finally {
-      stopLoading();
+      setLoading(false);
     }
   };
 
@@ -157,14 +157,14 @@ export default function ApiDocsPage() {
 
   const updateConfig = async () => {
     try {
-      startLoading();
+      setLoading(true);
       await apiClient.put('/api/docs/config', configForm);
       setIsConfigOpen(false);
       await loadConfig();
     } catch (err) {
       handleError(err as Error);
     } finally {
-      stopLoading();
+      setLoading(false);
     }
   };
 

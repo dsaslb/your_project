@@ -308,7 +308,7 @@ export default function MarketingManagement() {
       if (editingCampaign) {
         // 캠페인 정보 수정
         const response = await apiClient.put(`/api/campaigns/${editingCampaign.id}`, formData);
-        if (response.success) {
+        if ((response as any).success) {
           toast.success('캠페인이 성공적으로 수정되었습니다.');
           setIsCreateDialogOpen(false);
           setEditingCampaign(null);
@@ -318,7 +318,7 @@ export default function MarketingManagement() {
       } else {
         // 새 캠페인 생성
         const response = await apiClient.post('/api/campaigns', formData);
-        if (response.success) {
+        if ((response as any).success) {
           toast.success('캠페인이 성공적으로 생성되었습니다.');
           setIsCreateDialogOpen(false);
           resetForm();
@@ -341,7 +341,7 @@ export default function MarketingManagement() {
     try {
       setLoading(true);
       const response = await apiClient.delete(`/api/campaigns/${campaign.id}`);
-      if (response.success) {
+      if ((response as any).success) {
         toast.success('캠페인이 성공적으로 삭제되었습니다.');
         fetchCampaigns();
       }
@@ -357,7 +357,7 @@ export default function MarketingManagement() {
     try {
       setLoading(true);
       const response = await apiClient.put(`/api/campaigns/${campaign.id}`, { status: newStatus });
-      if (response.success) {
+      if ((response as any).success) {
         toast.success(`캠페인 상태가 ${newStatus === 'active' ? '활성화' : '비활성화'}되었습니다.`);
         fetchCampaigns();
       }

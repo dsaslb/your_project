@@ -30,25 +30,25 @@ export default function Dashboard() {
   const dashboardStats = [
     {
       label: '총 브랜드',
-      value: safeStats.total_brands || 0,
+      value: (safeStats as any).total_brands || 0,
       icon: <Building2 className="w-6 h-6" />,
       color: 'text-cyan-400'
     },
     {
       label: '총 매장',
-      value: safeStats.total_stores || 0,
+      value: (safeStats as any).total_stores || 0,
       icon: <Store className="w-6 h-6" />,
       color: 'text-emerald-400'
     },
     {
       label: '총 직원',
-      value: safeStats.total_employees || 0,
+      value: (safeStats as any).total_employees || 0,
       icon: <Users className="w-6 h-6" />,
       color: 'text-purple-400'
     },
     {
       label: '총 매출',
-      value: `₩${(safeStats.total_revenue || 0).toLocaleString()}`,
+      value: `₩${((safeStats as any).total_revenue || 0).toLocaleString()}`,
       icon: <TrendingUp className="w-6 h-6" />,
       color: 'text-yellow-400'
     }
@@ -126,7 +126,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {safeStats.recent_activities?.slice(0, 5).map((activity, index) => (
+            {(safeStats as any).recent_activities?.slice(0, 5).map((activity: any, index: number) => (
               <div key={index} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
                 <div>
                   <p className="text-white">{activity.description}</p>
@@ -137,7 +137,7 @@ export default function Dashboard() {
                 </Badge>
               </div>
             ))}
-            {(!safeStats.recent_activities || safeStats.recent_activities.length === 0) && (
+            {(!(safeStats as any).recent_activities || (safeStats as any).recent_activities.length === 0) && (
               <p className="text-slate-400 text-center py-4">최근 활동이 없습니다.</p>
             )}
           </div>

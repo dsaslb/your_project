@@ -509,7 +509,7 @@ export default function InventoryManagement() {
                 <SelectContent className="bg-white/10 border-white/20">
                   <SelectItem value="all">모든 카테고리</SelectItem>
                   {categories.map(category => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                    <SelectItem key={category} value={category || ''}>{category || '미분류'}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

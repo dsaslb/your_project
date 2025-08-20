@@ -70,7 +70,7 @@ export default function MessageQueuePage() {
   const [isPublishOpen, setIsPublishOpen] = useState(false);
   const [newQueue, setNewQueue] = useState({ name: '', queue_type: 'standard', max_size: 1000 });
   const [publishForm, setPublishForm] = useState({ topic: '', payload: '', priority: 'normal' });
-  const { loading, setLoading } = useLoadingState();
+  const { isLoading, setLoading } = useLoadingState();
   const { error, handleError, clearError } = useErrorHandler();
     useEffect(() => {
     loadQueues();
@@ -189,8 +189,8 @@ export default function MessageQueuePage() {
           <h1 className="text-3xl font-bold text-gray-900">메시지 큐 관리</h1>
           <p className="text-gray-600 mt-2">비동기 작업, 이벤트, Pub/Sub 큐를 관리합니다</p>
         </div>
-        <Button onClick={() => { loadQueues(); loadStats(); }} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    <Button onClick={() => { loadQueues(); loadStats(); }} disabled={isLoading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           새로고침
         </Button>
       </div>
@@ -291,7 +291,7 @@ export default function MessageQueuePage() {
                       <Button variant="outline" onClick={() => setIsCreateQueueOpen(false)}>
                         취소
                       </Button>
-                      <Button onClick={createQueue} disabled={loading}>
+                      <Button onClick={createQueue} disabled={isLoading}>
                         생성
                       </Button>
                     </DialogFooter>
@@ -377,7 +377,7 @@ export default function MessageQueuePage() {
                 <Button variant="outline" onClick={() => setIsPublishOpen(false)}>
                   취소
                 </Button>
-                <Button onClick={publishMessage} disabled={loading}>
+                <Button onClick={publishMessage} disabled={isLoading}>
                   발행
                 </Button>
               </DialogFooter>

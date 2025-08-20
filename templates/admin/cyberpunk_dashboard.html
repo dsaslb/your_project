@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYBERPUNK DASHBOARD - 백엔드 관리자</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="/static/css/fonts.css" rel="stylesheet">
+    <script src="/static/js/feather.js"></script>
+    <script src="/static/js/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
         
         :root {
             --cyber-bg: #0a0a0a;
@@ -31,14 +31,14 @@
         }
 
         body {
-            font-family: 'Rajdhani', sans-serif;
+            font-family: var(--font-rajdhani);
             background: var(--cyber-bg);
             color: var(--cyber-text);
             overflow-x: hidden;
         }
 
         .cyber-font {
-            font-family: 'Orbitron', monospace;
+            font-family: var(--font-orbitron);
         }
 
         .cyber-card {
@@ -98,6 +98,90 @@
 
         .cyber-bg-card {
             background: var(--cyber-card);
+        }
+
+        /* CSS 차트 스타일 */
+        .cyber-chart {
+            padding: 1rem;
+        }
+
+        .chart-header h3 {
+            color: var(--cyber-orange);
+            text-shadow: 0 0 10px var(--cyber-orange);
+        }
+
+        .chart-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .chart-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bar-label {
+            min-width: 120px;
+            color: var(--cyber-text);
+            font-weight: 500;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 20px;
+            background: var(--cyber-border);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .user-bar {
+            background: linear-gradient(90deg, var(--cyber-orange), #ff8c42);
+        }
+
+        .system-bar {
+            background: linear-gradient(90deg, var(--cyber-red), #ff6b6b);
+        }
+
+        .cpu-bar {
+            background: linear-gradient(90deg, var(--cyber-green), #00d4aa);
+        }
+
+        .memory-bar {
+            background: linear-gradient(90deg, var(--cyber-blue), #5a67d8);
+        }
+
+        .bar-value {
+            min-width: 60px;
+            text-align: right;
+            color: var(--cyber-text);
+            font-weight: 600;
+        }
         }
 
         .cyber-bg-dark {
@@ -640,65 +724,49 @@
             feather.replace();
         }
 
-        // 미션 차트 초기화
-        const ctx = document.getElementById('mission-chart').getContext('2d');
-        const missionChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['1월 28일', '2월 7일', '2월 14일', '2월 21일', '2월 28일'],
-                datasets: [{
-                    label: '활성 사용자',
-                    data: [320, 380, 420, 450, 480],
-                    borderColor: '#ff6b35',
-                    backgroundColor: 'rgba(255, 107, 53, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.4
-                }, {
-                    label: '시스템 로드',
-                    data: [180, 220, 200, 180, 150],
-                    borderColor: '#ff4757',
-                    backgroundColor: 'rgba(255, 71, 87, 0.1)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                aspectRatio: 2,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: '#e0e0e0',
-                            font: {
-                                family: 'Rajdhani, sans-serif'
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            color: '#888'
-                        },
-                        grid: {
-                            color: '#333'
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            color: '#888'
-                        },
-                        grid: {
-                            color: '#333'
-                        }
-                    }
-                }
+        // 미션 차트 초기화 (Chart.js 대신 CSS 차트 사용)
+        function createSimpleChart() {
+            const chartContainer = document.getElementById('mission-chart');
+            if (chartContainer) {
+                chartContainer.innerHTML = `
+                    <div class="cyber-chart">
+                        <div class="chart-header">
+                            <h3 class="cyber-font text-lg mb-4">시스템 성능 모니터링</h3>
+                        </div>
+                        <div class="chart-content">
+                            <div class="chart-bar">
+                                <span class="bar-label">활성 사용자</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill user-bar" style="width: 75%"></div>
+                                </div>
+                                <span class="bar-value">480</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span class="bar-label">시스템 로드</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill system-bar" style="width: 45%"></div>
+                                </div>
+                                <span class="bar-value">150</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span class="bar-label">CPU 사용률</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill cpu-bar" style="width: 65%"></div>
+                                </div>
+                                <span class="bar-value">65%</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span class="bar-label">메모리 사용률</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill memory-bar" style="width: 80%"></div>
+                                </div>
+                                <span class="bar-value">80%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
-        });
+        }
 
         // 실시간 데이터 업데이트
         function updateDashboard() {
@@ -805,6 +873,7 @@
         // 초기 업데이트
         updateDashboard();
         loadDashboardStats(); // 대시보드 통계 로드
+        createSimpleChart(); // CSS 차트 생성
 
         // 활동 로그 자동 스크롤
         const activityLog = document.getElementById('activity-log');

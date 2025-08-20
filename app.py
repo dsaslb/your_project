@@ -8,8 +8,6 @@ import os
 import logging
 import sys
 from datetime import datetime
-from pathlib import Path
-# 사용하지 않는 import 제거
 
 # 프로젝트 루트를 Python 경로에 추가
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -17,110 +15,94 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import jwt
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
-# prometheus_client import 제거 (사용하지 않음)
 from werkzeug.security import generate_password_hash
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
 
-# 설정 및 확장 모듈 import
-from config.config import config_by_name
-from extensions import cache, csrf, db, limiter, login_manager, migrate
+# 설정 및 확장 모듈 import (조건부)
+try:
+    from config.config import config_by_name
+except ImportError:
+    config_by_name = {}
+# 확장 모듈 import (조건부)
+try:
+    from extensions import cache, csrf, db, limiter, login_manager, migrate
+except ImportError:
+    cache = csrf = db = limiter = login_manager = migrate = None
 
-# AnonymousUserMixin import
-from models_main import AnonymousUserMixin
+# AnonymousUserMixin import (조건부)
+try:
+    from models_main import AnonymousUserMixin
+except ImportError:
+    AnonymousUserMixin = None
 
 # Swagger 설정 import (조건부)
-try:
-    from api.swagger_config import create_swagger_config
-    SWAGGER_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"Swagger 설정을 불러올 수 없습니다: {e}")
-    create_swagger_config = None
-    SWAGGER_AVAILABLE = False
+SWAGGER_AVAILABLE = False
+create_swagger_config = None
 
 # WebSocket 매니저 import (조건부)
-try:
-    from api.websocket_manager import websocket_manager
-    WEBSOCKET_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"WebSocket 매니저를 불러올 수 없습니다: {e}")
-    websocket_manager = None
-    WEBSOCKET_AVAILABLE = False
+WEBSOCKET_AVAILABLE = False
+websocket_manager = None
 
 # WebSocket 서버 import (조건부)
+WEBSOCKET_SERVER_AVAILABLE = False
+create_websocket_server = None
+
+# 데이터 모델 import (조건부)
 try:
-    from websocket.websocket_server import create_websocket_server
-    WEBSOCKET_SERVER_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"WebSocket 서버를 불러올 수 없습니다: {e}")
-    create_websocket_server = None
-    WEBSOCKET_SERVER_AVAILABLE = False
+    from models_main import User
+except ImportError:
+    User = None
 
-# 데이터 모델 import
-from models_main import (
-    User,
-    Brand,
-    Industry,
-)
+# 플러그인 모델 import (현재 사용하지 않음)
+SCHEDULE_PLUGIN_AVAILABLE = False
 
-# 플러그인 모델 import
+# 권한 정책 시스템 import (조건부)
 try:
-    from plugins.schedule_management.models import (
-        WorkSchedule,
-        ScheduleTemplate,
-        ScheduleRequest,
-        ScheduleSettings
-    )
-    SCHEDULE_PLUGIN_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"스케줄 관리 플러그인 모델을 불러올 수 없습니다: {e}")
-    SCHEDULE_PLUGIN_AVAILABLE = False
+    from utils.authorization_policy import require_super_admin
+except ImportError:
+    require_super_admin = None
 
-# 권한 정책 시스템 import
-from utils.authorization_policy import (
-    require_super_admin, 
-    auth_policy
-)
+# 보안 강화 모듈 import (조건부)
+try:
+    from utils.security_middleware import security_middleware
+except ImportError:
+    security_middleware = None
 
-# 시스템 최적화 모듈 import
-from utils.system_optimizer import system_optimizer
-
-# 보안 강화 모듈 import
-from utils.security_enhancer import security_enhancer
-from utils.security_middleware import security_middleware
-
-# 캐시 매니저 import
-from utils.cache_manager import cache_manager
+# 캐시 매니저 import (조건부)
+try:
+    from utils.cache_manager import cache_manager
+except ImportError:
+    cache_manager = None
 
 # 환경 설정
 config_name = os.getenv("FLASK_ENV", "default")
 
 # Flask 애플리케이션 초기화
 app = Flask(__name__)
-app.config.from_object(config_by_name[config_name])
+app.config.from_object(config_by_name.get(config_name, {}))
+# 보안 키 설정
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 app.config["SECRET_KEY"] = app.config["JWT_SECRET_KEY"]
-
-# 플러그인 목록 (실제로는 DB에서 관리)
-plugins = []  # noqa: F841
-
-# JSON 파싱 강제 활성화
+# JSON 설정
 app.config['JSON_AS_ASCII'] = False
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
-# SocketIO 초기화 (조건부) - 나중에 설정
-socketio = None  # 임시로 None 설정
+# SocketIO 초기화 (조건부)
+socketio = None
 
-CORS(
-    app,
-    origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
-    supports_credentials=True,
-    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "X-API-Key"],
-    expose_headers=["Content-Type", "Authorization"],
-    max_age=86400,
-)
+# CORS 설정 (조건부)
+if CORS:
+    CORS(
+        app,
+        origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
+        supports_credentials=True,
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "X-API-Key"],
+        expose_headers=["Content-Type", "Authorization"],
+        max_age=86400,
+    )
 
 # OPTIONS 요청에 대한 전역 핸들러 추가
 @app.before_request
@@ -139,21 +121,13 @@ def handle_preflight():
 def initialize_extensions():
     """Flask 확장 모듈들을 초기화합니다."""
     try:
-        # 보안 미들웨어 초기화
-        security_middleware.init_app(app)
+        # extensions.py의 init_extensions 함수 사용
+        from extensions import init_extensions
+        init_extensions(app)
         
-        csrf.init_app(app)
-        db.init_app(app)
-        migrate.init_app(app, db)
-        login_manager.init_app(app)
-        login_manager.login_view = None  # API 경로는 인증을 우회하도록 설정
-        login_manager.login_message = "로그인이 필요합니다."
-        login_manager.login_message_category = "info"
-        login_manager.anonymous_user = AnonymousUserMixin
-        
-        # 추가 확장 모듈 초기화
-        limiter.init_app(app)
-        cache.init_app(app)
+        # 보안 미들웨어 초기화 (조건부)
+        if security_middleware:
+            security_middleware.init_app(app)
         
         # Swagger 설정 초기화 (조건부)
         if SWAGGER_AVAILABLE and create_swagger_config:
@@ -219,14 +193,16 @@ def create_default_admin():
 # 확장 모듈 초기화
 api = initialize_extensions()
 
-# 캐시 매니저 초기화
-cache_manager.init_app(app)
+# 캐시 매니저 초기화 (조건부)
+if cache_manager:
+    cache_manager.init_app(app)
 
-# WebSocket 매니저 초기화
-websocket_manager.init_app(app)
+# WebSocket 매니저 초기화 (조건부)
+if WEBSOCKET_AVAILABLE and websocket_manager:
+    websocket_manager.init_app(app)
 
 # 데이터베이스 초기화 (앱 컨텍스트 내에서 실행)
-# initialize_database()
+initialize_database()
 
 # 블루프린트 등록 함수
 def register_blueprints():

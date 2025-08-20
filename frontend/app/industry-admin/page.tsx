@@ -59,9 +59,14 @@ export default function IndustryAdmin() {
   const fetchIndustryAIReports = async () => {
     try {
       setIsLoading(true);
+      
+      // 백엔드 연결 상태 확인
+      console.log('백엔드 API 호출 시작...');
+      
       const response = await apiClient.get(`/api/ai-reports/industry-summary?industry_id=${currentIndustryId}`) as any;
       
-      if (response.data.success) {
+      if (response.data && response.data.success) {
+        console.log('백엔드 API 호출 성공:', response.data);
         setBrandReports(response.data.reports);
         
         // 업종 요약 계산
@@ -99,12 +104,28 @@ export default function IndustryAdmin() {
           optimization_opportunities: optimizationOpportunities,
           best_practices: bestPractices.slice(0, 5)
         });
+        
+        toast.success('업종 AI 리포트를 성공적으로 조회했습니다.');
+      } else {
+        throw new Error('백엔드 응답 형식이 올바르지 않습니다.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('업종 AI 리포트 조회 실패:', error);
-      toast.error('업종 AI 리포트 조회에 실패했습니다.');
+      
+      // 에러 타입에 따른 상세 메시지
+      let errorMessage = '업종 AI 리포트 조회에 실패했습니다.';
+      if (error.message?.includes('404')) {
+        errorMessage = '백엔드 API 엔드포인트를 찾을 수 없습니다. 샘플 데이터를 표시합니다.';
+      } else if (error.message?.includes('Failed to fetch')) {
+        errorMessage = '백엔드 서버에 연결할 수 없습니다. 샘플 데이터를 표시합니다.';
+      } else if (error.message?.includes('401') || error.message?.includes('403')) {
+        errorMessage = '인증이 필요합니다. 로그인 후 다시 시도해주세요.';
+      }
+      
+      toast.error(errorMessage);
       
       // 샘플 데이터로 대체
+      console.log('샘플 데이터를 사용합니다.');
       const sampleReports = [
         {
           brand_id: 1,

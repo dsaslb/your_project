@@ -1,0 +1,316 @@
+{
+  "schedule_analysis": {
+    "excellent": {
+      "message": "인력 배치가 최적화되어 있습니다.",
+      "description": "시간대별 인력 배치가 균형잡혀 있어 효율적인 운영이 가능합니다.",
+      "icon": "🎯",
+      "color": "#10B981"
+    },
+    "good": {
+      "message": "전반적으로 양호한 인력 배치입니다.",
+      "description": "대부분의 시간대에서 적절한 인력이 배치되어 있습니다.",
+      "icon": "✅",
+      "color": "#059669"
+    },
+    "warning": {
+      "message": "일부 시간대 인력 조정이 필요합니다.",
+      "description": "특정 시간대에 인력 과다 또는 부족 현상이 발견되었습니다.",
+      "icon": "⚠️",
+      "color": "#F59E0B"
+    },
+    "critical": {
+      "message": "심각한 인력 배치 문제가 발견되었습니다.",
+      "description": "다수의 시간대에서 인력 배치 불균형이 심각한 수준입니다.",
+      "icon": "🚨",
+      "color": "#EF4444"
+    }
+  },
+  "attendance_analysis": {
+    "optimal": {
+      "message": "출근률이 매우 양호합니다.",
+      "description": "직원들의 출근률이 95% 이상으로 매우 우수합니다.",
+      "icon": "🌟",
+      "color": "#10B981"
+    },
+    "acceptable": {
+      "message": "출근률이 보통 수준입니다.",
+      "description": "출근률이 85-95% 범위로 보통 수준을 유지하고 있습니다.",
+      "icon": "📊",
+      "color": "#059669"
+    },
+    "concerning": {
+      "message": "출근률 개선이 필요합니다.",
+      "description": "출근률이 70-85% 범위로 개선이 필요한 상황입니다.",
+      "icon": "⚠️",
+      "color": "#F59E0B"
+    },
+    "dangerous": {
+      "message": "출근률이 심각한 수준입니다.",
+      "description": "출근률이 70% 미만으로 즉각적인 개선 조치가 필요합니다.",
+      "icon": "🚨",
+      "color": "#EF4444"
+    }
+  },
+  "work_hours_analysis": {
+    "excellent": {
+      "message": "근무 시간이 적절하게 배분되어 있습니다.",
+      "description": "직원들의 근무 시간이 6-8시간 범위로 적절하게 배분되어 있습니다.",
+      "icon": "⏰",
+      "color": "#10B981"
+    },
+    "good": {
+      "message": "근무 시간 배분이 양호합니다.",
+      "description": "대부분의 직원이 적절한 근무 시간을 유지하고 있습니다.",
+      "icon": "✅",
+      "color": "#059669"
+    },
+    "warning": {
+      "message": "일부 직원의 근무 시간 조정이 필요합니다.",
+      "description": "일부 직원이 과도한 근무 시간을 하고 있어 조정이 필요합니다.",
+      "icon": "⚠️",
+      "color": "#F59E0B"
+    },
+    "critical": {
+      "message": "근무 시간 배분에 심각한 문제가 있습니다.",
+      "description": "다수의 직원이 과도한 근무 시간으로 인한 피로 누적 위험이 있습니다.",
+      "icon": "🚨",
+      "color": "#EF4444"
+    }
+  },
+  "efficiency_levels": {
+    "excellent": {
+      "range": [90, 100],
+      "message": "매우 우수한 운영 효율성",
+      "description": "전체적인 스케줄 관리가 최적화되어 있습니다.",
+      "icon": "🏆",
+      "color": "#10B981",
+      "bg_color": "#ECFDF5"
+    },
+    "good": {
+      "range": [70, 89],
+      "message": "양호한 운영 효율성",
+      "description": "전반적으로 양호하나 일부 개선 여지가 있습니다.",
+      "icon": "✅",
+      "color": "#059669",
+      "bg_color": "#F0FDF4"
+    },
+    "warning": {
+      "range": [50, 69],
+      "message": "개선이 필요한 운영 효율성",
+      "description": "여러 영역에서 개선이 필요합니다.",
+      "icon": "⚠️",
+      "color": "#F59E0B",
+      "bg_color": "#FFFBEB"
+    },
+    "critical": {
+      "range": [0, 49],
+      "message": "즉각적인 개선이 필요한 운영 효율성",
+      "description": "심각한 문제가 발견되어 즉각적인 조치가 필요합니다.",
+      "icon": "🚨",
+      "color": "#EF4444",
+      "bg_color": "#FEF2F2"
+    }
+  },
+  "issue_types": {
+    "overstaffing": {
+      "title": "인원 과다 배치",
+      "description": "특정 시간대에 필요 이상의 인력이 배치되어 있습니다.",
+      "icon": "👥",
+      "color": "#F59E0B",
+      "suggestions": [
+        "과다 배치된 시간대의 인원을 다른 시간대로 재배치하세요.",
+        "근무 시간을 조정하여 효율적인 인력 활용을 고려하세요.",
+        "업무 프로세스를 개선하여 생산성을 향상시키세요."
+      ]
+    },
+    "understaffing": {
+      "title": "인원 부족",
+      "description": "특정 시간대에 필요한 인력이 부족합니다.",
+      "icon": "👤",
+      "color": "#EF4444",
+      "suggestions": [
+        "부족한 시간대에 아르바이트 직원을 추가 배정하세요.",
+        "기존 직원의 근무 시간을 연장하여 인력 부족을 해결하세요.",
+        "업무 효율성을 높이는 도구나 시스템을 도입하세요."
+      ]
+    },
+    "attendance_issue": {
+      "title": "출근률 문제",
+      "description": "직원들의 출근률이 기준치 이하입니다.",
+      "icon": "📅",
+      "color": "#EF4444",
+      "suggestions": [
+        "출근률이 낮은 직원들과 개별 면담을 진행하세요.",
+        "근무 환경 개선을 통해 직원 만족도를 높이세요.",
+        "인센티브 제도를 도입하여 출근 동기를 부여하세요."
+      ]
+    },
+    "overtime_warning": {
+      "title": "과도한 초과근무",
+      "description": "일부 직원이 과도한 근무 시간을 하고 있습니다.",
+      "icon": "⏰",
+      "color": "#F59E0B",
+      "suggestions": [
+        "과도한 근무 시간을 줄이기 위해 인력 배치를 재조정하세요.",
+        "교대 근무를 도입하여 업무 부담을 분산하세요.",
+        "업무 효율성을 높이는 도구나 시스템을 도입하세요."
+      ]
+    },
+    "efficiency_low": {
+      "title": "업무 효율성 저하",
+      "description": "전체적인 업무 효율성이 개선이 필요합니다.",
+      "icon": "📉",
+      "color": "#F59E0B",
+      "suggestions": [
+        "업무 프로세스를 재검토하고 개선하세요.",
+        "직원 교육을 통해 업무 능력을 향상시키세요.",
+        "업무 도구나 시스템을 현대화하세요."
+      ]
+    }
+  },
+  "recommendation_templates": {
+    "staffing": {
+      "overstaffed": {
+        "title": "인원 과다 배치 개선",
+        "message": "과다 배치된 시간대의 인원을 다른 시간대로 재배치하거나 근무 시간을 조정하세요.",
+        "priority": "medium",
+        "icon": "🔄"
+      },
+      "understaffed": {
+        "title": "인원 부족 해결",
+        "message": "부족한 시간대에 아르바이트 직원을 추가 배정하거나 기존 직원의 근무 시간을 연장하세요.",
+        "priority": "high",
+        "icon": "➕"
+      }
+    },
+    "attendance": {
+      "low_rate": {
+        "title": "출근률 개선",
+        "message": "출근률 개선을 위한 인센티브 제도 도입을 검토하세요.",
+        "priority": "medium",
+        "icon": "📈"
+      },
+      "late_frequent": {
+        "title": "지각 방지",
+        "message": "지각 방지를 위한 출근 시간 관리 시스템을 강화하세요.",
+        "priority": "medium",
+        "icon": "⏰"
+      }
+    },
+    "work_hours": {
+      "excessive": {
+        "title": "근무 시간 조정",
+        "message": "과도한 근무 시간을 줄이기 위해 인력 배치를 재조정하세요.",
+        "priority": "high",
+        "icon": "⚖️"
+      }
+    },
+    "general": {
+      "monitoring": {
+        "title": "지속적 모니터링",
+        "message": "현재 스케줄이 양호합니다. 지속적인 모니터링을 유지하세요.",
+        "priority": "low",
+        "icon": "👁️"
+      }
+    }
+  },
+  "visual_indicators": {
+    "icons": {
+      "positive": "✅",
+      "warning": "⚠️",
+      "danger": "🚨",
+      "info": "ℹ️",
+      "success": "🎯",
+      "excellent": "🏆",
+      "good": "✅",
+      "improvement": "📈",
+      "attention": "👀",
+      "urgent": "⚡"
+    },
+    "colors": {
+      "success": "#10B981",
+      "success_light": "#059669",
+      "warning": "#F59E0B",
+      "warning_light": "#D97706",
+      "danger": "#EF4444",
+      "danger_light": "#DC2626",
+      "info": "#3B82F6",
+      "info_light": "#2563EB",
+      "neutral": "#6B7280",
+      "neutral_light": "#4B5563"
+    },
+    "background_colors": {
+      "success": "#ECFDF5",
+      "warning": "#FFFBEB",
+      "danger": "#FEF2F2",
+      "info": "#EFF6FF",
+      "neutral": "#F9FAFB"
+    }
+  },
+  "report_sections": {
+    "summary": {
+      "title": "분석 요약",
+      "description": "전체적인 스케줄 분석 결과를 한눈에 확인할 수 있습니다.",
+      "icon": "📊"
+    },
+    "staffing": {
+      "title": "인력 배치 분석",
+      "description": "시간대별 인력 배치 현황과 최적화 방안을 제시합니다.",
+      "icon": "👥"
+    },
+    "attendance": {
+      "title": "출근률 분석",
+      "description": "직원별 출근률과 지각/결근 현황을 분석합니다.",
+      "icon": "📅"
+    },
+    "work_hours": {
+      "title": "근무 시간 분석",
+      "description": "직원별 근무 시간 분포와 과도 근무 현황을 분석합니다.",
+      "icon": "⏰"
+    },
+    "recommendations": {
+      "title": "개선 제안",
+      "description": "발견된 문제점에 대한 구체적인 개선 방안을 제시합니다.",
+      "icon": "💡"
+    }
+  },
+  "export_formats": {
+    "pdf": {
+      "title": "PDF 리포트",
+      "description": "인쇄 가능한 PDF 형태로 리포트를 다운로드합니다.",
+      "icon": "📄"
+    },
+    "excel": {
+      "title": "Excel 데이터",
+      "description": "분석 데이터를 Excel 파일로 내보냅니다.",
+      "icon": "📊"
+    },
+    "json": {
+      "title": "JSON 데이터",
+      "description": "분석 결과를 JSON 형태로 내보냅니다.",
+      "icon": "🔧"
+    }
+  },
+  "notification_messages": {
+    "analysis_complete": {
+      "title": "분석 완료",
+      "message": "스케줄 분석이 완료되었습니다.",
+      "type": "success"
+    },
+    "data_sync_success": {
+      "title": "동기화 완료",
+      "message": "데이터가 성공적으로 서버에 동기화되었습니다.",
+      "type": "success"
+    },
+    "data_sync_failed": {
+      "title": "동기화 실패",
+      "message": "데이터 동기화 중 오류가 발생했습니다.",
+      "type": "error"
+    },
+    "insufficient_data": {
+      "title": "데이터 부족",
+      "message": "분석을 위한 충분한 데이터가 없습니다.",
+      "type": "warning"
+    }
+  }
+}
