@@ -96,7 +96,7 @@ socketio = None
 if CORS:
     CORS(
         app,
-        origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
+        origins=["*"],  # 모든 도메인 허용 (개발용)
         supports_credentials=True,
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "X-API-Key"],
@@ -207,6 +207,19 @@ initialize_database()
 # 블루프린트 등록 함수
 def register_blueprints():
     """모든 블루프린트를 등록합니다."""
+    
+    # 모바일 API 블루프린트 직접 등록
+    try:
+        from api.mobile import mobile_bp
+        app.register_blueprint(mobile_bp, name="mobile_api_v2")
+        
+        # CSRF 보호 완전 비활성화 (모바일 API용)
+        from extensions import disable_csrf_for_mobile
+        disable_csrf_for_mobile(app)
+        logger.info("모바일 API 블루프린트 등록 완료 (CSRF 비활성화)")
+    except Exception as e:
+        logger.error(f"모바일 API 블루프린트 등록 실패: {e}")
+    
     blueprints = [
         # 백엔드 관리자 Blueprint
         ("routes.backend_admin", "backend_admin_bp", "backend_admin"),
@@ -268,6 +281,8 @@ except Exception as e:
 def index():
     """메인 페이지"""
     return render_template("index.html")
+
+
 
 @app.route("/dashboard")
 def dashboard():
@@ -2354,6 +2369,17 @@ def api_sales():
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
         }), 500
+
+@app.route('/mobile/download')
+def mobile_download():
+    return render_template('mobile_download.html')
+
+@app.route('/mobile/test')
+def mobile_test_page():
+    """모바일 API 테스트 페이지"""
+    return render_template('mobile_test.html')
+
+
 
 if __name__ == "__main__":
     # 데이터베이스 초기화

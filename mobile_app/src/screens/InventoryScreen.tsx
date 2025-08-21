@@ -1,503 +1,427 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
   StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  Alert,
+  Text,
+  View,
   TextInput,
+  TouchableOpacity,
+  Alert,
+  SafeAreaView,
+  Image,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { BarCodeScanner } from 'expo-barcode-scanner';
+import * as ImagePicker from 'expo-image-picker';
+import { api } from '../api/client';
+import { socket } from '../api/socket';
+import { safePost } from '../utils/queue';
 
 interface InventoryItem {
-  id: number;
-  name: string;
-  category: string;
-  currentStock: number;
-  minStock: number;
-  maxStock: number;
-  unit: string;
-  price: number;
-  status: 'normal' | 'low' | 'out';
-  lastUpdated: string;
+  id?: string;
+  barcode: string;
+  productName?: string;
+  quantity: number;
+  photoUri?: string;
+  timestamp?: string;
 }
 
-export default function InventoryScreen() {
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-
-  // 데이터 로드
-  const loadInventory = async () => {
-    try {
-      // 실제 API 호출로 대체
-      const mockInventory: InventoryItem[] = [
-        {
-          id: 1,
-          name: '아메리카노',
-          category: '음료',
-          currentStock: 150,
-          minStock: 50,
-          maxStock: 200,
-          unit: '잔',
-          price: 4500,
-          status: 'normal',
-          lastUpdated: '2024-01-15',
-        },
-        {
-          id: 2,
-          name: '카페라떼',
-          category: '음료',
-          currentStock: 30,
-          minStock: 50,
-          maxStock: 200,
-          unit: '잔',
-          price: 5000,
-          status: 'low',
-          lastUpdated: '2024-01-15',
-        },
-        {
-          id: 3,
-          name: '카푸치노',
-          category: '음료',
-          currentStock: 0,
-          minStock: 30,
-          maxStock: 150,
-          unit: '잔',
-          price: 5000,
-          status: 'out',
-          lastUpdated: '2024-01-14',
-        },
-        {
-          id: 4,
-          name: '티라떼',
-          category: '음료',
-          currentStock: 80,
-          minStock: 40,
-          maxStock: 120,
-          unit: '잔',
-          price: 5500,
-          status: 'normal',
-          lastUpdated: '2024-01-15',
-        },
-        {
-          id: 5,
-          name: '크로아상',
-          category: '베이커리',
-          currentStock: 25,
-          minStock: 30,
-          maxStock: 100,
-          unit: '개',
-          price: 3500,
-          status: 'low',
-          lastUpdated: '2024-01-15',
-        },
-      ];
-      setInventory(mockInventory);
-    } catch (error) {
-      Alert.alert('오류', '재고 데이터를 불러오는데 실패했습니다.');
-    }
-  };
-
-  // 새로고침
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadInventory();
-    setRefreshing(false);
-  };
+export default function InventoryScreen({ onBack }: { onBack: () => void }) {
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [inventoryItem, setInventoryItem] = useState<InventoryItem>({
+    barcode: '',
+    quantity: 0,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [inventoryHistory, setInventoryHistory] = useState<InventoryItem[]>([]);
 
   useEffect(() => {
-    loadInventory();
+    // 카메라 권한 요청
+    (async () => {
+      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+
+    // 이미지 선택 권한 요청
+    (async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('권한 필요', '사진을 업로드하려면 갤러리 접근 권한이 필요합니다.');
+      }
+    })();
+
+    // 실시간 재고 업데이트 구독
+    socket.on('inventory:update', (data) => {
+      console.log('재고 업데이트 수신:', data);
+      Alert.alert('재고 알림', `재고가 업데이트되었습니다.\n바코드: ${data.barcode}`);
+      loadInventoryHistory();
+    });
+
+    loadInventoryHistory();
+
+    return () => {
+      socket.off('inventory:update');
+    };
   }, []);
 
-  // 검색 및 필터링
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  // 상태별 색상
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'normal': return '#10b981';
-      case 'low': return '#f59e0b';
-      case 'out': return '#ef4444';
-      default: return '#6b7280';
+  const loadInventoryHistory = async () => {
+    try {
+      // 실제로는 API에서 재고 히스토리를 가져옴
+      // const history = await api.getInventoryHistory();
+      // setInventoryHistory(history);
+    } catch (error) {
+      console.error('재고 히스토리 로드 오류:', error);
     }
   };
 
-  // 상태별 텍스트
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'normal': return '정상';
-      case 'low': return '부족';
-      case 'out': return '품절';
-      default: return '알 수 없음';
+  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+    setScanned(true);
+    setShowCamera(false);
+    setInventoryItem(prev => ({
+      ...prev,
+      barcode: data,
+      productName: `상품-${data.slice(-4)}` // 임시 상품명
+    }));
+    Alert.alert('바코드 스캔 완료', `바코드: ${data}`);
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setInventoryItem(prev => ({
+        ...prev,
+        photoUri: result.assets[0].uri
+      }));
     }
   };
 
-  // 재고 카드 컴포넌트
-  const InventoryCard = ({ item }: { item: InventoryItem }) => (
-    <TouchableOpacity 
-      style={[styles.inventoryCard, { borderLeftColor: getStatusColor(item.status) }]}
-      onPress={() => Alert.alert('재고 상세', `${item.name} 상세 정보`)}
-    >
-      <View style={styles.itemHeader}>
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemName}>{item.name}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
-          </View>
-        </View>
-        <Text style={styles.itemPrice}>₩{item.price.toLocaleString()}</Text>
-      </View>
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('권한 필요', '사진을 촬영하려면 카메라 접근 권한이 필요합니다.');
+      return;
+    }
 
-      <View style={styles.itemDetails}>
-        <View style={styles.detailRow}>
-          <Ionicons name="cube" size={16} color="#6b7280" />
-          <Text style={styles.detailText}>
-            현재: {item.currentStock}{item.unit} / 최소: {item.minStock}{item.unit}
-          </Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="pricetag" size={16} color="#6b7280" />
-          <Text style={styles.detailText}>카테고리: {item.category}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="time" size={16} color="#6b7280" />
-          <Text style={styles.detailText}>최종 업데이트: {item.lastUpdated}</Text>
-        </View>
-      </View>
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
 
-      {/* 재고 바 */}
-      <View style={styles.stockBar}>
-        <View style={styles.stockBarBackground}>
-          <View 
-            style={[
-              styles.stockBarFill, 
-              { 
-                width: `${(item.currentStock / item.maxStock) * 100}%`,
-                backgroundColor: getStatusColor(item.status)
-              }
-            ]} 
-          />
-        </View>
-        <Text style={styles.stockText}>
-          {item.currentStock} / {item.maxStock} {item.unit}
-        </Text>
-      </View>
+    if (!result.canceled && result.assets[0]) {
+      setInventoryItem(prev => ({
+        ...prev,
+        photoUri: result.assets[0].uri
+      }));
+    }
+  };
 
-      <View style={styles.itemActions}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="add-circle" size={16} color="#10b981" />
-          <Text style={styles.actionText}>입고</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="remove-circle" size={16} color="#ef4444" />
-          <Text style={styles.actionText}>출고</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="create" size={16} color="#3b82f6" />
-          <Text style={styles.actionText}>수정</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+  const submitInventory = async () => {
+    if (!inventoryItem.barcode) {
+      Alert.alert('오류', '바코드를 스캔하거나 입력해주세요.');
+      return;
+    }
 
-  // 카테고리 필터
-  const categories = ['all', '음료', '베이커리', '원두', '부자재'];
-  const CategoryFilter = () => (
-    <View style={styles.categoryFilter}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {categories.map(category => (
+    if (inventoryItem.quantity <= 0) {
+      Alert.alert('오류', '수량을 입력해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await safePost('/api/mobile/inventory/check', {
+        barcode: inventoryItem.barcode,
+        qty: inventoryItem.quantity,
+        photo_url: inventoryItem.photoUri || null
+      });
+
+      Alert.alert('성공', '재고가 성공적으로 기록되었습니다!');
+      
+      // 폼 초기화
+      setInventoryItem({
+        barcode: '',
+        quantity: 0,
+        photoUri: undefined
+      });
+      setScanned(false);
+      
+      // 히스토리 새로고침
+      loadInventoryHistory();
+      
+    } catch (error: any) {
+      Alert.alert('오류', error.response?.data?.error || '재고 기록에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (hasPermission === null) {
+    return <Text>카메라 권한을 요청중입니다...</Text>;
+  }
+  if (hasPermission === false) {
+    return <Text>카메라 접근 권한이 없습니다.</Text>;
+  }
+
+  if (showCamera) {
+    return (
+      <View style={styles.container}>
+        <BarCodeScanner
+          onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.cameraOverlay}>
+          <Text style={styles.cameraText}>바코드를 스캔하세요</Text>
           <TouchableOpacity
-            key={category}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category && styles.categoryButtonActive
-            ]}
-            onPress={() => setSelectedCategory(category)}
+            style={styles.cancelButton}
+            onPress={() => {
+              setShowCamera(false);
+              setScanned(false);
+            }}
           >
-            <Text style={[
-              styles.categoryText,
-              selectedCategory === category && styles.categoryTextActive
-            ]}>
-              {category === 'all' ? '전체' : category}
-            </Text>
+            <Text style={styles.cancelButtonText}>취소</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>재고 관리</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => Alert.alert('새 상품', '새 상품 추가')}
-        >
-          <Ionicons name="add" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      {/* 검색 */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={20} color="#6b7280" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="상품명, 카테고리로 검색"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#6b7280" />
-            </TouchableOpacity>
-          )}
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backButtonText}>← 뒤로</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>재고 관리</Text>
         </View>
-      </View>
 
-      {/* 카테고리 필터 */}
-      <CategoryFilter />
+        <View style={styles.content}>
+          {/* 바코드 입력 섹션 */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>상품 정보</Text>
+            
+            <View style={styles.barcodeContainer}>
+              <TextInput
+                style={styles.barcodeInput}
+                placeholder="바코드 번호"
+                value={inventoryItem.barcode}
+                onChangeText={(text) => setInventoryItem(prev => ({ ...prev, barcode: text }))}
+              />
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={() => setShowCamera(true)}
+              >
+                <Text style={styles.scanButtonText}>스캔</Text>
+              </TouchableOpacity>
+            </View>
 
-      {/* 통계 */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{inventory.length}</Text>
-          <Text style={styles.statLabel}>총 상품</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>
-            {inventory.filter(item => item.status === 'low').length}
-          </Text>
-          <Text style={styles.statLabel}>재고 부족</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>
-            {inventory.filter(item => item.status === 'out').length}
-          </Text>
-          <Text style={styles.statLabel}>품절</Text>
-        </View>
-      </View>
+            {inventoryItem.productName && (
+              <Text style={styles.productName}>상품명: {inventoryItem.productName}</Text>
+            )}
+          </View>
 
-      {/* 재고 목록 */}
-      <FlatList
-        data={filteredInventory}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => <InventoryCard item={item} />}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+          {/* 수량 입력 섹션 */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>재고 수량</Text>
+            <TextInput
+              style={styles.quantityInput}
+              placeholder="수량을 입력하세요"
+              value={inventoryItem.quantity.toString()}
+              onChangeText={(text) => setInventoryItem(prev => ({ 
+                ...prev, 
+                quantity: parseInt(text) || 0 
+              }))}
+              keyboardType="numeric"
+            />
+          </View>
+
+          {/* 사진 섹션 */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>재고 사진 (선택사항)</Text>
+            
+            <View style={styles.photoContainer}>
+              <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
+                <Text style={styles.photoButtonText}>📷 사진 촬영</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+                <Text style={styles.photoButtonText}>🖼️ 갤러리</Text>
+              </TouchableOpacity>
+            </View>
+
+            {inventoryItem.photoUri && (
+              <Image source={{ uri: inventoryItem.photoUri }} style={styles.previewImage} />
+            )}
+          </View>
+
+          {/* 제출 버튼 */}
+          <TouchableOpacity
+            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+            onPress={submitInventory}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.submitButtonText}>재고 기록</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f5f5f5',
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#3b82f6',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchContainer: {
     padding: 16,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  backButton: {
+    marginRight: 16,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
+  backButtonText: {
     fontSize: 16,
-    color: '#1f2937',
+    color: '#007AFF',
   },
-  categoryFilter: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  categoryButtonActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
-  },
-  categoryText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  categoryTextActive: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#3b82f6',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  listContainer: {
-    padding: 16,
-  },
-  inventoryCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  itemInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  itemName: {
+  title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
-    marginRight: 8,
+    color: '#333',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+  content: {
+    padding: 16,
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'white',
+  section: {
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
   },
-  itemPrice: {
+  sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#3b82f6',
-  },
-  itemDetails: {
+    color: '#333',
     marginBottom: 12,
   },
-  detailRow: {
+  barcodeContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
+    gap: 8,
   },
-  detailText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginLeft: 8,
-  },
-  stockBar: {
-    marginBottom: 12,
-  },
-  stockBarBackground: {
-    height: 8,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 4,
-    marginBottom: 4,
-  },
-  stockBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  stockText: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  itemActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
+  barcodeInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
     paddingHorizontal: 12,
+    backgroundColor: '#f9f9f9',
   },
-  actionText: {
+  scanButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  scanButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+  productName: {
+    marginTop: 8,
     fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
+    color: '#666',
+    fontStyle: 'italic',
   },
-}); 
+  quantityInput: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9f9f9',
+    fontSize: 16,
+  },
+  photoContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  photoButton: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  photoButtonText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  previewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  submitButton: {
+    backgroundColor: '#34C759',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#cccccc',
+  },
+  submitButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cameraOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  cameraText: {
+    fontSize: 18,
+    color: '#ffffff',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 12,
+    borderRadius: 8,
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});

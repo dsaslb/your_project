@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모바일 앱 다운로드</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <style>
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .qr-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- 헤더 -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">📱 모바일 앱</h1>
+            <p class="text-xl text-gray-600">직원용 출퇴근, 재고, 발주 관리 앱</p>
+        </div>
+
+        <!-- 기능 소개 -->
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                <div class="text-3xl mb-3">⏰</div>
+                <h3 class="font-semibold text-lg mb-2">출퇴근 관리</h3>
+                <p class="text-gray-600">GPS + QR코드로 정확한 출퇴근 기록</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                <div class="text-3xl mb-3">📦</div>
+                <h3 class="font-semibold text-lg mb-2">재고 조사</h3>
+                <p class="text-gray-600">바코드 스캔으로 빠른 재고 확인</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                <div class="text-3xl mb-3">🛒</div>
+                <h3 class="font-semibold text-lg mb-2">발주 관리</h3>
+                <p class="text-gray-600">재고 부족 시 즉시 발주 신청</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                <div class="text-3xl mb-3">📅</div>
+                <h3 class="font-semibold text-lg mb-2">스케줄 관리</h3>
+                <p class="text-gray-600">근무 일정 및 휴가 신청</p>
+            </div>
+        </div>
+
+        <!-- 다운로드 섹션 -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+            <h2 class="text-2xl font-bold text-center mb-8">📥 앱 다운로드</h2>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Android 다운로드 -->
+                <div class="text-center">
+                    <div class="text-6xl mb-4">🤖</div>
+                    <h3 class="text-xl font-semibold mb-4">Android 앱</h3>
+                    <p class="text-gray-600 mb-4">APK 파일 다운로드</p>
+                    <button class="download-btn text-white px-8 py-3 rounded-lg font-semibold text-lg w-full">
+                        📱 Android APK 다운로드
+                    </button>
+                    <p class="text-sm text-gray-500 mt-2">Android 6.0 이상 필요</p>
+                </div>
+
+                <!-- iOS 다운로드 -->
+                <div class="text-center">
+                    <div class="text-6xl mb-4">🍎</div>
+                    <h3 class="text-xl font-semibold mb-4">iOS 앱</h3>
+                    <p class="text-gray-600 mb-4">TestFlight 또는 직접 설치</p>
+                    <button class="download-btn text-white px-8 py-3 rounded-lg font-semibold text-lg w-full">
+                        📱 iOS 앱 설치
+                    </button>
+                    <p class="text-sm text-gray-500 mt-2">iOS 12.0 이상 필요</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR 코드 섹션 -->
+        <div class="qr-section rounded-lg p-8 text-white text-center">
+            <h2 class="text-2xl font-bold mb-4">🔗 빠른 연결</h2>
+            <p class="mb-6">Expo Go 앱으로 개발 중인 앱을 바로 테스트해보세요!</p>
+            
+            <div class="bg-white p-4 rounded-lg inline-block">
+                <div class="w-32 h-32 bg-gray-200 flex items-center justify-center text-gray-500">
+                    QR 코드<br>생성 예정
+                </div>
+            </div>
+            
+            <p class="mt-4 text-sm opacity-90">
+                Expo Go 앱 설치 후 QR 코드를 스캔하면<br>
+                실시간으로 앱을 테스트할 수 있습니다
+            </p>
+        </div>
+
+        <!-- 설치 가이드 -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mt-8">
+            <h2 class="text-2xl font-bold text-center mb-8">📋 설치 가이드</h2>
+            
+            <div class="space-y-6">
+                <div class="flex items-start space-x-4">
+                    <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">1</div>
+                    <div>
+                        <h3 class="font-semibold text-lg">Expo Go 설치</h3>
+                        <p class="text-gray-600">스토어에서 Expo Go 앱을 설치합니다</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start space-x-4">
+                    <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">2</div>
+                    <div>
+                        <h3 class="font-semibold text-lg">QR 코드 스캔</h3>
+                        <p class="text-gray-600">개발 서버의 QR 코드를 스캔합니다</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start space-x-4">
+                    <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">3</div>
+                    <div>
+                        <h3 class="font-semibold text-lg">앱 테스트</h3>
+                        <p class="text-gray-600">실시간으로 앱을 테스트하고 기능을 확인합니다</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 다운로드 버튼 클릭 이벤트
+        document.querySelectorAll('.download-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const platform = this.textContent.includes('Android') ? 'Android' : 'iOS';
+                alert(`${platform} 앱 다운로드 기능은 아직 준비 중입니다.\n먼저 Expo Go로 테스트해보세요!`);
+            });
+        });
+    </script>
+</body>
+</html>

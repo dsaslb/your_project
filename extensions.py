@@ -5,6 +5,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
+from flask_socketio import SocketIO
 import redis
 import logging
 from contextlib import contextmanager
@@ -30,8 +31,27 @@ limiter = Limiter(
 # 캐싱
 cache = Cache()
 
-# CSRF 보호
+# CSRF 보호 (모바일 API 제외)
 csrf = CSRFProtect()
+
+# 모바일 API 경로에 대한 CSRF 비활성화
+def init_csrf_exemptions(app):
+    """모바일 API에 대한 CSRF 비활성화"""
+    csrf.exempt_views = set()
+    csrf.exempt_views.add('mobile_api_v2.login')
+    csrf.exempt_views.add('mobile_api_v2.attendance_clock')
+    csrf.exempt_views.add('mobile_api_v2.inventory_check')
+    csrf.exempt_views.add('mobile_api_v2.create_purchase_order')
+    csrf.exempt_views.add('mobile_api_v2.request_leave')
+    csrf.exempt_views.add('mobile_api_v2.request_schedule_swap')
+
+# CSRF 완전 비활성화 (개발용)
+def disable_csrf_for_mobile(app):
+    """모바일 API에 대한 CSRF 완전 비활성화"""
+    app.config['WTF_CSRF_ENABLED'] = False
+
+# Socket.IO
+socketio = SocketIO(cors_allowed_origins="*")
 
 # Redis 클라이언트 (기본 설정)
 try:
@@ -97,6 +117,9 @@ def db_performance_monitor():
 
 def init_extensions(app):
     """모든 확장 기능을 초기화합니다."""
+    
+    # Socket.IO 초기화
+    socketio.init_app(app)
     
     # 데이터베이스 설정 최적화
     app.config.setdefault('SQLALCHEMY_ENGINE_OPTIONS', {

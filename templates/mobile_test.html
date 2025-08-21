@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모바일 API 테스트</title>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <style>
+        .test-btn { background: #007AFF; color: white; padding: 10px 20px; border-radius: 8px; margin: 5px; }
+        .success { background: #34C759; }
+        .error { background: #FF3B30; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; }
+    </style>
+</head>
+<body class="bg-gray-50 p-6">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">📱 모바일 API 테스트</h1>
+        
+        <!-- API 연결 테스트 -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">🔗 API 연결 테스트</h2>
+            <button class="test-btn" onclick="testConnection()">연결 테스트</button>
+            <div id="connection-result" class="mt-4"></div>
+        </div>
+        
+        <!-- 로그인 테스트 -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">🔐 로그인 테스트</h2>
+            <div class="mb-4">
+                <input type="text" id="username" placeholder="사용자명" class="border p-2 rounded mr-2" value="admin">
+                <input type="password" id="password" placeholder="비밀번호" class="border p-2 rounded mr-2" value="admin123">
+                <button class="test-btn" onclick="testLogin()">로그인 테스트</button>
+            </div>
+            <div id="login-result" class="mt-4"></div>
+        </div>
+        
+        <!-- 출퇴근 테스트 -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">⏰ 출퇴근 테스트</h2>
+            <button class="test-btn" onclick="testAttendance('in')">출근 테스트</button>
+            <button class="test-btn" onclick="testAttendance('out')">퇴근 테스트</button>
+            <div id="attendance-result" class="mt-4"></div>
+        </div>
+
+        <!-- 발주 관리 테스트 -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">📋 발주 관리 테스트</h2>
+            
+            <!-- 발주 생성 테스트 -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">새 발주 생성</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <input type="text" id="barcode" placeholder="바코드" class="border border-gray-300 px-3 py-2 rounded" value="123456789">
+                    <input type="text" id="productName" placeholder="상품명" class="border border-gray-300 px-3 py-2 rounded" value="테스트 상품">
+                    <input type="number" id="quantity" placeholder="수량" class="border border-gray-300 px-3 py-2 rounded" value="10">
+                </div>
+                <button onclick="testCreatePurchaseOrder()" class="test-btn bg-green-500 hover:bg-green-600">
+                    발주 생성 테스트
+                </button>
+                <div id="purchase-order-result" class="mt-2"></div>
+            </div>
+
+            <!-- 발주 목록 조회 테스트 -->
+            <div>
+                <h3 class="text-lg font-medium mb-3">발주 목록 조회</h3>
+                <button onclick="testGetPurchaseOrders()" class="test-btn bg-purple-500 hover:bg-purple-600">
+                    발주 목록 조회
+                </button>
+                <div id="purchase-orders-list" class="mt-2"></div>
+            </div>
+        </div>
+
+        <!-- 스케줄 관리 테스트 -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">📅 스케줄 관리 테스트</h2>
+            
+            <!-- 스케줄 조회 테스트 -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">스케줄 조회</h3>
+                <button onclick="testGetSchedule()" class="test-btn bg-blue-500 hover:bg-blue-600">
+                    스케줄 조회
+                </button>
+                <div id="schedule-result" class="mt-2"></div>
+            </div>
+
+            <!-- 휴가 신청 테스트 -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">휴가 신청</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <select id="leaveType" class="border border-gray-300 px-3 py-2 rounded">
+                        <option value="annual">연차</option>
+                        <option value="sick">병가</option>
+                        <option value="personal">개인휴가</option>
+                    </select>
+                    <input type="date" id="leaveStartDate" class="border border-gray-300 px-3 py-2 rounded">
+                    <input type="date" id="leaveEndDate" class="border border-gray-300 px-3 py-2 rounded">
+                    <input type="text" id="leaveReason" placeholder="휴가 사유" class="border border-gray-300 px-3 py-2 rounded" value="테스트 휴가">
+                </div>
+                <button onclick="testRequestLeave()" class="test-btn bg-orange-500 hover:bg-orange-600">
+                    휴가 신청 테스트
+                </button>
+                <div id="leave-result" class="mt-2"></div>
+            </div>
+
+            <!-- 근무 교대 신청 테스트 -->
+            <div>
+                <h3 class="text-lg font-medium mb-3">근무 교대 신청</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <input type="date" id="swapDate" class="border border-gray-300 px-3 py-2 rounded">
+                    <input type="text" id="swapUser" placeholder="교대할 직원" class="border border-gray-300 px-3 py-2 rounded" value="김철수">
+                    <input type="text" id="swapReason" placeholder="교대 사유" class="border border-gray-300 px-3 py-2 rounded" value="개인 사정">
+                </div>
+                <button onclick="testRequestSwap()" class="test-btn bg-indigo-500 hover:bg-indigo-600">
+                    교대 신청 테스트
+                </button>
+                <div id="swap-result" class="mt-2"></div>
+            </div>
+        </div>
+        
+        <!-- 로그 -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">📋 실행 로그</h2>
+            <div id="log-container" class="log max-h-96 overflow-y-auto"></div>
+            <button class="test-btn mt-4" onclick="clearLog()">로그 지우기</button>
+        </div>
+    </div>
+
+    <script>
+        let authToken = '';
+        
+        // UUID 형식의 Idempotency Key 생성 함수
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `mb-2 ${type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-gray-600'}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log-container').innerHTML = '';
+        }
+        
+        async function testConnection() {
+            const resultDiv = document.getElementById('connection-result');
+            try {
+                log('API 연결 테스트 시작...');
+                // 먼저 /api/mobile/test 시도, 실패하면 /api/mobile/health 시도
+                let response = await fetch('/api/mobile/test');
+                if (!response.ok) {
+                    log('테스트 엔드포인트 실패, 헬스 체크 시도...');
+                    response = await fetch('/api/mobile/health');
+                }
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="text-green-600">✅ 연결 성공: ${data.message}</div>`;
+                    log('API 연결 성공!', 'success');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-red-600">❌ 연결 실패: ${data.error || '알 수 없는 오류'}</div>`;
+                    log(`API 연결 실패: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ 연결 오류: ${error.message}</div>`;
+                log(`API 연결 오류: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('login-result');
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 사용자명과 비밀번호를 입력하세요</div>';
+                return;
+            }
+            
+            try {
+                log(`로그인 시도: ${username}`);
+                const response = await fetch('/api/mobile/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    resultDiv.innerHTML = `<div class="text-green-600">✅ 로그인 성공: ${data.user.username} (${data.user.role})</div><div class="text-sm text-gray-600 mt-2">토큰: ${data.token.substring(0, 50)}...</div>`;
+                    log(`로그인 성공: ${data.user.username}`, 'success');
+                    log(`토큰 발급: ${data.token.substring(0, 50)}...`, 'info');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-red-600">❌ 로그인 실패: ${data.error}</div>`;
+                    log(`로그인 실패: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ 로그인 오류: ${error.message}</div>`;
+                log(`로그인 오류: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAttendance(type) {
+            const resultDiv = document.getElementById('attendance-result');
+            
+            if (!authToken) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 먼저 로그인하세요</div>';
+                return;
+            }
+            
+            try {
+                log(`${type === 'in' ? '출근' : '퇴근'} 기록 시도...`);
+                
+                const response = await fetch('/api/mobile/attendance/clock', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-Idempotency-Key': generateUUID()
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        lat: 37.5665,
+                        lng: 126.9780
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="text-green-600">✅ ${type === 'in' ? '출근' : '퇴근'} 기록 성공: ${data.attendance_id}</div>`;
+                    log(`${type === 'in' ? '출근' : '퇴근'} 기록 성공!`, 'success');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-red-600">❌ ${type === 'in' ? '출근' : '퇴근'} 기록 실패: ${data.error}</div>`;
+                    log(`${type === 'in' ? '출근' : '퇴근'} 기록 실패: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ ${type === 'in' ? '출근' : '퇴근'} 기록 오류: ${error.message}</div>`;
+                log(`${type === 'in' ? '출근' : '퇴근'} 기록 오류: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreatePurchaseOrder() {
+            const resultDiv = document.getElementById('purchase-order-result');
+            
+            if (!authToken) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 먼저 로그인하세요</div>';
+                return;
+            }
+            
+            const barcode = document.getElementById('barcode').value;
+            const productName = document.getElementById('productName').value;
+            const quantity = parseInt(document.getElementById('quantity').value);
+            
+            if (!barcode || !productName || !quantity) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 모든 필드를 입력하세요</div>';
+                return;
+            }
+            
+            try {
+                log('발주 생성 시도...');
+                
+                const response = await fetch('/api/mobile/purchase_orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-Idempotency-Key': generateUUID()
+                    },
+                    body: JSON.stringify({
+                        items: [{
+                            barcode: barcode,
+                            name: productName,
+                            quantity: quantity
+                        }]
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="text-green-600">✅ 발주 생성 성공: ${data.id || data.purchase_order_id}</div>`;
+                    log(`발주 생성 성공: ${data.id || data.purchase_order_id}`, 'success');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-red-600">❌ 발주 생성 실패: ${data.error}</div>`;
+                    log(`발주 생성 실패: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ 발주 생성 오류: ${error.message}</div>`;
+                log(`발주 생성 오류: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetPurchaseOrders() {
+            const resultDiv = document.getElementById('purchase-orders-list');
+            
+            if (!authToken) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 먼저 로그인하세요</div>';
+                return;
+            }
+            
+            try {
+                log('발주 목록 조회 시도...');
+                const response = await fetch('/api/mobile/purchase_orders', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.data && data.data.length > 0) {
+                        const ordersHtml = data.data.map(order => `
+                            <div class="border border-gray-200 p-3 rounded mb-2">
+                                <div class="font-medium">발주 #${order.id}</div>
+                                <div class="text-sm text-gray-600">상태: ${order.status}</div>
+                                <div class="text-sm text-gray-600">항목 수: ${order.items.length}개</div>
+                                <div class="text-sm text-gray-600">생성일: ${new Date(order.created_at).toLocaleDateString()}</div>
+                            </div>
+                        `).join('');
+                        resultDiv.innerHTML = `<div class="text-green-600">✅ 발주 목록 조회 성공 (${data.total}개)</div>${ordersHtml}`;
+                    } else {
+                        resultDiv.innerHTML = '<div class="text-green-600">✅ 발주 목록 조회 성공 (발주 없음)</div>';
+                    }
+                    log(`발주 목록 조회 성공: ${data.total}개`, 'success');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-red-600">❌ 발주 목록 조회 실패: ${data.error}</div>`;
+                    log(`발주 목록 조회 실패: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ 발주 목록 조회 오류: ${error.message}</div>`;
+                log(`발주 목록 조회 오류: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetSchedule() {
+            const resultDiv = document.getElementById('schedule-result');
+            
+            if (!authToken) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 먼저 로그인하세요</div>';
+                return;
+            }
+            
+            try {
+                log('스케줄 조회 시도...');
+                const response = await fetch('/api/mobile/schedule', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.data && data.data.length > 0) {
+                        const schedulesHtml = data.data.map(schedule => `
+                            <div class="border border-gray-200 p-3 rounded mb-2">
+                                <div class="font-medium">${schedule.date}</div>
+                                <div class="text-sm text-gray-600">유형: ${schedule.type}</div>
+                                <div class="text-sm text-gray-600">상태: ${schedule.status}</div>
+                                ${schedule.start_time ? `<div class="text-sm text-gray-600">시간: ${schedule.start_time} - ${schedule.end_time}</div>` : ''}
+                            </div>
+                        `).join('');
+                        resultDiv.innerHTML = `<div class="text-green-600">✅ 스케줄 조회 성공 (${data.total}개)</div>${schedulesHtml}`;
+                    } else {
+                        resultDiv.innerHTML = '<div class="text-green-600">✅ 스케줄 조회 성공 (스케줄 없음)</div>';
+                    }
+                    log(`스케줄 조회 성공: ${data.total}개`, 'success');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-red-600">❌ 스케줄 조회 실패: ${data.error}</div>`;
+                    log(`스케줄 조회 실패: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ 스케줄 조회 오류: ${error.message}</div>`;
+                log(`스케줄 조회 오류: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRequestLeave() {
+            const resultDiv = document.getElementById('leave-result');
+            
+            if (!authToken) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 먼저 로그인하세요</div>';
+                return;
+            }
+            
+            const type = document.getElementById('leaveType').value;
+            const startDate = document.getElementById('leaveStartDate').value;
+            const endDate = document.getElementById('leaveEndDate').value;
+            const reason = document.getElementById('leaveReason').value;
+            
+            if (!startDate || !endDate) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 시작일과 종료일을 입력하세요</div>';
+                return;
+            }
+            
+            try {
+                log('휴가 신청 시도...');
+                const response = await fetch('/api/mobile/schedule/leave', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-Idempotency-Key': generateUUID()
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        start_date: startDate,
+                        end_date: endDate,
+                        reason: reason
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="text-green-600">✅ 휴가 신청 성공: ${data.id}</div>`;
+                    log(`휴가 신청 성공: ${data.id}`, 'success');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-red-600">❌ 휴가 신청 실패: ${data.error}</div>`;
+                    log(`휴가 신청 실패: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ 휴가 신청 오류: ${error.message}</div>`;
+                log(`휴가 신청 오류: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRequestSwap() {
+            const resultDiv = document.getElementById('swap-result');
+            
+            if (!authToken) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 먼저 로그인하세요</div>';
+                return;
+            }
+            
+            const targetDate = document.getElementById('swapDate').value;
+            const swapUser = document.getElementById('swapUser').value;
+            const reason = document.getElementById('swapReason').value;
+            
+            if (!targetDate || !swapUser) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ 교대 날짜와 교대할 직원을 입력하세요</div>';
+                return;
+            }
+            
+            try {
+                log('근무 교대 신청 시도...');
+                const response = await fetch('/api/mobile/schedule/swap', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-Idempotency-Key': generateUUID()
+                    },
+                    body: JSON.stringify({
+                        target_date: targetDate,
+                        swap_with_user: swapUser,
+                        reason: reason
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="text-green-600">✅ 근무 교대 신청 성공: ${data.id}</div>`;
+                    log(`근무 교대 신청 성공: ${data.id}`, 'success');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-red-600">❌ 근무 교대 신청 실패: ${data.error}</div>`;
+                    log(`근무 교대 신청 실패: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ 근무 교대 신청 오류: ${error.message}</div>`;
+                log(`근무 교대 신청 오류: ${error.message}`, 'error');
+            }
+        }
+        
+        // 페이지 로드 시 자동으로 연결 테스트
+        window.onload = function() {
+            log('모바일 API 테스트 페이지 로드됨');
+            testConnection();
+        };
+    </script>
+</body>
+</html>
