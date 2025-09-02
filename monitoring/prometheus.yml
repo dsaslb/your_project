@@ -3,86 +3,36 @@ global:
   evaluation_interval: 15s
 
 rule_files:
-  # - "first_rules.yml"
-  # - "second_rules.yml"
-
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets:
-          - alertmanager:9093
+  - "sync_rules.yml"
 
 scrape_configs:
-  # Prometheus 자체 모니터링
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-
-  # Your Program 백엔드 애플리케이션
-  - job_name: 'your_program_backend'
+  # 애플리케이션 메트릭
+  - job_name: 'sync-app'
     static_configs:
       - targets: ['app:5000']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
-    scrape_timeout: 10s
+    metrics_path: '/metrics/prometheus'
+    scrape_interval: 10s
 
-  # Your Program 프론트엔드
-  - job_name: 'your_program_frontend'
-    static_configs:
-      - targets: ['frontend:3000']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  # PostgreSQL 데이터베이스
+  # 데이터베이스 메트릭
   - job_name: 'postgres'
     static_configs:
       - targets: ['db:5432']
-    scrape_interval: 60s
-    scrape_timeout: 10s
+    scrape_interval: 30s
 
-  # Redis 캐시
+  # Redis 메트릭
   - job_name: 'redis'
     static_configs:
       - targets: ['redis:6379']
     scrape_interval: 30s
-    scrape_timeout: 10s
 
-  # Nginx 리버스 프록시
-  - job_name: 'nginx'
+  # Outbox 워커 메트릭
+  - job_name: 'outbox-worker'
     static_configs:
-      - targets: ['nginx:80']
-    metrics_path: '/nginx_status'
-    scrape_interval: 30s
-    scrape_timeout: 10s
+      - targets: ['outbox-worker:5000']
+    metrics_path: '/metrics/prometheus'
+    scrape_interval: 10s
 
-  # Node Exporter (시스템 메트릭)
-  - job_name: 'node_exporter'
+  # Prometheus 자체 메트릭
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ['node-exporter:9100']
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  # Docker 컨테이너 메트릭
-  - job_name: 'docker'
-    static_configs:
-      - targets: ['docker-exporter:9323']
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  # Blackbox Exporter (외부 헬스체크)
-  - job_name: 'blackbox'
-    metrics_path: /probe
-    params:
-      module: [http_2xx]
-    static_configs:
-      - targets:
-        - https://yourprogram.com/health
-        - https://yourprogram.com/api/status
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: blackbox-exporter:9115 
+      - targets: ['localhost:9090']

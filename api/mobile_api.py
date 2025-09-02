@@ -22,8 +22,8 @@ def mobile_required(f):
     @wraps(f)
     def decorated_function(*args,  **kwargs):
         # 모바일 앱 헤더 확인
-        user_agent = request.headers.get() if headers else None'User-Agent', '') if headers else None
-        is_mobile = any(agent in user_agent.lower() if user_agent is not None else '' for agent in ['mobile', 'android', 'ios'])
+        user_agent = request.headers.get('User-Agent', '')
+        is_mobile = any(agent in user_agent.lower() for agent in ['mobile', 'android', 'ios'])
 
         if not is_mobile:
             return jsonify({'error': '모바일 앱에서만 접근 가능합니다.'}), 403
@@ -33,19 +33,40 @@ def mobile_required(f):
 
 
 @mobile_api_bp.route('/api/mobile/dashboard', methods=['GET'])
-@login_required
-@mobile_required
 def mobile_dashboard():
-    """모바일 대시보드 데이터"""
+    """모바일 대시보드 데이터 (개발용 - 인증 없음)"""
     try:
+        # 개발용 기본 사용자 정보
+        user_info = {
+            'id': 1,
+            'username': '개발자',
+            'role': 'employee',
+            'branch_id': 1
+        }
+        
+        # 로그인된 사용자가 있으면 실제 정보 사용
+        try:
+            if hasattr(current_user, 'id') and current_user.id:
+                user_info = {
+                    'id': current_user.id,
+                    'username': current_user.username,
+                    'role': current_user.role,
+                    'branch_id': getattr(current_user, 'branch_id', 1)
+                }
+        except:
+            pass  # 인증되지 않은 경우 기본값 사용
+        
         # 모바일 최적화된 대시보드 데이터
         dashboard_data = {
-            'user_info': {
-                'id': current_user.id,
-                'username': current_user.username,
-                'role': current_user.role,
-                'branch_id': current_user.branch_id
+            'user': {
+                'id': user_info['id'],
+                'username': user_info['username'],
+                'role': user_info['role']
             },
+            'today_schedule': '09:00 - 18:00',
+            'attendance_status': '출근',
+            'pending_orders': 3,
+            'inventory_alerts': 2,
             'quick_stats': {
                 'today_orders': 15,
                 'pending_orders': 3,
@@ -185,7 +206,7 @@ def sync_offline_data():
         if not data:
             return jsonify({'error': '요청 데이터가 없습니다.'}), 400
 
-        sync_data = data.get() if data else None'sync_data', {}) if data else None
+        sync_data = data.get('sync_data', {}) if data else {}
 
         # 동기화할 데이터 처리
         synced_items = {

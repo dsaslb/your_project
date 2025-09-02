@@ -1,0 +1,82 @@
+groups:
+  - name: sync_alerts
+    rules:
+      # Outbox 이벤트 지연 알림
+      - alert: OutboxEventsDelayed
+        expr: outbox_events_pending > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox 이벤트 지연"
+          description: "대기 중인 Outbox 이벤트가 {{ $value }}개입니다."
+
+      # Outbox 이벤트 실패 알림
+      - alert: OutboxEventsFailed
+        expr: outbox_events_failed > 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Outbox 이벤트 실패"
+          description: "실패한 Outbox 이벤트가 {{ $value }}개입니다."
+
+      # 동기화 실패율 알림
+      - alert: SyncFailureRate
+        expr: rate(sync_audit_total{status="error"}[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "동기화 실패율 높음"
+          description: "동기화 실패율이 {{ $value | humanizePercentage }}입니다."
+
+      # 데이터베이스 연결 실패
+      - alert: DatabaseConnectionFailed
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "데이터베이스 연결 실패"
+          description: "PostgreSQL 데이터베이스에 연결할 수 없습니다."
+
+      # Redis 연결 실패
+      - alert: RedisConnectionFailed
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis 연결 실패"
+          description: "Redis 서버에 연결할 수 없습니다."
+
+      # 애플리케이션 다운
+      - alert: ApplicationDown
+        expr: up{job="sync-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "애플리케이션 다운"
+          description: "동기화 애플리케이션이 응답하지 않습니다."
+
+      # 높은 메모리 사용량
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes / 1024 / 1024) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "높은 메모리 사용량"
+          description: "메모리 사용량이 {{ $value }}MB입니다."
+
+      # 높은 CPU 사용량
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "높은 CPU 사용량"
+          description: "CPU 사용률이 {{ $value | humanizePercentage }}입니다."

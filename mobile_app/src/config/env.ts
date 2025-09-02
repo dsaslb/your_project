@@ -5,10 +5,10 @@
  */
 
 // API 기본 URL
-export const API_BASE_URL = "http://192.168.0.5:5000";
+export const API_BASE_URL = "http://192.168.45.44:5000";
 
 // WebSocket URL
-export const WS_URL = "ws://192.168.0.5:5000";
+export const WS_URL = "ws://192.168.45.44:5000";
 
 // 개발용 (로컬)
 // export const API_BASE_URL = "http://localhost:5000";

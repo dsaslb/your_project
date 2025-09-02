@@ -1827,7 +1827,7 @@ class FeedbackIssue(db.Model):
         return f"<FeedbackIssue {self.title}>"
 
 
-class your_programOrder(db.Model):
+class YourProgramOrder(db.Model):
     """레스토랑 주문 처리 시간 측정 모델"""
 
     __tablename__ = "your_program_orders"
@@ -3890,3 +3890,22 @@ class IndustryAdmin(db.Model):
         self.last_activity = datetime.utcnow()
         self.login_count += 1
         self.updated_at = datetime.utcnow()
+
+class PushToken(db.Model):
+    """푸시 알림 토큰 저장"""
+    __tablename__ = "push_tokens"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    token = db.Column(db.Text, nullable=False)
+    platform = db.Column(db.String(20), nullable=False)  # ios, android, web
+    device_id = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계
+    user = db.relationship("User", backref="push_tokens")
+    
+    def __repr__(self):
+        return f"<PushToken {self.user_id}:{self.platform}>"

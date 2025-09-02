@@ -16,7 +16,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+// import { BarCodeScanner } from 'expo-barcode-scanner'; // QR 코드 기능 비활성화
 import * as ImagePicker from 'expo-image-picker';
 import { mobileAPI } from '../api/client';
 import { subscribeToInventoryUpdates } from '../api/socket';
@@ -34,16 +34,16 @@ export default function InventoryCheckScreen() {
   const [barcode, setBarcode] = useState('');
   const [quantity, setQuantity] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
-  const [showScanner, setShowScanner] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  // const [showScanner, setShowScanner] = useState(false); // QR 코드 기능 비활성화
+  // const [hasPermission, setHasPermission] = useState<boolean | null>(null); // QR 코드 기능 비활성화
   const [inventoryHistory, setInventoryHistory] = useState<InventoryItem[]>([]);
 
   useEffect(() => {
-    // 카메라 권한 요청
-    (async () => {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
+    // 카메라 권한 요청 비활성화
+    // (async () => {
+    //   const { status } = await BarCodeScanner.requestPermissionsAsync();
+    //   setHasPermission(status === 'granted');
+    // })();
 
     // 실시간 재고 업데이트 구독
     const unsubscribe = subscribeToInventoryUpdates((data: InventoryItem) => {

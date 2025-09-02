@@ -1,166 +1,113 @@
-/**
- * 🔌 Socket.IO 클라이언트
- * 
- * 모바일 앱에서 실시간 통신을 위한 Socket.IO 클라이언트
- */
-
 import { io, Socket } from "socket.io-client";
-import { WS_URL, SOCKET_EVENTS } from '../config/env';
+import Constants from "expo-constants";
 
-// Socket.IO 클라이언트 인스턴스
-let socket: Socket | null = null;
+// Socket.IO 클라이언트 생성
+const WS_URL = (Constants.expoConfig?.extra as any)?.wsUrl || "ws://localhost:5000";
 
-/**
- * Socket.IO 연결 초기화
- */
-export function initSocket(): Socket {
-  if (!socket) {
-    socket = io(WS_URL, {
-      transports: ["websocket"],
-      autoConnect: true,
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-    });
+export const socket: Socket = io(WS_URL, {
+  transports: ['polling', 'websocket'], // 폴링을 먼저 시도
+  autoConnect: false, // 수동 연결
+  reconnection: false, // 자동 재연결 비활성화 (서버가 없을 때)
+  timeout: 3000, // 짧은 타임아웃
+  forceNew: true,
+});
 
-    // 연결 이벤트 리스너
-    socket.on("connect", () => {
-      console.log("🔌 Socket.IO 연결됨:", socket?.id);
-    });
+// 연결 상태 관리
+export const socketEvents = {
+  // 출퇴근 업데이트 구독
+  subscribeToAttendanceUpdates(callback: (data: any) => void) {
+    socket.on('attendance:update', callback);
+    return () => socket.off('attendance:update', callback);
+  },
 
-    socket.on("disconnect", () => {
-      console.log("🔌 Socket.IO 연결 해제됨");
-    });
+  // 재고 업데이트 구독
+  subscribeToInventoryUpdates(callback: (data: any) => void) {
+    socket.on('inventory:update', callback);
+    return () => socket.off('inventory:update', callback);
+  },
 
-    socket.on("connect_error", (error) => {
-      console.error("🔌 Socket.IO 연결 오류:", error);
-    });
+  // 발주 생성 구독
+  subscribeToPurchaseOrderUpdates(callback: (data: any) => void) {
+    socket.on('po:created', callback);
+    return () => socket.off('po:created', callback);
+  },
 
-    socket.on("reconnect", (attemptNumber) => {
-      console.log("🔌 Socket.IO 재연결됨 (시도:", attemptNumber, ")");
-    });
-  }
+  // 연결 상태 확인
+  isConnected(): boolean {
+    return socket.connected;
+  },
 
-  return socket;
-}
+  // 연결
+  connect() {
+    socket.connect();
+  },
 
-/**
- * Socket.IO 인스턴스 가져오기
- */
-export function getSocket(): Socket | null {
-  return socket;
-}
-
-/**
- * Socket.IO 연결 해제
- */
-export function disconnectSocket(): void {
-  if (socket) {
+  // 연결 해제
+  disconnect() {
     socket.disconnect();
-    socket = null;
   }
-}
-
-/**
- * 실시간 이벤트 구독 훅
- */
-export function useRealtime<T = any>(
-  eventName: string,
-  callback: (data: T) => void
-): () => void {
-  const socket = getSocket();
-  
-  if (socket) {
-    socket.on(eventName, callback);
-    
-    // 이벤트 리스너 제거 함수 반환
-    return () => {
-      socket.off(eventName, callback);
-    };
-  }
-  
-  return () => {};
-}
-
-/**
- * 출퇴근 업데이트 구독
- */
-export function subscribeToAttendanceUpdates(callback: (data: any) => void): () => void {
-  const socket = getSocket();
-  
-  if (socket) {
-    socket.on(SOCKET_EVENTS.ATTENDANCE_UPDATE, callback);
-    return () => socket.off(SOCKET_EVENTS.ATTENDANCE_UPDATE, callback);
-  }
-  
-  return () => {};
-}
-
-/**
- * 재고 업데이트 구독
- */
-export function subscribeToInventoryUpdates(callback: (data: any) => void): () => void {
-  const socket = getSocket();
-  
-  if (socket) {
-    socket.on(SOCKET_EVENTS.INVENTORY_UPDATE, callback);
-    return () => socket.off(SOCKET_EVENTS.INVENTORY_UPDATE, callback);
-  }
-  
-  return () => {};
-}
-
-/**
- * 발주 업데이트 구독
- */
-export function subscribeToPurchaseOrderUpdates(callback: (data: any) => void): () => void {
-  const socket = getSocket();
-  
-  if (socket) {
-    socket.on(SOCKET_EVENTS.PURCHASE_ORDER_UPDATE, callback);
-    return () => socket.off(SOCKET_EVENTS.PURCHASE_ORDER_UPDATE, callback);
-  }
-  
-  return () => {};
-}
-
-/**
- * 주문 업데이트 구독
- */
-export function subscribeToOrderUpdates(callback: (data: any) => void): () => void {
-  const socket = getSocket();
-  
-  if (socket) {
-    socket.on(SOCKET_EVENTS.ORDER_UPDATE, callback);
-    return () => socket.off(SOCKET_EVENTS.ORDER_UPDATE, callback);
-  }
-  
-  return () => {};
-}
-
-/**
- * 스케줄 업데이트 구독
- */
-export function subscribeToScheduleUpdates(callback: (data: any) => void): () => void {
-  const socket = getSocket();
-  
-  if (socket) {
-    socket.on(SOCKET_EVENTS.SCHEDULE_UPDATE, callback);
-    return () => socket.off(SOCKET_EVENTS.SCHEDULE_UPDATE, callback);
-  }
-  
-  return () => {};
-}
-
-// 기본 export
-export default {
-  initSocket,
-  getSocket,
-  disconnectSocket,
-  useRealtime,
-  subscribeToAttendanceUpdates,
-  subscribeToInventoryUpdates,
-  subscribeToPurchaseOrderUpdates,
-  subscribeToOrderUpdates,
-  subscribeToScheduleUpdates,
 };
+
+// 개별 함수들도 export (호환성을 위해)
+export const subscribeToAttendanceUpdates = (callback: (data: any) => void) => {
+  return socketEvents.subscribeToAttendanceUpdates(callback);
+};
+
+export const subscribeToInventoryUpdates = (callback: (data: any) => void) => {
+  return socketEvents.subscribeToInventoryUpdates(callback);
+};
+
+export const subscribeToPurchaseOrderUpdates = (callback: (data: any) => void) => {
+  return socketEvents.subscribeToPurchaseOrderUpdates(callback);
+};
+
+// 연결 이벤트 리스너
+socket.on('connect', () => {
+  console.log('Socket.IO 연결됨:', socket.id);
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('Socket.IO 연결 해제됨:', reason);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Socket.IO 연결 오류:', error);
+});
+
+// 네트워크 상태에 따른 자동 연결 관리
+let isConnected = false;
+
+export const connectSocket = () => {
+  if (!isConnected) {
+    socket.connect();
+    isConnected = true;
+  }
+};
+
+export const disconnectSocket = () => {
+  if (isConnected) {
+    socket.disconnect();
+    isConnected = false;
+  }
+};
+
+// 서버 연결 상태 확인 후 연결 시도
+const checkServerAndConnect = async () => {
+  try {
+    // 간단한 HTTP 요청으로 서버 상태 확인
+    const response = await fetch(`${WS_URL.replace('ws://', 'http://').replace('wss://', 'https://')}/healthz`, {
+      method: 'GET',
+      timeout: 2000
+    });
+    if (response.ok) {
+      connectSocket();
+    }
+  } catch (error) {
+    console.warn('서버 연결 불가, Socket.IO 연결 건너뜀:', error);
+  }
+};
+
+// 초기 연결 시도 (비동기)
+checkServerAndConnect();
+
+export default socket;

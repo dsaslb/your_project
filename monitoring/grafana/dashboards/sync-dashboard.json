@@ -1,0 +1,80 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "동기화 시스템 대시보드",
+    "tags": ["sync", "mobile", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Outbox 이벤트 상태",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "outbox_events_total",
+            "legendFormat": "총 이벤트"
+          },
+          {
+            "expr": "outbox_events_pending",
+            "legendFormat": "대기 중"
+          },
+          {
+            "expr": "outbox_events_delivered",
+            "legendFormat": "전송 완료"
+          },
+          {
+            "expr": "outbox_events_failed",
+            "legendFormat": "실패"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "동기화 처리량",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(sync_audit_total[5m])",
+            "legendFormat": "동기화/초"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "동기화 성공률",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(sync_audit_total{status=\"ok\"}[5m]) / rate(sync_audit_total[5m]) * 100",
+            "legendFormat": "성공률 (%)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "처리 시간",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(sync_processing_time_ms_bucket[5m]))",
+            "legendFormat": "95% 처리 시간 (ms)"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(sync_processing_time_ms_bucket[5m]))",
+            "legendFormat": "50% 처리 시간 (ms)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

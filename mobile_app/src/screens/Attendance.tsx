@@ -13,9 +13,10 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+// import { BarCodeScanner } from 'expo-barcode-scanner'; // QR 코드 기능 비활성화
 import { mobileAPI } from '../api/client';
 import { subscribeToAttendanceUpdates } from '../api/socket';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -33,8 +34,8 @@ export default function AttendanceScreen() {
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [scanned, setScanned] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
+  // const [scanned, setScanned] = useState(false); // QR 코드 기능 비활성화
+  // const [showScanner, setShowScanner] = useState(false); // QR 코드 기능 비활성화
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceData[]>([]);
 
   useEffect(() => {
@@ -112,55 +113,57 @@ export default function AttendanceScreen() {
     }
   };
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
-    setScanned(true);
-    setShowScanner(false);
-    
-    // QR 코드로 출퇴근 체크
-    if (location) {
-      mobileAPI.clockAttendance('in', {
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
-        qr: data,
-      }).then(result => {
-        if (result.ok) {
-          Alert.alert('성공', 'QR 코드로 출근이 기록되었습니다.');
-        }
-      }).catch(error => {
-        Alert.alert('오류', 'QR 코드 출근 기록에 실패했습니다.');
-      });
-    }
-  };
+  // QR 코드 기능 비활성화
+  // const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+  //   setScanned(true);
+  //   setShowScanner(false);
+  //   
+  //   // QR 코드로 출퇴근 체크
+  //   if (location) {
+  //     mobileAPI.clockAttendance('in', {
+  //       lat: location.coords.latitude,
+  //       lng: location.coords.longitude,
+  //       qr: data,
+  //     }).then(result => {
+  //       if (result.ok) {
+  //         Alert.alert('성공', 'QR 코드로 출근이 기록되었습니다.');
+  //       }
+  //     }).catch(error => {
+  //       Alert.alert('오류', 'QR 코드 출근 기록에 실패했습니다.');
+  //     });
+  //   }
+  // };
 
-  const requestCameraPermission = async () => {
-    const { status } = await BarCodeScanner.requestPermissionsAsync();
-    setHasPermission(status === 'granted');
-    
-    if (status === 'granted') {
-      setShowScanner(true);
-    } else {
-      Alert.alert('권한 필요', 'QR 코드 스캔을 위해 카메라 권한이 필요합니다.');
-    }
-  };
+  // const requestCameraPermission = async () => {
+  //   const { status } = await BarCodeScanner.requestPermissionsAsync();
+  //   setHasPermission(status === 'granted');
+  //   
+  //   if (status === 'granted') {
+  //     setShowScanner(true);
+  //   } else {
+  //     Alert.alert('권한 필요', 'QR 코드 스캔을 위해 카메라 권한이 필요합니다.');
+  //   }
+  // };
 
-  if (showScanner) {
-    return (
-      <View style={styles.container}>
-        <BarCodeScanner
-          onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <View style={styles.scannerOverlay}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setShowScanner(false)}
-          >
-            <Text style={styles.closeButtonText}>닫기</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+  // QR 코드 스캐너 화면 비활성화
+  // if (showScanner) {
+  //   return (
+  //     <View style={styles.container}>
+  //       <BarCodeScanner
+  //         onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+  //         style={StyleSheet.absoluteFillObject}
+  //       />
+  //       <View style={styles.scannerOverlay}>
+  //         <TouchableOpacity
+  //           style={styles.closeButton}
+  //           onPress={() => setShowScanner(false)}
+  //         >
+  //           <Text style={styles.closeButtonText}>닫기</Text>
+  //         </TouchableOpacity>
+  //       </View>
+  //     </View>
+  //   );
+  // }
 
   return (
     <ScrollView style={styles.container}>
@@ -222,13 +225,13 @@ export default function AttendanceScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* QR 코드 스캔 버튼 */}
-      <TouchableOpacity
+      {/* QR 코드 스캔 버튼 비활성화 */}
+      {/* <TouchableOpacity
         style={styles.qrButton}
         onPress={requestCameraPermission}
       >
         <Text style={styles.qrButtonText}>📱 QR 코드로 출근</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* 출퇴근 기록 */}
       <View style={styles.historyCard}>
@@ -284,10 +287,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'ios' ? {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    } : {}),
   },
   cardTitle: {
     fontSize: 18,
@@ -359,10 +364,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'ios' ? {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    } : {}),
   },
   historyItem: {
     borderBottomWidth: 1,

@@ -58,6 +58,12 @@ try:
 except ImportError:
     User = Industry = Brand = None
 
+# 동기화 모델 import (조건부)
+try:
+    from models_sync import IdempotencyKey, SyncAudit, OutboxEvent, SyncMetrics
+except ImportError:
+    IdempotencyKey = SyncAudit = OutboxEvent = SyncMetrics = None
+
 # 플러그인 모델 import (현재 사용하지 않음)
 SCHEDULE_PLUGIN_AVAILABLE = False
 
@@ -303,8 +309,25 @@ def initialize_database():
             db.create_all()
             logger.info("데이터베이스 테이블 생성 완료")
 
-            # 기본 관리자 계정 생성
-            create_default_admin()
+            # 기본 관리자 계정 생성 (함수 내부에서 직접 처리)
+            try:
+                admin_user = User.query.filter_by(username="admin").first()
+                if not admin_user:
+                    admin_user = User(
+                        username="admin",
+                        email="admin@your_program.com",
+                        role="admin",
+                        status="approved"
+                    )
+                    admin_user.password_hash = generate_password_hash("admin123", method="pbkdf2:sha256")
+                    db.session.add(admin_user)
+                    logger.info("기본 관리자 계정 생성 완료: admin/admin123")
+                else:
+                    if admin_user.status != "approved":
+                        admin_user.status = "approved"
+                        logger.info("기존 관리자 계정 상태를 approved로 업데이트")
+            except Exception as admin_error:
+                logger.error(f"기본 관리자 계정 생성 실패: {admin_error}")
             
             db.session.commit()
             logger.info("데이터베이스 초기화 및 기본 데이터 생성 완료")
@@ -313,29 +336,6 @@ def initialize_database():
             logger.error(f"데이터베이스 초기화 실패: {e}")
             db.session.rollback()
             raise
-
-def create_default_admin():
-    """기본 관리자 계정을 생성합니다."""
-    try:
-        admin_user = User.query.filter_by(username="admin").first()
-        if not admin_user:
-            admin_user = User(
-                username="admin",
-                email="admin@your_program.com",
-                role="admin",
-                status="approved"
-            )
-            admin_user.password_hash = generate_password_hash("admin123", method="pbkdf2:sha256")
-            db.session.add(admin_user)
-            logger.info("기본 관리자 계정 생성 완료: admin/admin123")
-        else:
-            # 기존 관리자 계정의 상태를 approved로 업데이트
-            if admin_user.status != "approved":
-                admin_user.status = "approved"
-                logger.info("기존 관리자 계정 상태를 approved로 업데이트")
-    except Exception as e:
-        logger.error(f"기본 관리자 계정 생성 실패: {e}")
-        raise
 
 # 확장 모듈 초기화
 api = initialize_extensions()
@@ -355,7 +355,22 @@ initialize_database()
 def register_blueprints():
     """모든 블루프린트를 등록합니다."""
     
-    # 모바일 API 블루프린트 직접 등록
+    # 새로운 모바일 API 블루프린트 등록
+    try:
+        from api.mobile_v2 import mobile_bp
+        logger.info("모바일 API v2 블루프린트 import 성공")
+        
+        # CSRF 예외 처리
+        csrf.exempt(mobile_bp)
+        
+        # 블루프린트 등록
+        app.register_blueprint(mobile_bp)
+        logger.info("모바일 API v2 블루프린트 등록 완료")
+        
+    except Exception as e:
+        logger.error(f"모바일 API v2 블루프린트 등록 실패: {e}")
+    
+    # 기존 모바일 API 블루프린트들 (호환성 유지)
     try:
         # 간단한 테스트용 모바일 API 등록
         from api.mobile_simple import simple_mobile_bp
@@ -394,8 +409,6 @@ def register_blueprints():
         from api.auth import auth_bp as web_auth_bp
         app.register_blueprint(web_auth_bp, name="auth")
         logger.info("웹 인증 블루프린트 등록 완료: auth")
-        
-
         # CSRF 보호 완전 비활성화 (모바일 API 및 인증 API용)
         from extensions import disable_csrf_for_mobile
         disable_csrf_for_mobile(app)
@@ -413,6 +426,28 @@ def register_blueprints():
         logger.info(f"관리자 발주 API 블루프린트 등록 완료: {unique_name}")
     except Exception as e:
         logger.error(f"관리자 발주 API 블루프린트 등록 실패: {e}")
+        import traceback
+        logger.error(f"상세 오류: {traceback.format_exc()}")
+    
+    # 동기화 관련 블루프린트 등록
+    try:
+        # 모바일 동기화 API 블루프린트 등록
+        from api.mobile_sync import mobile_sync_bp
+        app.register_blueprint(mobile_sync_bp)
+        logger.info("모바일 동기화 API 블루프린트 등록 완료")
+        
+        # 헬스체크 API 블루프린트 등록
+        from api.health import health_bp
+        app.register_blueprint(health_bp)
+        logger.info("헬스체크 API 블루프린트 등록 완료")
+        
+        # 간단한 대시보드 API 블루프린트 등록
+        from api.simple_dashboard import simple_dashboard_bp
+        app.register_blueprint(simple_dashboard_bp)
+        logger.info("간단한 대시보드 API 블루프린트 등록 완료")
+        
+    except Exception as e:
+        logger.error(f"동기화 관련 블루프린트 등록 실패: {e}")
         import traceback
         logger.error(f"상세 오류: {traceback.format_exc()}")
     

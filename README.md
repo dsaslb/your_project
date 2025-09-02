@@ -45,8 +45,8 @@
 
 ### 1. 저장소 클론
 ```bash
-git clone https://github.com/dsaslb/your_project.git
-cd your_project
+git clone https://github.com/dsaslb/your_program.git
+cd your_program
 ```
 
 ### 2. 가상환경 생성 및 활성화
@@ -54,7 +54,7 @@ cd your_project
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # 또는
-venv\Scripts\activate     # Windows
+.\venv\Scripts\activate     # Windows
 ```
 
 ### 3. 의존성 설치
@@ -89,7 +89,7 @@ make run
 make run-dev
 ```
 
-서버가 `http://localhost:5000`에서 실행됩니다.
+서버가 http://localhost:5000 에서 실행됩니다.
 
 ## 🛠️ 개발 도구
 
@@ -259,7 +259,7 @@ docker run -p 5000:5000 your-program
 
 ### GitHub Actions
 프로젝트는 GitHub Actions를 통해 자동 CI/CD가 설정되어 있습니다:
-- **테스트**: Python 3.9, 3.10, 3.11에서 테스트 실행
+- **테스트**: Python 3.9, 3.10, 3.11, 3.13.2에서 테스트 실행
 - **보안 스캔**: Snyk를 통한 보안 취약점 검사
 - **배포**: 스테이징/프로덕션 환경 자동 배포
 
@@ -277,7 +277,7 @@ docker run -p 5000:5000 your-program
 
 ## 📞 지원
 
-문제가 있거나 질문이 있으시면 [Issues](https://github.com/dsaslb/your_project/issues)를 통해 문의해주세요.
+문제가 있거나 질문이 있으시면 [Issues](https://github.com/dsaslb/your_program/issues)를 통해 문의해주세요.
 
 ## 🔄 업데이트 로그
 

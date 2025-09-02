@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, ShoppingCart, DollarSign, Activity, TrendingUp, Zap, Target, Award, Building, Store, UserCheck, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
+import { RealtimeUpdates } from '@/components/RealtimeUpdates';
 
 interface Industry {
   id: number;
@@ -334,6 +335,11 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* 실시간 업데이트 섹션 */}
+      <div className="mt-8">
+        <RealtimeUpdates />
       </div>
 
       {/* 추가 상세 정보 */}

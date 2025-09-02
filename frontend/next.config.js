@@ -5,6 +5,12 @@ const nextConfig = {
     optimizeCss: false,
   },
 
+  // 환경 변수 설정
+  env: {
+    NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+  },
+
   // 이미지 최적화
   images: {
     domains: ['localhost', '192.168.45.44'],

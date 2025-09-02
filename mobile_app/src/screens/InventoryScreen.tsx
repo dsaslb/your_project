@@ -11,7 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+// import { BarCodeScanner } from 'expo-barcode-scanner'; // QR 코드 기능 비활성화
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../api/client';
 import { socket } from '../api/socket';

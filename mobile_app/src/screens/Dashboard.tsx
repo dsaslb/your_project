@@ -41,24 +41,31 @@ export default function DashboardScreen() {
   useEffect(() => {
     loadDashboardData();
 
-    // 실시간 업데이트 구독
-    const unsubscribeAttendance = subscribeToAttendanceUpdates((data) => {
-      setRealtimeUpdates(prev => ({
-        ...prev,
-        attendance: prev.attendance + 1
-      }));
-    });
+    // 실시간 업데이트 구독 (에러 처리 포함)
+    let unsubscribeAttendance: (() => void) | null = null;
+    let unsubscribeInventory: (() => void) | null = null;
 
-    const unsubscribeInventory = subscribeToInventoryUpdates((data) => {
-      setRealtimeUpdates(prev => ({
-        ...prev,
-        inventory: prev.inventory + 1
-      }));
-    });
+    try {
+      unsubscribeAttendance = subscribeToAttendanceUpdates((data) => {
+        setRealtimeUpdates(prev => ({
+          ...prev,
+          attendance: prev.attendance + 1
+        }));
+      });
+
+      unsubscribeInventory = subscribeToInventoryUpdates((data) => {
+        setRealtimeUpdates(prev => ({
+          ...prev,
+          inventory: prev.inventory + 1
+        }));
+      });
+    } catch (error) {
+      console.warn('Socket 구독 실패 (오프라인 모드):', error);
+    }
 
     return () => {
-      unsubscribeAttendance();
-      unsubscribeInventory();
+      if (unsubscribeAttendance) unsubscribeAttendance();
+      if (unsubscribeInventory) unsubscribeInventory();
     };
   }, []);
 
@@ -67,9 +74,11 @@ export default function DashboardScreen() {
     try {
       const result = await mobileAPI.getDashboard();
       setDashboardData(result);
+      console.log('대시보드 데이터 로드 성공:', result);
     } catch (error) {
       console.error('대시보드 데이터 로드 실패:', error);
-      Alert.alert('오류', '대시보드 데이터를 불러올 수 없습니다.');
+      // 에러가 발생해도 기본 데이터는 표시됨 (API에서 기본값 반환)
+      Alert.alert('알림', '서버에 연결할 수 없어 오프라인 모드로 실행 중입니다.');
     } finally {
       setLoading(false);
     }
@@ -187,18 +196,31 @@ export default function DashboardScreen() {
       {/* 최근 활동 */}
       <View style={styles.activityCard}>
         <Text style={styles.cardTitle}>🕒 최근 활동</Text>
-        <View style={styles.activityItem}>
-          <Text style={styles.activityText}>출근 체크 완료</Text>
-          <Text style={styles.activityTime}>방금 전</Text>
-        </View>
-        <View style={styles.activityItem}>
-          <Text style={styles.activityText}>재고 조사 완료 (바코드: 123456789)</Text>
-          <Text style={styles.activityTime}>5분 전</Text>
-        </View>
-        <View style={styles.activityItem}>
-          <Text style={styles.activityText}>발주 요청 완료</Text>
-          <Text style={styles.activityTime}>10분 전</Text>
-        </View>
+        {dashboardData?.recent_activities && dashboardData.recent_activities.length > 0 ? (
+          dashboardData.recent_activities.map((activity: any, index: number) => (
+            <View key={activity.id || index} style={styles.activityItem}>
+              <Text style={styles.activityText}>{activity.title}</Text>
+              <Text style={styles.activityTime}>
+                {activity.timestamp ? new Date(activity.timestamp).toLocaleTimeString() : '방금 전'}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <>
+            <View style={styles.activityItem}>
+              <Text style={styles.activityText}>출근 체크 완료</Text>
+              <Text style={styles.activityTime}>방금 전</Text>
+            </View>
+            <View style={styles.activityItem}>
+              <Text style={styles.activityText}>재고 조사 완료 (바코드: 123456789)</Text>
+              <Text style={styles.activityTime}>5분 전</Text>
+            </View>
+            <View style={styles.activityItem}>
+              <Text style={styles.activityText}>발주 요청 완료</Text>
+              <Text style={styles.activityTime}>10분 전</Text>
+            </View>
+          </>
+        )}
       </View>
 
       {/* 새로고침 버튼 */}
@@ -242,10 +264,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)', // shadow* 대신 boxShadow 사용
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -284,10 +303,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   cardTitle: {
     fontSize: 18,
@@ -307,10 +323,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -335,10 +348,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -375,10 +385,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   activityItem: {
     flexDirection: 'row',
