@@ -18,11 +18,24 @@ from utils.cache_manager import cache_manager, cached
 backend_admin_bp = Blueprint('backend_admin', __name__)
 
 @backend_admin_bp.route('/admin/backend')
+@login_required
 def backend_dashboard():
     """백엔드 관리자 대시보드"""
-    if not current_user.has_permission('system_management', 'view'):
-        flash('접근 권한이 없습니다.', 'error')
-        return redirect(url_for('dashboard'))
+    # 인증된 사용자인지 확인
+    if not current_user.is_authenticated:
+        flash('로그인이 필요합니다.', 'error')
+        return redirect(url_for('auth.login'))
+    
+    # 권한 확인 (has_permission 메서드가 있는지 확인)
+    if hasattr(current_user, 'has_permission'):
+        if not current_user.has_permission('system_management', 'view'):
+            flash('접근 권한이 없습니다.', 'error')
+            return redirect(url_for('dashboard'))
+    else:
+        # 기본 권한 확인 (관리자 역할)
+        if not hasattr(current_user, 'role') or current_user.role not in ['admin', 'super_admin']:
+            flash('관리자 권한이 필요합니다.', 'error')
+            return redirect(url_for('dashboard'))
     
     # 캐시된 공통 데이터 사용
     common_data = getattr(g, 'common_data', {})
@@ -34,10 +47,22 @@ def backend_dashboard():
                          system_status=system_status)
 
 @backend_admin_bp.route('/admin/backend/legacy')
+@login_required
 def backend_dashboard_legacy():
     """기존 백엔드 관리자 대시보드"""
-    if not current_user.has_permission('system_management', 'view'):
-        return redirect(url_for('dashboard'))
+    # 인증된 사용자인지 확인
+    if not current_user.is_authenticated:
+        flash('로그인이 필요합니다.', 'error')
+        return redirect(url_for('auth.login'))
+    
+    # 권한 확인
+    if hasattr(current_user, 'has_permission'):
+        if not current_user.has_permission('system_management', 'view'):
+            return redirect(url_for('dashboard'))
+    else:
+        if not hasattr(current_user, 'role') or current_user.role not in ['admin', 'super_admin']:
+            flash('관리자 권한이 필요합니다.', 'error')
+            return redirect(url_for('dashboard'))
     
     return render_template('admin/backend_admin_dashboard.html')
 

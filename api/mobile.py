@@ -1,681 +1,463 @@
+"""
+📱 모바일 전용 API 블루프린트
+
+모바일 앱을 위한 JWT 인증, 출퇴근, 재고 조사, 발주 등의 API 엔드포인트
+CQRS 라이트 아키텍처 적용: 쓰기와 읽기 분리, 실시간 이벤트 방송
+"""
+
 from flask import Blueprint, request, jsonify
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from werkzeug.security import check_password_hash
 import jwt
 import os
-from extensions import csrf
+from functools import wraps
+
+from extensions import db, socketio
+from models import User, Schedule, Order
 from utils.idempotency import require_idempotency_key
-from utils.events import emit_attendance_update, emit_inventory_update, emit_purchase_order_update
-from flask_wtf.csrf import CSRFProtect
+from utils.events import emit_event
 
-# emit_event 함수가 없는 경우를 위한 fallback
-try:
-    from utils.events import emit_event
-except ImportError:
-    def emit_event(name, payload, room=None):
-        """이벤트 송출 fallback 함수"""
-        print(f"이벤트 송출: {name} - {payload}")
-        try:
-            from extensions import socketio
-            socketio.emit(name, payload, room=room)
-        except ImportError:
-            pass
-
-# 모바일 전용 모델들 import
-try:
-    from models.mobile_models import (
-        MobileAttendance, 
-        MobileInventoryLog, 
-        MobilePurchaseOrder, 
-        MobileSchedule, 
-        MobileOrder
-    )
-    from models import User
-except ImportError:
-    # 모델이 없는 경우를 위한 fallback
-    MobileAttendance = None
-    MobileInventoryLog = None
-    MobilePurchaseOrder = None
-    MobileSchedule = None
-    MobileOrder = None
-    User = None
-
+# 모바일 API 블루프린트 생성
 mobile_bp = Blueprint("mobile_api", __name__, url_prefix="/api/mobile")
 
-# CSRF 보호 비활성화 (모바일 API용)
-csrf.exempt(mobile_bp)
-
-# CSRF 보호 완전 비활성화
-csrf._exempt_views.add(mobile_bp.name)
-
 # JWT 설정
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-key-change-in-production")
+JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret")
 ALG = "HS256"
 EXP_MIN = 60 * 24  # 24시간
 
-def token_for(uid):
-    """JWT 토큰 생성"""
-    return jwt.encode(
-        {"sub": uid, "exp": datetime.utcnow() + timedelta(minutes=EXP_MIN)},
-        JWT_SECRET,
-        algorithm=ALG
-    )
-
-def auth_required(f):
-    """JWT 인증 미들웨어"""
-    from functools import wraps
-    
-    @wraps(f)
-    def wrap(*args, **kwargs):
-        auth = request.headers.get("Authorization", "")
-        print(f"DEBUG: Authorization header: {auth}")  # 디버깅 로그
-        
-        if not auth.startswith("Bearer "):
-            print(f"DEBUG: No Bearer token found")  # 디버깅 로그
-            return jsonify({"error": "인증 토큰이 필요합니다"}), 401
-        
-        try:
-            token = auth.split()[1]
-            print(f"DEBUG: Token extracted: {token[:20]}...")  # 디버깅 로그
-            payload = jwt.decode(token, JWT_SECRET, algorithms=[ALG])
-            print(f"DEBUG: Token payload: {payload}")  # 디버깅 로그
-            request.user_id = int(payload["sub"])
-            print(f"DEBUG: User ID set: {request.user_id}")  # 디버깅 로그
-            return f(*args, **kwargs)
-        except jwt.ExpiredSignatureError:
-            print(f"DEBUG: Token expired")  # 디버깅 로그
-            return jsonify({"error": "토큰이 만료되었습니다"}), 401
-        except jwt.InvalidTokenError:
-            print(f"DEBUG: Invalid token")  # 디버깅 로그
-            return jsonify({"error": "유효하지 않은 토큰입니다"}), 401
-        except Exception as e:
-            print(f"DEBUG: Auth error: {str(e)}")  # 디버깅 로그
-            return jsonify({"error": f"인증 오류가 발생했습니다: {str(e)}"}), 401
-    
-    return wrap
-
-@mobile_bp.route("/login", methods=["POST"])
-def login():
-    """모바일 로그인"""
-    data = request.get_json() or {}
-    username = data.get("username")
-    password = data.get("password")
-    
-    if not username or not password:
-        return jsonify({"error": "사용자명과 비밀번호를 입력해주세요"}), 400
-    
-    # 임시 사용자 데이터 (실제로는 데이터베이스에서 조회)
-    if username == "admin" and password == "admin123":
-        user = {
-            "id": 1,
-            "username": "admin",
-            "role": "admin"
-        }
-        token = token_for(user["id"])
-        return jsonify({
-            "token": token,
-            "user": user
-        })
-    
-    # 다른 테스트 계정들
-    elif username == "user1" and password == "user123":
-        user = {
-            "id": 2,
-            "username": "user1",
-            "role": "employee"
-        }
-        token = token_for(user["id"])
-        return jsonify({
-            "token": token,
-            "user": user
-        })
-    
-    elif username == "manager" and password == "manager123":
-        user = {
-            "id": 3,
-            "username": "manager",
-            "role": "manager"
-        }
-        token = token_for(user["id"])
-        return jsonify({
-            "token": token,
-            "user": user
-        })
-    
-    return jsonify({"error": "잘못된 사용자명 또는 비밀번호입니다"}), 401
-
-@mobile_bp.route("/push/register", methods=["POST"])
-@auth_required
-def push_register():
-    """푸시 토큰 등록"""
-    data = request.get_json() or {}
-    expo_push_token = data.get("expo_push_token")
-    
-    if not expo_push_token:
-        return jsonify({"error": "푸시 토큰이 필요합니다"}), 400
-    
-    # 실제로는 사용자 테이블에 토큰 저장
-    # User.query.get(request.user_id).expo_push_token = expo_push_token
-    # db.session.commit()
-    
-    return jsonify({"ok": True, "message": "푸시 토큰이 등록되었습니다"})
-
-@mobile_bp.route("/attendance/clock", methods=["POST"])
-@auth_required
-def attendance_clock():
-    """출퇴근 기록"""
-    data = request.get_json() or {}
-    clock_type = data.get("type")  # 'in' 또는 'out'
-    latitude = data.get("lat")
-    longitude = data.get("lng")
-    qr_code = data.get("qr")
-    
-    if not clock_type:
-        return jsonify({"error": "출퇴근 타입을 지정해주세요"}), 400
-    
-    # 실제 데이터베이스에 저장
-    if MobileAttendance:
-        try:
-            from extensions import db
-            attendance_record = MobileAttendance(
-                user_id=request.user_id,
-                type=clock_type,
-                timestamp=datetime.utcnow(),
-                latitude=latitude,
-                longitude=longitude,
-                qr_code=qr_code
-            )
-            db.session.add(attendance_record)
-            db.session.commit()
-            
-            attendance_data = attendance_record.to_dict()
-        except Exception as e:
-            print(f"데이터베이스 저장 오류: {e}")
-            db.session.rollback()
-            # fallback: 임시 데이터
-            attendance_data = {
-                "user_id": request.user_id,
-                "type": clock_type,
-                "timestamp": datetime.utcnow().isoformat(),
-                "latitude": latitude,
-                "longitude": longitude,
-                "qr_code": qr_code
-            }
-    else:
-        # 모델이 없는 경우 임시 데이터
-        attendance_data = {
-            "user_id": request.user_id,
-            "type": clock_type,
-            "timestamp": datetime.utcnow().isoformat(),
-            "latitude": latitude,
-            "longitude": longitude,
-            "qr_code": qr_code
-        }
-    
-    # 이벤트 헬퍼를 사용한 실시간 브로드캐스트
-    try:
-        emit_attendance_update(attendance_data)
-    except Exception as e:
-        print(f"이벤트 송출 실패: {e}")
-        # 이벤트 실패는 기록 실패가 아니므로 무시
-    
-    return jsonify({
-        "ok": True,
-        "attendance_id": attendance_data.get("id", f"att_{request.user_id}_{int(datetime.utcnow().timestamp())}"),
-        **attendance_data
-    })
-
-@mobile_bp.route("/inventory/check", methods=["POST"])
-@auth_required
-@require_idempotency_key()
-def inventory_check():
-    """재고 조사"""
-    data = request.get_json() or {}
-    barcode = data.get("barcode")
-    quantity = data.get("qty", 0)
-    photo_url = data.get("photo_url")
-    
-    if not barcode:
-        return jsonify({"error": "바코드가 필요합니다"}), 400
-    
-    # 실제 데이터베이스에 저장
-    if MobileInventoryLog:
-        try:
-            from extensions import db
-            inventory_record = MobileInventoryLog(
-                user_id=request.user_id,
-                barcode=barcode,
-                quantity=quantity,
-                photo_url=photo_url
-            )
-            db.session.add(inventory_record)
-            db.session.commit()
-            
-            inventory_data = inventory_record.to_dict()
-        except Exception as e:
-            print(f"데이터베이스 저장 오류: {e}")
-            db.session.rollback()
-            # fallback: 임시 데이터
-            inventory_data = {
-                "id": f"inv_{request.user_id}_{int(datetime.utcnow().timestamp())}",
-                "user_id": request.user_id,
-                "barcode": barcode,
-                "qty": quantity,
-                "photo_url": photo_url,
-                "timestamp": datetime.utcnow().isoformat()
-            }
-    else:
-        # 모델이 없는 경우 임시 데이터
-        inventory_data = {
-            "id": f"inv_{request.user_id}_{int(datetime.utcnow().timestamp())}",
-            "user_id": request.user_id,
-            "barcode": barcode,
-            "qty": quantity,
-            "photo_url": photo_url,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    
-    # 이벤트 헬퍼를 사용한 실시간 브로드캐스트
-    try:
-        emit_inventory_update(inventory_data)
-    except Exception as e:
-        print(f"이벤트 송출 실패: {e}")
-        # 이벤트 실패는 기록 실패가 아니므로 무시
-    
-    return jsonify({
-        "ok": True,
-        "inventory_id": inventory_data.get("id", f"inv_{request.user_id}_{int(datetime.utcnow().timestamp())}"),
-        **inventory_data
-    })
-
-@mobile_bp.route("/inventory/history", methods=["GET"])
-@auth_required
-def inventory_history():
-    """재고 조사 히스토리 조회"""
-    limit = request.args.get("limit", 50, type=int)
-    
-    if MobileInventoryLog:
-        try:
-            from extensions import db
-            # 실제 데이터베이스에서 조회
-            history_records = MobileInventoryLog.query.filter_by(
-                user_id=request.user_id
-            ).order_by(
-                MobileInventoryLog.created_at.desc()
-            ).limit(limit).all()
-            
-            history_data = [record.to_dict() for record in history_records]
-        except Exception as e:
-            print(f"데이터베이스 조회 오류: {e}")
-            # fallback: 임시 데이터
-            history_data = [
-                {
-                    "id": f"inv_{i}",
-                    "barcode": f"123456789{i:03d}",
-                    "quantity": i * 10,
-                    "created_at": "2024-08-20T15:30:00Z",
-                    "photo_url": None
-                }
-                for i in range(1, min(limit + 1, 11))
-            ]
-    else:
-        # 모델이 없는 경우 임시 데이터
-        history_data = [
-            {
-                "id": f"inv_{i}",
-                "barcode": f"123456789{i:03d}",
-                "quantity": i * 10,
-                "created_at": "2024-08-20T15:30:00Z",
-                "photo_url": None
-            }
-            for i in range(1, min(limit + 1, 11))
-        ]
-    
-    return jsonify({"history": history_data, "total": len(history_data)})
-
-# 웹 프론트엔드용 데이터 조회 API들
-@mobile_bp.route("/dashboard/stats", methods=["GET"])
-@auth_required
-def dashboard_stats():
-    """대시보드 통계 데이터"""
-    try:
-        from extensions import db
-        from datetime import datetime, timedelta
-        
-        today = datetime.now().date()
-        user_id = request.user_id
-        
-        # 오늘 출근 기록 수
-        today_attendance = 0
-        if MobileAttendance:
-            today_attendance = MobileAttendance.query.filter(
-                MobileAttendance.user_id == user_id,
-                db.func.date(MobileAttendance.timestamp) == today
-            ).count()
-        
-        # 오늘 재고 조사 수
-        today_inventory = 0
-        if MobileInventoryLog:
-            today_inventory = MobileInventoryLog.query.filter(
-                MobileInventoryLog.user_id == user_id,
-                db.func.date(MobileInventoryLog.created_at) == today
-            ).count()
-        
-        # 대기중인 발주 수
-        pending_orders = 0
-        if MobilePurchaseOrder:
-            pending_orders = MobilePurchaseOrder.query.filter(
-                MobilePurchaseOrder.user_id == user_id,
-                MobilePurchaseOrder.status == 'requested'
-            ).count()
-        
-        return jsonify({
-            "today_attendance": today_attendance,
-            "today_inventory": today_inventory,
-            "pending_orders": pending_orders,
-            "date": today.isoformat()
-        })
-        
-    except Exception as e:
-        print(f"대시보드 통계 오류: {e}")
-        return jsonify({
-            "today_attendance": 0,
-            "today_inventory": 0,
-            "pending_orders": 0,
-            "date": datetime.now().date().isoformat()
-        })
-
-@mobile_bp.route("/attendance/list", methods=["GET"])
-@auth_required
-def attendance_list():
-    """출퇴근 기록 목록 (웹 프론트엔드용)"""
-    limit = request.args.get("limit", 50, type=int)
-    page = request.args.get("page", 1, type=int)
-    
-    if MobileAttendance:
-        try:
-            from extensions import db
-            offset = (page - 1) * limit
-            
-            records = MobileAttendance.query.filter_by(
-                user_id=request.user_id
-            ).order_by(
-                MobileAttendance.timestamp.desc()
-            ).offset(offset).limit(limit).all()
-            
-            total = MobileAttendance.query.filter_by(
-                user_id=request.user_id
-            ).count()
-            
-            data = [record.to_dict() for record in records]
-            
-            return jsonify({
-                "data": data,
-                "total": total,
-                "page": page,
-                "limit": limit,
-                "pages": (total + limit - 1) // limit
-            })
-            
-        except Exception as e:
-            print(f"출퇴근 목록 조회 오류: {e}")
-    
-    # fallback: 빈 데이터
-    return jsonify({
-        "data": [],
-        "total": 0,
-        "page": page,
-        "limit": limit,
-        "pages": 0
-    })
-
-@mobile_bp.route("/purchase_orders", methods=["GET"])
-@auth_required
-def get_purchase_orders():
-    """발주 목록 조회"""
-    try:
-        if MobilePurchaseOrder:
-            from extensions import db
-            orders = MobilePurchaseOrder.query.filter_by(
-                user_id=request.user_id
-            ).order_by(
-                MobilePurchaseOrder.created_at.desc()
-            ).limit(50).all()
-            
-            orders_data = [order.to_dict() for order in orders]
-        else:
-            # fallback: 임시 데이터
-            orders_data = [
-                {
-                    "id": f"po_{request.user_id}_1",
-                    "status": "requested",
-                    "items": [
-                        {"barcode": "123456789", "name": "테스트 상품", "quantity": 10}
-                    ],
-                    "created_at": datetime.utcnow().isoformat()
-                }
-            ]
-        
-        return jsonify({"data": orders_data, "total": len(orders_data)})
-        
-    except Exception as e:
-        print(f"발주 목록 조회 오류: {e}")
-        return jsonify({"data": [], "total": 0})
-
-# 스케줄 관리 API
-@mobile_bp.route("/schedule", methods=["GET"])
-@auth_required
-def get_schedule():
-    """스케줄 조회"""
-    try:
-        from datetime import datetime, timedelta
-        from extensions import db
-        
-        # 현재 날짜부터 30일간의 스케줄 조회
-        start_date = datetime.utcnow().date()
-        end_date = start_date + timedelta(days=30)
-        
-        # 실제 스케줄 데이터가 있으면 사용, 없으면 임시 데이터
-        schedules = []
-        
-        # 임시 스케줄 데이터 생성 (테스트용)
-        for i in range(7):
-            date = start_date + timedelta(days=i)
-            schedules.append({
-                "id": f"schedule_{request.user_id}_{i}",
-                "date": date.isoformat(),
-                "type": "work" if i < 5 else "off",  # 평일 근무, 주말 휴무
-                "start_time": "09:00" if i < 5 else None,
-                "end_time": "18:00" if i < 5 else None,
-                "status": "confirmed"
-            })
-        
-        return jsonify({"data": schedules, "total": len(schedules)})
-        
-    except Exception as e:
-        print(f"스케줄 조회 오류: {e}")
-        return jsonify({"data": [], "total": 0})
-
-@mobile_bp.route("/schedule/leave", methods=["POST"])
-@auth_required
-@require_idempotency_key()
-def request_leave():
-    """휴가 신청"""
-    try:
-        data = request.get_json() or {}
-        leave_type = data.get("type")  # annual, sick, personal
-        start_date = data.get("start_date")
-        end_date = data.get("end_date")
-        reason = data.get("reason", "")
-        
-        if not all([leave_type, start_date, end_date]):
-            return jsonify({"error": "필수 정보가 누락되었습니다"}), 400
-        
-        # 휴가 신청 데이터 생성
-        leave_request = {
-            "id": f"leave_{request.user_id}_{int(datetime.utcnow().timestamp())}",
-            "user_id": request.user_id,
-            "type": leave_type,
-            "start_date": start_date,
-            "end_date": end_date,
-            "reason": reason,
-            "status": "pending",
-            "created_at": datetime.utcnow().isoformat()
-        }
-        
-        # 이벤트 브로드캐스트
-        emit_event("schedule:leave_request", leave_request, room=f"user:{request.user_id}")
-        
-        return jsonify({"ok": True, **leave_request})
-        
-    except Exception as e:
-        print(f"휴가 신청 오류: {e}")
-        return jsonify({"error": "휴가 신청에 실패했습니다"}), 500
-
-@mobile_bp.route("/schedule/swap", methods=["POST"])
-@auth_required
-@require_idempotency_key()
-def request_schedule_swap():
-    """근무 교대 신청"""
-    try:
-        data = request.get_json() or {}
-        target_date = data.get("target_date")
-        swap_with_user = data.get("swap_with_user")
-        reason = data.get("reason", "")
-        
-        if not all([target_date, swap_with_user]):
-            return jsonify({"error": "필수 정보가 누락되었습니다"}), 400
-        
-        # 교대 신청 데이터 생성
-        swap_request = {
-            "id": f"swap_{request.user_id}_{int(datetime.utcnow().timestamp())}",
-            "user_id": request.user_id,
-            "target_date": target_date,
-            "swap_with_user": swap_with_user,
-            "reason": reason,
-            "status": "pending",
-            "created_at": datetime.utcnow().isoformat()
-        }
-        
-        # 이벤트 브로드캐스트
-        emit_event("schedule:swap_request", swap_request, room=f"user:{request.user_id}")
-        
-        return jsonify({"ok": True, **swap_request})
-        
-    except Exception as e:
-        print(f"교대 신청 오류: {e}")
-        return jsonify({"error": "교대 신청에 실패했습니다"}), 500
-
-@mobile_bp.route("/purchase_orders", methods=["POST"])
-@auth_required
-@require_idempotency_key()
-def create_purchase_order():
-    """발주 생성"""
-    data = request.get_json() or {}
-    items = data.get("items", [])
-    
-    if not items:
-        return jsonify({"error": "발주 항목이 필요합니다"}), 400
-    
-    # 실제 데이터베이스에 저장
-    if MobilePurchaseOrder:
-        try:
-            from extensions import db
-            purchase_order = MobilePurchaseOrder(
-                user_id=request.user_id,
-                status="requested",
-                items=items
-            )
-            db.session.add(purchase_order)
-            db.session.commit()
-            
-            purchase_data = purchase_order.to_dict()
-        except Exception as e:
-            print(f"데이터베이스 저장 오류: {e}")
-            db.session.rollback()
-            # fallback: 임시 데이터
-            purchase_data = {
-                "id": f"po_{request.user_id}_{int(datetime.utcnow().timestamp())}",
-                "user_id": request.user_id,
-                "status": "requested",
-                "items": items,
-                "created_at": datetime.utcnow().isoformat()
-            }
-    else:
-        # 모델이 없는 경우 임시 데이터
-        purchase_data = {
-            "id": f"po_{request.user_id}_{int(datetime.utcnow().timestamp())}",
-            "user_id": request.user_id,
-            "status": "requested",
-            "items": items,
-            "created_at": datetime.utcnow().isoformat()
-        }
-    
-    # 이벤트 헬퍼를 사용한 실시간 브로드캐스트
-    try:
-        emit_purchase_order_update(purchase_data)
-    except Exception as e:
-        print(f"이벤트 송출 실패: {e}")
-        # 이벤트 실패는 기록 실패가 아니므로 무시
-    
-    return jsonify({
-        "ok": True,
-        "purchase_order_id": purchase_data["id"],
-        **purchase_data
-    })
-
-
-
-@mobile_bp.route("/orders/update_status", methods=["POST"])
-@auth_required
-def update_order_status():
-    """주문 상태 업데이트"""
-    data = request.get_json() or {}
-    order_id = data.get("order_id")
-    status = data.get("status")
-    
-    if not order_id or not status:
-        return jsonify({"error": "주문 ID와 상태가 필요합니다"}), 400
-    
-    # 실제로는 Order 테이블에서 업데이트
-    # order = Order.query.get(order_id)
-    # order.status = status
-    # db.session.commit()
-    
-    order_data = {
-        "id": order_id,
-        "status": status,
-        "user_id": request.user_id,
-        "timestamp": datetime.utcnow().isoformat()
+def token_for(uid, industry_id=None, brand_id=None, branch_id=None):
+    """사용자 ID와 테넌트 정보로 JWT 토큰 생성"""
+    payload = {
+        "sub": uid, 
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=EXP_MIN)
     }
     
-    # Socket.IO로 실시간 브로드캐스트
+    # 테넌트 스코프 정보 추가
+    if industry_id:
+        payload["industry_id"] = industry_id
+    if brand_id:
+        payload["brand_id"] = brand_id
+    if branch_id:
+        payload["branch_id"] = branch_id
+    
+    return jwt.encode(payload, JWT_SECRET, algorithm=ALG)
+
+def auth_required(f):
+    """JWT 인증 데코레이터 - 테넌트 스코프 검증 포함"""
+    @wraps(f)
+    def wrap(*a, **kw):
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return jsonify({"error": "no token"}), 401
+        
+        try:
+            payload = jwt.decode(auth.split()[1], JWT_SECRET, algorithms=[ALG])
+        except Exception:
+            return jsonify({"error": "bad token"}), 401
+        
+        request.user_id = int(payload["sub"])
+        
+        # 테넌트 스코프 정보 저장
+        request.industry_id = payload.get("industry_id")
+        request.brand_id = payload.get("brand_id")
+        request.branch_id = payload.get("branch_id")
+        
+        return f(*a, **kw)
+    return wrap
+
+def validate_tenant_scope(required_scope=None):
+    """테넌트 스코프 검증 데코레이터"""
+    def decorator(f):
+        @wraps(f)
+        def wrap(*a, **kw):
+            if required_scope == "branch" and not request.branch_id:
+                return jsonify({"error": "branch_id required"}), 400
+            if required_scope == "brand" and not request.brand_id:
+                return jsonify({"error": "brand_id required"}), 400
+            if required_scope == "industry" and not request.industry_id:
+                return jsonify({"error": "industry_id required"}), 400
+            return f(*a, **kw)
+        return wrap
+    return decorator
+
+def log_event(event_type, resource_type=None, resource_id=None, old_values=None, new_values=None, changes=None):
+    """이벤트 로깅 헬퍼 함수"""
     try:
-        from extensions import socketio
-        socketio.emit("order:update", order_data, room=None)  # broadcast=True 대신 room=None 사용
-    except ImportError:
-        pass
+        from models.event_log import EventLog
+        
+        # 디바이스 ID 추출 (헤더에서)
+        device_id = request.headers.get('X-Device-ID')
+        
+        EventLog.log_event(
+            event_type=event_type,
+            user_id=request.user_id,
+            user_role=getattr(request, 'user_role', None),
+            industry_id=request.industry_id,
+            brand_id=request.brand_id,
+            branch_id=request.branch_id,
+            resource_type=resource_type,
+            resource_id=str(resource_id) if resource_id else None,
+            old_values=old_values,
+            new_values=new_values,
+            changes=changes,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            device_id=device_id
+        )
+    except Exception as e:
+        print(f"이벤트 로깅 실패: {e}")
+
+@mobile_bp.post("/login")
+def login():
+    """모바일 로그인"""
+    d = request.get_json() or {}
+    u = User.query.filter_by(username=d.get("username")).first()
+    
+    if not u or not check_password_hash(u.password_hash, d.get("password", "")):
+        return jsonify({"error": "invalid credentials"}), 401
+    
+    # 사용자의 테넌트 정보 조회 (실제 구현에서는 User 모델에 이 정보가 있어야 함)
+    industry_id = getattr(u, 'industry_id', None)
+    brand_id = getattr(u, 'brand_id', None)
+    branch_id = getattr(u, 'branch_id', None)
+    
+    # 로그인 이벤트 기록
+    log_event("user:login", "user", u.id, new_values={"username": u.username})
     
     return jsonify({
-        "ok": True,
-        "order_id": order_id,
-        "status": status
+        "token": token_for(u.id, industry_id, brand_id, branch_id),
+        "user": {
+            "id": u.id,
+            "username": u.username,
+            "role": u.role,
+            "industry_id": industry_id,
+            "brand_id": brand_id,
+            "branch_id": branch_id
+        }
     })
 
-@mobile_bp.route("/test", methods=["GET"])
-def test():
-    """API 연결 테스트"""
-    return jsonify({
-        "ok": True,
-        "message": "모바일 API가 정상적으로 작동하고 있습니다!",
-        "timestamp": datetime.utcnow().isoformat()
-    })
+@mobile_bp.post("/push/register")
+@auth_required
+def push_register():
+    """Expo 푸시 토큰 등록"""
+    token = (request.get_json() or {}).get("expo_push_token")
+    if not token:
+        return jsonify({"error": "no token"}), 400
+    
+    u = User.query.get(request.user_id)
+    if hasattr(u, 'expo_push_token'):
+        old_token = u.expo_push_token
+        u.expo_push_token = token
+        db.session.commit()
+        
+        # 푸시 토큰 변경 이벤트 기록
+        log_event("user:push_token_update", "user", u.id, 
+                 old_values={"expo_push_token": old_token}, 
+                 new_values={"expo_push_token": token})
+    
+    return jsonify({"ok": True})
 
-@mobile_bp.route("/health", methods=["GET"])
-def health_check():
-    """헬스 체크"""
-    return jsonify({
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0"
-    })
+@mobile_bp.post("/attendance/clock")
+@auth_required
+@validate_tenant_scope("branch")
+@require_idempotency_key()
+def attendance_clock():
+    """출퇴근 체크 - 멱등성 키 적용, 서버 시간 기준"""
+    d = request.get_json() or {}
+    
+    # 서버 시간 기준 (단말 시간 불신)
+    server_ts = datetime.now(timezone.utc)
+    
+    try:
+        from models import MobileAttendance
+        
+        # 기존 출퇴근 기록 확인 (같은 날 같은 타입)
+        existing_attendance = MobileAttendance.query.filter_by(
+            user_id=request.user_id,
+            type=d.get("type"),
+            branch_id=request.branch_id,
+            date=server_ts.date()
+        ).first()
+        
+        old_values = None
+        if existing_attendance:
+            old_values = {
+                "id": existing_attendance.id,
+                "timestamp": existing_attendance.timestamp.isoformat() if existing_attendance.timestamp else None,
+                "latitude": existing_attendance.latitude,
+                "longitude": existing_attendance.longitude
+            }
+        
+        attendance = MobileAttendance(
+            user_id=request.user_id,
+            type=d.get("type"),  # 'in' 또는 'out'
+            timestamp=server_ts,
+            latitude=d.get("lat"),
+            longitude=d.get("lng"),
+            qr_code=d.get("qr"),
+            branch_id=request.branch_id,  # 테넌트 스코프
+            brand_id=request.brand_id,
+            industry_id=request.industry_id
+        )
+        db.session.add(attendance)
+        db.session.commit()
+        
+        # 성공적으로 저장된 데이터로 payload 구성
+        payload = {
+            "id": attendance.id,
+            "user_id": attendance.user_id,
+            "type": attendance.type,
+            "server_timestamp": server_ts.isoformat(),
+            "lat": attendance.latitude,
+            "lng": attendance.longitude,
+            "qr": attendance.qr_code,
+            "branch_id": attendance.branch_id,
+            "brand_id": attendance.brand_id,
+            "industry_id": attendance.industry_id
+        }
+        
+        # 이벤트 방송 (지점별 룸)
+        emit_event(
+            "attendance:update", 
+            payload, 
+            room=f"branch:{attendance.branch_id}"
+        )
+        
+        # 출퇴근 이벤트 로깅
+        new_values = {
+            "id": attendance.id,
+            "type": attendance.type,
+            "timestamp": server_ts.isoformat(),
+            "latitude": attendance.latitude,
+            "longitude": attendance.longitude,
+            "qr_code": attendance.qr_code
+        }
+        
+        log_event("attendance:update", "attendance", attendance.id, 
+                 old_values=old_values, new_values=new_values)
+        
+        return jsonify({"ok": True, **payload})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"출퇴근 기록 저장 실패: {e}")
+        return jsonify({"error": "attendance save failed"}), 500
+
+@mobile_bp.post("/inventory/check")
+@auth_required
+@validate_tenant_scope("branch")
+@require_idempotency_key()
+def inventory_check():
+    """재고 조사 - 멱등성 키 적용"""
+    d = request.get_json() or {}
+    
+    # 서버 시간 기준
+    server_ts = datetime.now(timezone.utc)
+    
+    try:
+        from models import InventoryLog
+        
+        # 기존 재고 기록 확인
+        existing_log = InventoryLog.query.filter_by(
+            barcode=d.get("barcode"),
+            branch_id=request.branch_id,
+            created_at=server_ts.date()
+        ).first()
+        
+        old_values = None
+        if existing_log:
+            old_values = {
+                "id": existing_log.id,
+                "qty": existing_log.qty,
+                "photo_url": existing_log.photo_url
+            }
+        
+        log = InventoryLog(
+            user_id=request.user_id,
+            barcode=d.get("barcode"),
+            qty=d.get("qty", 0),
+            photo_url=d.get("photo_url"),
+            branch_id=request.branch_id,
+            brand_id=request.brand_id,
+            industry_id=request.industry_id,
+            created_at=server_ts
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        log_data = {
+            "id": log.id,
+            "barcode": log.barcode,
+            "qty": log.qty,
+            "user_id": log.user_id,
+            "server_timestamp": server_ts.isoformat(),
+            "branch_id": log.branch_id,
+            "brand_id": log.brand_id,
+            "industry_id": log.industry_id
+        }
+        
+        # 이벤트 방송 (지점별 룸)
+        emit_event(
+            "inventory:update", 
+            log_data, 
+            room=f"branch:{log.branch_id}"
+        )
+        
+        # 재고 이벤트 로깅
+        new_values = {
+            "id": log.id,
+            "barcode": log.barcode,
+            "qty": log.qty,
+            "photo_url": log.photo_url
+        }
+        
+        log_event("inventory:update", "inventory", log.id, 
+                 old_values=old_values, new_values=new_values)
+        
+        return jsonify({"ok": True, **log_data})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"재고 조사 기록 저장 실패: {e}")
+        return jsonify({"error": "inventory save failed"}), 500
+
+@mobile_bp.post("/purchase_orders")
+@auth_required
+@validate_tenant_scope("branch")
+@require_idempotency_key()
+def create_po():
+    """발주 생성 - 멱등성 키 적용"""
+    d = request.get_json() or {}
+    
+    # 서버 시간 기준
+    server_ts = datetime.now(timezone.utc)
+    
+    try:
+        from models import MobilePurchaseOrder
+        
+        po = MobilePurchaseOrder(
+            user_id=request.user_id,
+            status="requested",
+            items=d.get("items", []),
+            branch_id=request.branch_id,
+            brand_id=request.brand_id,
+            industry_id=request.industry_id,
+            created_at=server_ts
+        )
+        db.session.add(po)
+        db.session.commit()
+        
+        po_data = {
+            "id": po.id,
+            "status": po.status,
+            "user_id": po.user_id,
+            "server_timestamp": server_ts.isoformat(),
+            "branch_id": po.branch_id,
+            "brand_id": po.brand_id,
+            "industry_id": po.industry_id
+        }
+        
+        # 이벤트 방송 (지점별 룸)
+        emit_event(
+            "purchase_order:update", 
+            po_data, 
+            room=f"branch:{po.branch_id}"
+        )
+        
+        # 발주 이벤트 로깅
+        new_values = {
+            "id": po.id,
+            "status": po.status,
+            "items": po.items
+        }
+        
+        log_event("purchase_order:create", "purchase_order", po.id, 
+                 new_values=new_values)
+        
+        return jsonify({"ok": True, **po_data})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"발주 생성 실패: {e}")
+        return jsonify({"error": "purchase order creation failed"}), 500
+
+@mobile_bp.get("/schedule")
+@auth_required
+def my_schedule():
+    """내 스케줄 조회 - 읽기 전용, 캐시 최적화 대상"""
+    items = Schedule.query.filter_by(user_id=request.user_id).order_by(Schedule.date.asc()).limit(50).all()
+    
+    return jsonify([{
+        "id": s.id,
+        "date": s.date.isoformat() if hasattr(s, 'date') else "",
+        "title": getattr(s, "title", "")
+    } for s in items])
+
+@mobile_bp.post("/orders/update_status")
+@auth_required
+@validate_tenant_scope("branch")
+@require_idempotency_key()
+def order_status():
+    """주문 상태 변경 - 멱등성 키 적용"""
+    d = request.get_json() or {}
+    
+    try:
+        order = Order.query.get(int(d["order_id"]))
+        if not order:
+            return jsonify({"error": "order not found"}), 404
+        
+        # 테넌트 스코프 검증
+        if hasattr(order, 'branch_id') and order.branch_id != request.branch_id:
+            return jsonify({"error": "unauthorized"}), 403
+        
+        old_status = order.status
+        order.status = d["status"]
+        db.session.commit()
+        
+        # 이벤트 방송
+        emit_event("order:update", {
+            "id": order.id,
+            "status": order.status,
+            "old_status": old_status,
+            "branch_id": request.branch_id,
+            "brand_id": request.brand_id,
+            "industry_id": request.industry_id
+        }, room=f"branch:{request.branch_id}")
+        
+        # 주문 상태 변경 이벤트 로깅
+        log_event("order:status_update", "order", order.id,
+                 old_values={"status": old_status}, 
+                 new_values={"status": order.status})
+        
+        return jsonify({"ok": True, "id": order.id, "status": order.status})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"주문 상태 변경 실패: {e}")
+        return jsonify({"error": "order status update failed"}), 500
+
+@mobile_bp.get("/dashboard")
+@auth_required
+def dashboard():
+    """모바일 대시보드 데이터 - 읽기 전용"""
+    # 사용자 정보
+    user = User.query.get(request.user_id)
+    
+    # 임시 대시보드 데이터
+    dashboard_data = {
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "role": user.role,
+            "industry_id": request.industry_id,
+            "brand_id": request.brand_id,
+            "branch_id": request.branch_id
+        },
+        "today_schedule": "09:00-18:00",
+        "attendance_status": "출근",
+        "pending_orders": 5,
+        "inventory_alerts": 2,
+        "server_time": datetime.now(timezone.utc).isoformat()
+    }
+    
+    return jsonify(dashboard_data)

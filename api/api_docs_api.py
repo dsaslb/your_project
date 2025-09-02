@@ -1,23 +1,24 @@
+
 from flask import Blueprint, request, jsonify, send_file, render_template_string
-from api_docs.docs_generator import ApiDocsGenerator, ApiDocsConfig
+from api.documentation_generator import APIDocumentationGenerator
 import os
 import json
 from datetime import datetime
 
 # API 문서 생성기 초기화
-docs_config = ApiDocsConfig(
-    title="비즈니스 관리 시스템 API",
-    version="1.0.0",
-    description="비즈니스 관리 시스템의 REST API 문서",
-    contact_name="API Support",
-    contact_email="support@example.com",
-    server_url="http://localhost:5000",
-    output_dir="data/api_docs",
-    enable_swagger_ui=True,
-    enable_redoc=True,
-    enable_postman=True,
-    enable_insomnia=True
-)
+docs_config = {
+    "title": "비즈니스 관리 시스템 API",
+    "version": "1.0.0",
+    "description": "비즈니스 관리 시스템의 REST API 문서",
+    "contact_name": "API Support",
+    "contact_email": "support@example.com",
+    "server_url": "http://localhost:5000",
+    "output_dir": "data/api_docs",
+    "enable_swagger_ui": True,
+    "enable_redoc": True,
+    "enable_postman": True,
+    "enable_insomnia": True
+}
 
 # Blueprint 생성
 api_docs_bp = Blueprint('api_docs', __name__, url_prefix='/api/docs')
@@ -28,7 +29,7 @@ docs_generator = None
 def init_docs_generator(app):
     """Flask 앱으로 문서 생성기 초기화"""
     global docs_generator
-    docs_generator = ApiDocsGenerator(app, docs_config)
+    docs_generator = APIDocumentationGenerator(app)
 
 @api_docs_bp.route('/health', methods=['GET'])
 def health_check():
@@ -38,9 +39,9 @@ def health_check():
             'status': 'success',
             'message': 'API 문서 시스템이 정상적으로 작동합니다',
             'data': {
-                'title': docs_config.title,
-                'version': docs_config.version,
-                'output_dir': docs_config.output_dir
+                'title': docs_config["title"],
+                'version': docs_config["version"],
+                'output_dir': docs_config["output_dir"]
             }
         }), 200
     except Exception as e:
@@ -67,7 +68,7 @@ def generate_docs():
                 'message': 'API 문서가 성공적으로 생성되었습니다',
                 'data': {
                     'generated_at': datetime.now().isoformat(),
-                    'output_dir': docs_config.output_dir
+                    'output_dir': docs_config["output_dir"]
                 }
             }), 200
         else:
@@ -86,7 +87,7 @@ def generate_docs():
 def list_docs_files():
     """생성된 문서 파일 목록 조회"""
     try:
-        if not os.path.exists(docs_config.output_dir):
+        if not os.path.exists(docs_config["output_dir"]):
             return jsonify({
                 'status': 'success',
                 'data': {
@@ -96,8 +97,8 @@ def list_docs_files():
             }), 200
         
         files = []
-        for filename in os.listdir(docs_config.output_dir):
-            file_path = os.path.join(docs_config.output_dir, filename)
+        for filename in os.listdir(docs_config["output_dir"]):
+            file_path = os.path.join(docs_config["output_dir"], filename)
             if os.path.isfile(file_path):
                 stat = os.stat(file_path)
                 files.append({
@@ -125,7 +126,7 @@ def list_docs_files():
 def download_docs_file(filename):
     """문서 파일 다운로드"""
     try:
-        file_path = os.path.join(docs_config.output_dir, filename)
+        file_path = os.path.join(docs_config["output_dir"], filename)
         
         if not os.path.exists(file_path):
             return jsonify({
@@ -145,7 +146,7 @@ def download_docs_file(filename):
 def get_openapi_spec():
     """OpenAPI 스펙 조회"""
     try:
-        json_path = os.path.join(docs_config.output_dir, "openapi.json")
+        json_path = os.path.join(docs_config["output_dir"], "openapi.json")
         
         if not os.path.exists(json_path):
             return jsonify({
@@ -270,9 +271,9 @@ def get_docs_stats():
         # 파일 통계
         file_count = 0
         total_size = 0
-        if os.path.exists(docs_config.output_dir):
-            for filename in os.listdir(docs_config.output_dir):
-                file_path = os.path.join(docs_config.output_dir, filename)
+        if os.path.exists(docs_config["output_dir"]):
+            for filename in os.listdir(docs_config["output_dir"]):
+                file_path = os.path.join(docs_config["output_dir"], filename)
                 if os.path.isfile(file_path):
                     file_count += 1
                     total_size += os.path.getsize(file_path)
@@ -285,9 +286,9 @@ def get_docs_stats():
                 'file_count': file_count,
                 'total_size': total_size,
                 'config': {
-                    'title': docs_config.title,
-                    'version': docs_config.version,
-                    'output_dir': docs_config.output_dir
+                    'title': docs_config["title"],
+                    'version': docs_config["version"],
+                    'output_dir': docs_config["output_dir"]
                 }
             }
         }), 200
@@ -305,17 +306,17 @@ def get_docs_config():
         return jsonify({
             'status': 'success',
             'data': {
-                'title': docs_config.title,
-                'version': docs_config.version,
-                'description': docs_config.description,
-                'contact_name': docs_config.contact_name,
-                'contact_email': docs_config.contact_email,
-                'server_url': docs_config.server_url,
-                'output_dir': docs_config.output_dir,
-                'enable_swagger_ui': docs_config.enable_swagger_ui,
-                'enable_redoc': docs_config.enable_redoc,
-                'enable_postman': docs_config.enable_postman,
-                'enable_insomnia': docs_config.enable_insomnia
+                'title': docs_config["title"],
+                'version': docs_config["version"],
+                'description': docs_config["description"],
+                'contact_name': docs_config["contact_name"],
+                'contact_email': docs_config["contact_email"],
+                'server_url': docs_config["server_url"],
+                'output_dir': docs_config["output_dir"],
+                'enable_swagger_ui': docs_config["enable_swagger_ui"],
+                'enable_redoc': docs_config["enable_redoc"],
+                'enable_postman': docs_config["enable_postman"],
+                'enable_insomnia': docs_config["enable_insomnia"]
             }
         }), 200
         
@@ -333,25 +334,25 @@ def update_docs_config():
         
         # 설정 업데이트
         if 'title' in data:
-            docs_config.title = data['title']
+            docs_config["title"] = data['title']
         if 'version' in data:
-            docs_config.version = data['version']
+            docs_config["version"] = data['version']
         if 'description' in data:
-            docs_config.description = data['description']
+            docs_config["description"] = data['description']
         if 'contact_name' in data:
-            docs_config.contact_name = data['contact_name']
+            docs_config["contact_name"] = data['contact_name']
         if 'contact_email' in data:
-            docs_config.contact_email = data['contact_email']
+            docs_config["contact_email"] = data['contact_email']
         if 'server_url' in data:
-            docs_config.server_url = data['server_url']
+            docs_config["server_url"] = data['server_url']
         if 'enable_swagger_ui' in data:
-            docs_config.enable_swagger_ui = data['enable_swagger_ui']
+            docs_config["enable_swagger_ui"] = data['enable_swagger_ui']
         if 'enable_redoc' in data:
-            docs_config.enable_redoc = data['enable_redoc']
+            docs_config["enable_redoc"] = data['enable_redoc']
         if 'enable_postman' in data:
-            docs_config.enable_postman = data['enable_postman']
+            docs_config["enable_postman"] = data['enable_postman']
         if 'enable_insomnia' in data:
-            docs_config.enable_insomnia = data['enable_insomnia']
+            docs_config["enable_insomnia"] = data['enable_insomnia']
         
         return jsonify({
             'status': 'success',

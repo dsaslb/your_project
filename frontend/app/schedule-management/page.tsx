@@ -81,7 +81,12 @@ class LocalStorageManager {
 // AI 분석 클래스
 class AIAnalyzer {
   static analyzeScheduleEfficiency(schedules: any[], attendance: any[], sales: any[]): any {
-    const analysis = {
+    const analysis: {
+      issues: string[];
+      improvements: string[];
+      efficiency_score: number;
+      recommendations: string[];
+    } = {
       issues: [],
       improvements: [],
       efficiency_score: 0,

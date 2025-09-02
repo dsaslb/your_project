@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from 'react';
 // 실시간 KPI 위젯 (매출, 주문, 고객, 재고 등)
 // 글로벌 다국어(i18n) 및 접근성(aria-label) 지원 구조 포함

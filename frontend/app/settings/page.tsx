@@ -68,7 +68,7 @@ export default function Settings() {
   // 사용자 목록 조회
   const fetchUsers = async () => {
     try {
-      const response = await apiClient.get('/api/users');
+      const response = await apiClient.get('/api/users') as any;
       if (response.success && response.data) {
         setUsers(response.data);
       }
@@ -117,7 +117,7 @@ export default function Settings() {
       setLoading(true);
       
       if (editingUser) {
-        const response = await apiClient.put(`/api/users/${editingUser.id}`, userFormData);
+        const response = await apiClient.put(`/api/users/${editingUser.id}`, userFormData) as any;
         if (response.success) {
           toast.success('사용자가 성공적으로 수정되었습니다.');
           setIsUserDialogOpen(false);
@@ -126,7 +126,7 @@ export default function Settings() {
           fetchUsers();
         }
       } else {
-        const response = await apiClient.post('/api/users', userFormData);
+        const response = await apiClient.post('/api/users', userFormData) as any;
         if (response.success) {
           toast.success('사용자가 성공적으로 생성되었습니다.');
           setIsUserDialogOpen(false);
@@ -149,7 +149,7 @@ export default function Settings() {
 
     try {
       setLoading(true);
-      const response = await apiClient.delete(`/api/users/${user.id}`);
+      const response = await apiClient.delete(`/api/users/${user.id}`) as any;
       if (response.success) {
         toast.success('사용자가 성공적으로 삭제되었습니다.');
         fetchUsers();
@@ -167,7 +167,7 @@ export default function Settings() {
     
     try {
       setLoading(true);
-      const response = await apiClient.put(`/api/users/${user.id}/status`, { status: newStatus });
+      const response = await apiClient.put(`/api/users/${user.id}/status`, { status: newStatus }) as any;
       if (response.success) {
         toast.success(`사용자 상태가 ${newStatus === 'active' ? '활성화' : '비활성화'}되었습니다.`);
         fetchUsers();
@@ -232,7 +232,7 @@ export default function Settings() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Settings className="h-8 w-8 text-blue-600" />
+          <Settings />
           <div>
             <h1 className="text-3xl font-bold text-gray-900">시스템 설정</h1>
             <p className="text-gray-600">사용자 관리, 시스템 설정, 보안 설정을 관리하세요</p>
@@ -397,7 +397,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-gray-500">
-                <Settings className="h-12 w-12 mx-auto mb-2" />
+                <Settings />
                 <p>시스템 설정 기능이 준비 중입니다.</p>
               </div>
             </CardContent>

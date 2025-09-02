@@ -53,7 +53,7 @@ def disable_csrf_for_mobile(app):
 # Socket.IO
 socketio = SocketIO(cors_allowed_origins="*")
 
-# Redis 클라이언트 (기본 설정)
+# Redis 클라이언트 초기화 (조건부)
 try:
     redis_client = redis.Redis(
         host='localhost', 
@@ -65,10 +65,10 @@ try:
         retry_on_timeout=True,
         health_check_interval=30
     )
-    redis_client.ping()  # 연결 테스트
-    logger.info("Redis 연결 성공")
+    # Redis 연결 테스트 제거 - 서버 시작 차단 방지
+    logger.info("Redis 클라이언트 초기화 완료")
 except Exception as e:
-    logger.warning(f"Redis 연결 실패: {e}")
+    logger.warning(f"Redis 클라이언트 초기화 실패: {e}")
     redis_client = None
 
 # 데이터베이스 성능 모니터링

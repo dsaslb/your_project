@@ -145,3 +145,6 @@ def log_security_event(user_id, event_type, details=None, ip_address=None):
 
 # 전역 구조화된 로거 인스턴스
 structured_logger = StructuredLogger()
+
+# 전역 logger 변수 (기존 코드 호환성을 위해)
+logger = structured_logger.logger

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>CYBERPUNK DASHBOARD - 백엔드 관리자</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
     <link href="/static/css/fonts.css" rel="stylesheet">
@@ -787,7 +788,8 @@
 
         // 대시보드 통계 로드
         function loadDashboardStats() {
-            fetch('/api/admin/dashboard-stats')
+            // 직접 백엔드 API 호출 (CSP 정책 허용됨)
+            fetch('http://localhost:5000/api/admin/dashboard-stats')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.stats) {
@@ -838,7 +840,8 @@
 
         // 관리자 상태 업데이트
         function updateManagerStatus() {
-            fetch('/api/admin/employees')
+            // 직접 백엔드 API 호출 (CSP 정책 허용됨)
+            fetch('http://localhost:5000/api/admin/employees')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.data) {

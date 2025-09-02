@@ -45,7 +45,10 @@ class BackendConfig:
                 'port': int(os.getenv('REDIS_PORT', '6379')),
                 'db': int(os.getenv('REDIS_DB', '0')),
                 'password': os.getenv('REDIS_PASSWORD'),
-                'decode_responses': True
+                'decode_responses': True,
+                'fallback_to_memory': True,  # Redis 실패 시 메모리 캐시로 대체
+                'connection_timeout': int(os.getenv('REDIS_CONNECTION_TIMEOUT', '5')),
+                'retry_on_timeout': True
             },
             'security': {
                 'password_min_length': int(os.getenv('PASSWORD_MIN_LENGTH', '12')),

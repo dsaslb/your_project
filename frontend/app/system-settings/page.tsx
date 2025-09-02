@@ -89,28 +89,28 @@ export default function SystemSettingsPage() {
   // 데이터 로드 함수들
   const loadStats = useCallback(async () => {
     try {
-      const response = await apiClient.get('/api/settings/stats');
+      const response = await apiClient.get('/api/settings/stats') as any;
       setStats(response.data);
     } catch (error) {
-      handleError(error, '설정 통계 로드 실패');
+      handleError(error as Error);
     }
   }, [handleError]);
 
   const loadSettings = useCallback(async () => {
     try {
-      const response = await apiClient.get('/api/settings/settings');
+      const response = await apiClient.get('/api/settings') as any;
       setSettings(response.data);
     } catch (error) {
-      handleError(error, '설정 목록 로드 실패');
+      handleError(error as Error);
     }
   }, [handleError]);
 
   const loadChanges = useCallback(async () => {
     try {
-      const response = await apiClient.get('/api/settings/changes?limit=50');
+      const response = await apiClient.get('/api/settings/changes') as any;
       setChanges(response.data);
     } catch (error) {
-      handleError(error, '변경 이력 로드 실패');
+      handleError(error as Error);
     }
   }, [handleError]);
 
@@ -125,7 +125,7 @@ export default function SystemSettingsPage() {
           loadChanges()
         ]);
       } catch (error) {
-        handleError(error, '데이터 로드 실패');
+        handleError(error);
       } finally {
         setIsLoading(false);
       }
@@ -167,7 +167,7 @@ export default function SystemSettingsPage() {
       await loadChanges();
       await loadStats();
     } catch (error) {
-      handleError(error, '설정 저장 실패');
+      handleError(error);
     }
   };
 
@@ -187,7 +187,7 @@ export default function SystemSettingsPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      handleError(error, '설정 내보내기 실패');
+      handleError(error);
     }
   };
 

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 // AI 경영 어시스턴트 위젯 (실시간 진단/예측/개선점/경보/리포트)
 // 글로벌 다국어(i18n), 접근성, 초보자용 설명 포함

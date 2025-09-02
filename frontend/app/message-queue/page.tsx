@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Trash2, RefreshCw, Send, Inbox, CheckCircle, AlertTriangle } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import { useLoadingState } from '@/hooks/useLoadingState';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 
 const apiClient = new ApiClient();
 
@@ -81,7 +81,7 @@ export default function MessageQueuePage() {
     try {
       setLoading(true);
       clearError();
-      const res = await apiClient.get('/api/message-queue/queues');
+      const res = await apiClient.get('/api/message-queue/queues') as any;
       setQueues(res.data);
     } catch (err) {
       handleError(err, '큐 목록 로드 실패');
@@ -92,7 +92,7 @@ export default function MessageQueuePage() {
 
   const loadStats = async () => {
     try {
-      const res = await apiClient.get('/api/message-queue/stats');
+      const res = await apiClient.get('/api/message-queue/stats') as any;
       setStats(res.data);
     } catch (err) {
       handleError(err, '통계 로드 실패');
@@ -155,7 +155,7 @@ export default function MessageQueuePage() {
     try {
       setLoading(true);
       clearError();
-      const res = await apiClient.post('/api/message-queue/messages/consume', { queue_id });
+      const res = await apiClient.post('/api/message-queue/messages/consume', { queue_id }) as any;
       if (res.status === 'success') {
         setMessages([res.data]);
       } else {

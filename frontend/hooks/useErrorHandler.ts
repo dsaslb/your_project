@@ -1,12 +1,20 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 export interface ErrorHandler {
+  error: string | null;
   handleError: (error: unknown, context?: string) => void;
   handleApiError: (error: unknown, context?: string) => void;
   handleValidationError: (errors: Record<string, string[]>) => void;
+  clearError: () => void;
 }
 
 export const useErrorHandler = (): ErrorHandler => {
+  const [error, setError] = useState<string | null>(null);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const handleError = useCallback((error: unknown, context?: string) => {
     console.error(`❌ ${context || '오류 발생'}:`, error);
     
@@ -19,6 +27,8 @@ export const useErrorHandler = (): ErrorHandler => {
     } else if (error && typeof error === 'object' && 'message' in error) {
       message = String(error.message);
     }
+    
+    setError(message);
     
     // 토스트 알림이나 알림 시스템에 표시
     if (typeof window !== 'undefined' && window.toast) {
@@ -54,6 +64,8 @@ export const useErrorHandler = (): ErrorHandler => {
       }
     }
     
+    setError(message);
+    
     // 토스트 알림 표시
     if (typeof window !== 'undefined' && window.toast) {
       window.toast.error(message);
@@ -66,6 +78,8 @@ export const useErrorHandler = (): ErrorHandler => {
     const messages = Object.values(errors).flat();
     const message = messages.length > 0 ? messages[0] : '입력 데이터가 올바르지 않습니다.';
     
+    setError(message);
+    
     // 토스트 알림 표시
     if (typeof window !== 'undefined' && window.toast) {
       window.toast.error(message);
@@ -73,8 +87,10 @@ export const useErrorHandler = (): ErrorHandler => {
   }, []);
 
   return {
+    error,
     handleError,
     handleApiError,
     handleValidationError,
+    clearError,
   };
 }; 

@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, g
-from auth.auth_manager import AuthManager, AuthConfig
+from utils.auth_manager import AuthManager, AuthConfig
 from .utils import APIResponse, InputValidator, api_error_handler, log_api_request, validate_json_input, get_client_ip, get_user_agent
 import os
 import logging
@@ -68,25 +68,26 @@ def require_permission(permission_name):
 @validate_json_input(required_fields=['username', 'password'])
 def login():
     """사용자 로그인"""
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    
-    # IP 주소와 User-Agent 가져오기
-    ip_address = get_client_ip()
-    user_agent = get_user_agent()
-    
-    # 사용자 인증
-    auth_result = auth_manager.authenticate_user(username, password, ip_address, user_agent)
-    
-    if not auth_result:
-        return APIResponse.error('잘못된 사용자명 또는 비밀번호입니다', 401)
-    
-    return APIResponse.success(
-            'message': '로그인이 성공했습니다',
-            'data': auth_result
-        }), 200
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
         
+        # IP 주소와 User-Agent 가져오기
+        ip_address = get_client_ip()
+        user_agent = get_user_agent()
+        
+        # 사용자 인증
+        auth_result = auth_manager.authenticate_user(username, password, ip_address, user_agent)
+        
+        if not auth_result:
+            return APIResponse.error('잘못된 사용자명 또는 비밀번호입니다', 401)
+        
+        return APIResponse.success({
+                'message': '로그인이 성공했습니다',
+                'data': auth_result
+            }), 200
+            
     except Exception as e:
         return jsonify({
             'status': 'error',

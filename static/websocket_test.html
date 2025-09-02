@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>웹소켓 연결 테스트</title>
+    <!-- Socket.IO 클라이언트 라이브러리 (로컬) -->
+    <script src="/static/js/socket.io.min.js"></script>
+    <!-- 대체 방법: CDN (로컬이 실패할 경우) -->
+    <script>
+        if (typeof io === 'undefined') {
+            console.log('로컬 라이브러리 실패, CDN 시도...');
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
+            script.integrity = 'sha384-mZLF4UVrpi/QTWPA7BjNPEnkIfRFn5UEO7t0c0wQpQh3e8DS3gHqIHxr7G5OhGi';
+            script.crossOrigin = 'anonymous';
+            document.head.appendChild(script);
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .connecting { background-color: #fff3cd; color: #856404; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .log-info { background-color: #e3f2fd; }
+        .log-success { background-color: #e8f5e8; }
+        .log-error { background-color: #ffebee; }
+        .log-event { background-color: #fff3e0; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .library-status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .library-loaded { background-color: #d4edda; color: #155724; }
+        .library-loading { background-color: #fff3cd; color: #856404; }
+        .library-failed { background-color: #f8d7da; color: #721c24; }
+        .manual-test {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .manual-test h4 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        .manual-test code {
+            background-color: #f5f5f5;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 웹소켓 연결 테스트</h1>
+        <p>실시간 시스템의 웹소켓 연결을 테스트합니다.</p>
+        
+        <div id="libraryStatus" class="library-status library-loading">
+            📚 Socket.IO 라이브러리 로딩 중...
+        </div>
+        
+        <div id="connectionStatus" class="status disconnected">
+            🔴 연결되지 않음
+        </div>
+        
+        <div class="test-section">
+            <h3>연결 관리</h3>
+            <button id="connectBtn" onclick="connect()" disabled>연결</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>연결 해제</button>
+            <button id="reconnectBtn" onclick="reconnect()" disabled>재연결</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>이벤트 테스트</h3>
+            <button onclick="testEvent('po:created')" disabled>📋 발주 생성 이벤트 테스트</button>
+            <button onclick="testEvent('po:status')" disabled>📋 발주 상태 변경 이벤트 테스트</button>
+            <button onclick="testEvent('attendance:update')" disabled>👥 출근 이벤트 테스트</button>
+            <button onclick="testEvent('inventory:update')" disabled>📦 재고 이벤트 테스트</button>
+        </div>
+        
+        <div class="manual-test">
+            <h4>🔧 수동 테스트 방법</h4>
+            <p>라이브러리 로드에 실패한 경우, 브라우저 개발자 도구(F12)에서 다음 코드를 실행해보세요:</p>
+            <code>
+                // Socket.IO 연결 테스트
+                const socket = io('http://localhost:5000');
+                socket.on('connect', () => console.log('연결됨:', socket.id));
+                socket.on('disconnect', () => console.log('연결 해제됨'));
+                socket.on('connect_error', (error) => console.log('연결 오류:', error));
+            </code>
+        </div>
+        
+        <div class="test-section">
+            <h3>연결 로그</h3>
+            <div id="log" class="log"></div>
+            <button onclick="clearLog()">로그 지우기</button>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let isConnected = false;
+        let libraryLoaded = false;
+        
+        // 라이브러리 로드 상태 확인
+        function checkLibraryStatus() {
+            const statusDiv = document.getElementById('libraryStatus');
+            const connectBtn = document.getElementById('connectBtn');
+            const eventButtons = document.querySelectorAll('.test-section button:not([onclick*="clearLog"])');
+            
+            if (typeof io !== 'undefined') {
+                libraryLoaded = true;
+                statusDiv.className = 'library-status library-loaded';
+                statusDiv.textContent = '✅ Socket.IO 라이브러리 로드 완료';
+                connectBtn.disabled = false;
+                eventButtons.forEach(btn => btn.disabled = false);
+                log('Socket.IO 라이브러리 로드 완료', 'success');
+            } else {
+                statusDiv.className = 'library-status library-failed';
+                statusDiv.textContent = '❌ Socket.IO 라이브러리 로드 실패';
+                log('Socket.IO 라이브러리 로드 실패', 'error');
+                log('수동 테스트 방법을 사용하거나 페이지를 새로고침해주세요', 'error');
+            }
+        }
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = message;
+            
+            // 버튼 상태 업데이트
+            document.getElementById('connectBtn').disabled = status === 'connected';
+            document.getElementById('disconnectBtn').disabled = status !== 'connected';
+            document.getElementById('reconnectBtn').disabled = status === 'connected';
+        }
+        
+        function connect() {
+            if (!libraryLoaded) {
+                log('Socket.IO 라이브러리가 로드되지 않았습니다.', 'error');
+                return;
+            }
+            
+            if (socket && isConnected) {
+                log('이미 연결되어 있습니다.', 'info');
+                return;
+            }
+            
+            log('웹소켓 연결 시도 중...', 'info');
+            updateStatus('connecting', '🟡 연결 중...');
+            
+            try {
+                // Socket.IO는 HTTP 기반으로 작동하므로 ws:// 대신 http:// 사용
+                socket = io('http://localhost:5000', {
+                    transports: ['polling', 'websocket'], // polling을 먼저 시도
+                    timeout: 10000,
+                    forceNew: true
+                });
+                
+                socket.on('connect', () => {
+                    isConnected = true;
+                    log('✅ 웹소켓 연결 성공!', 'success');
+                    log(`연결 ID: ${socket.id}`, 'info');
+                    updateStatus('connected', '🟢 연결됨');
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    isConnected = false;
+                    log(`❌ 웹소켓 연결 해제: ${reason}`, 'error');
+                    updateStatus('disconnected', '🔴 연결되지 않음');
+                });
+                
+                socket.on('connect_error', (error) => {
+                    log(`❌ 연결 오류: ${error.message}`, 'error');
+                    log('연결 오류 상세 정보:', 'error');
+                    log(`- 오류 타입: ${error.type}`, 'error');
+                    log(`- 오류 설명: ${error.description}`, 'error');
+                    updateStatus('disconnected', '🔴 연결 실패');
+                });
+                
+                // 실시간 이벤트 리스너
+                socket.on('po:created', (data) => {
+                    log(`📋 발주 생성 이벤트 수신: ${JSON.stringify(data)}`, 'event');
+                });
+                
+                socket.on('po:status', (data) => {
+                    log(`📋 발주 상태 변경 이벤트 수신: ${JSON.stringify(data)}`, 'event');
+                });
+                
+                socket.on('attendance:update', (data) => {
+                    log(`👥 출근 이벤트 수신: ${JSON.stringify(data)}`, 'event');
+                });
+                
+                socket.on('inventory:update', (data) => {
+                    log(`📦 재고 이벤트 수신: ${JSON.stringify(data)}`, 'event');
+                });
+                
+                socket.on('schedule:update', (data) => {
+                    log(`📅 일정 이벤트 수신: ${JSON.stringify(data)}`, 'event');
+                });
+                
+                socket.on('order:update', (data) => {
+                    log(`🛒 주문 이벤트 수신: ${JSON.stringify(data)}`, 'event');
+                });
+                
+                // 연결 타임아웃 설정
+                setTimeout(() => {
+                    if (!isConnected) {
+                        log('❌ 연결 타임아웃 (10초)', 'error');
+                        updateStatus('disconnected', '🔴 연결 타임아웃');
+                        if (socket) {
+                            socket.disconnect();
+                            socket = null;
+                        }
+                    }
+                }, 10000);
+                
+            } catch (error) {
+                log(`❌ 웹소켓 초기화 오류: ${error.message}`, 'error');
+                updateStatus('disconnected', '🔴 연결 실패');
+            }
+        }
+        
+        function disconnect() {
+            if (socket && isConnected) {
+                socket.disconnect();
+                socket = null;
+                isConnected = false;
+                log('웹소켓 연결 해제됨', 'info');
+                updateStatus('disconnected', '🔴 연결되지 않음');
+            }
+        }
+        
+        function reconnect() {
+            disconnect();
+            setTimeout(connect, 1000);
+        }
+        
+        function testEvent(eventName) {
+            if (!libraryLoaded) {
+                log('Socket.IO 라이브러리가 로드되지 않았습니다.', 'error');
+                return;
+            }
+            
+            if (!socket || !isConnected) {
+                log('웹소켓이 연결되지 않았습니다.', 'error');
+                return;
+            }
+            
+            const testData = {
+                id: Math.floor(Math.random() * 1000),
+                branch_id: 1,
+                brand_id: 1,
+                industry_id: 1,
+                timestamp: new Date().toISOString(),
+                test: true
+            };
+            
+            log(`🧪 ${eventName} 이벤트 테스트 전송: ${JSON.stringify(testData)}`, 'info');
+            socket.emit(eventName, testData);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // 페이지 로드 시 라이브러리 상태 확인
+        window.onload = function() {
+            log('웹소켓 테스트 페이지 로드됨', 'info');
+            
+            // 라이브러리 로드 상태를 주기적으로 확인
+            const checkInterval = setInterval(() => {
+                if (typeof io !== 'undefined') {
+                    clearInterval(checkInterval);
+                    checkLibraryStatus();
+                }
+            }, 100);
+            
+            // 5초 후에도 로드되지 않으면 실패로 처리
+            setTimeout(() => {
+                if (typeof io === 'undefined') {
+                    clearInterval(checkInterval);
+                    checkLibraryStatus();
+                }
+            }, 5000);
+        };
+    </script>
+</body>
+</html>

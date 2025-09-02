@@ -1,15 +1,18 @@
-.PHONY: help install install-dev test test-unit test-integration test-api test-performance lint format clean run dev setup-db migrate
+.PHONY: help install install-dev test test-unit test-integration test-api test-performance lint format clean run dev setup-db migrate docker-build docker-run docker-compose-up docker-compose-down logs monitor security-check
 
 help: ## 도움말 표시
 	@echo "사용 가능한 명령어:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: ## 프로덕션 의존성 설치
+	pip install --upgrade pip
 	pip install -r requirements.txt
 
 install-dev: ## 개발 의존성 설치
-	pip install -r requirements-dev.txt
-	pre-commit install
+	pip install --upgrade pip
+	pip install -r requirements.txt
+	pip install pytest pytest-cov black flake8 mypy isort bandit safety
+	@echo "개발 환경 설정 완료"
 
 setup-db: ## 데이터베이스 설정
 	flask db upgrade
@@ -60,13 +63,18 @@ clean: ## 캐시 및 임시 파일 정리
 	rm -rf dist/
 	rm -rf build/
 
-run: ## 프로덕션 서버 실행
-	python app.py
+run: ## 프로덕션 서버 실행 (Gunicorn)
+	gunicorn --bind 0.0.0.0:5000 --workers 4 --worker-class gevent --worker-connections 1000 --timeout 30 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 app:app
 
 dev: ## 개발 서버 실행
 	export FLASK_ENV=development
 	export FLASK_DEBUG=1
 	python app.py
+
+run-dev: ## 개발 서버 실행 (자동 재시작)
+	export FLASK_ENV=development
+	export FLASK_DEBUG=1
+	flask run --host=0.0.0.0 --port=5000 --reload
 
 docker-build: ## Docker 이미지 빌드
 	docker build -t your-program-backend .
@@ -85,4 +93,43 @@ logs: ## 로그 확인
 
 monitor: ## 시스템 모니터링
 	ps aux | grep python
-	netstat -tlnp | grep :5000 
+	netstat -tlnp | grep :5000
+
+check: ## 전체 시스템 점검
+	@echo "=== 코드 품질 검사 ==="
+	$(MAKE) lint
+	@echo "=== 보안 검사 ==="
+	$(MAKE) security-check
+	@echo "=== 테스트 실행 ==="
+	$(MAKE) test
+	@echo "=== 모든 검사 완료 ==="
+
+optimize: ## 시스템 최적화
+	@echo "=== 캐시 정리 ==="
+	$(MAKE) clean
+	@echo "=== 의존성 업데이트 ==="
+	pip install --upgrade pip
+	pip install -r requirements.txt --upgrade
+	@echo "=== 최적화 완료 ==="
+
+backup: ## 데이터베이스 백업
+	@echo "=== 데이터베이스 백업 중 ==="
+	mkdir -p backups
+	cp instance/app.db backups/app_backup_$(shell date +%Y%m%d_%H%M%S).db
+	@echo "=== 백업 완료 ==="
+
+restore: ## 데이터베이스 복원 (백업 파일명을 BACKUP_FILE 변수로 지정)
+	@if [ -z "$(BACKUP_FILE)" ]; then echo "사용법: make restore BACKUP_FILE=backups/app_backup_20240101_120000.db"; exit 1; fi
+	@echo "=== 데이터베이스 복원 중: $(BACKUP_FILE) ==="
+	cp $(BACKUP_FILE) instance/app.db
+	@echo "=== 복원 완료 ==="
+
+logs-clean: ## 로그 파일 정리
+	@echo "=== 로그 파일 정리 중 ==="
+	find logs/ -name "*.log" -mtime +7 -delete
+	@echo "=== 로그 정리 완료 ==="
+
+health-check: ## 시스템 상태 확인
+	@echo "=== 시스템 상태 확인 ==="
+	curl -f http://localhost:5000/health || echo "서버가 실행되지 않았습니다"
+	@echo "=== 상태 확인 완료 ===" 

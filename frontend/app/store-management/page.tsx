@@ -92,8 +92,13 @@ class LocalStorageManager {
 
 // AI 분석 클래스
 class AIAnalyzer {
-  static analyzeStaffingEfficiency(schedules: any[], attendance: any[], sales: any[]): any {
-    const analysis = {
+  static analyzeStoreEfficiency(schedules: any[], attendance: any[], sales: any[]): any {
+    const analysis: {
+      issues: string[];
+      improvements: string[];
+      efficiency_score: number;
+      recommendations: string[];
+    } = {
       issues: [],
       improvements: [],
       efficiency_score: 0,
@@ -313,7 +318,7 @@ export default function StoreManagement() {
 
   // AI 분석 실행
   const runAIAnalysis = () => {
-    const analysis = AIAnalyzer.analyzeStaffingEfficiency(schedules, attendanceRecords, salesData);
+    const analysis = AIAnalyzer.analyzeStoreEfficiency(schedules, attendanceRecords, salesData);
     
     const newReport: AIReport = {
       id: Date.now().toString(),

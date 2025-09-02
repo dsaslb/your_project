@@ -59,26 +59,99 @@ venv\Scripts\activate     # Windows
 
 ### 3. 의존성 설치
 ```bash
-pip install -r requirements.txt
+# 개발 환경
+make install-dev
+
+# 또는 프로덕션 환경
+make install
 ```
 
 ### 4. 환경 변수 설정
 ```bash
-cp .env.example .env
+cp env.example .env
 # .env 파일을 편집하여 데이터베이스 연결 정보 등 설정
 ```
 
 ### 5. 데이터베이스 초기화
 ```bash
-flask db upgrade
+make setup-db
 ```
 
 ### 6. 애플리케이션 실행
 ```bash
-python app.py
+# 개발 서버
+make dev
+
+# 프로덕션 서버 (Gunicorn)
+make run
+
+# 자동 재시작 개발 서버
+make run-dev
 ```
 
 서버가 `http://localhost:5000`에서 실행됩니다.
+
+## 🛠️ 개발 도구
+
+### 코드 품질 관리
+```bash
+# 코드 포맷팅
+make format
+
+# 린팅 검사
+make lint
+
+# 전체 시스템 점검
+make check
+```
+
+### 테스트
+```bash
+# 모든 테스트 실행
+make test
+
+# 단위 테스트만 실행
+make test-unit
+
+# API 테스트만 실행
+make test-api
+
+# 성능 테스트 실행
+make test-performance
+```
+
+### 시스템 관리
+```bash
+# 시스템 최적화
+make optimize
+
+# 데이터베이스 백업
+make backup
+
+# 데이터베이스 복원
+make restore BACKUP_FILE=backups/app_backup_20240101_120000.db
+
+# 로그 정리
+make logs-clean
+
+# 시스템 상태 확인
+make health-check
+```
+
+### Docker 사용
+```bash
+# Docker 이미지 빌드
+make docker-build
+
+# Docker 컨테이너 실행
+make docker-run
+
+# Docker Compose로 전체 서비스 실행
+make docker-compose-up
+
+# Docker Compose 서비스 중지
+make docker-compose-down
+```
 
 ## 🔌 플러그인 개발
 

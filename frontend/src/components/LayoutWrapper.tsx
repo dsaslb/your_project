@@ -21,7 +21,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-60"></div>
       
       {/* 사이드바 */}
-      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <Sidebar branchId="test-branch-001" brandId="test-brand-001" />
       
       {/* 모바일 토글 버튼 */}
       <SidebarToggle onToggle={() => setSidebarOpen(!sidebarOpen)} />

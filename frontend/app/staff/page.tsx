@@ -126,7 +126,7 @@ export default function StaffManagement() {
           department: '커피팀',
           status: 'active',
           hire_date: '2023-01-15',
-          salary: 2500000
+          store_id: 1
         },
         {
           id: 2,
@@ -137,7 +137,7 @@ export default function StaffManagement() {
           department: '관리팀',
           status: 'active',
           hire_date: '2022-06-20',
-          salary: 3500000
+          store_id: 1
         },
         {
           id: 3,
@@ -148,7 +148,7 @@ export default function StaffManagement() {
           department: '커피팀',
           status: 'inactive',
           hire_date: '2023-03-10',
-          salary: 2400000
+          store_id: 1
         }
       ];
       
@@ -224,7 +224,7 @@ export default function StaffManagement() {
 
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.email.toLowerCase().includes(searchTerm.toLowerCase());
+                         (employee.email?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesRole = selectedRole === 'all' || employee.position === selectedRole;
     const matchesStatus = selectedStatus === 'all' || employee.status === selectedStatus;
     

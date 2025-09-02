@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간단한 Socket.IO 테스트</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .connecting { background-color: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .log { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; margin: 15px 0; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔌 간단한 Socket.IO 연결 테스트</h1>
+    
+    <div id="status" class="status disconnected">🔴 연결되지 않음</div>
+    
+    <button onclick="connect()">연결</button>
+    <button onclick="disconnect()">연결 해제</button>
+    <button onclick="testEvent()">테스트 이벤트</button>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        let socket = null;
+        let isConnected = false;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = message;
+        }
+        
+        function connect() {
+            if (socket && isConnected) {
+                log('이미 연결되어 있습니다.');
+                return;
+            }
+            
+            log('Socket.IO 연결 시도 중...');
+            updateStatus('connecting', '🟡 연결 중...');
+            
+            try {
+                socket = io('http://localhost:5000', {
+                    transports: ['polling', 'websocket'],
+                    timeout: 10000
+                });
+                
+                socket.on('connect', () => {
+                    isConnected = true;
+                    log('✅ Socket.IO 연결 성공!');
+                    log(`연결 ID: ${socket.id}`);
+                    updateStatus('connected', '🟢 연결됨');
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    isConnected = false;
+                    log(`❌ 연결 해제: ${reason}`);
+                    updateStatus('disconnected', '🔴 연결되지 않음');
+                });
+                
+                socket.on('connect_error', (error) => {
+                    log(`❌ 연결 오류: ${error.message}`);
+                    log(`오류 상세: ${JSON.stringify(error)}`);
+                    updateStatus('disconnected', '🔴 연결 실패');
+                });
+                
+                // 이벤트 리스너
+                socket.on('po:created', (data) => {
+                    log(`📋 발주 생성 이벤트: ${JSON.stringify(data)}`);
+                });
+                
+                socket.on('po:status', (data) => {
+                    log(`📋 발주 상태 변경 이벤트: ${JSON.stringify(data)}`);
+                });
+                
+            } catch (error) {
+                log(`❌ 초기화 오류: ${error.message}`);
+                updateStatus('disconnected', '🔴 초기화 실패');
+            }
+        }
+        
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                isConnected = false;
+                log('연결 해제됨');
+                updateStatus('disconnected', '🔴 연결되지 않음');
+            }
+        }
+        
+        function testEvent() {
+            if (!socket || !isConnected) {
+                log('연결되지 않았습니다.');
+                return;
+            }
+            
+            const testData = {
+                id: Math.floor(Math.random() * 1000),
+                branch_id: 1,
+                brand_id: 1,
+                industry_id: 1,
+                test: true
+            };
+            
+            log(`🧪 테스트 이벤트 전송: ${JSON.stringify(testData)}`);
+            socket.emit('po:created', testData);
+        }
+        
+        log('페이지 로드됨 - Socket.IO 테스트 준비 완료');
+    </script>
+</body>
+</html>
